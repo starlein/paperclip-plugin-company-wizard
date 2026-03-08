@@ -1,0 +1,11 @@
+{
+  "name": "monitoring",
+  "requires": ["github-repo"],
+  "tasks": [
+    {
+      "title": "Set up monitoring and observability",
+      "assignTo": "engineer",
+      "description": "Configure health checks, error tracking, logging, and alerting. Document the observability strategy in docs/MONITORING.md."
+    }
+  ]
+}

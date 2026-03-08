@@ -1,0 +1,11 @@
+{
+  "name": "ci-cd",
+  "requires": ["github-repo"],
+  "tasks": [
+    {
+      "title": "Set up CI/CD pipeline",
+      "assignTo": "engineer",
+      "description": "Configure continuous integration (lint, test, build) and deployment pipeline. Document the setup in docs/CI-CD.md. Use GitHub Actions or equivalent."
+    }
+  ]
+}

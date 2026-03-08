@@ -184,6 +184,8 @@ Capabilities extend, they don't require. Start with CEO + Engineer, add speciali
 | `hiring-review` | Product Owner | CEO | hiring-review |
 | `roadmap-to-issues` | Product Owner | CEO | roadmap-to-issues |
 | `auto-assign` | Product Owner | CEO | auto-assign |
+| `user-testing` | UX Researcher &rarr; Product Owner | CEO | user-testing |
+| `brand-identity` | UI Designer | CEO | brand-identity |
 | `tech-stack` | Engineer | CEO | tech-stack |
 | `architecture-plan` | Engineer | CEO | architecture-plan |
 | `design-system` | UI Designer | Engineer | architecture-plan |
@@ -242,6 +244,8 @@ Capabilities extend, they don't require. Start with CEO + Engineer, add speciali
 | **`hiring-review`** | Evaluate team gaps, propose hires via board approval | Primary owner reviews team |
 | **`tech-stack`** | Evaluate and document technology choices | Primary owner evaluates stack |
 | **`architecture-plan`** | Design system architecture + design system | Engineer + Designer (if present) |
+| **`brand-identity`** | Brand book, visual identity, design guidelines | Primary owner defines brand |
+| **`user-testing`** | Usability evaluations and findings | Primary owner runs evaluations |
 
 ### Engineering Workflow
 
@@ -252,6 +256,8 @@ Capabilities extend, they don't require. Start with CEO + Engineer, add speciali
 | **`roadmap-to-issues`** | Auto-generate issues from goals when backlog runs low | Primary owner creates initial backlog |
 | **`auto-assign`** | Assign unassigned issues to idle agents | — |
 | **`stall-detection`** | Detect stuck handovers, nudge or escalate | — |
+| **`ci-cd`** | Continuous integration and deployment pipeline | Engineer sets up CI/CD |
+| **`monitoring`** | Observability, alerting, health checks | Engineer sets up monitoring |
 
 <details>
 <summary><strong>Module details</strong></summary>
@@ -323,6 +329,36 @@ Assigns unassigned issues to idle agents.
 - **Capability:** `auto-assign` — owners: `product-owner` &rarr; `ceo`
 - **Fallback:** CEO assigns only when agents are critically idle
 
+#### brand-identity
+
+Creates brand guidelines: logo usage, color palette, typography, iconography, and tone of voice.
+
+- **Capability:** `brand-identity` — owners: `ui-designer` &rarr; `ceo`
+- **Fallback:** CEO creates minimal provisional placeholder
+- **Doc:** `docs/brand-identity-template.md`
+
+#### user-testing
+
+Designs and executes usability evaluations, documents findings with severity ratings.
+
+- **Capability:** `user-testing` — owners: `ux-researcher` &rarr; `product-owner` &rarr; `ceo`
+- **Fallback:** CEO creates a basic heuristic checklist
+- **Doc:** `docs/user-testing-template.md`
+
+#### ci-cd
+
+Continuous integration and deployment pipeline. Requires `github-repo`.
+
+- **Task:** Engineer sets up CI/CD
+- **Doc:** `docs/ci-cd-template.md`
+
+#### monitoring
+
+Observability, error tracking, logging, alerting, and health checks. Requires `github-repo`.
+
+- **Task:** Engineer sets up monitoring
+- **Doc:** `docs/monitoring-template.md`
+
 #### stall-detection
 
 Detects issues stuck in `in_progress` or `in_review` with no recent activity. Nudges the assigned agent, escalates to the board if nudging doesn't help.
@@ -341,8 +377,13 @@ Every company starts with **CEO** and **Engineer** (base roles). These optional 
 | :--- | :------------- | :--------- | :------- |
 | **Product Owner** | `pm` | CEO | Takes over roadmap, auto-assign, hiring-review from CEO |
 | **Code Reviewer** | `qa` | CEO | Enables pr-review activation |
-| **UI & Brand Designer** | `designer` | CEO | Takes over design-system from Engineer |
-| **UX Researcher** | `researcher` | CEO | Takes over market-analysis, contributes to vision |
+| **UI & Brand Designer** | `designer` | CEO | Takes over design-system and brand-identity |
+| **UX Researcher** | `researcher` | CEO | Takes over market-analysis and user-testing |
+| **CTO** | `cto` | CEO | Technical leadership, architecture oversight |
+| **CMO** | `cmo` | CEO | Marketing strategy, go-to-market, growth metrics |
+| **CFO** | `cfo` | CEO | Financial planning, budget tracking, cost analysis |
+| **DevOps Engineer** | `devops` | CEO | Takes over ci-cd and monitoring from Engineer |
+| **QA Engineer** | `qa` | CEO | Takes over user-testing, quality gates |
 
 <details>
 <summary><strong>Role details</strong></summary>
@@ -362,6 +403,26 @@ Owns visual identity, design systems, and brand consistency. Creates design spec
 #### UX Researcher
 
 Owns user experience research, usability analysis, and journey mapping. Grounds design and product decisions in evidence-based user insights. Adds UX review pass with pr-review module.
+
+#### CTO
+
+Technical leadership and architecture oversight. Guides technology decisions, reviews system design, and ensures engineering quality at scale.
+
+#### CMO
+
+Owns marketing strategy, brand positioning, go-to-market planning, and growth metrics. Data-driven, measures everything.
+
+#### CFO
+
+Owns financial planning, budget tracking, cost analysis, and resource allocation. Monitors agent cost events and budget utilization.
+
+#### DevOps Engineer
+
+Owns infrastructure, CI/CD pipelines, deployment, monitoring, and platform reliability. Automation over manual work, infrastructure as code.
+
+#### QA Engineer
+
+Owns test strategy, test automation, quality gates, and regression prevention. Prevention over detection.
 
 </details>
 

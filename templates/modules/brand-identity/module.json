@@ -1,0 +1,17 @@
+{
+  "name": "brand-identity",
+  "capabilities": [
+    {
+      "skill": "brand-identity",
+      "owners": ["ui-designer", "ceo"],
+      "fallbackSkill": "brand-identity.fallback"
+    }
+  ],
+  "tasks": [
+    {
+      "title": "Define brand identity and visual guidelines",
+      "assignTo": "capability:brand-identity",
+      "description": "Create the brand book: logo usage, color palette, typography, iconography, and tone-of-voice guidelines. Document everything in docs/BRAND-IDENTITY.md."
+    }
+  ]
+}

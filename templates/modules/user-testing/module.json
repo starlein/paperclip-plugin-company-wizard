@@ -1,0 +1,17 @@
+{
+  "name": "user-testing",
+  "capabilities": [
+    {
+      "skill": "user-testing",
+      "owners": ["ux-researcher", "product-owner", "ceo"],
+      "fallbackSkill": "user-testing.fallback"
+    }
+  ],
+  "tasks": [
+    {
+      "title": "Design and execute initial usability evaluation",
+      "assignTo": "capability:user-testing",
+      "description": "Define test scenarios based on the company goal, identify target user personas, create a test plan, execute evaluations, and document findings in docs/USER-TESTING.md."
+    }
+  ]
+}
