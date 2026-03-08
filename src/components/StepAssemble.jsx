@@ -5,6 +5,8 @@ import { assembleCompany } from "../logic/assemble.js";
 
 export default function StepAssemble({
   companyName,
+  goal,
+  project,
   baseName,
   moduleNames,
   extraRoleNames,
@@ -21,6 +23,8 @@ export default function StepAssemble({
 
     assembleCompany({
       companyName,
+      goal,
+      project,
       baseName,
       moduleNames,
       extraRoleNames,

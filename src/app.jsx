@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Box, Text, useApp } from "ink";
 import Header from "./components/Header.jsx";
 import StepName from "./components/StepName.jsx";
+import StepGoal from "./components/StepGoal.jsx";
+import StepProject from "./components/StepProject.jsx";
 import StepPreset from "./components/StepPreset.jsx";
 import StepModules from "./components/StepModules.jsx";
 import StepRoles from "./components/StepRoles.jsx";
@@ -18,6 +20,8 @@ import {
 const STEPS = {
   LOADING: "loading",
   NAME: "name",
+  GOAL: "goal",
+  PROJECT: "project",
   PRESET: "preset",
   MODULES: "modules",
   ROLES: "roles",
@@ -41,6 +45,8 @@ export default function App({ outputDir, templatesDir, apiEnabled, apiBaseUrl, m
 
   // User selections
   const [companyName, setCompanyName] = useState("");
+  const [goal, setGoal] = useState({ title: "", description: null });
+  const [project, setProject] = useState({ name: "", repoUrl: null });
   const [baseName, setBaseName] = useState("base");
   const [selectedModules, setSelectedModules] = useState([]);
   const [preselectedModules, setPreselectedModules] = useState([]);
@@ -98,6 +104,25 @@ export default function App({ outputDir, templatesDir, apiEnabled, apiBaseUrl, m
         <StepName
           onComplete={(name) => {
             setCompanyName(name);
+            setStep(STEPS.GOAL);
+          }}
+        />
+      )}
+
+      {step === STEPS.GOAL && (
+        <StepGoal
+          onComplete={(g) => {
+            setGoal(g);
+            setStep(STEPS.PROJECT);
+          }}
+        />
+      )}
+
+      {step === STEPS.PROJECT && (
+        <StepProject
+          defaultName={companyName}
+          onComplete={(p) => {
+            setProject(p);
             setStep(STEPS.PRESET);
           }}
         />
@@ -148,11 +173,13 @@ export default function App({ outputDir, templatesDir, apiEnabled, apiBaseUrl, m
       {step === STEPS.SUMMARY && (
         <StepSummary
           companyName={companyName}
+          goal={goal}
+          project={project}
           baseName={baseName}
           moduleNames={selectedModules}
           roleNames={selectedRoles}
           capabilities={capabilities}
-          outputDir={`${outputDir}/${companyName}/`}
+          outputDir={outputDir}
           apiEnabled={apiEnabled}
           onConfirm={() => setStep(STEPS.ASSEMBLE)}
           onCancel={() => {
@@ -164,6 +191,8 @@ export default function App({ outputDir, templatesDir, apiEnabled, apiBaseUrl, m
       {step === STEPS.ASSEMBLE && (
         <StepAssemble
           companyName={companyName}
+          goal={goal}
+          project={project}
           baseName={baseName}
           moduleNames={selectedModules}
           extraRoleNames={selectedRoles}
@@ -185,6 +214,8 @@ export default function App({ outputDir, templatesDir, apiEnabled, apiBaseUrl, m
         <StepProvision
           companyName={companyName}
           companyDir={assemblyResult.companyDir}
+          goal={goal}
+          project={project}
           allRoles={assemblyResult.allRoles}
           rolesData={rolesData}
           initialTasks={assemblyResult.initialTasks}
@@ -195,7 +226,6 @@ export default function App({ outputDir, templatesDir, apiEnabled, apiBaseUrl, m
             setStep(STEPS.DONE);
           }}
           onError={(msg) => {
-            // API error is non-fatal — files are already assembled
             setError(msg);
             setStep(STEPS.DONE);
           }}

@@ -59,6 +59,8 @@ function toPascalCase(name) {
  *
  * @param {object} opts
  * @param {string} opts.companyName
+ * @param {object} opts.goal - { title, description }
+ * @param {object} opts.project - { name, repoUrl }
  * @param {string} opts.baseName
  * @param {string[]} opts.moduleNames
  * @param {string[]} opts.extraRoleNames
@@ -69,6 +71,8 @@ function toPascalCase(name) {
  */
 export async function assembleCompany({
   companyName,
+  goal = {},
+  project = {},
   baseName,
   moduleNames,
   extraRoleNames,
@@ -276,32 +280,70 @@ export async function assembleCompany({
 
   // 5. Generate BOOTSTRAP.md
   const rolesList = [...allRoles];
+  const formatRole = (r) =>
+    r.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+
   let bootstrap = `# Bootstrap: ${companyName}\n\n`;
-  bootstrap += `Your company workspace is pre-configured at this location. All agent instruction files, skills, and shared documentation are already in place.\n\n`;
-  bootstrap += `## Setup Agents\n\n`;
-  bootstrap += `Create the following agents in the Paperclip UI. For each, set the company workspace as cwd and the instructionsFilePath as shown:\n\n`;
-  for (const role of rolesList) {
-    const label = role
-      .split("-")
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(" ");
-    bootstrap += `### ${label}\n`;
-    bootstrap += `- **instructionsFilePath**: \`agents/${role}/AGENTS.md\`\n\n`;
+
+  // Goal
+  if (goal?.title) {
+    bootstrap += `## Goal\n\n`;
+    bootstrap += `**${goal.title}**\n`;
+    if (goal.description) {
+      bootstrap += `${goal.description}\n`;
+    }
+    bootstrap += `\n`;
   }
+
+  // Project
+  const projectName = project?.name || companyName;
+  bootstrap += `## Project\n\n`;
+  bootstrap += `- **Name**: ${projectName}\n`;
+  bootstrap += `- **Working directory**: \`${companyDir}\`\n`;
+  if (project?.repoUrl) {
+    bootstrap += `- **Repository**: ${project.repoUrl}\n`;
+  }
+  bootstrap += `\n`;
+
+  // Agents
+  bootstrap += `## Agents\n\n`;
+  bootstrap += `Create the following agents in Paperclip. Set each agent's working directory to this workspace and the instructions file as shown.\n\n`;
+  for (const role of rolesList) {
+    bootstrap += `### ${formatRole(role)}\n`;
+    bootstrap += `- **instructionsFilePath**: \`${companyDir}/agents/${role}/AGENTS.md\`\n`;
+    bootstrap += `- **cwd**: \`${companyDir}\`\n\n`;
+  }
+
+  // Initial tasks
   if (initialTasks.length > 0) {
     bootstrap += `## Initial Tasks\n\n`;
-    bootstrap += `Create these as issues to kick off the company workflows:\n\n`;
+    bootstrap += `Create these as issues (linked to the project and goal) to kick off workflows:\n\n`;
     for (const task of initialTasks) {
-      bootstrap += `### ${task.title}\n`;
-      bootstrap += `- **Assign to**: ${task.assignTo}\n`;
-      bootstrap += `- **Description**: ${task.description}\n\n`;
+      bootstrap += `- **${task.title}** → assign to ${task.assignTo}\n`;
+      if (task.description) {
+        bootstrap += `  ${task.description}\n`;
+      }
     }
+    bootstrap += `\n`;
   }
+
+  // Get started
   bootstrap += `## Get Started\n\n`;
-  bootstrap += `Once all agents are created and initial tasks are assigned:\n`;
-  bootstrap += `1. Start the CEO heartbeat\n`;
-  bootstrap += `2. The CEO will coordinate the team and monitor progress\n`;
-  bootstrap += `3. Engineers begin working on assigned issues\n`;
+  bootstrap += `If using \`clipper --api\`, all of the above is created automatically.\n\n`;
+  bootstrap += `Otherwise, create manually in the Paperclip UI:\n`;
+  bootstrap += `1. Create the company "${companyName}"\n`;
+  bootstrap += `2. Create the project "${projectName}" with workspace → \`${companyDir}\`\n`;
+  if (project?.repoUrl) {
+    bootstrap += `   Set the repository to: ${project.repoUrl}\n`;
+  }
+  bootstrap += `3. Create each agent listed above\n`;
+  if (goal?.title) {
+    bootstrap += `4. Create the goal: "${goal.title}"\n`;
+  }
+  if (initialTasks.length > 0) {
+    bootstrap += `${goal?.title ? "5" : "4"}. Create the initial issues listed above\n`;
+  }
+  bootstrap += `${goal?.title && initialTasks.length > 0 ? "6" : goal?.title || initialTasks.length > 0 ? "5" : "4"}. Start the CEO heartbeat\n`;
 
   await writeFile(join(companyDir, "BOOTSTRAP.md"), bootstrap);
   onProgress("+ BOOTSTRAP.md");

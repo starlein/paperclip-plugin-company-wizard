@@ -3,6 +3,8 @@ import { Box, Text, useInput } from "ink";
 
 export default function StepSummary({
   companyName,
+  goal,
+  project,
   baseName,
   moduleNames,
   roleNames,
@@ -47,6 +49,26 @@ export default function StepSummary({
           {"  Company:  "}
           <Text color="cyan">{companyName}</Text>
         </Text>
+        {goal?.title ? (
+          <Text>
+            {"  Goal:     "}
+            <Text color="cyan">{goal.title}</Text>
+          </Text>
+        ) : null}
+        {project?.name ? (
+          <Box flexDirection="column">
+            <Text>
+              {"  Project:  "}
+              <Text color="cyan">{project.name}</Text>
+            </Text>
+            {project.repoUrl ? (
+              <Text>
+                {"  Repo:     "}
+                <Text dimColor>{project.repoUrl}</Text>
+              </Text>
+            ) : null}
+          </Box>
+        ) : null}
         <Text>
           {"  Base:     "}
           <Text color="cyan">{baseName}</Text>
@@ -81,6 +103,7 @@ export default function StepSummary({
           <Text>
             {"  API:      "}
             <Text color="green">enabled</Text>
+            <Text dimColor> (will create company, goal, project, agents, issues)</Text>
           </Text>
         ) : null}
       </Box>

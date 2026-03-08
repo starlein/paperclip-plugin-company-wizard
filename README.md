@@ -21,36 +21,47 @@ Requires Node.js 20+.
 
 ## Usage
 
-```bash
-$ clipper
+The interactive wizard walks through these steps:
 
-  ╔═══════════════════════════════════════╗
-  ║   Clipper                             ║
-  ╚═══════════════════════════════════════╝
+```
+$ clipper --api
 
-  Company name: Acme
+  ╭──────────────╮
+  │   Clipper    │
+  ╰──────────────╯
+
+  Company name: Acme Corp
+  Company goal: Build the best widgets in the world
+  Description:  Ship v1 with core features and onboard first 10 customers
+
+  Project name: Acme Corp
+  GitHub repo URL: https://github.com/acme/widgets
 
   Select a preset:
+  ❯ fast — Speed-optimized for solo engineer...
+    quality — Quality-optimized with PR review...
+    custom — Pick modules manually
 
-    1) fast       — Solo engineer, commit on main
-    2) quality    — PR review, 4 roles
-    3) custom     — Pick modules manually
-
-  Modules included + available:
-    ...
-
-  Add roles (optional — capabilities adapt gracefully):
-    1) product-owner   + Enhances roadmap-to-issues, auto-assign
-    2) code-reviewer   + Enables pr-review
+  Select modules: (↑↓ navigate · space toggle · enter confirm)
+  ❯ ◉ github-repo
+    ◉ roadmap-to-issues
+    ◉ auto-assign
+    ◉ stall-detection
+    ○ pr-review
 
   Capability resolution:
-    roadmap-to-issues: product-owner (fallback: ceo)
-    auto-assign:       product-owner (fallback: ceo)
+    roadmap-to-issues: ceo
+    auto-assign: ceo
 
   Summary:
-    Company:  Acme
-    Roles:    ceo, engineer, product-owner
+    Company:  Acme Corp
+    Goal:     Build the best widgets in the world
+    Project:  Acme Corp
+    Repo:     https://github.com/acme/widgets
     Modules:  github-repo, roadmap-to-issues, auto-assign, stall-detection
+    Roles:    ceo, engineer
+    Output:   ./companies/
+    API:      enabled (will create company, goal, project, agents, issues)
 
   Create? [Y/n]:
 ```
@@ -68,7 +79,7 @@ clipper --api-url http://host:3100     # custom API URL (implies --api)
 | Flag | Description | Default |
 | ---- | ----------- | ------- |
 | `--output <dir>` | Output directory for company workspaces | `./companies/` |
-| `--api` | Provision company, agents, project, and issues via Paperclip API after file assembly | off |
+| `--api` | Provision company, goal, project, agents, and issues via Paperclip API after file assembly | off |
 | `--api-url <url>` | Paperclip API URL (implies `--api`) | `http://localhost:3100` |
 | `--model <model>` | Default LLM model for all agents (overridden by `role.json` per-role config) | adapter default |
 
@@ -78,36 +89,26 @@ The company directory name is PascalCase: "Black Mesa" → `companies/BlackMesa/
 
 ```text
 companies/AcmeCorp/
+├── BOOTSTRAP.md                    # Setup guide: goal, project, agents, tasks
 ├── agents/
 │   ├── ceo/
-│   │   ├── AGENTS.md           # Identity, references, skill list
-│   │   ├── SOUL.md             # Persona and voice
-│   │   ├── HEARTBEAT.md        # Execution checklist
-│   │   ├── TOOLS.md            # Tool inventory
-│   │   └── skills/             # Assigned by capability resolution
-│   │       ├── roadmap-to-issues.fallback.md   (if PO present)
-│   │       ├── roadmap-to-issues.md            (if PO absent — CEO is primary)
-│   │       ├── auto-assign.md / .fallback.md
-│   │       └── stall-detection.md
+│   │   ├── AGENTS.md               # Identity, references, skill list
+│   │   ├── SOUL.md                 # Persona and voice
+│   │   ├── HEARTBEAT.md            # Execution checklist
+│   │   ├── TOOLS.md                # Tool inventory
+│   │   └── skills/                 # Assigned by capability resolution
 │   ├── engineer/
 │   │   ├── AGENTS.md
-│   │   ├── SOUL.md
-│   │   ├── HEARTBEAT.md
-│   │   ├── TOOLS.md
+│   │   ├── SOUL.md, HEARTBEAT.md, TOOLS.md
 │   │   └── skills/
-│   │       ├── git-workflow.md
-│   │       └── pr-workflow.md        (if pr-review module active)
-│   ├── product-owner/                (if role selected)
-│   │   ├── AGENTS.md
-│   │   └── skills/
-│   │       ├── roadmap-to-issues.md  (primary)
-│   │       └── auto-assign.md       (primary)
-│   └── code-reviewer/               (if role selected)
-│       └── AGENTS.md
-└── docs/                             # Shared workflows
-    ├── git-workflow.md
-    └── pr-conventions.md             (if pr-review active)
+│   ├── product-owner/              (if role selected)
+│   │   └── ...
+│   └── code-reviewer/              (if role selected)
+│       └── ...
+└── docs/                           # Shared workflows from modules
 ```
+
+`BOOTSTRAP.md` contains everything needed to set up the company in the Paperclip UI — goal, project with workspace and repo, agent paths, and initial tasks. With `--api`, all of this is provisioned automatically.
 
 Files are read live by Paperclip agents — edit anything on disk and it takes effect on the next heartbeat.
 
@@ -147,19 +148,19 @@ Primary owners get the full skill. Fallback owners get a safety-net variant that
 
 ### With `--api` (recommended)
 
-Clipper provisions everything automatically: company, agents (with correct `cwd` and `instructionsFilePath`), a project workspace, and initial issues. Just start the CEO heartbeat.
+Clipper provisions everything in the local Paperclip instance automatically:
+
+1. **Company** — created with the name you entered
+2. **Goal** — company-level goal with your title and description, set to `active`
+3. **Project** — with a workspace pointing to the assembled directory (and GitHub repo if provided)
+4. **Agents** — one per role, each with correct absolute `cwd`, `instructionsFilePath`, model, and adapter config from `role.json`
+5. **Issues** — initial tasks from modules, linked to the goal and project
+
+After provisioning, just start the CEO heartbeat.
 
 ### Without `--api`
 
-Set up manually in the Paperclip UI:
-
-1. Create the company
-2. Create a project with a workspace pointing to `companies/<Name>/`
-3. For each agent, configure:
-   - **cwd** → absolute path to `companies/<Name>/`
-   - **instructionsFilePath** → absolute path to `companies/<Name>/agents/<role>/AGENTS.md`
-4. Create initial issues (see `BOOTSTRAP.md` in the company directory)
-5. Start the CEO heartbeat
+Follow the `BOOTSTRAP.md` file generated in the company directory. It lists every resource to create manually in the Paperclip UI: company, goal, project with workspace, agents with paths, and initial issues.
 
 ## Extending
 
@@ -239,6 +240,10 @@ templates/roles/<name>/
 
 ## How It Works
 
+The wizard collects: company name, goal, project (name + repo), preset, modules, and roles.
+
+**Assembly** (always runs):
+
 1. Copies base role files (CEO, Engineer) into `agents/`
 2. Copies selected extra roles into `agents/`
 3. For each module:
@@ -247,7 +252,15 @@ templates/roles/<name>/
    - Primary owner gets the full skill; fallback owners get the safety-net variant
    - Copies shared docs into `docs/`
    - Appends skill and doc references to each AGENTS.md
-4. Done. No runtime, no config server, no database — just files.
+4. Generates `BOOTSTRAP.md` with goal, project, agent paths, and initial tasks
+
+**Provisioning** (with `--api`):
+
+1. Creates company in Paperclip
+2. Creates company-level goal (status: active)
+3. Creates project with workspace (cwd → company dir, repo URL if provided)
+4. Creates agents with per-role adapter config (`model`, `effort`, etc. from `role.json`)
+5. Creates initial issues linked to goal and project
 
 ## License
 

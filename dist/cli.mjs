@@ -9639,14 +9639,14 @@ var require_react_reconciler_production = __commonJS({
       }
       var exports2 = {};
       "use strict";
-      var React28 = require_react(), Scheduler2 = require_scheduler(), assign = Object.assign, REACT_LEGACY_ELEMENT_TYPE = Symbol.for("react.element"), REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = Symbol.for("react.memo"), REACT_LAZY_TYPE = Symbol.for("react.lazy");
+      var React30 = require_react(), Scheduler2 = require_scheduler(), assign = Object.assign, REACT_LEGACY_ELEMENT_TYPE = Symbol.for("react.element"), REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = Symbol.for("react.memo"), REACT_LAZY_TYPE = Symbol.for("react.lazy");
       Symbol.for("react.scope");
       var REACT_ACTIVITY_TYPE = Symbol.for("react.activity");
       Symbol.for("react.legacy_hidden");
       Symbol.for("react.tracing_marker");
       var REACT_MEMO_CACHE_SENTINEL = Symbol.for("react.memo_cache_sentinel");
       Symbol.for("react.view_transition");
-      var MAYBE_ITERATOR_SYMBOL = Symbol.iterator, REACT_CLIENT_REFERENCE = Symbol.for("react.client.reference"), isArrayImpl = Array.isArray, ReactSharedInternals = React28.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, rendererVersion = $$$config.rendererVersion, rendererPackageName = $$$config.rendererPackageName, extraDevToolsConfig = $$$config.extraDevToolsConfig, getPublicInstance = $$$config.getPublicInstance, getRootHostContext = $$$config.getRootHostContext, getChildHostContext = $$$config.getChildHostContext, prepareForCommit = $$$config.prepareForCommit, resetAfterCommit = $$$config.resetAfterCommit, createInstance = $$$config.createInstance;
+      var MAYBE_ITERATOR_SYMBOL = Symbol.iterator, REACT_CLIENT_REFERENCE = Symbol.for("react.client.reference"), isArrayImpl = Array.isArray, ReactSharedInternals = React30.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, rendererVersion = $$$config.rendererVersion, rendererPackageName = $$$config.rendererPackageName, extraDevToolsConfig = $$$config.extraDevToolsConfig, getPublicInstance = $$$config.getPublicInstance, getRootHostContext = $$$config.getRootHostContext, getChildHostContext = $$$config.getChildHostContext, prepareForCommit = $$$config.prepareForCommit, resetAfterCommit = $$$config.resetAfterCommit, createInstance = $$$config.createInstance;
       $$$config.cloneMutableInstance;
       var appendInitialChild = $$$config.appendInitialChild, finalizeInitialChildren = $$$config.finalizeInitialChildren, shouldSetTextContent = $$$config.shouldSetTextContent, createTextInstance = $$$config.createTextInstance;
       $$$config.cloneMutableTextInstance;
@@ -22239,14 +22239,14 @@ var require_react_reconciler_development = __commonJS({
       }
       var exports2 = {};
       "use strict";
-      var React28 = require_react(), Scheduler2 = require_scheduler(), assign = Object.assign, REACT_LEGACY_ELEMENT_TYPE = Symbol.for("react.element"), REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = Symbol.for("react.memo"), REACT_LAZY_TYPE = Symbol.for("react.lazy");
+      var React30 = require_react(), Scheduler2 = require_scheduler(), assign = Object.assign, REACT_LEGACY_ELEMENT_TYPE = Symbol.for("react.element"), REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = Symbol.for("react.memo"), REACT_LAZY_TYPE = Symbol.for("react.lazy");
       Symbol.for("react.scope");
       var REACT_ACTIVITY_TYPE = Symbol.for("react.activity");
       Symbol.for("react.legacy_hidden");
       Symbol.for("react.tracing_marker");
       var REACT_MEMO_CACHE_SENTINEL = Symbol.for("react.memo_cache_sentinel");
       Symbol.for("react.view_transition");
-      var MAYBE_ITERATOR_SYMBOL = Symbol.iterator, REACT_CLIENT_REFERENCE = Symbol.for("react.client.reference"), isArrayImpl = Array.isArray, ReactSharedInternals = React28.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, rendererVersion = $$$config.rendererVersion, rendererPackageName = $$$config.rendererPackageName, extraDevToolsConfig = $$$config.extraDevToolsConfig, getPublicInstance = $$$config.getPublicInstance, getRootHostContext = $$$config.getRootHostContext, getChildHostContext = $$$config.getChildHostContext, prepareForCommit = $$$config.prepareForCommit, resetAfterCommit = $$$config.resetAfterCommit, createInstance = $$$config.createInstance;
+      var MAYBE_ITERATOR_SYMBOL = Symbol.iterator, REACT_CLIENT_REFERENCE = Symbol.for("react.client.reference"), isArrayImpl = Array.isArray, ReactSharedInternals = React30.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, rendererVersion = $$$config.rendererVersion, rendererPackageName = $$$config.rendererPackageName, extraDevToolsConfig = $$$config.extraDevToolsConfig, getPublicInstance = $$$config.getPublicInstance, getRootHostContext = $$$config.getRootHostContext, getChildHostContext = $$$config.getChildHostContext, prepareForCommit = $$$config.prepareForCommit, resetAfterCommit = $$$config.resetAfterCommit, createInstance = $$$config.createInstance;
       $$$config.cloneMutableInstance;
       var appendInitialChild = $$$config.appendInitialChild, finalizeInitialChildren = $$$config.finalizeInitialChildren, shouldSetTextContent = $$$config.shouldSetTextContent, createTextInstance = $$$config.createTextInstance;
       $$$config.cloneMutableTextInstance;
@@ -28584,18 +28584,18 @@ var require_react_jsx_runtime_development = __commonJS({
       function isValidElement(object) {
         return "object" === typeof object && null !== object && object.$$typeof === REACT_ELEMENT_TYPE;
       }
-      var React28 = require_react(), REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = Symbol.for("react.memo"), REACT_LAZY_TYPE = Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = Symbol.for("react.activity"), REACT_CLIENT_REFERENCE = Symbol.for("react.client.reference"), ReactSharedInternals = React28.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, hasOwnProperty = Object.prototype.hasOwnProperty, isArrayImpl = Array.isArray, createTask = console.createTask ? console.createTask : function() {
+      var React30 = require_react(), REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = Symbol.for("react.memo"), REACT_LAZY_TYPE = Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = Symbol.for("react.activity"), REACT_CLIENT_REFERENCE = Symbol.for("react.client.reference"), ReactSharedInternals = React30.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, hasOwnProperty = Object.prototype.hasOwnProperty, isArrayImpl = Array.isArray, createTask = console.createTask ? console.createTask : function() {
         return null;
       };
-      React28 = {
+      React30 = {
         react_stack_bottom_frame: function(callStackForError) {
           return callStackForError();
         }
       };
       var specialPropKeyWarningShown;
       var didWarnAboutElementRef = {};
-      var unknownOwnerDebugStack = React28.react_stack_bottom_frame.bind(
-        React28,
+      var unknownOwnerDebugStack = React30.react_stack_bottom_frame.bind(
+        React30,
         UnknownOwner
       )();
       var unknownOwnerDebugTask = createTask(getTaskName(UnknownOwner));
@@ -30285,7 +30285,7 @@ var require_cli_spinners = __commonJS({
 });
 
 // src/cli.jsx
-var import_react44 = __toESM(require_react(), 1);
+var import_react46 = __toESM(require_react(), 1);
 
 // node_modules/ink/build/render.js
 import { Stream } from "node:stream";
@@ -38448,7 +38448,7 @@ import { dirname, join as join4, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // src/app.jsx
-var import_react43 = __toESM(require_react(), 1);
+var import_react45 = __toESM(require_react(), 1);
 
 // src/components/Header.jsx
 var import_react29 = __toESM(require_react(), 1);
@@ -38598,11 +38598,126 @@ function StepName({ onComplete }) {
   ] });
 }
 
+// src/components/StepGoal.jsx
+var import_react32 = __toESM(require_react(), 1);
+var import_jsx_runtime3 = __toESM(require_jsx_runtime(), 1);
+function StepGoal({ onComplete }) {
+  const [phase, setPhase] = (0, import_react32.useState)("title");
+  const [title, setTitle] = (0, import_react32.useState)("");
+  const [description, setDescription] = (0, import_react32.useState)("");
+  const [error, setError] = (0, import_react32.useState)("");
+  const handleTitleSubmit = (val) => {
+    const trimmed = val.trim();
+    if (!trimmed) {
+      setError("Goal title is required");
+      return;
+    }
+    setTitle(trimmed);
+    setError("");
+    setPhase("description");
+  };
+  const handleDescriptionSubmit = (val) => {
+    onComplete({ title, description: val.trim() || null });
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(Box_default, { flexDirection: "column", children: [
+    phase === "title" ? /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(Box_default, { flexDirection: "column", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(Box_default, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Text, { bold: true, children: "Company goal: " }),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          build_default,
+          {
+            value: title,
+            onChange: (v) => {
+              setTitle(v);
+              setError("");
+            },
+            onSubmit: handleTitleSubmit
+          }
+        )
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Text, { dimColor: true, children: "  What should this company achieve?" })
+    ] }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(Box_default, { flexDirection: "column", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(Text, { dimColor: true, children: [
+        "Goal: ",
+        title
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(Box_default, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Text, { bold: true, children: "Description: " }),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          build_default,
+          {
+            value: description,
+            onChange: setDescription,
+            onSubmit: handleDescriptionSubmit
+          }
+        )
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Text, { dimColor: true, children: "  Optional. Press enter to skip." })
+    ] }),
+    error ? /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(Text, { color: "red", children: [
+      "  ",
+      error
+    ] }) : null
+  ] });
+}
+
+// src/components/StepProject.jsx
+var import_react33 = __toESM(require_react(), 1);
+var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
+function StepProject({ defaultName, onComplete }) {
+  const [phase, setPhase] = (0, import_react33.useState)("name");
+  const [name, setName] = (0, import_react33.useState)(defaultName);
+  const [repoUrl, setRepoUrl] = (0, import_react33.useState)("");
+  const handleNameSubmit = (val) => {
+    const trimmed = val.trim() || defaultName;
+    setName(trimmed);
+    setPhase("repo");
+  };
+  const handleRepoSubmit = (val) => {
+    onComplete({ name, repoUrl: val.trim() || null });
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Box_default, { flexDirection: "column", children: phase === "name" ? /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Box_default, { flexDirection: "column", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Box_default, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { bold: true, children: "Project name: " }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+        build_default,
+        {
+          value: name,
+          onChange: setName,
+          onSubmit: handleNameSubmit
+        }
+      )
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Text, { dimColor: true, children: [
+      "  Default: ",
+      defaultName,
+      ". Press enter to accept."
+    ] })
+  ] }) : /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Box_default, { flexDirection: "column", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Text, { dimColor: true, children: [
+      "Project: ",
+      name
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Box_default, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { bold: true, children: "GitHub repo URL: " }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+        build_default,
+        {
+          value: repoUrl,
+          onChange: setRepoUrl,
+          onSubmit: handleRepoSubmit
+        }
+      )
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { dimColor: true, children: "  Optional. Press enter to skip." })
+  ] }) });
+}
+
 // src/components/StepPreset.jsx
-var import_react34 = __toESM(require_react(), 1);
+var import_react36 = __toESM(require_react(), 1);
 
 // node_modules/ink-select-input/build/Indicator.js
-var import_react32 = __toESM(require_react(), 1);
+var import_react34 = __toESM(require_react(), 1);
 
 // node_modules/is-unicode-supported/index.js
 import process14 from "node:process";
@@ -38893,19 +39008,19 @@ var replacements = Object.entries(specialMainSymbols);
 
 // node_modules/ink-select-input/build/Indicator.js
 function Indicator({ isSelected = false }) {
-  return import_react32.default.createElement(Box_default, { marginRight: 1 }, isSelected ? import_react32.default.createElement(Text, { color: "blue" }, figures_default.pointer) : import_react32.default.createElement(Text, null, " "));
+  return import_react34.default.createElement(Box_default, { marginRight: 1 }, isSelected ? import_react34.default.createElement(Text, { color: "blue" }, figures_default.pointer) : import_react34.default.createElement(Text, null, " "));
 }
 var Indicator_default = Indicator;
 
 // node_modules/ink-select-input/build/Item.js
-var React15 = __toESM(require_react(), 1);
+var React17 = __toESM(require_react(), 1);
 function Item({ isSelected = false, label }) {
-  return React15.createElement(Text, { color: isSelected ? "blue" : void 0 }, label);
+  return React17.createElement(Text, { color: isSelected ? "blue" : void 0 }, label);
 }
 var Item_default = Item;
 
 // node_modules/ink-select-input/build/SelectInput.js
-var import_react33 = __toESM(require_react(), 1);
+var import_react35 = __toESM(require_react(), 1);
 import { isDeepStrictEqual } from "node:util";
 
 // node_modules/to-rotated/index.js
@@ -38935,17 +39050,17 @@ function SelectInput({ items = [], isFocused = true, initialIndex = 0, indicator
   const hasLimit = typeof customLimit === "number" && items.length > customLimit;
   const limit = hasLimit ? Math.min(customLimit, items.length) : items.length;
   const lastIndex = limit - 1;
-  const [rotateIndex, setRotateIndex] = (0, import_react33.useState)(initialIndex > lastIndex ? lastIndex - initialIndex : 0);
-  const [selectedIndex, setSelectedIndex] = (0, import_react33.useState)(initialIndex ? initialIndex > lastIndex ? lastIndex : initialIndex : 0);
-  const previousItems = (0, import_react33.useRef)(items);
-  (0, import_react33.useEffect)(() => {
+  const [rotateIndex, setRotateIndex] = (0, import_react35.useState)(initialIndex > lastIndex ? lastIndex - initialIndex : 0);
+  const [selectedIndex, setSelectedIndex] = (0, import_react35.useState)(initialIndex ? initialIndex > lastIndex ? lastIndex : initialIndex : 0);
+  const previousItems = (0, import_react35.useRef)(items);
+  (0, import_react35.useEffect)(() => {
     if (!isDeepStrictEqual(previousItems.current.map((item) => item.value), items.map((item) => item.value))) {
       setRotateIndex(0);
       setSelectedIndex(0);
     }
     previousItems.current = items;
   }, [items]);
-  use_input_default((0, import_react33.useCallback)((input, key) => {
+  use_input_default((0, import_react35.useCallback)((input, key) => {
     if (input === "k" || key.upArrow) {
       const lastIndex2 = (hasLimit ? limit : items.length) - 1;
       const atFirstIndex = selectedIndex === 0;
@@ -38997,15 +39112,15 @@ function SelectInput({ items = [], isFocused = true, initialIndex = 0, indicator
     onHighlight
   ]), { isActive: isFocused });
   const slicedItems = hasLimit ? toRotated(items, rotateIndex).slice(0, limit) : items;
-  return import_react33.default.createElement(Box_default, { flexDirection: "column" }, slicedItems.map((item, index) => {
+  return import_react35.default.createElement(Box_default, { flexDirection: "column" }, slicedItems.map((item, index) => {
     const isSelected = index === selectedIndex;
     return (
       // @ts-expect-error - `key` can't be optional but `item.value` is generic T
-      import_react33.default.createElement(
+      import_react35.default.createElement(
         Box_default,
         { key: item.key ?? item.value },
-        import_react33.default.createElement(indicatorComponent, { isSelected }),
-        import_react33.default.createElement(itemComponent, { ...item, isSelected })
+        import_react35.default.createElement(indicatorComponent, { isSelected }),
+        import_react35.default.createElement(itemComponent, { ...item, isSelected })
       )
     );
   }));
@@ -39013,7 +39128,7 @@ function SelectInput({ items = [], isFocused = true, initialIndex = 0, indicator
 var SelectInput_default = SelectInput;
 
 // src/components/StepPreset.jsx
-var import_jsx_runtime3 = __toESM(require_jsx_runtime(), 1);
+var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
 function StepPreset({ presets, onComplete }) {
   const items = [
     ...presets.map((p) => ({
@@ -39027,16 +39142,16 @@ function StepPreset({ presets, onComplete }) {
       value: { name: "custom" }
     }
   ];
-  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(Box_default, { flexDirection: "column", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Text, { bold: true, children: "Select a preset:" }),
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Box_default, { marginTop: 1, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+  return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(Box_default, { flexDirection: "column", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Text, { bold: true, children: "Select a preset:" }),
+    /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Box_default, { marginTop: 1, children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
       SelectInput_default,
       {
         items,
         onSelect: (item) => onComplete(item.value)
       }
     ) }),
-    presets.filter((p) => p.constraints?.length).map((p) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(Text, { color: "yellow", children: [
+    presets.filter((p) => p.constraints?.length).map((p) => /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(Text, { color: "yellow", children: [
       "  ",
       p.name,
       ": ",
@@ -39046,19 +39161,19 @@ function StepPreset({ presets, onComplete }) {
 }
 
 // src/components/StepModules.jsx
-var import_react36 = __toESM(require_react(), 1);
+var import_react38 = __toESM(require_react(), 1);
 
 // src/components/MultiSelect.jsx
-var import_react35 = __toESM(require_react(), 1);
-var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
+var import_react37 = __toESM(require_react(), 1);
+var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
 function MultiSelect({
   items,
   preselected = [],
   onSubmit,
   label
 }) {
-  const [cursor, setCursor] = (0, import_react35.useState)(0);
-  const [selected, setSelected] = (0, import_react35.useState)(new Set(preselected));
+  const [cursor, setCursor] = (0, import_react37.useState)(0);
+  const [selected, setSelected] = (0, import_react37.useState)(new Set(preselected));
   use_input_default((input, key) => {
     if (key.upArrow) {
       setCursor((c) => c > 0 ? c - 1 : items.length - 1);
@@ -39083,31 +39198,31 @@ function MultiSelect({
       onSubmit([...selected]);
     }
   });
-  return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Box_default, { flexDirection: "column", children: [
-    label ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { bold: true, children: label }) : null,
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { dimColor: true, children: "  \u2191\u2193 navigate \xB7 space toggle \xB7 enter confirm" }),
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Box_default, { marginTop: 1, flexDirection: "column", children: items.map((item, i) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(Box_default, { flexDirection: "column", children: [
+    label ? /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Text, { bold: true, children: label }) : null,
+    /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Text, { dimColor: true, children: "  \u2191\u2193 navigate \xB7 space toggle \xB7 enter confirm" }),
+    /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Box_default, { marginTop: 1, flexDirection: "column", children: items.map((item, i) => {
       const isSelected = selected.has(item.value);
       const isPreselected = preselected.includes(item.value);
       const isCursor = i === cursor;
       const marker = isSelected ? "\u25C9" : "\u25CB";
       const prefix = isCursor ? "\u276F" : " ";
-      return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Box_default, { flexDirection: "column", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Box_default, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Text, { color: isCursor ? "cyan" : void 0, children: [
+      return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(Box_default, { flexDirection: "column", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(Box_default, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(Text, { color: isCursor ? "cyan" : void 0, children: [
             prefix,
             " ",
             marker,
             " ",
             item.label
           ] }),
-          isPreselected ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { color: "green", children: " [included]" }) : null
+          isPreselected ? /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Text, { color: "green", children: " [included]" }) : null
         ] }),
-        item.description ? /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Text, { dimColor: true, children: [
+        item.description ? /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(Text, { dimColor: true, children: [
           "      ",
           item.description
         ] }) : null,
-        item.hints?.map((h, j) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Text, { color: "cyan", children: [
+        item.hints?.map((h, j) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(Text, { color: "cyan", children: [
           "      + ",
           h
         ] }, j))
@@ -39117,14 +39232,14 @@ function MultiSelect({
 }
 
 // src/components/StepModules.jsx
-var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
+var import_jsx_runtime7 = __toESM(require_jsx_runtime(), 1);
 function StepModules({ modules, preselected, onComplete }) {
   const items = modules.map((m) => ({
     value: m.name,
     label: m.name,
     description: m.description || void 0
   }));
-  return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
     MultiSelect,
     {
       label: "Select modules:",
@@ -39136,11 +39251,11 @@ function StepModules({ modules, preselected, onComplete }) {
 }
 
 // src/components/StepRoles.jsx
-var import_react37 = __toESM(require_react(), 1);
-var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
+var import_react39 = __toESM(require_react(), 1);
+var import_jsx_runtime8 = __toESM(require_jsx_runtime(), 1);
 function StepRoles({ roles, preselected, onComplete }) {
   if (roles.length === 0) {
-    import_react37.default.useEffect(() => {
+    import_react39.default.useEffect(() => {
       onComplete(preselected);
     }, []);
     return null;
@@ -39151,7 +39266,7 @@ function StepRoles({ roles, preselected, onComplete }) {
     description: r.description || void 0,
     hints: r.enhances
   }));
-  return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+  return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
     MultiSelect,
     {
       label: "Add roles (optional \u2014 capabilities adapt gracefully):",
@@ -39163,10 +39278,12 @@ function StepRoles({ roles, preselected, onComplete }) {
 }
 
 // src/components/StepSummary.jsx
-var import_react38 = __toESM(require_react(), 1);
-var import_jsx_runtime7 = __toESM(require_jsx_runtime(), 1);
+var import_react40 = __toESM(require_react(), 1);
+var import_jsx_runtime9 = __toESM(require_jsx_runtime(), 1);
 function StepSummary({
   companyName,
+  goal,
+  project,
   baseName,
   moduleNames,
   roleNames,
@@ -39184,71 +39301,86 @@ function StepSummary({
     }
   });
   const allRoleNames = ["ceo", "engineer", ...roleNames];
-  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Box_default, { flexDirection: "column", gap: 1, children: [
-    capabilities.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Box_default, { flexDirection: "column", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { bold: true, children: "Capability resolution:" }),
-      capabilities.map((cap) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Text, { children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Box_default, { flexDirection: "column", gap: 1, children: [
+    capabilities.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Box_default, { flexDirection: "column", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Text, { bold: true, children: "Capability resolution:" }),
+      capabilities.map((cap) => /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Text, { children: [
         "  ",
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { color: "cyan", children: cap.skill }),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Text, { color: "cyan", children: cap.skill }),
         ": ",
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { bold: true, children: cap.primary }),
-        cap.fallbacks.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Text, { dimColor: true, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Text, { bold: true, children: cap.primary }),
+        cap.fallbacks.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Text, { dimColor: true, children: [
           " (fallback: ",
           cap.fallbacks.join(", "),
           ")"
         ] }) : null
       ] }, cap.skill))
     ] }) : null,
-    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Box_default, { flexDirection: "column", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { bold: true, children: "Summary:" }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Text, { children: [
+    /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Box_default, { flexDirection: "column", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Text, { bold: true, children: "Summary:" }),
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Text, { children: [
         "  Company:  ",
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { color: "cyan", children: companyName })
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Text, { color: "cyan", children: companyName })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Text, { children: [
+      goal?.title ? /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Text, { children: [
+        "  Goal:     ",
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Text, { color: "cyan", children: goal.title })
+      ] }) : null,
+      project?.name ? /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Box_default, { flexDirection: "column", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Text, { children: [
+          "  Project:  ",
+          /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Text, { color: "cyan", children: project.name })
+        ] }),
+        project.repoUrl ? /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Text, { children: [
+          "  Repo:     ",
+          /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Text, { dimColor: true, children: project.repoUrl })
+        ] }) : null
+      ] }) : null,
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Text, { children: [
         "  Base:     ",
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { color: "cyan", children: baseName })
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Text, { color: "cyan", children: baseName })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Text, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Text, { children: [
         "  Modules:  ",
-        moduleNames.length > 0 ? moduleNames.map((m, i) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Text, { children: [
+        moduleNames.length > 0 ? moduleNames.map((m, i) => /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Text, { children: [
           i > 0 ? ", " : "",
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { color: "cyan", children: m })
-        ] }, m)) : /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { dimColor: true, children: "none" })
+          /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Text, { color: "cyan", children: m })
+        ] }, m)) : /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Text, { dimColor: true, children: "none" })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Text, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Text, { children: [
         "  Roles:    ",
-        allRoleNames.map((r, i) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Text, { children: [
+        allRoleNames.map((r, i) => /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Text, { children: [
           i > 0 ? ", " : "",
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { color: "cyan", children: r })
+          /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Text, { color: "cyan", children: r })
         ] }, r))
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Text, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Text, { children: [
         "  Output:   ",
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { dimColor: true, children: outputDir })
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Text, { dimColor: true, children: outputDir })
       ] }),
-      apiEnabled ? /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Text, { children: [
+      apiEnabled ? /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Text, { children: [
         "  API:      ",
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { color: "green", children: "enabled" })
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Text, { color: "green", children: "enabled" }),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Text, { dimColor: true, children: " (will create company, goal, project, agents, issues)" })
       ] }) : null
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Text, { bold: true, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Text, { bold: true, children: [
       "Create? ",
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { dimColor: true, children: "[Y/n]" })
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Text, { dimColor: true, children: "[Y/n]" })
     ] })
   ] });
 }
 
 // src/components/StepAssemble.jsx
-var import_react40 = __toESM(require_react(), 1);
+var import_react42 = __toESM(require_react(), 1);
 
 // node_modules/ink-spinner/build/index.js
-var import_react39 = __toESM(require_react(), 1);
+var import_react41 = __toESM(require_react(), 1);
 var import_cli_spinners = __toESM(require_cli_spinners(), 1);
 function Spinner({ type = "dots" }) {
-  const [frame, setFrame] = (0, import_react39.useState)(0);
+  const [frame, setFrame] = (0, import_react41.useState)(0);
   const spinner = import_cli_spinners.default[type];
-  (0, import_react39.useEffect)(() => {
+  (0, import_react41.useEffect)(() => {
     const timer = setInterval(() => {
       setFrame((previousFrame) => {
         const isLastFrame = previousFrame === spinner.frames.length - 1;
@@ -39259,7 +39391,7 @@ function Spinner({ type = "dots" }) {
       clearInterval(timer);
     };
   }, [spinner]);
-  return import_react39.default.createElement(Text, null, spinner.frames[frame]);
+  return import_react41.default.createElement(Text, null, spinner.frames[frame]);
 }
 var build_default2 = Spinner;
 
@@ -39309,6 +39441,8 @@ function toPascalCase(name) {
 }
 async function assembleCompany({
   companyName,
+  goal = {},
+  project = {},
   baseName,
   moduleNames,
   extraRoleNames,
@@ -39495,23 +39629,49 @@ Read: \`docs/${doc}\`
     }
   }
   const rolesList = [...allRoles];
+  const formatRole = (r) => r.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
   let bootstrap = `# Bootstrap: ${companyName}
 
 `;
-  bootstrap += `Your company workspace is pre-configured at this location. All agent instruction files, skills, and shared documentation are already in place.
+  if (goal?.title) {
+    bootstrap += `## Goal
 
 `;
-  bootstrap += `## Setup Agents
+    bootstrap += `**${goal.title}**
+`;
+    if (goal.description) {
+      bootstrap += `${goal.description}
+`;
+    }
+    bootstrap += `
+`;
+  }
+  const projectName = project?.name || companyName;
+  bootstrap += `## Project
 
 `;
-  bootstrap += `Create the following agents in the Paperclip UI. For each, set the company workspace as cwd and the instructionsFilePath as shown:
+  bootstrap += `- **Name**: ${projectName}
+`;
+  bootstrap += `- **Working directory**: \`${companyDir}\`
+`;
+  if (project?.repoUrl) {
+    bootstrap += `- **Repository**: ${project.repoUrl}
+`;
+  }
+  bootstrap += `
+`;
+  bootstrap += `## Agents
+
+`;
+  bootstrap += `Create the following agents in Paperclip. Set each agent's working directory to this workspace and the instructions file as shown.
 
 `;
   for (const role of rolesList) {
-    const label = role.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-    bootstrap += `### ${label}
+    bootstrap += `### ${formatRole(role)}
 `;
-    bootstrap += `- **instructionsFilePath**: \`agents/${role}/AGENTS.md\`
+    bootstrap += `- **instructionsFilePath**: \`${companyDir}/agents/${role}/AGENTS.md\`
+`;
+    bootstrap += `- **cwd**: \`${companyDir}\`
 
 `;
   }
@@ -39519,29 +39679,47 @@ Read: \`docs/${doc}\`
     bootstrap += `## Initial Tasks
 
 `;
-    bootstrap += `Create these as issues to kick off the company workflows:
+    bootstrap += `Create these as issues (linked to the project and goal) to kick off workflows:
 
 `;
     for (const task of initialTasks) {
-      bootstrap += `### ${task.title}
+      bootstrap += `- **${task.title}** \u2192 assign to ${task.assignTo}
 `;
-      bootstrap += `- **Assign to**: ${task.assignTo}
+      if (task.description) {
+        bootstrap += `  ${task.description}
 `;
-      bootstrap += `- **Description**: ${task.description}
-
-`;
+      }
     }
+    bootstrap += `
+`;
   }
   bootstrap += `## Get Started
 
 `;
-  bootstrap += `Once all agents are created and initial tasks are assigned:
+  bootstrap += `If using \`clipper --api\`, all of the above is created automatically.
+
 `;
-  bootstrap += `1. Start the CEO heartbeat
+  bootstrap += `Otherwise, create manually in the Paperclip UI:
 `;
-  bootstrap += `2. The CEO will coordinate the team and monitor progress
+  bootstrap += `1. Create the company "${companyName}"
 `;
-  bootstrap += `3. Engineers begin working on assigned issues
+  bootstrap += `2. Create the project "${projectName}" with workspace \u2192 \`${companyDir}\`
+`;
+  if (project?.repoUrl) {
+    bootstrap += `   Set the repository to: ${project.repoUrl}
+`;
+  }
+  bootstrap += `3. Create each agent listed above
+`;
+  if (goal?.title) {
+    bootstrap += `4. Create the goal: "${goal.title}"
+`;
+  }
+  if (initialTasks.length > 0) {
+    bootstrap += `${goal?.title ? "5" : "4"}. Create the initial issues listed above
+`;
+  }
+  bootstrap += `${goal?.title && initialTasks.length > 0 ? "6" : goal?.title || initialTasks.length > 0 ? "5" : "4"}. Start the CEO heartbeat
 `;
   await writeFile(join(companyDir, "BOOTSTRAP.md"), bootstrap);
   onProgress("+ BOOTSTRAP.md");
@@ -39549,9 +39727,11 @@ Read: \`docs/${doc}\`
 }
 
 // src/components/StepAssemble.jsx
-var import_jsx_runtime8 = __toESM(require_jsx_runtime(), 1);
+var import_jsx_runtime10 = __toESM(require_jsx_runtime(), 1);
 function StepAssemble({
   companyName,
+  goal,
+  project,
   baseName,
   moduleNames,
   extraRoleNames,
@@ -39560,12 +39740,14 @@ function StepAssemble({
   onComplete,
   onError
 }) {
-  const [log, setLog] = (0, import_react40.useState)([]);
-  const [done, setDone] = (0, import_react40.useState)(false);
-  (0, import_react40.useEffect)(() => {
+  const [log, setLog] = (0, import_react42.useState)([]);
+  const [done, setDone] = (0, import_react42.useState)(false);
+  (0, import_react42.useEffect)(() => {
     let cancelled = false;
     assembleCompany({
       companyName,
+      goal,
+      project,
       baseName,
       moduleNames,
       extraRoleNames,
@@ -39590,18 +39772,18 @@ function StepAssemble({
       cancelled = true;
     };
   }, []);
-  return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(Box_default, { flexDirection: "column", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(Box_default, { children: [
-      done ? /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Text, { color: "green", children: "\u2713 " }) : /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(Text, { color: "cyan", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(build_default2, { type: "dots" }),
+  return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(Box_default, { flexDirection: "column", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(Box_default, { children: [
+      done ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Text, { color: "green", children: "\u2713 " }) : /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(Text, { color: "cyan", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(build_default2, { type: "dots" }),
         " "
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Text, { bold: true, children: done ? "Workspace assembled" : "Assembling workspace..." })
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Text, { bold: true, children: done ? "Workspace assembled" : "Assembling workspace..." })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Box_default, { flexDirection: "column", marginLeft: 2, children: log.map((line, i) => {
+    /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Box_default, { flexDirection: "column", marginLeft: 2, children: log.map((line, i) => {
       const isAdd = line.startsWith("+");
       const isSkip = line.startsWith("\u25CB") || line.startsWith("!");
-      return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+      return /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
         Text,
         {
           color: isAdd ? "green" : isSkip ? "yellow" : void 0,
@@ -39615,7 +39797,7 @@ function StepAssemble({
 }
 
 // src/components/StepProvision.jsx
-var import_react41 = __toESM(require_react(), 1);
+var import_react43 = __toESM(require_react(), 1);
 
 // src/api/client.js
 var BASE_ROLE_MAP = {
@@ -39674,14 +39856,26 @@ var PaperclipClient = class {
       })
     });
   }
-  async createIssue(companyId, { title, description, priority, projectId }) {
+  async createGoal(companyId, { title, description, level }) {
+    return this._fetch(`/api/companies/${companyId}/goals`, {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        description: description || null,
+        level: level || "company",
+        status: "active"
+      })
+    });
+  }
+  async createIssue(companyId, { title, description, priority, projectId, goalId }) {
     return this._fetch(`/api/companies/${companyId}/issues`, {
       method: "POST",
       body: JSON.stringify({
         title,
         description: description || null,
         priority: priority || "medium",
-        projectId: projectId || void 0
+        projectId: projectId || void 0,
+        goalId: goalId || void 0
       })
     });
   }
@@ -39736,6 +39930,9 @@ async function provisionCompany({
   client,
   companyName,
   companyDir,
+  goal,
+  projectName,
+  repoUrl = null,
   allRoles,
   rolesData = /* @__PURE__ */ new Map(),
   initialTasks = [],
@@ -39746,7 +39943,33 @@ async function provisionCompany({
   onProgress("Creating company...");
   const company = await client.createCompany({ name: companyName });
   const companyId = company.id;
-  onProgress(`\u2713 Company created (${companyId.slice(0, 8)}\u2026)`);
+  onProgress(`\u2713 Company "${companyName}" created`);
+  let goalId = null;
+  if (goal?.title) {
+    onProgress(`Creating goal: ${goal.title}...`);
+    const g = await client.createGoal(companyId, {
+      title: goal.title,
+      description: goal.description,
+      level: "company"
+    });
+    goalId = g.id;
+    onProgress(`\u2713 Goal created: ${goal.title}`);
+  }
+  onProgress(`Creating project "${projectName}"...`);
+  const project = await client.createProject(companyId, {
+    name: projectName,
+    description: goal?.title ? `Goal: ${goal.title}` : null,
+    workspace: {
+      cwd: companyDir,
+      ...repoUrl ? { repoUrl } : {},
+      isPrimary: true
+    }
+  });
+  const projectId = project.id;
+  onProgress(`\u2713 Project created with workspace \u2192 ${companyDir}`);
+  if (repoUrl) {
+    onProgress(`  repo: ${repoUrl}`);
+  }
   const agentIds = /* @__PURE__ */ new Map();
   for (const role of allRoles) {
     const roleData = rolesData.get(role);
@@ -39769,36 +39992,28 @@ async function provisionCompany({
       }
     });
     agentIds.set(role, agent.id);
-    onProgress(`\u2713 ${title} created (${agent.id.slice(0, 8)}\u2026)`);
+    onProgress(`\u2713 ${title} agent created`);
   }
-  onProgress("Creating project workspace...");
-  const project = await client.createProject(companyId, {
-    name: companyName,
-    description: `Company workspace for ${companyName}`,
-    workspace: {
-      cwd: companyDir,
-      isPrimary: true
-    }
-  });
-  const projectId = project.id;
-  onProgress(`\u2713 Project created (${projectId.slice(0, 8)}\u2026)`);
   for (const task of initialTasks) {
     onProgress(`Creating issue: ${task.title}...`);
     await client.createIssue(companyId, {
       title: task.title,
       description: task.description,
-      projectId
+      projectId,
+      goalId
     });
     onProgress(`\u2713 Issue created: ${task.title}`);
   }
-  return { companyId, projectId, agentIds };
+  return { companyId, projectId, goalId, agentIds };
 }
 
 // src/components/StepProvision.jsx
-var import_jsx_runtime9 = __toESM(require_jsx_runtime(), 1);
+var import_jsx_runtime11 = __toESM(require_jsx_runtime(), 1);
 function StepProvision({
   companyName,
   companyDir,
+  goal,
+  project,
   allRoles,
   rolesData,
   initialTasks,
@@ -39807,15 +40022,18 @@ function StepProvision({
   onComplete,
   onError
 }) {
-  const [log, setLog] = (0, import_react41.useState)([]);
-  const [done, setDone] = (0, import_react41.useState)(false);
-  (0, import_react41.useEffect)(() => {
+  const [log, setLog] = (0, import_react43.useState)([]);
+  const [done, setDone] = (0, import_react43.useState)(false);
+  (0, import_react43.useEffect)(() => {
     let cancelled = false;
     const client = new PaperclipClient(apiBaseUrl);
     provisionCompany({
       client,
       companyName,
       companyDir,
+      goal,
+      projectName: project?.name || companyName,
+      repoUrl: project?.repoUrl,
       allRoles,
       rolesData,
       initialTasks,
@@ -39839,17 +40057,17 @@ function StepProvision({
       cancelled = true;
     };
   }, []);
-  return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Box_default, { flexDirection: "column", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Box_default, { children: [
-      done ? /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Text, { color: "green", children: "\u2713 " }) : /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Text, { color: "cyan", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(build_default2, { type: "dots" }),
+  return /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)(Box_default, { flexDirection: "column", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)(Box_default, { children: [
+      done ? /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(Text, { color: "green", children: "\u2713 " }) : /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)(Text, { color: "cyan", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(build_default2, { type: "dots" }),
         " "
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Text, { bold: true, children: done ? "Provisioned via API" : "Provisioning via Paperclip API..." })
+      /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(Text, { bold: true, children: done ? "Provisioned via API" : "Provisioning via Paperclip API..." })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Box_default, { flexDirection: "column", marginLeft: 2, children: log.map((line, i) => {
+    /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(Box_default, { flexDirection: "column", marginLeft: 2, children: log.map((line, i) => {
       const isDone = line.startsWith("\u2713");
-      return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+      return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
         Text,
         {
           color: isDone ? "green" : void 0,
@@ -39863,8 +40081,8 @@ function StepProvision({
 }
 
 // src/components/StepDone.jsx
-var import_react42 = __toESM(require_react(), 1);
-var import_jsx_runtime10 = __toESM(require_jsx_runtime(), 1);
+var import_react44 = __toESM(require_react(), 1);
+var import_jsx_runtime12 = __toESM(require_jsx_runtime(), 1);
 function StepDone({
   companyDir,
   allRoles,
@@ -39872,35 +40090,35 @@ function StepDone({
   companyId
 }) {
   const rolesList = [...allRoles];
-  return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(Box_default, { flexDirection: "column", gap: 1, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Text, { color: "green", bold: true, children: "Done!" }),
-    provisioned ? /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(Box_default, { flexDirection: "column", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Text, { bold: true, children: "Company provisioned via API:" }),
-      /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(Text, { dimColor: true, children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)(Box_default, { flexDirection: "column", gap: 1, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(Text, { color: "green", bold: true, children: "Done!" }),
+    provisioned ? /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)(Box_default, { flexDirection: "column", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(Text, { bold: true, children: "Company provisioned via API:" }),
+      /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)(Text, { dimColor: true, children: [
         "  ID: ",
         companyId
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Text, { dimColor: true, children: "  All agents created and initial tasks queued." }),
-      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Text, {}),
-      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Text, { bold: true, children: "Next:" }),
-      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Text, { children: "  1. Start the CEO heartbeat in the Paperclip UI" })
-    ] }) : /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(Box_default, { flexDirection: "column", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Text, { bold: true, children: "Next steps:" }),
-      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Text, { children: "  1. Create the company in the Paperclip UI" }),
-      rolesList.map((role, i) => /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(Box_default, { flexDirection: "column", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(Text, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(Text, { dimColor: true, children: "  All agents created and initial tasks queued." }),
+      /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(Text, {}),
+      /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(Text, { bold: true, children: "Next:" }),
+      /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(Text, { children: "  1. Start the CEO heartbeat in the Paperclip UI" })
+    ] }) : /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)(Box_default, { flexDirection: "column", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(Text, { bold: true, children: "Next steps:" }),
+      /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(Text, { children: "  1. Create the company in the Paperclip UI" }),
+      rolesList.map((role, i) => /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)(Box_default, { flexDirection: "column", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)(Text, { children: [
           "  ",
           i + 2,
           ". Create the ",
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Text, { bold: true, children: formatRoleName(role) }),
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(Text, { bold: true, children: formatRoleName(role) }),
           " ",
           "agent with:"
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(Text, { dimColor: true, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)(Text, { dimColor: true, children: [
           "     cwd = ",
           companyDir
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(Text, { dimColor: true, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)(Text, { dimColor: true, children: [
           "     ",
           "instructionsFilePath = agents/",
           role,
@@ -39908,7 +40126,7 @@ function StepDone({
         ] })
       ] }, role))
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(Text, { dimColor: true, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)(Text, { dimColor: true, children: [
       "Workspace: ",
       companyDir
     ] })
@@ -39991,10 +40209,12 @@ async function loadRoles(templatesDir) {
 }
 
 // src/app.jsx
-var import_jsx_runtime11 = __toESM(require_jsx_runtime(), 1);
+var import_jsx_runtime13 = __toESM(require_jsx_runtime(), 1);
 var STEPS = {
   LOADING: "loading",
   NAME: "name",
+  GOAL: "goal",
+  PROJECT: "project",
   PRESET: "preset",
   MODULES: "modules",
   ROLES: "roles",
@@ -40006,20 +40226,22 @@ var STEPS = {
 };
 function App2({ outputDir, templatesDir, apiEnabled, apiBaseUrl, model }) {
   const { exit } = use_app_default();
-  const [step, setStep] = (0, import_react43.useState)(STEPS.LOADING);
-  const [error, setError] = (0, import_react43.useState)(null);
-  const [presets, setPresets] = (0, import_react43.useState)([]);
-  const [modules, setModules] = (0, import_react43.useState)([]);
-  const [availableRoles, setAvailableRoles] = (0, import_react43.useState)([]);
-  const [companyName, setCompanyName] = (0, import_react43.useState)("");
-  const [baseName, setBaseName] = (0, import_react43.useState)("base");
-  const [selectedModules, setSelectedModules] = (0, import_react43.useState)([]);
-  const [preselectedModules, setPreselectedModules] = (0, import_react43.useState)([]);
-  const [selectedRoles, setSelectedRoles] = (0, import_react43.useState)([]);
-  const [preselectedRoles, setPreselectedRoles] = (0, import_react43.useState)([]);
-  const [assemblyResult, setAssemblyResult] = (0, import_react43.useState)(null);
-  const [provisionResult, setProvisionResult] = (0, import_react43.useState)(null);
-  (0, import_react43.useEffect)(() => {
+  const [step, setStep] = (0, import_react45.useState)(STEPS.LOADING);
+  const [error, setError] = (0, import_react45.useState)(null);
+  const [presets, setPresets] = (0, import_react45.useState)([]);
+  const [modules, setModules] = (0, import_react45.useState)([]);
+  const [availableRoles, setAvailableRoles] = (0, import_react45.useState)([]);
+  const [companyName, setCompanyName] = (0, import_react45.useState)("");
+  const [goal, setGoal] = (0, import_react45.useState)({ title: "", description: null });
+  const [project, setProject] = (0, import_react45.useState)({ name: "", repoUrl: null });
+  const [baseName, setBaseName] = (0, import_react45.useState)("base");
+  const [selectedModules, setSelectedModules] = (0, import_react45.useState)([]);
+  const [preselectedModules, setPreselectedModules] = (0, import_react45.useState)([]);
+  const [selectedRoles, setSelectedRoles] = (0, import_react45.useState)([]);
+  const [preselectedRoles, setPreselectedRoles] = (0, import_react45.useState)([]);
+  const [assemblyResult, setAssemblyResult] = (0, import_react45.useState)(null);
+  const [provisionResult, setProvisionResult] = (0, import_react45.useState)(null);
+  (0, import_react45.useEffect)(() => {
     Promise.all([
       loadPresets(templatesDir),
       loadModules(templatesDir),
@@ -40048,19 +40270,38 @@ function App2({ outputDir, templatesDir, apiEnabled, apiBaseUrl, model }) {
     setError(msg);
     setStep(STEPS.ERROR);
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)(Box_default, { flexDirection: "column", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(Header, {}),
-    step === STEPS.LOADING && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(Text, { dimColor: true, children: "Loading templates..." }),
-    step === STEPS.NAME && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
+  return /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)(Box_default, { flexDirection: "column", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Header, {}),
+    step === STEPS.LOADING && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Text, { dimColor: true, children: "Loading templates..." }),
+    step === STEPS.NAME && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
       StepName,
       {
         onComplete: (name) => {
           setCompanyName(name);
+          setStep(STEPS.GOAL);
+        }
+      }
+    ),
+    step === STEPS.GOAL && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
+      StepGoal,
+      {
+        onComplete: (g) => {
+          setGoal(g);
+          setStep(STEPS.PROJECT);
+        }
+      }
+    ),
+    step === STEPS.PROJECT && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
+      StepProject,
+      {
+        defaultName: companyName,
+        onComplete: (p) => {
+          setProject(p);
           setStep(STEPS.PRESET);
         }
       }
     ),
-    step === STEPS.PRESET && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
+    step === STEPS.PRESET && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
       StepPreset,
       {
         presets,
@@ -40080,7 +40321,7 @@ function App2({ outputDir, templatesDir, apiEnabled, apiBaseUrl, model }) {
         }
       }
     ),
-    step === STEPS.MODULES && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
+    step === STEPS.MODULES && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
       StepModules,
       {
         modules,
@@ -40091,7 +40332,7 @@ function App2({ outputDir, templatesDir, apiEnabled, apiBaseUrl, model }) {
         }
       }
     ),
-    step === STEPS.ROLES && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
+    step === STEPS.ROLES && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
       StepRoles,
       {
         roles: availableRoles.filter((r) => !r._base),
@@ -40102,15 +40343,17 @@ function App2({ outputDir, templatesDir, apiEnabled, apiBaseUrl, model }) {
         }
       }
     ),
-    step === STEPS.SUMMARY && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
+    step === STEPS.SUMMARY && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
       StepSummary,
       {
         companyName,
+        goal,
+        project,
         baseName,
         moduleNames: selectedModules,
         roleNames: selectedRoles,
         capabilities,
-        outputDir: `${outputDir}/${companyName}/`,
+        outputDir,
         apiEnabled,
         onConfirm: () => setStep(STEPS.ASSEMBLE),
         onCancel: () => {
@@ -40118,10 +40361,12 @@ function App2({ outputDir, templatesDir, apiEnabled, apiBaseUrl, model }) {
         }
       }
     ),
-    step === STEPS.ASSEMBLE && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
+    step === STEPS.ASSEMBLE && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
       StepAssemble,
       {
         companyName,
+        goal,
+        project,
         baseName,
         moduleNames: selectedModules,
         extraRoleNames: selectedRoles,
@@ -40138,11 +40383,13 @@ function App2({ outputDir, templatesDir, apiEnabled, apiBaseUrl, model }) {
         onError: handleError
       }
     ),
-    step === STEPS.PROVISION && assemblyResult && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
+    step === STEPS.PROVISION && assemblyResult && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
       StepProvision,
       {
         companyName,
         companyDir: assemblyResult.companyDir,
+        goal,
+        project,
         allRoles: assemblyResult.allRoles,
         rolesData,
         initialTasks: assemblyResult.initialTasks,
@@ -40158,12 +40405,12 @@ function App2({ outputDir, templatesDir, apiEnabled, apiBaseUrl, model }) {
         }
       }
     ),
-    step === STEPS.DONE && assemblyResult && /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)(Box_default, { flexDirection: "column", gap: 1, children: [
-      error ? /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(Box_default, { children: /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)(Text, { color: "yellow", children: [
+    step === STEPS.DONE && assemblyResult && /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)(Box_default, { flexDirection: "column", gap: 1, children: [
+      error ? /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Box_default, { children: /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)(Text, { color: "yellow", children: [
         "API provisioning failed: ",
         error
       ] }) }) : null,
-      /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
         StepDone,
         {
           companyDir: assemblyResult.companyDir,
@@ -40173,7 +40420,7 @@ function App2({ outputDir, templatesDir, apiEnabled, apiBaseUrl, model }) {
         }
       )
     ] }),
-    step === STEPS.ERROR && /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)(Text, { color: "red", children: [
+    step === STEPS.ERROR && /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)(Text, { color: "red", children: [
       "Error: ",
       error
     ] })
@@ -40181,7 +40428,7 @@ function App2({ outputDir, templatesDir, apiEnabled, apiBaseUrl, model }) {
 }
 
 // src/cli.jsx
-var import_jsx_runtime12 = __toESM(require_jsx_runtime(), 1);
+var import_jsx_runtime14 = __toESM(require_jsx_runtime(), 1);
 var __dirname = dirname(fileURLToPath(import.meta.url));
 var TEMPLATES_DIR = join4(__dirname, "..", "templates");
 function parseArgs(argv) {
@@ -40226,7 +40473,7 @@ function parseArgs(argv) {
 }
 var config = parseArgs(process.argv);
 var app = render_default(
-  /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(
+  /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
     App2,
     {
       outputDir: config.outputDir,

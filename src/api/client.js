@@ -65,7 +65,19 @@ export class PaperclipClient {
     });
   }
 
-  async createIssue(companyId, { title, description, priority, projectId }) {
+  async createGoal(companyId, { title, description, level }) {
+    return this._fetch(`/api/companies/${companyId}/goals`, {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        description: description || null,
+        level: level || "company",
+        status: "active",
+      }),
+    });
+  }
+
+  async createIssue(companyId, { title, description, priority, projectId, goalId }) {
     return this._fetch(`/api/companies/${companyId}/issues`, {
       method: "POST",
       body: JSON.stringify({
@@ -73,6 +85,7 @@ export class PaperclipClient {
         description: description || null,
         priority: priority || "medium",
         projectId: projectId || undefined,
+        goalId: goalId || undefined,
       }),
     });
   }

@@ -7,6 +7,8 @@ import { provisionCompany } from "../api/provision.js";
 export default function StepProvision({
   companyName,
   companyDir,
+  goal,
+  project,
   allRoles,
   rolesData,
   initialTasks,
@@ -26,6 +28,9 @@ export default function StepProvision({
       client,
       companyName,
       companyDir,
+      goal,
+      projectName: project?.name || companyName,
+      repoUrl: project?.repoUrl,
       allRoles,
       rolesData,
       initialTasks,
