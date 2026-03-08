@@ -1,5 +1,5 @@
 {
-  "name": "@lx0/paperclipper",
+  "name": "@yesterday-ai/paperclipper",
   "version": "0.1.0",
   "description": "Bootstrap a Paperclip company workspace from modular templates. Company as code.",
   "type": "module",
@@ -20,7 +20,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/lx-0/paperclipper"
+    "url": "https://github.com/Yesterday-AI/paperclipper"
   },
   "license": "MIT",
   "engines": {

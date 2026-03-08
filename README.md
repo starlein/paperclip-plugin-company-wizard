@@ -7,13 +7,13 @@ Clipper assembles a ready-to-run company workspace by combining a base org struc
 ## Install
 
 ```sh
-npx @lx0/paperclipper
+npx @yesterday-ai/paperclipper
 ```
 
 Or install globally:
 
 ```sh
-npm i -g @lx0/paperclipper
+npm i -g @yesterday-ai/paperclipper
 clipper
 ```
 
