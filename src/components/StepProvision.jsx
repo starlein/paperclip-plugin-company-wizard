@@ -31,6 +31,7 @@ export default function StepProvision({
       companyDir,
       goal,
       projectName: project?.name || companyName,
+      projectDescription: project?.description,
       repoUrl: project?.repoUrl,
       allRoles,
       rolesData,

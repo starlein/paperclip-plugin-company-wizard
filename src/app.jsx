@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text, useApp } from "ink";
 import Header from "./components/Header.jsx";
+import PrevSelections from "./components/PrevSelections.jsx";
 import StepName from "./components/StepName.jsx";
 import StepGoal from "./components/StepGoal.jsx";
 import StepProject from "./components/StepProject.jsx";
@@ -47,8 +48,9 @@ export default function App({ outputDir, templatesDir, apiEnabled, apiBaseUrl, m
   // User selections
   const [companyName, setCompanyName] = useState("");
   const [goal, setGoal] = useState({ title: "", description: null });
-  const [project, setProject] = useState({ name: "", repoUrl: null });
+  const [project, setProject] = useState({ name: "", description: null, repoUrl: null });
   const [baseName, setBaseName] = useState("base");
+  const [presetName, setPresetName] = useState("");
   const [selectedModules, setSelectedModules] = useState([]);
   const [preselectedModules, setPreselectedModules] = useState([]);
   const [selectedRoles, setSelectedRoles] = useState([]);
@@ -90,9 +92,46 @@ export default function App({ outputDir, templatesDir, apiEnabled, apiBaseUrl, m
     rolesData.set(r.name, r);
   }
 
+  const companyDir = companyName
+    ? `${outputDir}/${toPascalCase(companyName)}`
+    : "";
+
   const handleError = (msg) => {
     setError(msg);
     setStep(STEPS.ERROR);
+  };
+
+  // Build previous selections for context display
+  const prev = {
+    company: companyName ? [["Company", companyName]] : [],
+    goal: goal.title
+      ? [
+          ["Company", companyName],
+          ["Goal", goal.title],
+          ...(goal.description ? [["", goal.description]] : []),
+        ]
+      : [["Company", companyName]],
+    project: [
+      ["Company", companyName],
+      ...(goal.title ? [["Goal", goal.title]] : []),
+      ...(project.name ? [["Project", project.name]] : []),
+      ...(project.repoUrl ? [["Repo", project.repoUrl]] : []),
+    ],
+    preset: [
+      ["Company", companyName],
+      ...(goal.title ? [["Goal", goal.title]] : []),
+      ...(project.name ? [["Project", project.name]] : []),
+    ],
+    modules: [
+      ["Company", companyName],
+      ...(goal.title ? [["Goal", goal.title]] : []),
+      ...(presetName ? [["Preset", presetName]] : []),
+    ],
+    roles: [
+      ["Company", companyName],
+      ...(presetName ? [["Preset", presetName]] : []),
+      ...(selectedModules.length ? [["Modules", selectedModules.join(", ")]] : []),
+    ],
   };
 
   return (
@@ -111,65 +150,81 @@ export default function App({ outputDir, templatesDir, apiEnabled, apiBaseUrl, m
       )}
 
       {step === STEPS.GOAL && (
-        <StepGoal
-          onComplete={(g) => {
-            setGoal(g);
-            setStep(STEPS.PROJECT);
-          }}
-        />
+        <>
+          <PrevSelections entries={prev.company} />
+          <StepGoal
+            onComplete={(g) => {
+              setGoal(g);
+              setStep(STEPS.PROJECT);
+            }}
+          />
+        </>
       )}
 
       {step === STEPS.PROJECT && (
-        <StepProject
-          defaultName={companyName}
-          companyDir={`${outputDir}/${toPascalCase(companyName)}`}
-          onComplete={(p) => {
-            setProject(p);
-            setStep(STEPS.PRESET);
-          }}
-        />
+        <>
+          <PrevSelections entries={prev.goal} />
+          <StepProject
+            defaultName={companyName}
+            companyDir={companyDir}
+            onComplete={(p) => {
+              setProject(p);
+              setStep(STEPS.PRESET);
+            }}
+          />
+        </>
       )}
 
       {step === STEPS.PRESET && (
-        <StepPreset
-          presets={presets}
-          onComplete={(preset) => {
-            if (preset.name === "custom") {
-              setBaseName("base");
-              setPreselectedModules([]);
-              setPreselectedRoles([]);
-            } else {
-              setBaseName(preset.base);
-              setPreselectedModules(preset.modules || []);
-              setSelectedModules(preset.modules || []);
-              setPreselectedRoles(preset.roles || []);
-              setSelectedRoles(preset.roles || []);
-            }
-            setStep(STEPS.MODULES);
-          }}
-        />
+        <>
+          <PrevSelections entries={prev.preset} />
+          <StepPreset
+            presets={presets}
+            onComplete={(preset) => {
+              setPresetName(preset.name);
+              if (preset.name === "custom") {
+                setBaseName("base");
+                setPreselectedModules([]);
+                setPreselectedRoles([]);
+              } else {
+                setBaseName(preset.base);
+                setPreselectedModules(preset.modules || []);
+                setSelectedModules(preset.modules || []);
+                setPreselectedRoles(preset.roles || []);
+                setSelectedRoles(preset.roles || []);
+              }
+              setStep(STEPS.MODULES);
+            }}
+          />
+        </>
       )}
 
       {step === STEPS.MODULES && (
-        <StepModules
-          modules={modules}
-          preselected={preselectedModules}
-          onComplete={(mods) => {
-            setSelectedModules(mods);
-            setStep(STEPS.ROLES);
-          }}
-        />
+        <>
+          <PrevSelections entries={prev.modules} />
+          <StepModules
+            modules={modules}
+            preselected={preselectedModules}
+            onComplete={(mods) => {
+              setSelectedModules(mods);
+              setStep(STEPS.ROLES);
+            }}
+          />
+        </>
       )}
 
       {step === STEPS.ROLES && (
-        <StepRoles
-          roles={availableRoles.filter((r) => !r._base)}
-          preselected={preselectedRoles}
-          onComplete={(roles) => {
-            setSelectedRoles(roles);
-            setStep(STEPS.SUMMARY);
-          }}
-        />
+        <>
+          <PrevSelections entries={prev.roles} />
+          <StepRoles
+            roles={availableRoles.filter((r) => !r._base)}
+            preselected={preselectedRoles}
+            onComplete={(roles) => {
+              setSelectedRoles(roles);
+              setStep(STEPS.SUMMARY);
+            }}
+          />
+        </>
       )}
 
       {step === STEPS.SUMMARY && (
@@ -181,7 +236,7 @@ export default function App({ outputDir, templatesDir, apiEnabled, apiBaseUrl, m
           moduleNames={selectedModules}
           roleNames={selectedRoles}
           capabilities={capabilities}
-          outputDir={`${outputDir}/${toPascalCase(companyName)}`}
+          outputDir={companyDir}
           apiEnabled={apiEnabled}
           onConfirm={() => setStep(STEPS.ASSEMBLE)}
           onCancel={() => {

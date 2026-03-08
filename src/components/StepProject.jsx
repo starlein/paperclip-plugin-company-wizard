@@ -3,18 +3,28 @@ import { Box, Text } from "ink";
 import TextInput from "ink-text-input";
 
 export default function StepProject({ defaultName, companyDir, onComplete }) {
-  const [phase, setPhase] = useState("name"); // name → repo
+  const [phase, setPhase] = useState("name"); // name → description → repo
   const [name, setName] = useState(defaultName);
+  const [description, setDescription] = useState("");
   const [repoUrl, setRepoUrl] = useState("");
 
   const handleNameSubmit = (val) => {
     const trimmed = val.trim() || defaultName;
     setName(trimmed);
+    setPhase("description");
+  };
+
+  const handleDescriptionSubmit = (val) => {
+    setDescription(val.trim());
     setPhase("repo");
   };
 
   const handleRepoSubmit = (val) => {
-    onComplete({ name, repoUrl: val.trim() || null });
+    onComplete({
+      name,
+      description: description || null,
+      repoUrl: val.trim() || null,
+    });
   };
 
   const projectPath = companyDir
@@ -38,12 +48,23 @@ export default function StepProject({ defaultName, companyDir, onComplete }) {
             <Text dimColor>  Workspace: {projectPath}</Text>
           ) : null}
         </Box>
+      ) : phase === "description" ? (
+        <Box flexDirection="column">
+          <Text dimColor>Project: {name}</Text>
+          <Box>
+            <Text bold>Project description: </Text>
+            <TextInput
+              value={description}
+              onChange={setDescription}
+              onSubmit={handleDescriptionSubmit}
+            />
+          </Box>
+          <Text dimColor>  Optional. Press enter to skip.</Text>
+        </Box>
       ) : (
         <Box flexDirection="column">
           <Text dimColor>Project: {name}</Text>
-          {projectPath ? (
-            <Text dimColor>  Workspace: {projectPath}</Text>
-          ) : null}
+          {description ? <Text dimColor>  {description}</Text> : null}
           <Box>
             <Text bold>GitHub repo URL: </Text>
             <TextInput

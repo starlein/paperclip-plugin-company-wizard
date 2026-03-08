@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { PaperclipClient } from "./client.js";
 import { formatRoleName } from "../logic/resolve.js";
+import { toPascalCase } from "../logic/assemble.js";
 
 /**
  * Provision a company in Paperclip via the API.
@@ -18,6 +19,7 @@ import { formatRoleName } from "../logic/resolve.js";
  * @param {string} opts.companyDir - absolute path to assembled workspace
  * @param {object} opts.goal - { title, description }
  * @param {string} opts.projectName - display name for the project
+ * @param {string|null} opts.projectDescription - project description
  * @param {string|null} opts.repoUrl - GitHub repository URL
  * @param {Set<string>} opts.allRoles
  * @param {Map<string, object>} opts.rolesData - role name → role.json data
@@ -32,6 +34,7 @@ export async function provisionCompany({
   companyDir,
   goal,
   projectName,
+  projectDescription = null,
   repoUrl = null,
   allRoles,
   rolesData = new Map(),
@@ -60,11 +63,11 @@ export async function provisionCompany({
   }
 
   // 3. Create project with workspace
-  const projectCwd = join(companyDir, "projects", projectName);
+  const projectCwd = join(companyDir, "projects", toPascalCase(projectName));
   onProgress(`Creating project "${projectName}"...`);
   const project = await client.createProject(companyId, {
     name: projectName,
-    description: goal?.title ? `Goal: ${goal.title}` : null,
+    description: projectDescription || (goal?.title ? `Goal: ${goal.title}` : null),
     workspace: {
       cwd: projectCwd,
       ...(repoUrl ? { repoUrl } : {}),

@@ -297,9 +297,13 @@ export async function assembleCompany({
 
   // Project
   const projectName = project?.name || companyName;
+  const projectCwd = join(companyDir, "projects", toPascalCase(projectName));
   bootstrap += `## Project\n\n`;
   bootstrap += `- **Name**: ${projectName}\n`;
-  bootstrap += `- **Working directory**: \`${companyDir}\`\n`;
+  if (project?.description) {
+    bootstrap += `- **Description**: ${project.description}\n`;
+  }
+  bootstrap += `- **Workspace**: \`${projectCwd}\`\n`;
   if (project?.repoUrl) {
     bootstrap += `- **Repository**: ${project.repoUrl}\n`;
   }
@@ -332,18 +336,19 @@ export async function assembleCompany({
   bootstrap += `If using \`clipper --api\`, all of the above is created automatically.\n\n`;
   bootstrap += `Otherwise, create manually in the Paperclip UI:\n`;
   bootstrap += `1. Create the company "${companyName}"\n`;
-  bootstrap += `2. Create the project "${projectName}" with workspace → \`${companyDir}\`\n`;
+  bootstrap += `2. Create the project "${projectName}" with workspace → \`${projectCwd}\`\n`;
   if (project?.repoUrl) {
     bootstrap += `   Set the repository to: ${project.repoUrl}\n`;
   }
-  bootstrap += `3. Create each agent listed above\n`;
+  let stepN = 3;
+  bootstrap += `${stepN++}. Create each agent listed above\n`;
   if (goal?.title) {
-    bootstrap += `4. Create the goal: "${goal.title}"\n`;
+    bootstrap += `${stepN++}. Create the goal: "${goal.title}"\n`;
   }
   if (initialTasks.length > 0) {
-    bootstrap += `${goal?.title ? "5" : "4"}. Create the initial issues listed above\n`;
+    bootstrap += `${stepN++}. Create the initial issues listed above\n`;
   }
-  bootstrap += `${goal?.title && initialTasks.length > 0 ? "6" : goal?.title || initialTasks.length > 0 ? "5" : "4"}. Start the CEO heartbeat\n`;
+  bootstrap += `${stepN}. Start the CEO heartbeat\n`;
 
   await writeFile(join(companyDir, "BOOTSTRAP.md"), bootstrap);
   onProgress("+ BOOTSTRAP.md");
