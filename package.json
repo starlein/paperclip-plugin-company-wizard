@@ -1,0 +1,29 @@
+{
+  "name": "paperclipper",
+  "version": "0.1.0",
+  "description": "Bootstrap a Paperclip company workspace from modular templates. Company as code.",
+  "type": "module",
+  "bin": {
+    "clipper": "create-company.mjs"
+  },
+  "files": [
+    "create-company.mjs",
+    "templates/"
+  ],
+  "keywords": [
+    "paperclip",
+    "ai-agents",
+    "company-as-code",
+    "bootstrap",
+    "templates",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lx-0/paperclipper"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}
