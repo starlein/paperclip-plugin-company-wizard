@@ -1,9 +1,9 @@
-import React from "react";
-import { Box, Text } from "ink";
+import React from 'react';
+import { Box, Text } from 'ink';
 
 function truncate(str, max = 60) {
-  if (!str) return "";
-  return str.length > max ? str.slice(0, max) + "..." : str;
+  if (!str) return '';
+  return str.length > max ? str.slice(0, max) + '...' : str;
 }
 
 /**
@@ -19,12 +19,13 @@ export default function PrevSelections({ entries }) {
         <Text key={label || value} dimColor>
           {label ? (
             <>
-              <Text dimColor>{label}</Text>
-              {" "}
-              <Text color="cyan" dimColor>{truncate(value)}</Text>
+              <Text dimColor>{label}</Text>{' '}
+              <Text color="cyan" dimColor>
+                {truncate(value)}
+              </Text>
             </>
           ) : (
-            <Text dimColor>  {truncate(value)}</Text>
+            <Text dimColor> {truncate(value)}</Text>
           )}
         </Text>
       ))}

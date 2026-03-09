@@ -13,7 +13,18 @@
   "scripts": {
     "build": "node esbuild.config.mjs",
     "dev": "node --experimental-strip-types src/cli.jsx",
-    "test": "node --test src/logic/*.test.js"
+    "test": "node --test src/logic/*.test.js",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "src/**/*.{js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   },
   "keywords": [
     "paperclip",
@@ -44,6 +55,12 @@
     "react": "^19.0.0"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.25.0",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.3.2",
+    "prettier": "^3.8.1"
   }
 }

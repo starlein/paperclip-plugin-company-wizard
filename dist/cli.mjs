@@ -38483,7 +38483,7 @@ function PrevSelections({ entries }) {
     " ",
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Text, { color: "cyan", dimColor: true, children: truncate(value) })
   ] }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(Text, { dimColor: true, children: [
-    "  ",
+    " ",
     truncate(value)
   ] }) }, label || value)) });
 }
@@ -38604,7 +38604,10 @@ function StepName({ onComplete }) {
   };
   return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(Box_default, { flexDirection: "column", children: [
     /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(Box_default, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Text, { color: "cyan", bold: true, children: "? " }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(Text, { color: "cyan", bold: true, children: [
+        "?",
+        " "
+      ] }),
       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Text, { bold: true, children: "Company name " }),
       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
         build_default,
@@ -38618,9 +38621,9 @@ function StepName({ onComplete }) {
         }
       )
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Text, { dimColor: true, children: "  Your AI company's name. Special characters are allowed." }),
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Text, { dimColor: true, children: " Your AI company's name. Special characters are allowed." }),
     error ? /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(Text, { color: "red", children: [
-      "  ",
+      " ",
       error
     ] }) : null
   ] });
@@ -38650,7 +38653,10 @@ function StepGoal({ onComplete }) {
   return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Box_default, { flexDirection: "column", children: [
     phase === "title" ? /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Box_default, { flexDirection: "column", children: [
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Box_default, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { color: "cyan", bold: true, children: "? " }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Text, { color: "cyan", bold: true, children: [
+          "?",
+          " "
+        ] }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { bold: true, children: "Company goal " }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
           build_default,
@@ -38664,14 +38670,17 @@ function StepGoal({ onComplete }) {
           }
         )
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { dimColor: true, children: "  What should this company achieve?" })
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { dimColor: true, children: " What should this company achieve?" })
     ] }) : /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Box_default, { flexDirection: "column", children: [
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Text, { dimColor: true, children: [
-        "  Goal: ",
+        " Goal: ",
         title
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Box_default, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { color: "cyan", bold: true, children: "? " }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Text, { color: "cyan", bold: true, children: [
+          "?",
+          " "
+        ] }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { bold: true, children: "Description " }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
           build_default,
@@ -38682,10 +38691,10 @@ function StepGoal({ onComplete }) {
           }
         )
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { dimColor: true, children: "  Optional details. Press enter to skip." })
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Text, { dimColor: true, children: " Optional details. Press enter to skip." })
     ] }),
     error ? /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(Text, { color: "red", children: [
-      "  ",
+      " ",
       error
     ] }) : null
   ] });
@@ -38718,29 +38727,28 @@ function StepProject({ defaultName, companyDir, onComplete }) {
   const projectPath = companyDir ? `${companyDir}/projects/${name || defaultName}` : null;
   return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Box_default, { flexDirection: "column", children: phase === "name" ? /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(Box_default, { flexDirection: "column", children: [
     /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(Box_default, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Text, { color: "cyan", bold: true, children: "? " }),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(Text, { color: "cyan", bold: true, children: [
+        "?",
+        " "
+      ] }),
       /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Text, { bold: true, children: "Project name " }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
-        build_default,
-        {
-          value: name,
-          onChange: setName,
-          onSubmit: handleNameSubmit
-        }
-      )
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(build_default, { value: name, onChange: setName, onSubmit: handleNameSubmit })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(Text, { dimColor: true, children: [
-      '  Press enter for "',
+      ' Press enter for "',
       defaultName,
       '"'
     ] })
   ] }) : phase === "description" ? /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(Box_default, { flexDirection: "column", children: [
     /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(Text, { dimColor: true, children: [
-      "  Project: ",
+      " Project: ",
       name
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(Box_default, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Text, { color: "cyan", bold: true, children: "? " }),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(Text, { color: "cyan", bold: true, children: [
+        "?",
+        " "
+      ] }),
       /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Text, { bold: true, children: "Project description " }),
       /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
         build_default,
@@ -38751,29 +38759,25 @@ function StepProject({ defaultName, companyDir, onComplete }) {
         }
       )
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Text, { dimColor: true, children: "  Optional. Press enter to skip." })
+    /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Text, { dimColor: true, children: " Optional. Press enter to skip." })
   ] }) : /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(Box_default, { flexDirection: "column", children: [
     /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(Text, { dimColor: true, children: [
-      "  Project: ",
+      " Project: ",
       name
     ] }),
     description ? /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(Text, { dimColor: true, children: [
-      "  ",
+      " ",
       description
     ] }) : null,
     /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(Box_default, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Text, { color: "cyan", bold: true, children: "? " }),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(Text, { color: "cyan", bold: true, children: [
+        "?",
+        " "
+      ] }),
       /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Text, { bold: true, children: "GitHub repo URL " }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
-        build_default,
-        {
-          value: repoUrl,
-          onChange: setRepoUrl,
-          onSubmit: handleRepoSubmit
-        }
-      )
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(build_default, { value: repoUrl, onChange: setRepoUrl, onSubmit: handleRepoSubmit })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Text, { dimColor: true, children: "  Optional. Press enter to skip." })
+    /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Text, { dimColor: true, children: " Optional. Press enter to skip." })
   ] }) });
 }
 
@@ -39217,7 +39221,10 @@ function StepPreset({ presets, onComplete }) {
   const constraints = highlighted?.constraints || [];
   return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(Box_default, { flexDirection: "column", children: [
     /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(Box_default, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Text, { color: "cyan", bold: true, children: "? " }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(Text, { color: "cyan", bold: true, children: [
+        "?",
+        " "
+      ] }),
       /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Text, { bold: true, children: "Select a preset" })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Box_default, { marginLeft: 2, marginTop: 1, flexDirection: "column", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
@@ -39311,10 +39318,13 @@ function MultiSelect({
   });
   return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Box_default, { flexDirection: "column", children: [
     /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Box_default, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { color: "cyan", bold: true, children: "? " }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Text, { color: "cyan", bold: true, children: [
+        "?",
+        " "
+      ] }),
       label ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { bold: true, children: label }) : null
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { dimColor: true, children: "  space toggle  enter confirm" }),
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { dimColor: true, children: " space toggle enter confirm" }),
     /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Box_default, { marginTop: 1, marginLeft: 2, flexDirection: "column", children: items.map((item, i) => {
       const isSelected = selected.has(item.value);
       const isPreselected = preselected.includes(item.value);
@@ -39331,10 +39341,13 @@ function MultiSelect({
             " ",
             item.label
           ] }),
-          isPreselected ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Text, { color: "green", dimColor: true, children: " preset" }) : null
+          isPreselected ? /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Text, { color: "green", dimColor: true, children: [
+            " ",
+            "preset"
+          ] }) : null
         ] }),
         isCursor && item.description ? /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Text, { dimColor: true, children: [
-          "      ",
+          " ",
           item.description
         ] }) : null,
         isCursor && item.hints?.map((h, j) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Text, { color: "cyan", dimColor: true, children: [
@@ -39354,13 +39367,10 @@ function MultiSelect({
 function resolveCapabilities(modules, selectedModules, allRoles) {
   const resolved = [];
   for (const mod of modules) {
-    if (!selectedModules.includes(mod.name) || !mod.capabilities?.length)
-      continue;
+    if (!selectedModules.includes(mod.name) || !mod.capabilities?.length) continue;
     for (const cap of mod.capabilities) {
       const primaryOwner = cap.owners.find((r) => allRoles.has(r));
-      const fallbacks = cap.owners.filter(
-        (r) => r !== primaryOwner && allRoles.has(r)
-      );
+      const fallbacks = cap.owners.filter((r) => r !== primaryOwner && allRoles.has(r));
       if (primaryOwner) {
         resolved.push({
           skill: cap.skill,
@@ -39418,10 +39428,7 @@ function formatRoleName(role) {
 // src/components/StepModules.jsx
 var import_jsx_runtime8 = __toESM(require_jsx_runtime(), 1);
 function StepModules({ modules, preselected, onComplete }) {
-  const { requires, requiredBy } = (0, import_react39.useMemo)(
-    () => buildModuleDeps(modules),
-    [modules]
-  );
+  const { requires, requiredBy } = (0, import_react39.useMemo)(() => buildModuleDeps(modules), [modules]);
   const items = modules.map((m) => {
     const desc = m.description || "";
     const gated = m.activatesWithRoles?.length ? `Needs role: ${m.activatesWithRoles.join(" or ")}` : "";
@@ -39446,11 +39453,7 @@ function StepModules({ modules, preselected, onComplete }) {
         };
       },
       onToggleOff: (value, selected) => {
-        const blockers = getBlockingDependents(
-          value,
-          [...selected],
-          requiredBy
-        );
+        const blockers = getBlockingDependents(value, [...selected], requiredBy);
         if (blockers.length > 0) {
           return {
             blocked: true,
@@ -39468,12 +39471,11 @@ function StepModules({ modules, preselected, onComplete }) {
 var import_react40 = __toESM(require_react(), 1);
 var import_jsx_runtime9 = __toESM(require_jsx_runtime(), 1);
 function StepRoles({ roles, preselected, onComplete }) {
-  if (roles.length === 0) {
-    import_react40.default.useEffect(() => {
-      onComplete(preselected);
-    }, []);
-    return null;
-  }
+  const skip = roles.length === 0;
+  import_react40.default.useEffect(() => {
+    if (skip) onComplete(preselected);
+  }, [skip, onComplete, preselected]);
+  if (skip) return null;
   const items = roles.map((r) => ({
     value: r.name,
     label: `${r.title || r.name}`,
@@ -39525,42 +39527,20 @@ function StepSummary({
     needs: m.activatesWithRoles
   }));
   return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(Box_default, { flexDirection: "column", gap: 1, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(
-      Box_default,
-      {
-        flexDirection: "column",
-        borderStyle: "round",
-        borderColor: "cyan",
-        paddingX: 2,
-        paddingY: 1,
-        children: [
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Text, { bold: true, color: "cyan", children: "Summary" }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Text, { children: " " }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Row, { label: "Company", value: companyName }),
-          goal?.title ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Row, { label: "Goal", value: goal.title }) : null,
-          goal?.description ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Row, { label: "", value: goal.description, dim: true }) : null,
-          project?.name ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Row, { label: "Project", value: project.name }) : null,
-          project?.repoUrl ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Row, { label: "Repo", value: project.repoUrl, dim: true }) : null,
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Row, { label: "Preset", value: baseName }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
-            Row,
-            {
-              label: "Modules",
-              value: moduleNames.length > 0 ? moduleNames.join(", ") : "none"
-            }
-          ),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
-            Row,
-            {
-              label: "Roles",
-              value: allRoleNames.map((r) => formatRoleName(r)).join(", ")
-            }
-          ),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Row, { label: "Output", value: outputDir, dim: true }),
-          apiEnabled ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Row, { label: "API", value: "enabled", color: "green" }) : null
-        ]
-      }
-    ),
+    /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(Box_default, { flexDirection: "column", borderStyle: "round", borderColor: "cyan", paddingX: 2, paddingY: 1, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Text, { bold: true, color: "cyan", children: "Summary" }),
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Text, { children: " " }),
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Row, { label: "Company", value: companyName }),
+      goal?.title ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Row, { label: "Goal", value: goal.title }) : null,
+      goal?.description ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Row, { label: "", value: goal.description, dim: true }) : null,
+      project?.name ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Row, { label: "Project", value: project.name }) : null,
+      project?.repoUrl ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Row, { label: "Repo", value: project.repoUrl, dim: true }) : null,
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Row, { label: "Preset", value: baseName }),
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Row, { label: "Modules", value: moduleNames.length > 0 ? moduleNames.join(", ") : "none" }),
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Row, { label: "Roles", value: allRoleNames.map((r) => formatRoleName(r)).join(", ") }),
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Row, { label: "Output", value: outputDir, dim: true }),
+      apiEnabled ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Row, { label: "API", value: "enabled", color: "green" }) : null
+    ] }),
     capabilities.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(Box_default, { flexDirection: "column", marginLeft: 1, children: [
       /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Text, { dimColor: true, children: "Capability resolution:" }),
       capabilities.map((cap) => /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(Text, { dimColor: true, children: [
@@ -39688,9 +39668,7 @@ async function assembleCompany({
   }
   const baseDir = join(templatesDir, baseName);
   const baseEntries = await readdir(baseDir, { withFileTypes: true });
-  const allRoles = new Set(
-    baseEntries.filter((e) => e.isDirectory()).map((e) => e.name)
-  );
+  const allRoles = new Set(baseEntries.filter((e) => e.isDirectory()).map((e) => e.name));
   for (const role of extraRoleNames) allRoles.add(role);
   for (const role of baseEntries) {
     if (!role.isDirectory()) continue;
@@ -39731,13 +39709,9 @@ async function assembleCompany({
     }
     const moduleJson = await readJson(join(moduleDir, "module.json"));
     if (moduleJson?.activatesWithRoles?.length) {
-      const hasActivatingRole = moduleJson.activatesWithRoles.some(
-        (r) => allRoles.has(r)
-      );
+      const hasActivatingRole = moduleJson.activatesWithRoles.some((r) => allRoles.has(r));
       if (!hasActivatingRole) {
-        onProgress(
-          `\u25CB ${moduleName} (needs ${moduleJson.activatesWithRoles.join(" or ")})`
-        );
+        onProgress(`\u25CB ${moduleName} (needs ${moduleJson.activatesWithRoles.join(" or ")})`);
         continue;
       }
     }
@@ -39746,9 +39720,7 @@ async function assembleCompany({
         let assignee = task.assignTo;
         if (assignee?.startsWith("capability:")) {
           const capName = assignee.slice("capability:".length);
-          const cap = moduleJson.capabilities?.find(
-            (c) => c.skill === capName
-          );
+          const cap = moduleJson.capabilities?.find((c) => c.skill === capName);
           if (cap) {
             assignee = cap.owners.find((r) => allRoles.has(r)) || assignee;
           }
@@ -39840,9 +39812,7 @@ Read and follow: \`$AGENT_HOME/skills/${skillFile}\`
     if (!await exists(moduleDir)) continue;
     const moduleJson = await readJson(join(moduleDir, "module.json"));
     if (moduleJson?.activatesWithRoles?.length) {
-      const hasActivatingRole = moduleJson.activatesWithRoles.some(
-        (r) => allRoles.has(r)
-      );
+      const hasActivatingRole = moduleJson.activatesWithRoles.some((r) => allRoles.has(r));
       if (!hasActivatingRole) continue;
     }
     const modAgentsDir = join(moduleDir, "agents");
@@ -40044,15 +40014,7 @@ function StepAssemble({
     /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(Box_default, { flexDirection: "column", marginLeft: 2, children: log.map((line, i) => {
       const isAdd = line.startsWith("+");
       const isSkip = line.startsWith("\u25CB") || line.startsWith("!");
-      return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
-        Text,
-        {
-          color: isAdd ? "green" : isSkip ? "yellow" : void 0,
-          dimColor: isSkip,
-          children: line
-        },
-        i
-      );
+      return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(Text, { color: isAdd ? "green" : isSkip ? "yellow" : void 0, dimColor: isSkip, children: line }, i);
     }) })
   ] });
 }
@@ -40217,9 +40179,7 @@ async function provisionCompany({
     onProgress(`  repo: ${repoUrl}`);
   }
   const agentIds = /* @__PURE__ */ new Map();
-  const sortedRoles = [...allRoles].sort(
-    (a, b) => a === "ceo" ? -1 : b === "ceo" ? 1 : 0
-  );
+  const sortedRoles = [...allRoles].sort((a, b) => a === "ceo" ? -1 : b === "ceo" ? 1 : 0);
   for (const role of sortedRoles) {
     const roleData = rolesData.get(role);
     const paperclipRole = PaperclipClient.resolveRole(role, roleData);
@@ -40238,9 +40198,7 @@ async function provisionCompany({
         cwd: companyDir,
         instructionsFilePath: join2(companyDir, `agents/${role}/AGENTS.md`),
         ...agentModel ? { model: agentModel } : {},
-        ...Object.fromEntries(
-          Object.entries(roleAdapter).filter(([k]) => k !== "model")
-        )
+        ...Object.fromEntries(Object.entries(roleAdapter).filter(([k]) => k !== "model"))
       }
     });
     agentIds.set(role, agent.id);
@@ -40355,15 +40313,7 @@ function StepProvision({
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(Box_default, { flexDirection: "column", marginLeft: 2, children: log.map((line, i) => {
       const isDone = line.startsWith("\u2713");
-      return /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(
-        Text,
-        {
-          color: isDone ? "green" : void 0,
-          dimColor: !isDone,
-          children: line
-        },
-        i
-      );
+      return /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(Text, { color: isDone ? "green" : void 0, dimColor: !isDone, children: line }, i);
     }) })
   ] });
 }
@@ -40371,12 +40321,7 @@ function StepProvision({
 // src/components/StepDone.jsx
 var import_react45 = __toESM(require_react(), 1);
 var import_jsx_runtime13 = __toESM(require_jsx_runtime(), 1);
-function StepDone({
-  companyDir,
-  allRoles,
-  provisioned,
-  provisionResult
-}) {
+function StepDone({ companyDir, allRoles, provisioned, provisionResult }) {
   const rolesList = [...allRoles];
   return /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)(Box_default, { flexDirection: "column", gap: 1, children: [
     /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Text, { color: "green", bold: true, children: "Done!" }),
@@ -40408,8 +40353,7 @@ function StepDone({
         ] }),
         rolesList.map((role) => /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)(Text, { children: [
           /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Text, { color: "green", children: "+" }),
-          " Agent",
-          " ",
+          " Agent ",
           /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Text, { bold: true, children: formatRoleName(role) }),
           " ",
           /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Text, { dimColor: true, children: provisionResult.agentIds?.get(role)?.slice(0, 8) })
@@ -40428,11 +40372,11 @@ function StepDone({
       ] }),
       !provisionResult.ceoStarted ? /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)(Box_default, { flexDirection: "column", marginTop: 1, children: [
         /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Text, { dimColor: true, children: "Next: start the CEO heartbeat in the Paperclip UI" }),
-        /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Text, { dimColor: true, children: "  or re-run with --start" })
+        /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Text, { dimColor: true, children: " or re-run with --start" })
       ] }) : null
     ] }) : /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)(Box_default, { flexDirection: "column", children: [
       /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Text, { dimColor: true, children: "Next: follow BOOTSTRAP.md in the company directory" }),
-      /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Text, { dimColor: true, children: "  or re-run with --api to provision automatically" })
+      /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Text, { dimColor: true, children: " or re-run with --api to provision automatically" })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)(Text, { dimColor: true, children: [
       "Workspace: ",
@@ -40598,11 +40542,7 @@ function App2({
     return STEPS.PRESET;
   }
   (0, import_react46.useEffect)(() => {
-    Promise.all([
-      loadPresets(templatesDir),
-      loadModules(templatesDir),
-      loadRoles(templatesDir)
-    ]).then(([p, m, r]) => {
+    Promise.all([loadPresets(templatesDir), loadModules(templatesDir), loadRoles(templatesDir)]).then(([p, m, r]) => {
       setPresets(p);
       setModules(m);
       setAvailableRoles(r);
@@ -40613,11 +40553,7 @@ function App2({
     });
   }, []);
   const allRolesSet = buildAllRoles(["ceo", "engineer"], selectedRoles);
-  const capabilities = resolveCapabilities(
-    modules,
-    selectedModules,
-    allRolesSet
-  );
+  const capabilities = resolveCapabilities(modules, selectedModules, allRolesSet);
   const rolesData = /* @__PURE__ */ new Map();
   for (const r of availableRoles) {
     rolesData.set(r.name, r);
@@ -40987,9 +40923,7 @@ function loadPromptFile(templatesDir, filename) {
   return readFileSync2(join4(templatesDir, "ai-wizard", filename), "utf-8").trim();
 }
 function loadMessages(templatesDir) {
-  return JSON.parse(
-    readFileSync2(join4(templatesDir, "ai-wizard", "messages.json"), "utf-8")
-  );
+  return JSON.parse(readFileSync2(join4(templatesDir, "ai-wizard", "messages.json"), "utf-8"));
 }
 function renderTemplate(template, vars) {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? "");
@@ -41062,9 +40996,7 @@ async function callClaude({ apiKey, model, system, messages, maxTokens = 1024 })
   const text = data.content?.[0]?.text;
   if (!text) {
     const reason = data.stop_reason || "unknown";
-    throw new Error(
-      `Empty response from Anthropic API (stop_reason: ${reason}, model: ${model})`
-    );
+    throw new Error(`Empty response from Anthropic API (stop_reason: ${reason}, model: ${model})`);
   }
   return text;
 }
@@ -41148,12 +41080,15 @@ async function aiWizard(opts) {
   printHeader(console.log);
   printSpinner(console.log, "Analyzing your description...");
   console.log("");
-  const text = await callClaudeWithRetry({
-    apiKey,
-    model,
-    system,
-    messages: [{ role: "user", content: opts.description }]
-  }, { log: console.log });
+  const text = await callClaudeWithRetry(
+    {
+      apiKey,
+      model,
+      system,
+      messages: [{ role: "user", content: opts.description }]
+    },
+    { log: console.log }
+  );
   return normalizeResult(parseConfigJson(text));
 }
 var MAGENTA = "\x1B[35m";
@@ -41181,34 +41116,37 @@ function renderMarkdown(text) {
 }
 function ask(rl, question) {
   return new Promise((resolve2) => {
-    rl.question(`${BG_HIGHLIGHT}${CLEAR_LINE}${DIM}${question}${RESET}${BG_HIGHLIGHT}${BOLD}`, (answer) => {
-      process.stdout.write(RESET);
-      const cleanAnswer = answer.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, "");
-      const cols = process.stdout.columns || 80;
-      const fullText = `${question}${cleanAnswer}`;
-      const inputLines = Math.ceil(fullText.length / cols) || 1;
-      let redraw = "";
-      for (let l = 0; l < inputLines; l++) {
-        redraw += `\x1B[A${CLEAR_LINE}`;
-      }
-      for (let offset = 0; offset < fullText.length; offset += cols) {
-        if (offset === 0) {
-          const answerStart = cleanAnswer.slice(0, cols - question.length);
-          const pad = " ".repeat(Math.max(0, cols - question.length - answerStart.length));
-          redraw += `${BG_HIGHLIGHT}${DIM}${question}${RESET}${BG_HIGHLIGHT}${BOLD}${answerStart}${pad}${RESET}
-`;
-        } else {
-          const answerChunk = fullText.slice(offset, offset + cols);
-          const chunkPad = " ".repeat(Math.max(0, cols - answerChunk.length));
-          redraw += `${BG_HIGHLIGHT}${BOLD}${answerChunk}${chunkPad}${RESET}
-`;
+    rl.question(
+      `${BG_HIGHLIGHT}${CLEAR_LINE}${DIM}${question}${RESET}${BG_HIGHLIGHT}${BOLD}`,
+      (answer) => {
+        process.stdout.write(RESET);
+        const cleanAnswer = answer.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, "");
+        const cols = process.stdout.columns || 80;
+        const fullText = `${question}${cleanAnswer}`;
+        const inputLines = Math.ceil(fullText.length / cols) || 1;
+        let redraw = "";
+        for (let l = 0; l < inputLines; l++) {
+          redraw += `\x1B[A${CLEAR_LINE}`;
         }
-      }
-      redraw += `${CLEAR_LINE}\x1B[A
+        for (let offset = 0; offset < fullText.length; offset += cols) {
+          if (offset === 0) {
+            const answerStart = cleanAnswer.slice(0, cols - question.length);
+            const pad = " ".repeat(Math.max(0, cols - question.length - answerStart.length));
+            redraw += `${BG_HIGHLIGHT}${DIM}${question}${RESET}${BG_HIGHLIGHT}${BOLD}${answerStart}${pad}${RESET}
 `;
-      process.stdout.write(redraw);
-      resolve2(cleanAnswer.trim());
-    });
+          } else {
+            const answerChunk = fullText.slice(offset, offset + cols);
+            const chunkPad = " ".repeat(Math.max(0, cols - answerChunk.length));
+            redraw += `${BG_HIGHLIGHT}${BOLD}${answerChunk}${chunkPad}${RESET}
+`;
+          }
+        }
+        redraw += `${CLEAR_LINE}\x1B[A
+`;
+        process.stdout.write(redraw);
+        resolve2(cleanAnswer.trim());
+      }
+    );
   });
 }
 function buildInterviewSystem(templatesDir, presetCatalog, moduleCatalog, roleCatalog) {
@@ -41258,13 +41196,16 @@ async function aiWizardInterview(opts) {
               content: msgs.interviewStart
             });
           }
-          const question = await callClaudeInteractive({
-            apiKey,
-            model,
-            system,
-            messages,
-            maxTokens: 256
-          }, { log, rl, messages });
+          const question = await callClaudeInteractive(
+            {
+              apiKey,
+              model,
+              system,
+              messages,
+              maxTokens: 256
+            },
+            { log, rl, messages }
+          );
           if (question === null) return null;
           messages.push({ role: "assistant", content: question });
           log("");
@@ -41289,13 +41230,16 @@ ${msgs.summaryRequest}`
         });
         log("");
         printSpinner(log, "Summarizing...");
-        const summary = await callClaudeInteractive({
-          apiKey,
-          model,
-          system,
-          messages,
-          maxTokens: 512
-        }, { log, rl, messages });
+        const summary = await callClaudeInteractive(
+          {
+            apiKey,
+            model,
+            system,
+            messages,
+            maxTokens: 512
+          },
+          { log, rl, messages }
+        );
         if (summary === null) return null;
         messages.push({ role: "assistant", content: summary });
         log("");
@@ -41322,13 +41266,16 @@ ${loadPromptFile(opts.templatesDir, "config-format.md")}`
       });
       log("");
       printSpinner(log, "Generating recommendation...");
-      const recommendationText = await callClaudeInteractive({
-        apiKey,
-        model,
-        system,
-        messages,
-        maxTokens: 2048
-      }, { log, rl, messages });
+      const recommendationText = await callClaudeInteractive(
+        {
+          apiKey,
+          model,
+          system,
+          messages,
+          maxTokens: 2048
+        },
+        { log, rl, messages }
+      );
       if (recommendationText === null) return null;
       messages.push({ role: "assistant", content: recommendationText });
       const jsonStart = recommendationText.indexOf("{");
@@ -41364,7 +41311,9 @@ ${loadPromptFile(opts.templatesDir, "config-format.md")}`
       }
       log(`  ${DIM}\u2514${"\u2500".repeat(W)}\u2518${RESET}`);
       log("");
-      log(`  ${DIM}c${RESET} continue  ${DIM}\u2502${RESET}  ${DIM}i${RESET} iterate  ${DIM}\u2502${RESET}  ${DIM}r${RESET} restart  ${DIM}\u2502${RESET}  ${DIM}q${RESET} quit`);
+      log(
+        `  ${DIM}c${RESET} continue  ${DIM}\u2502${RESET}  ${DIM}i${RESET} iterate  ${DIM}\u2502${RESET}  ${DIM}r${RESET} restart  ${DIM}\u2502${RESET}  ${DIM}q${RESET} quit`
+      );
       log("");
       const decision = await ask(rl, "  \u2192 ");
       const choice = decision.toLowerCase();
@@ -41599,7 +41548,9 @@ if (config.aiDescription !== null) {
       if (config.aiDescription) {
         console.log(`  \x1B[32m\u25CF\x1B[0m ${aiResult.reasoning}`);
         console.log("");
-        console.log(`  \x1B[1mCompany:\x1B[0m ${aiResult.name}  \x1B[2m\u2502\x1B[0m  \x1B[1mPreset:\x1B[0m ${aiResult.preset}`);
+        console.log(
+          `  \x1B[1mCompany:\x1B[0m ${aiResult.name}  \x1B[2m\u2502\x1B[0m  \x1B[1mPreset:\x1B[0m ${aiResult.preset}`
+        );
         if (aiResult.modules.length) {
           console.log(`  \x1B[36mModules:\x1B[0m ${aiResult.modules.join(", ")}`);
         }

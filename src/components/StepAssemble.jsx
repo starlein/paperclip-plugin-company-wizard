@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { Box, Text } from "ink";
-import Spinner from "ink-spinner";
-import { assembleCompany } from "../logic/assemble.js";
+import React, { useState, useEffect } from 'react';
+import { Box, Text } from 'ink';
+import Spinner from 'ink-spinner';
+import { assembleCompany } from '../logic/assemble.js';
 
 export default function StepAssemble({
   companyName,
@@ -60,23 +60,17 @@ export default function StepAssemble({
           <Text color="green">✓ </Text>
         ) : (
           <Text color="cyan">
-            <Spinner type="dots" />{" "}
+            <Spinner type="dots" />{' '}
           </Text>
         )}
-        <Text bold>
-          {done ? "Workspace assembled" : "Assembling workspace..."}
-        </Text>
+        <Text bold>{done ? 'Workspace assembled' : 'Assembling workspace...'}</Text>
       </Box>
       <Box flexDirection="column" marginLeft={2}>
         {log.map((line, i) => {
-          const isAdd = line.startsWith("+");
-          const isSkip = line.startsWith("○") || line.startsWith("!");
+          const isAdd = line.startsWith('+');
+          const isSkip = line.startsWith('○') || line.startsWith('!');
           return (
-            <Text
-              key={i}
-              color={isAdd ? "green" : isSkip ? "yellow" : undefined}
-              dimColor={isSkip}
-            >
+            <Text key={i} color={isAdd ? 'green' : isSkip ? 'yellow' : undefined} dimColor={isSkip}>
               {line}
             </Text>
           );

@@ -1,6 +1,6 @@
-import React from "react";
-import { Box, Text, useInput } from "ink";
-import { formatRoleName } from "../logic/resolve.js";
+import React from 'react';
+import { Box, Text, useInput } from 'ink';
+import { formatRoleName } from '../logic/resolve.js';
 
 export default function StepSummary({
   companyName,
@@ -18,14 +18,14 @@ export default function StepSummary({
   onCancel,
 }) {
   useInput((input, key) => {
-    if (key.return || input === "y" || input === "Y") {
+    if (key.return || input === 'y' || input === 'Y') {
       onConfirm();
-    } else if (input === "n" || input === "N") {
+    } else if (input === 'n' || input === 'N') {
       onCancel();
     }
   });
 
-  const allRoleNames = ["ceo", "engineer", ...roleNames];
+  const allRoleNames = ['ceo', 'engineer', ...roleNames];
   const allRolesSet = new Set(allRoleNames);
 
   // Find modules that will be skipped due to missing activatesWithRoles
@@ -34,7 +34,7 @@ export default function StepSummary({
       (m) =>
         moduleNames.includes(m.name) &&
         m.activatesWithRoles?.length &&
-        !m.activatesWithRoles.some((r) => allRolesSet.has(r))
+        !m.activatesWithRoles.some((r) => allRolesSet.has(r)),
     )
     .map((m) => ({
       name: m.name,
@@ -43,14 +43,10 @@ export default function StepSummary({
 
   return (
     <Box flexDirection="column" gap={1}>
-      <Box
-        flexDirection="column"
-        borderStyle="round"
-        borderColor="cyan"
-        paddingX={2}
-        paddingY={1}
-      >
-        <Text bold color="cyan">Summary</Text>
+      <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={2} paddingY={1}>
+        <Text bold color="cyan">
+          Summary
+        </Text>
         <Text> </Text>
         <Row label="Company" value={companyName} />
         {goal?.title ? <Row label="Goal" value={goal.title} /> : null}
@@ -58,18 +54,10 @@ export default function StepSummary({
         {project?.name ? <Row label="Project" value={project.name} /> : null}
         {project?.repoUrl ? <Row label="Repo" value={project.repoUrl} dim /> : null}
         <Row label="Preset" value={baseName} />
-        <Row
-          label="Modules"
-          value={moduleNames.length > 0 ? moduleNames.join(", ") : "none"}
-        />
-        <Row
-          label="Roles"
-          value={allRoleNames.map((r) => formatRoleName(r)).join(", ")}
-        />
+        <Row label="Modules" value={moduleNames.length > 0 ? moduleNames.join(', ') : 'none'} />
+        <Row label="Roles" value={allRoleNames.map((r) => formatRoleName(r)).join(', ')} />
         <Row label="Output" value={outputDir} dim />
-        {apiEnabled ? (
-          <Row label="API" value="enabled" color="green" />
-        ) : null}
+        {apiEnabled ? <Row label="API" value="enabled" color="green" /> : null}
       </Box>
 
       {capabilities.length > 0 ? (
@@ -77,9 +65,10 @@ export default function StepSummary({
           <Text dimColor>Capability resolution:</Text>
           {capabilities.map((cap) => (
             <Text key={cap.skill} dimColor>
-              {"  "}{cap.skill} {"->"} <Text color="cyan">{cap.primary}</Text>
+              {'  '}
+              {cap.skill} {'->'} <Text color="cyan">{cap.primary}</Text>
               {cap.fallbacks.length > 0 ? (
-                <Text dimColor> (fallback: {cap.fallbacks.join(", ")})</Text>
+                <Text dimColor> (fallback: {cap.fallbacks.join(', ')})</Text>
               ) : null}
             </Text>
           ))}
@@ -90,7 +79,7 @@ export default function StepSummary({
         <Box marginLeft={1} flexDirection="column">
           {skippedModules.map((m) => (
             <Text key={m.name} color="yellow">
-              ! {m.name} will be skipped (needs {m.needs.join(" or ")})
+              ! {m.name} will be skipped (needs {m.needs.join(' or ')})
             </Text>
           ))}
         </Box>
@@ -113,12 +102,8 @@ export default function StepSummary({
 function Row({ label, value, dim, color }) {
   return (
     <Box>
-      {label ? (
-        <Text dimColor>{label.padEnd(10)}</Text>
-      ) : (
-        <Text>{"          "}</Text>
-      )}
-      <Text color={color || (dim ? undefined : "white")} dimColor={dim}>
+      {label ? <Text dimColor>{label.padEnd(10)}</Text> : <Text>{'          '}</Text>}
+      <Text color={color || (dim ? undefined : 'white')} dimColor={dim}>
         {value}
       </Text>
     </Box>

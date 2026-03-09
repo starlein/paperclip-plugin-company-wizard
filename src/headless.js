@@ -1,8 +1,8 @@
-import { loadPresets, loadModules, loadRoles } from "./logic/load-templates.js";
-import { resolveCapabilities, buildAllRoles } from "./logic/resolve.js";
-import { assembleCompany, toPascalCase } from "./logic/assemble.js";
-import { PaperclipClient } from "./api/client.js";
-import { provisionCompany } from "./api/provision.js";
+import { loadPresets, loadModules, loadRoles } from './logic/load-templates.js';
+import { resolveCapabilities, buildAllRoles } from './logic/resolve.js';
+import { assembleCompany, toPascalCase } from './logic/assemble.js';
+import { PaperclipClient } from './api/client.js';
+import { provisionCompany } from './api/provision.js';
 
 /**
  * Run Clipper in headless (non-interactive) mode.
@@ -36,18 +36,18 @@ export async function runHeadless(opts) {
   ]);
 
   // Resolve preset
-  let baseName = "base";
+  let baseName = 'base';
   let presetModules = [];
   let presetRoles = [];
 
-  if (opts.preset && opts.preset !== "custom") {
+  if (opts.preset && opts.preset !== 'custom') {
     const preset = presets.find((p) => p.name === opts.preset);
     if (!preset) {
-      const names = presets.map((p) => p.name).join(", ");
+      const names = presets.map((p) => p.name).join(', ');
       console.error(`Error: unknown preset "${opts.preset}". Available: ${names}`);
       process.exit(1);
     }
-    baseName = preset.base || "base";
+    baseName = preset.base || 'base';
     presetModules = preset.modules || [];
     presetRoles = preset.roles || [];
   }
@@ -60,7 +60,7 @@ export async function runHeadless(opts) {
   const moduleNames = new Set(modules.map((m) => m.name));
   for (const mod of selectedModules) {
     if (!moduleNames.has(mod)) {
-      const names = [...moduleNames].join(", ");
+      const names = [...moduleNames].join(', ');
       console.error(`Error: unknown module "${mod}". Available: ${names}`);
       process.exit(1);
     }
@@ -70,14 +70,14 @@ export async function runHeadless(opts) {
   const roleNames = new Set(allAvailableRoles.filter((r) => !r._base).map((r) => r.name));
   for (const role of selectedRoles) {
     if (!roleNames.has(role)) {
-      const names = [...roleNames].join(", ");
+      const names = [...roleNames].join(', ');
       console.error(`Error: unknown role "${role}". Available: ${names}`);
       process.exit(1);
     }
   }
 
   // Build derived state
-  const allRolesSet = buildAllRoles(["ceo", "engineer"], selectedRoles);
+  const allRolesSet = buildAllRoles(['ceo', 'engineer'], selectedRoles);
   const capabilities = resolveCapabilities(modules, selectedModules, allRolesSet);
 
   const rolesData = new Map();
@@ -92,34 +92,34 @@ export async function runHeadless(opts) {
   };
 
   const goal = {
-    title: opts.goal || "",
+    title: opts.goal || '',
     description: opts.goalDescription || null,
   };
 
   // Print summary
-  log("");
+  log('');
   log(`  Company:  ${opts.name}`);
   if (goal.title) log(`  Goal:     ${goal.title}`);
   log(`  Project:  ${project.name}`);
   if (project.repoUrl) log(`  Repo:     ${project.repoUrl}`);
-  log(`  Preset:   ${opts.preset || "custom"}`);
-  log(`  Modules:  ${selectedModules.join(", ") || "(none)"}`);
-  log(`  Roles:    ceo, engineer${selectedRoles.length ? ", " + selectedRoles.join(", ") : ""}`);
+  log(`  Preset:   ${opts.preset || 'custom'}`);
+  log(`  Modules:  ${selectedModules.join(', ') || '(none)'}`);
+  log(`  Roles:    ceo, engineer${selectedRoles.length ? ', ' + selectedRoles.join(', ') : ''}`);
   if (capabilities.length) {
     log(`  Capabilities:`);
     for (const cap of capabilities) {
       log(`    ${cap.skill}: ${cap.primary}`);
     }
   }
-  log("");
+  log('');
 
   if (opts.dryRun) {
-    log("Dry run — no files written.");
+    log('Dry run — no files written.');
     return;
   }
 
   // Assemble
-  log("Assembling workspace...");
+  log('Assembling workspace...');
   const assemblyResult = await assembleCompany({
     companyName: opts.name,
     goal,
@@ -135,8 +135,8 @@ export async function runHeadless(opts) {
 
   // Provision via API
   if (opts.apiEnabled) {
-    log("");
-    log("Provisioning via Paperclip API...");
+    log('');
+    log('Provisioning via Paperclip API...');
     const client = new PaperclipClient(opts.apiBaseUrl);
 
     const provisionResult = await provisionCompany({
@@ -155,8 +155,8 @@ export async function runHeadless(opts) {
       onProgress: (line) => log(`  ${line}`),
     });
 
-    log("");
-    log("Provisioned:");
+    log('');
+    log('Provisioned:');
     log(`  Company:  ${provisionResult.companyId}`);
     if (provisionResult.goalId) log(`  Goal:     ${provisionResult.goalId}`);
     log(`  Project:  ${provisionResult.projectId}`);
@@ -172,9 +172,9 @@ export async function runHeadless(opts) {
     }
   }
 
-  log("");
+  log('');
   log(`Done. Workspace: ${assemblyResult.companyDir}`);
   if (!opts.apiEnabled) {
-    log("Follow BOOTSTRAP.md to set up in the Paperclip UI, or re-run with --api.");
+    log('Follow BOOTSTRAP.md to set up in the Paperclip UI, or re-run with --api.');
   }
 }

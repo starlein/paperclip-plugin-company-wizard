@@ -1,14 +1,14 @@
-import React from "react";
-import MultiSelect from "./MultiSelect.jsx";
+import React from 'react';
+import MultiSelect from './MultiSelect.jsx';
 
 export default function StepRoles({ roles, preselected, onComplete }) {
-  if (roles.length === 0) {
-    // No optional roles available, skip
-    React.useEffect(() => {
-      onComplete(preselected);
-    }, []);
-    return null;
-  }
+  const skip = roles.length === 0;
+
+  React.useEffect(() => {
+    if (skip) onComplete(preselected);
+  }, [skip, onComplete, preselected]);
+
+  if (skip) return null;
 
   const items = roles.map((r) => ({
     value: r.name,

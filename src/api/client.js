@@ -1,6 +1,6 @@
 const BASE_ROLE_MAP = {
-  ceo: "ceo",
-  engineer: "engineer",
+  ceo: 'ceo',
+  engineer: 'engineer',
 };
 
 /**
@@ -8,26 +8,26 @@ const BASE_ROLE_MAP = {
  * Designed for local instances (no auth required in local_implicit mode).
  */
 export class PaperclipClient {
-  constructor(baseUrl = "http://localhost:3100") {
-    this.baseUrl = baseUrl.replace(/\/$/, "");
+  constructor(baseUrl = 'http://localhost:3100') {
+    this.baseUrl = baseUrl.replace(/\/$/, '');
   }
 
   async _fetch(path, opts = {}) {
     const url = `${this.baseUrl}${path}`;
     const res = await fetch(url, {
-      headers: { "Content-Type": "application/json", ...opts.headers },
+      headers: { 'Content-Type': 'application/json', ...opts.headers },
       ...opts,
     });
     if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      throw new Error(`${opts.method || "GET"} ${path} → ${res.status}: ${body}`);
+      const body = await res.text().catch(() => '');
+      throw new Error(`${opts.method || 'GET'} ${path} → ${res.status}: ${body}`);
     }
     return res.json();
   }
 
   async ping() {
     try {
-      await fetch(`${this.baseUrl}/api/companies`, { method: "GET" });
+      await fetch(`${this.baseUrl}/api/companies`, { method: 'GET' });
       return true;
     } catch {
       return false;
@@ -35,21 +35,21 @@ export class PaperclipClient {
   }
 
   async createCompany({ name, description }) {
-    return this._fetch("/api/companies", {
-      method: "POST",
+    return this._fetch('/api/companies', {
+      method: 'POST',
       body: JSON.stringify({ name, description: description || null }),
     });
   }
 
   async createAgent(companyId, { name, role, title, reportsTo, adapterConfig }) {
     return this._fetch(`/api/companies/${companyId}/agents`, {
-      method: "POST",
+      method: 'POST',
       body: JSON.stringify({
         name,
         role,
         title: title || null,
         reportsTo: reportsTo || null,
-        adapterType: "claude_local",
+        adapterType: 'claude_local',
         adapterConfig: {
           dangerouslySkipPermissions: true,
           ...(adapterConfig || {}),
@@ -60,7 +60,7 @@ export class PaperclipClient {
 
   async createProject(companyId, { name, description, workspace }) {
     return this._fetch(`/api/companies/${companyId}/projects`, {
-      method: "POST",
+      method: 'POST',
       body: JSON.stringify({
         name,
         description: description || null,
@@ -71,23 +71,26 @@ export class PaperclipClient {
 
   async createGoal(companyId, { title, description, level }) {
     return this._fetch(`/api/companies/${companyId}/goals`, {
-      method: "POST",
+      method: 'POST',
       body: JSON.stringify({
         title,
         description: description || null,
-        level: level || "company",
-        status: "active",
+        level: level || 'company',
+        status: 'active',
       }),
     });
   }
 
-  async createIssue(companyId, { title, description, priority, projectId, goalId, assigneeAgentId }) {
+  async createIssue(
+    companyId,
+    { title, description, priority, projectId, goalId, assigneeAgentId },
+  ) {
     return this._fetch(`/api/companies/${companyId}/issues`, {
-      method: "POST",
+      method: 'POST',
       body: JSON.stringify({
         title,
         description: description || null,
-        priority: priority || "medium",
+        priority: priority || 'medium',
         projectId: projectId || undefined,
         goalId: goalId || undefined,
         assigneeAgentId: assigneeAgentId || undefined,
@@ -97,10 +100,10 @@ export class PaperclipClient {
 
   async triggerHeartbeat(agentId, { issueId } = {}) {
     return this._fetch(`/api/agents/${agentId}/wakeup`, {
-      method: "POST",
+      method: 'POST',
       body: JSON.stringify({
-        source: "on_demand",
-        triggerDetail: "manual",
+        source: 'on_demand',
+        triggerDetail: 'manual',
         ...(issueId ? { payload: { issueId } } : {}),
       }),
     });
@@ -115,6 +118,6 @@ export class PaperclipClient {
     if (BASE_ROLE_MAP[clipperRole]) return BASE_ROLE_MAP[clipperRole];
     // Check role.json data
     if (roleData?.paperclipRole) return roleData.paperclipRole;
-    return "general";
+    return 'general';
   }
 }

@@ -1,7 +1,7 @@
-import { join } from "node:path";
-import { PaperclipClient } from "./client.js";
-import { formatRoleName } from "../logic/resolve.js";
-import { toPascalCase } from "../logic/assemble.js";
+import { join } from 'node:path';
+import { PaperclipClient } from './client.js';
+import { formatRoleName } from '../logic/resolve.js';
+import { toPascalCase } from '../logic/assemble.js';
 
 /**
  * Provision a company in Paperclip via the API.
@@ -44,7 +44,7 @@ export async function provisionCompany({
   onProgress = () => {},
 }) {
   // 1. Create company
-  onProgress("Creating company...");
+  onProgress('Creating company...');
   const company = await client.createCompany({ name: companyName });
   const companyId = company.id;
   onProgress(`✓ Company "${companyName}" created`);
@@ -56,14 +56,14 @@ export async function provisionCompany({
     const g = await client.createGoal(companyId, {
       title: goal.title,
       description: goal.description,
-      level: "company",
+      level: 'company',
     });
     goalId = g.id;
     onProgress(`✓ Goal created: ${goal.title}`);
   }
 
   // 3. Create project with workspace
-  const projectCwd = join(companyDir, "projects", toPascalCase(projectName));
+  const projectCwd = join(companyDir, 'projects', toPascalCase(projectName));
   onProgress(`Creating project "${projectName}"...`);
   const project = await client.createProject(companyId, {
     name: projectName,
@@ -85,9 +85,7 @@ export async function provisionCompany({
   const agentIds = new Map();
 
   // Sort roles: CEO first so other agents can reference its ID via reportsTo
-  const sortedRoles = [...allRoles].sort((a, b) =>
-    a === "ceo" ? -1 : b === "ceo" ? 1 : 0,
-  );
+  const sortedRoles = [...allRoles].sort((a, b) => (a === 'ceo' ? -1 : b === 'ceo' ? 1 : 0));
 
   for (const role of sortedRoles) {
     const roleData = rolesData.get(role);
@@ -112,9 +110,7 @@ export async function provisionCompany({
         cwd: companyDir,
         instructionsFilePath: join(companyDir, `agents/${role}/AGENTS.md`),
         ...(agentModel ? { model: agentModel } : {}),
-        ...Object.fromEntries(
-          Object.entries(roleAdapter).filter(([k]) => k !== "model"),
-        ),
+        ...Object.fromEntries(Object.entries(roleAdapter).filter(([k]) => k !== 'model')),
       },
     });
     agentIds.set(role, agent.id);
@@ -135,25 +131,25 @@ export async function provisionCompany({
       assigneeAgentId,
     });
     issueIds.push(issue.id);
-    if (task.assignTo === "ceo" && !firstCeoIssueId) {
+    if (task.assignTo === 'ceo' && !firstCeoIssueId) {
       firstCeoIssueId = issue.id;
     }
-    const assignLabel = assigneeAgentId ? ` → ${task.assignTo}` : "";
+    const assignLabel = assigneeAgentId ? ` → ${task.assignTo}` : '';
     onProgress(`✓ Issue created: ${task.title}${assignLabel}`);
   }
 
   // 6. Optionally start CEO heartbeat (with issue context for workspace resolution)
   let ceoStarted = false;
   if (startCeo) {
-    const ceoAgentId = agentIds.get("ceo");
+    const ceoAgentId = agentIds.get('ceo');
     if (ceoAgentId) {
-      onProgress("Starting CEO heartbeat...");
+      onProgress('Starting CEO heartbeat...');
       try {
         await client.triggerHeartbeat(ceoAgentId, {
           issueId: firstCeoIssueId,
         });
         ceoStarted = true;
-        onProgress("✓ CEO heartbeat started");
+        onProgress('✓ CEO heartbeat started');
       } catch (err) {
         onProgress(`! Could not start CEO heartbeat: ${err.message}`);
       }

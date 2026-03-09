@@ -1,14 +1,14 @@
-import React from "react";
-import { render } from "ink";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import App from "./app.jsx";
-import { runHeadless } from "./headless.js";
-import { aiWizard, aiWizardInterview } from "./logic/ai-wizard.js";
-import { loadPresets, loadModules, loadRoles } from "./logic/load-templates.js";
+import React from 'react';
+import { render } from 'ink';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import App from './app.jsx';
+import { runHeadless } from './headless.js';
+import { aiWizard, aiWizardInterview } from './logic/ai-wizard.js';
+import { loadPresets, loadModules, loadRoles } from './logic/load-templates.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const TEMPLATES_DIR = join(__dirname, "..", "templates");
+const TEMPLATES_DIR = join(__dirname, '..', 'templates');
 
 const HELP = `
   Clipper — Bootstrap a Paperclip company workspace
@@ -65,10 +65,10 @@ const HELP = `
 function parseArgs(argv) {
   const args = argv.slice(2);
   const config = {
-    outputDir: join(process.cwd(), "companies"),
+    outputDir: join(process.cwd(), 'companies'),
     dryRun: false,
     apiEnabled: false,
-    apiBaseUrl: "http://localhost:3100",
+    apiBaseUrl: 'http://localhost:3100',
     model: null,
     startCeo: false,
     // AI wizard
@@ -91,88 +91,94 @@ function parseArgs(argv) {
     const next = args[i + 1];
 
     switch (arg) {
-      case "--output":
+      case '--output':
         config.outputDir = resolve(next);
         i++;
         break;
-      case "--dry-run":
+      case '--dry-run':
         config.dryRun = true;
         break;
-      case "--api":
+      case '--api':
         config.apiEnabled = true;
         break;
-      case "--api-url":
+      case '--api-url':
         config.apiBaseUrl = next;
         config.apiEnabled = true;
         i++;
         break;
-      case "--start":
+      case '--start':
         config.startCeo = true;
         config.apiEnabled = true;
         break;
-      case "--model":
+      case '--model':
         config.model = next;
         i++;
         break;
-      case "--ai":
+      case '--ai':
         // --ai without argument → interview mode (empty string)
         // --ai "description" → single-shot mode
-        if (next && !next.startsWith("-")) {
+        if (next && !next.startsWith('-')) {
           config.aiDescription = next;
           i++;
         } else {
-          config.aiDescription = "";
+          config.aiDescription = '';
         }
         break;
-      case "--ai-model":
+      case '--ai-model':
         config.aiModel = next;
         i++;
         break;
-      case "--name":
+      case '--name':
         config.name = next;
         i++;
         break;
-      case "--goal":
+      case '--goal':
         config.goal = next;
         i++;
         break;
-      case "--goal-description":
+      case '--goal-description':
         config.goalDescription = next;
         i++;
         break;
-      case "--project":
+      case '--project':
         config.projectName = next;
         i++;
         break;
-      case "--project-description":
+      case '--project-description':
         config.projectDescription = next;
         i++;
         break;
-      case "--repo":
+      case '--repo':
         config.repo = next;
         i++;
         break;
-      case "--preset":
+      case '--preset':
         config.preset = next;
         i++;
         break;
-      case "--modules":
-        config.modules = next.split(",").map((s) => s.trim()).filter(Boolean);
+      case '--modules':
+        config.modules = next
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
         i++;
         break;
-      case "--roles":
-        config.roles = next.split(",").map((s) => s.trim()).filter(Boolean);
+      case '--roles':
+        config.roles = next
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
         i++;
         break;
-      case "--help":
-      case "-h":
+      case '--help':
+      case '-h':
         console.log(HELP);
         process.exit(0);
         break;
       default:
-        if (arg.startsWith("-")) {
+        if (arg.startsWith('-')) {
           console.error(`Unknown flag: ${arg}`);
-          console.error("Run clipper --help for usage.");
+          console.error('Run clipper --help for usage.');
           process.exit(1);
         }
     }
@@ -225,15 +231,17 @@ if (config.aiDescription !== null) {
       // In single-shot mode, show reasoning and summary
       if (config.aiDescription) {
         console.log(`  \x1b[32m●\x1b[0m ${aiResult.reasoning}`);
-        console.log("");
-        console.log(`  \x1b[1mCompany:\x1b[0m ${aiResult.name}  \x1b[2m│\x1b[0m  \x1b[1mPreset:\x1b[0m ${aiResult.preset}`);
+        console.log('');
+        console.log(
+          `  \x1b[1mCompany:\x1b[0m ${aiResult.name}  \x1b[2m│\x1b[0m  \x1b[1mPreset:\x1b[0m ${aiResult.preset}`,
+        );
         if (aiResult.modules.length) {
-          console.log(`  \x1b[36mModules:\x1b[0m ${aiResult.modules.join(", ")}`);
+          console.log(`  \x1b[36mModules:\x1b[0m ${aiResult.modules.join(', ')}`);
         }
         if (aiResult.roles.length) {
-          console.log(`  \x1b[36mRoles:\x1b[0m   ${aiResult.roles.join(", ")}`);
+          console.log(`  \x1b[36mRoles:\x1b[0m   ${aiResult.roles.join(', ')}`);
         }
-        console.log("");
+        console.log('');
       }
 
       // AI result as defaults, explicit CLI flags override
@@ -253,9 +261,9 @@ if (config.aiDescription !== null) {
         dryRun: config.dryRun,
       });
     } catch (err) {
-      console.error("");
+      console.error('');
       console.error(`  \x1b[31m✗\x1b[0m ${err.message}`);
-      console.error("");
+      console.error('');
       process.exit(1);
     }
   })();
@@ -289,7 +297,7 @@ if (config.aiDescription !== null) {
       initialPreset={config.preset}
       initialModules={config.modules}
       initialRoles={config.roles}
-    />
+    />,
   );
 
   await app.waitUntilExit();

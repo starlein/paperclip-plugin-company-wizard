@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { Box, Text } from "ink";
-import Spinner from "ink-spinner";
-import { PaperclipClient } from "../api/client.js";
-import { provisionCompany } from "../api/provision.js";
+import React, { useState, useEffect } from 'react';
+import { Box, Text } from 'ink';
+import Spinner from 'ink-spinner';
+import { PaperclipClient } from '../api/client.js';
+import { provisionCompany } from '../api/provision.js';
 
 export default function StepProvision({
   companyName,
@@ -68,22 +68,16 @@ export default function StepProvision({
           <Text color="green">✓ </Text>
         ) : (
           <Text color="cyan">
-            <Spinner type="dots" />{" "}
+            <Spinner type="dots" />{' '}
           </Text>
         )}
-        <Text bold>
-          {done ? "Provisioned via API" : "Provisioning via Paperclip API..."}
-        </Text>
+        <Text bold>{done ? 'Provisioned via API' : 'Provisioning via Paperclip API...'}</Text>
       </Box>
       <Box flexDirection="column" marginLeft={2}>
         {log.map((line, i) => {
-          const isDone = line.startsWith("✓");
+          const isDone = line.startsWith('✓');
           return (
-            <Text
-              key={i}
-              color={isDone ? "green" : undefined}
-              dimColor={!isDone}
-            >
+            <Text key={i} color={isDone ? 'green' : undefined} dimColor={!isDone}>
               {line}
             </Text>
           );

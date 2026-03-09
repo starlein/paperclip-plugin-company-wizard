@@ -1,37 +1,34 @@
-import React, { useState, useEffect } from "react";
-import { Box, Text, useApp } from "ink";
-import Header from "./components/Header.jsx";
-import PrevSelections from "./components/PrevSelections.jsx";
-import StepName from "./components/StepName.jsx";
-import StepGoal from "./components/StepGoal.jsx";
-import StepProject from "./components/StepProject.jsx";
-import StepPreset from "./components/StepPreset.jsx";
-import StepModules from "./components/StepModules.jsx";
-import StepRoles from "./components/StepRoles.jsx";
-import StepSummary from "./components/StepSummary.jsx";
-import StepAssemble from "./components/StepAssemble.jsx";
-import StepProvision from "./components/StepProvision.jsx";
-import StepDone from "./components/StepDone.jsx";
-import { loadPresets, loadModules, loadRoles } from "./logic/load-templates.js";
-import {
-  resolveCapabilities,
-  buildAllRoles,
-} from "./logic/resolve.js";
-import { toPascalCase } from "./logic/assemble.js";
+import React, { useState, useEffect } from 'react';
+import { Box, Text, useApp } from 'ink';
+import Header from './components/Header.jsx';
+import PrevSelections from './components/PrevSelections.jsx';
+import StepName from './components/StepName.jsx';
+import StepGoal from './components/StepGoal.jsx';
+import StepProject from './components/StepProject.jsx';
+import StepPreset from './components/StepPreset.jsx';
+import StepModules from './components/StepModules.jsx';
+import StepRoles from './components/StepRoles.jsx';
+import StepSummary from './components/StepSummary.jsx';
+import StepAssemble from './components/StepAssemble.jsx';
+import StepProvision from './components/StepProvision.jsx';
+import StepDone from './components/StepDone.jsx';
+import { loadPresets, loadModules, loadRoles } from './logic/load-templates.js';
+import { resolveCapabilities, buildAllRoles } from './logic/resolve.js';
+import { toPascalCase } from './logic/assemble.js';
 
 const STEPS = {
-  LOADING: "loading",
-  NAME: "name",
-  GOAL: "goal",
-  PROJECT: "project",
-  PRESET: "preset",
-  MODULES: "modules",
-  ROLES: "roles",
-  SUMMARY: "summary",
-  ASSEMBLE: "assemble",
-  PROVISION: "provision",
-  DONE: "done",
-  ERROR: "error",
+  LOADING: 'loading',
+  NAME: 'name',
+  GOAL: 'goal',
+  PROJECT: 'project',
+  PRESET: 'preset',
+  MODULES: 'modules',
+  ROLES: 'roles',
+  SUMMARY: 'summary',
+  ASSEMBLE: 'assemble',
+  PROVISION: 'provision',
+  DONE: 'done',
+  ERROR: 'error',
 };
 
 export default function App({
@@ -64,18 +61,18 @@ export default function App({
   const [availableRoles, setAvailableRoles] = useState([]);
 
   // User selections (pre-filled from flags where available)
-  const [companyName, setCompanyName] = useState(initialName || "");
+  const [companyName, setCompanyName] = useState(initialName || '');
   const [goal, setGoal] = useState({
-    title: initialGoal || "",
+    title: initialGoal || '',
     description: initialGoalDescription || null,
   });
   const [project, setProject] = useState({
-    name: initialProjectName || "",
+    name: initialProjectName || '',
     description: initialProjectDescription || null,
     repoUrl: initialRepo || null,
   });
-  const [baseName, setBaseName] = useState("base");
-  const [presetName, setPresetName] = useState("");
+  const [baseName, setBaseName] = useState('base');
+  const [presetName, setPresetName] = useState('');
   const [selectedModules, setSelectedModules] = useState([]);
   const [preselectedModules, setPreselectedModules] = useState([]);
   const [selectedRoles, setSelectedRoles] = useState([]);
@@ -97,7 +94,7 @@ export default function App({
       // Apply preset immediately
       const preset = loadedPresets.find((p) => p.name === initialPreset);
       if (preset) {
-        setBaseName(preset.base || "base");
+        setBaseName(preset.base || 'base');
         const mods = [...new Set([...(preset.modules || []), ...initialModules])];
         const roles = [...new Set([...(preset.roles || []), ...initialRoles])];
         setPresetName(preset.name);
@@ -113,11 +110,7 @@ export default function App({
 
   // Load template data on mount
   useEffect(() => {
-    Promise.all([
-      loadPresets(templatesDir),
-      loadModules(templatesDir),
-      loadRoles(templatesDir),
-    ])
+    Promise.all([loadPresets(templatesDir), loadModules(templatesDir), loadRoles(templatesDir)])
       .then(([p, m, r]) => {
         setPresets(p);
         setModules(m);
@@ -131,21 +124,15 @@ export default function App({
   }, []);
 
   // Derived state
-  const allRolesSet = buildAllRoles(["ceo", "engineer"], selectedRoles);
-  const capabilities = resolveCapabilities(
-    modules,
-    selectedModules,
-    allRolesSet
-  );
+  const allRolesSet = buildAllRoles(['ceo', 'engineer'], selectedRoles);
+  const capabilities = resolveCapabilities(modules, selectedModules, allRolesSet);
 
   const rolesData = new Map();
   for (const r of availableRoles) {
     rolesData.set(r.name, r);
   }
 
-  const companyDir = companyName
-    ? `${outputDir}/${toPascalCase(companyName)}`
-    : "";
+  const companyDir = companyName ? `${outputDir}/${toPascalCase(companyName)}` : '';
 
   // Map steps to user-visible step numbers (wizard steps only)
   const STEP_NUMBERS = {
@@ -167,34 +154,34 @@ export default function App({
 
   // Build previous selections for context display
   const prev = {
-    company: companyName ? [["Company", companyName]] : [],
+    company: companyName ? [['Company', companyName]] : [],
     goal: goal.title
       ? [
-          ["Company", companyName],
-          ["Goal", goal.title],
-          ...(goal.description ? [["", goal.description]] : []),
+          ['Company', companyName],
+          ['Goal', goal.title],
+          ...(goal.description ? [['', goal.description]] : []),
         ]
-      : [["Company", companyName]],
+      : [['Company', companyName]],
     project: [
-      ["Company", companyName],
-      ...(goal.title ? [["Goal", goal.title]] : []),
-      ...(project.name ? [["Project", project.name]] : []),
-      ...(project.repoUrl ? [["Repo", project.repoUrl]] : []),
+      ['Company', companyName],
+      ...(goal.title ? [['Goal', goal.title]] : []),
+      ...(project.name ? [['Project', project.name]] : []),
+      ...(project.repoUrl ? [['Repo', project.repoUrl]] : []),
     ],
     preset: [
-      ["Company", companyName],
-      ...(goal.title ? [["Goal", goal.title]] : []),
-      ...(project.name ? [["Project", project.name]] : []),
+      ['Company', companyName],
+      ...(goal.title ? [['Goal', goal.title]] : []),
+      ...(project.name ? [['Project', project.name]] : []),
     ],
     modules: [
-      ["Company", companyName],
-      ...(goal.title ? [["Goal", goal.title]] : []),
-      ...(presetName ? [["Preset", presetName]] : []),
+      ['Company', companyName],
+      ...(goal.title ? [['Goal', goal.title]] : []),
+      ...(presetName ? [['Preset', presetName]] : []),
     ],
     roles: [
-      ["Company", companyName],
-      ...(presetName ? [["Preset", presetName]] : []),
-      ...(selectedModules.length ? [["Modules", selectedModules.join(", ")]] : []),
+      ['Company', companyName],
+      ...(presetName ? [['Preset', presetName]] : []),
+      ...(selectedModules.length ? [['Modules', selectedModules.join(', ')]] : []),
     ],
   };
 
@@ -246,8 +233,8 @@ export default function App({
             presets={presets}
             onComplete={(preset) => {
               setPresetName(preset.name);
-              if (preset.name === "custom") {
-                setBaseName("base");
+              if (preset.name === 'custom') {
+                setBaseName('base');
                 setPreselectedModules([]);
                 setPreselectedRoles([]);
               } else {
@@ -366,9 +353,7 @@ export default function App({
         <Box flexDirection="column" gap={1}>
           {error ? (
             <Box>
-              <Text color="yellow">
-                API provisioning failed: {error}
-              </Text>
+              <Text color="yellow">API provisioning failed: {error}</Text>
             </Box>
           ) : null}
           <StepDone
@@ -380,9 +365,7 @@ export default function App({
         </Box>
       )}
 
-      {step === STEPS.ERROR && (
-        <Text color="red">Error: {error}</Text>
-      )}
+      {step === STEPS.ERROR && <Text color="red">Error: {error}</Text>}
     </Box>
   );
 }

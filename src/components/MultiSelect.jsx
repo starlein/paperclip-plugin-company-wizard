@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Box, Text, useInput } from "ink";
+import React, { useState } from 'react';
+import { Box, Text, useInput } from 'ink';
 
 /**
  * Multi-select component with pre-selection support and dependency callbacks.
@@ -28,7 +28,7 @@ export default function MultiSelect({
     } else if (key.downArrow) {
       setCursor((c) => (c < items.length - 1 ? c + 1 : 0));
       setFeedback(null);
-    } else if (input === " ") {
+    } else if (input === ' ') {
       const item = items[cursor];
       if (!item) return;
 
@@ -43,7 +43,7 @@ export default function MultiSelect({
           if (onToggleOff) {
             const result = onToggleOff(item.value, [...next]);
             if (result.blocked) {
-              setFeedback({ type: "warn", text: result.hint });
+              setFeedback({ type: 'warn', text: result.hint });
               return prev;
             }
           }
@@ -59,8 +59,8 @@ export default function MultiSelect({
             }
             if (result.hints?.length) {
               setFeedback({
-                type: "info",
-                text: result.hints.join("; "),
+                type: 'info',
+                text: result.hints.join('; '),
               });
             } else {
               setFeedback(null);
@@ -77,47 +77,52 @@ export default function MultiSelect({
   return (
     <Box flexDirection="column">
       <Box>
-        <Text color="cyan" bold>? </Text>
+        <Text color="cyan" bold>
+          ?{' '}
+        </Text>
         {label ? <Text bold>{label}</Text> : null}
       </Box>
-      <Text dimColor>  space toggle  enter confirm</Text>
+      <Text dimColor> space toggle enter confirm</Text>
       <Box marginTop={1} marginLeft={2} flexDirection="column">
         {items.map((item, i) => {
           const isSelected = selected.has(item.value);
           const isPreselected = preselected.includes(item.value);
           const isCursor = i === cursor;
-          const marker = isSelected ? "◉" : "○";
+          const marker = isSelected ? '◉' : '○';
 
           return (
             <Box key={item.value} flexDirection="column">
               <Box>
-                <Text color={isCursor ? "cyan" : isSelected ? "green" : "gray"}>
-                  {isCursor ? ">" : " "} {marker}
+                <Text color={isCursor ? 'cyan' : isSelected ? 'green' : 'gray'}>
+                  {isCursor ? '>' : ' '} {marker}
                 </Text>
-                <Text color={isCursor ? "cyan" : undefined} bold={isCursor}>
-                  {" "}{item.label}
+                <Text color={isCursor ? 'cyan' : undefined} bold={isCursor}>
+                  {' '}
+                  {item.label}
                 </Text>
                 {isPreselected ? (
-                  <Text color="green" dimColor> preset</Text>
+                  <Text color="green" dimColor>
+                    {' '}
+                    preset
+                  </Text>
                 ) : null}
               </Box>
-              {isCursor && item.description ? (
-                <Text dimColor>      {item.description}</Text>
-              ) : null}
-              {isCursor && item.hints?.map((h, j) => (
-                <Text key={j} color="cyan" dimColor>
-                  {"      + "}
-                  {h}
-                </Text>
-              ))}
+              {isCursor && item.description ? <Text dimColor> {item.description}</Text> : null}
+              {isCursor &&
+                item.hints?.map((h, j) => (
+                  <Text key={j} color="cyan" dimColor>
+                    {'      + '}
+                    {h}
+                  </Text>
+                ))}
             </Box>
           );
         })}
       </Box>
       {feedback ? (
         <Box marginTop={1} marginLeft={2}>
-          <Text color={feedback.type === "warn" ? "yellow" : "cyan"}>
-            {feedback.type === "warn" ? "! " : "i "}
+          <Text color={feedback.type === 'warn' ? 'yellow' : 'cyan'}>
+            {feedback.type === 'warn' ? '! ' : 'i '}
             {feedback.text}
           </Text>
         </Box>

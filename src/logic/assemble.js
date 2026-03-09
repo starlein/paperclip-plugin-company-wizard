@@ -6,8 +6,8 @@ import {
   readdir,
   readFile,
   writeFile,
-} from "node:fs/promises";
-import { join } from "node:path";
+} from 'node:fs/promises';
+import { join } from 'node:path';
 
 async function exists(p) {
   try {
@@ -40,7 +40,7 @@ async function appendToFile(filePath, content) {
 
 async function readJson(p) {
   if (!(await exists(p))) return null;
-  return JSON.parse(await readFile(p, "utf-8"));
+  return JSON.parse(await readFile(p, 'utf-8'));
 }
 
 /**
@@ -49,11 +49,11 @@ async function readJson(p) {
  */
 export function toPascalCase(name) {
   return name
-    .replace(/[^a-zA-Z0-9\s\-_]/g, "")
+    .replace(/[^a-zA-Z0-9\s\-_]/g, '')
     .split(/[\s\-_]+/)
     .filter(Boolean)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join("");
+    .join('');
 }
 
 /**
@@ -96,22 +96,20 @@ export async function assembleCompany({
   // Determine all roles present
   const baseDir = join(templatesDir, baseName);
   const baseEntries = await readdir(baseDir, { withFileTypes: true });
-  const allRoles = new Set(
-    baseEntries.filter((e) => e.isDirectory()).map((e) => e.name)
-  );
+  const allRoles = new Set(baseEntries.filter((e) => e.isDirectory()).map((e) => e.name));
   for (const role of extraRoleNames) allRoles.add(role);
 
   // 1. Copy base template roles (exclude .json metadata like role.json)
   for (const role of baseEntries) {
     if (!role.isDirectory()) continue;
     const roleSrc = join(baseDir, role.name);
-    const roleDest = join(companyDir, "agents", role.name);
+    const roleDest = join(companyDir, 'agents', role.name);
     await mkdir(roleDest, { recursive: true });
     const entries = await readdir(roleSrc, { withFileTypes: true });
     for (const entry of entries) {
       if (entry.isDirectory()) {
         await copyDir(join(roleSrc, entry.name), join(roleDest, entry.name));
-      } else if (!entry.name.endsWith(".json")) {
+      } else if (!entry.name.endsWith('.json')) {
         await copyFile(join(roleSrc, entry.name), join(roleDest, entry.name));
       }
     }
@@ -120,16 +118,16 @@ export async function assembleCompany({
 
   // 2. Copy extra roles from templates/roles/
   for (const roleName of extraRoleNames) {
-    const roleDir = join(templatesDir, "roles", roleName);
+    const roleDir = join(templatesDir, 'roles', roleName);
     if (!(await exists(roleDir))) {
       onProgress(`! role ${roleName} not found, skipping`);
       continue;
     }
-    const destDir = join(companyDir, "agents", roleName);
+    const destDir = join(companyDir, 'agents', roleName);
     await mkdir(destDir, { recursive: true });
     const entries = await readdir(roleDir, { withFileTypes: true });
     for (const entry of entries) {
-      if (entry.isDirectory() || !entry.name.endsWith(".md")) continue;
+      if (entry.isDirectory() || !entry.name.endsWith('.md')) continue;
       await copyFile(join(roleDir, entry.name), join(destDir, entry.name));
     }
     onProgress(`+ agents/${roleName}/ (role)`);
@@ -138,23 +136,19 @@ export async function assembleCompany({
   // 3. Apply modules with capability-aware skill assignment
   const initialTasks = [];
   for (const moduleName of moduleNames) {
-    const moduleDir = join(templatesDir, "modules", moduleName);
+    const moduleDir = join(templatesDir, 'modules', moduleName);
     if (!(await exists(moduleDir))) {
       onProgress(`! module ${moduleName} not found, skipping`);
       continue;
     }
 
-    const moduleJson = await readJson(join(moduleDir, "module.json"));
+    const moduleJson = await readJson(join(moduleDir, 'module.json'));
 
     // Check activatesWithRoles
     if (moduleJson?.activatesWithRoles?.length) {
-      const hasActivatingRole = moduleJson.activatesWithRoles.some((r) =>
-        allRoles.has(r)
-      );
+      const hasActivatingRole = moduleJson.activatesWithRoles.some((r) => allRoles.has(r));
       if (!hasActivatingRole) {
-        onProgress(
-          `○ ${moduleName} (needs ${moduleJson.activatesWithRoles.join(" or ")})`
-        );
+        onProgress(`○ ${moduleName} (needs ${moduleJson.activatesWithRoles.join(' or ')})`);
         continue;
       }
     }
@@ -163,11 +157,9 @@ export async function assembleCompany({
     if (moduleJson?.tasks?.length) {
       for (const task of moduleJson.tasks) {
         let assignee = task.assignTo;
-        if (assignee?.startsWith("capability:")) {
-          const capName = assignee.slice("capability:".length);
-          const cap = moduleJson.capabilities?.find(
-            (c) => c.skill === capName
-          );
+        if (assignee?.startsWith('capability:')) {
+          const capName = assignee.slice('capability:'.length);
+          const cap = moduleJson.capabilities?.find((c) => c.skill === capName);
           if (cap) {
             assignee = cap.owners.find((r) => allRoles.has(r)) || assignee;
           }
@@ -177,9 +169,9 @@ export async function assembleCompany({
     }
 
     // Copy shared docs
-    const docsDir = join(moduleDir, "docs");
+    const docsDir = join(moduleDir, 'docs');
     if (await exists(docsDir)) {
-      await copyDir(docsDir, join(companyDir, "docs"));
+      await copyDir(docsDir, join(companyDir, 'docs'));
       const docs = await readdir(docsDir);
       for (const doc of docs) {
         onProgress(`+ docs/${doc} (${moduleName})`);
@@ -211,15 +203,15 @@ export async function assembleCompany({
     // Non-capability skills (no matching capabilityOwners entry) are copied
     // as-is to the role that defines them.
 
-    const sharedSkillsDir = join(moduleDir, "skills");
-    const agentsDir = join(moduleDir, "agents");
+    const sharedSkillsDir = join(moduleDir, 'skills');
+    const agentsDir = join(moduleDir, 'agents');
 
     // Helper: resolve a skill file from role-specific first, then shared
     async function resolveSkillFile(roleName, fileName) {
-      const roleSpecific = join(agentsDir, roleName, "skills", fileName);
-      if (await exists(roleSpecific)) return { path: roleSpecific, source: "role" };
+      const roleSpecific = join(agentsDir, roleName, 'skills', fileName);
+      if (await exists(roleSpecific)) return { path: roleSpecific, source: 'role' };
       const shared = join(sharedSkillsDir, fileName);
-      if (await exists(shared)) return { path: shared, source: "shared" };
+      if (await exists(shared)) return { path: shared, source: 'shared' };
       return null;
     }
 
@@ -227,14 +219,14 @@ export async function assembleCompany({
     async function installSkill(roleName, fileName, label) {
       const resolved = await resolveSkillFile(roleName, fileName);
       if (!resolved) return false;
-      const destSkillsDir = join(companyDir, "agents", roleName, "skills");
+      const destSkillsDir = join(companyDir, 'agents', roleName, 'skills');
       await mkdir(destSkillsDir, { recursive: true });
       await copyFile(resolved.path, join(destSkillsDir, fileName));
       await appendToFile(
-        join(companyDir, "agents", roleName, "AGENTS.md"),
-        `\nRead and follow: \`$AGENT_HOME/skills/${fileName}\`\n`
+        join(companyDir, 'agents', roleName, 'AGENTS.md'),
+        `\nRead and follow: \`$AGENT_HOME/skills/${fileName}\`\n`,
       );
-      const sourceTag = resolved.source === "shared" ? ", shared" : "";
+      const sourceTag = resolved.source === 'shared' ? ', shared' : '';
       onProgress(`+ agents/${roleName}/skills/${fileName} (${moduleName}, ${label}${sourceTag})`);
       return true;
     }
@@ -242,14 +234,14 @@ export async function assembleCompany({
     // Install capability-based skills for each present role
     for (const [skillName, { primary, cap }] of capabilityOwners) {
       // Primary owner gets the primary skill
-      await installSkill(primary, `${skillName}.md`, "primary");
+      await installSkill(primary, `${skillName}.md`, 'primary');
 
       // Fallback owners get the fallback skill
       if (cap.fallbackSkill) {
         for (const fallbackRole of cap.owners) {
           if (fallbackRole === primary) continue;
           if (!allRoles.has(fallbackRole)) continue;
-          await installSkill(fallbackRole, `${cap.fallbackSkill}.md`, "fallback");
+          await installSkill(fallbackRole, `${cap.fallbackSkill}.md`, 'fallback');
         }
       }
     }
@@ -261,23 +253,23 @@ export async function assembleCompany({
         if (!role.isDirectory()) continue;
         if (!allRoles.has(role.name)) continue;
 
-        const skillsDir = join(agentsDir, role.name, "skills");
+        const skillsDir = join(agentsDir, role.name, 'skills');
         if (!(await exists(skillsDir))) continue;
 
         const skills = await readdir(skillsDir);
         for (const skillFile of skills) {
-          const skillName = skillFile.replace(/\.md$/, "");
-          const skillBaseName = skillName.replace(/\.fallback$/, "");
+          const skillName = skillFile.replace(/\.md$/, '');
+          const skillBaseName = skillName.replace(/\.fallback$/, '');
 
           // Skip if this skill belongs to a capability (already handled above)
           if (capabilityOwners.has(skillBaseName)) continue;
 
-          const destSkillsDir = join(companyDir, "agents", role.name, "skills");
+          const destSkillsDir = join(companyDir, 'agents', role.name, 'skills');
           await mkdir(destSkillsDir, { recursive: true });
           await copyFile(join(skillsDir, skillFile), join(destSkillsDir, skillFile));
           await appendToFile(
-            join(companyDir, "agents", role.name, "AGENTS.md"),
-            `\nRead and follow: \`$AGENT_HOME/skills/${skillFile}\`\n`
+            join(companyDir, 'agents', role.name, 'AGENTS.md'),
+            `\nRead and follow: \`$AGENT_HOME/skills/${skillFile}\`\n`,
           );
           onProgress(`+ agents/${role.name}/skills/${skillFile} (${moduleName})`);
         }
@@ -291,21 +283,20 @@ export async function assembleCompany({
   // it gets appended to that role's HEARTBEAT.md (before the placeholder comment).
   // This follows the same gracefully-optimistic pattern as skills — if the file
   // exists the heartbeat extends, if not nothing breaks.
-  const HEARTBEAT_MARKER = "<!-- Module heartbeat sections are inserted above this line during assembly -->";
+  const HEARTBEAT_MARKER =
+    '<!-- Module heartbeat sections are inserted above this line during assembly -->';
   for (const moduleName of moduleNames) {
-    const moduleDir = join(templatesDir, "modules", moduleName);
+    const moduleDir = join(templatesDir, 'modules', moduleName);
     if (!(await exists(moduleDir))) continue;
 
-    const moduleJson = await readJson(join(moduleDir, "module.json"));
+    const moduleJson = await readJson(join(moduleDir, 'module.json'));
     // Skip gated modules that didn't activate
     if (moduleJson?.activatesWithRoles?.length) {
-      const hasActivatingRole = moduleJson.activatesWithRoles.some((r) =>
-        allRoles.has(r)
-      );
+      const hasActivatingRole = moduleJson.activatesWithRoles.some((r) => allRoles.has(r));
       if (!hasActivatingRole) continue;
     }
 
-    const modAgentsDir = join(moduleDir, "agents");
+    const modAgentsDir = join(moduleDir, 'agents');
     if (!(await exists(modAgentsDir))) continue;
 
     const modRoles = await readdir(modAgentsDir, { withFileTypes: true });
@@ -313,19 +304,19 @@ export async function assembleCompany({
       if (!modRole.isDirectory()) continue;
       if (!allRoles.has(modRole.name)) continue;
 
-      const sectionFile = join(modAgentsDir, modRole.name, "heartbeat-section.md");
+      const sectionFile = join(modAgentsDir, modRole.name, 'heartbeat-section.md');
       if (!(await exists(sectionFile))) continue;
 
-      const heartbeatPath = join(companyDir, "agents", modRole.name, "HEARTBEAT.md");
+      const heartbeatPath = join(companyDir, 'agents', modRole.name, 'HEARTBEAT.md');
       if (!(await exists(heartbeatPath))) continue;
 
-      const section = await readFile(sectionFile, "utf-8");
-      const heartbeat = await readFile(heartbeatPath, "utf-8");
+      const section = await readFile(sectionFile, 'utf-8');
+      const heartbeat = await readFile(heartbeatPath, 'utf-8');
 
       // Insert before the marker comment, or append at end if marker not found
       const updated = heartbeat.includes(HEARTBEAT_MARKER)
-        ? heartbeat.replace(HEARTBEAT_MARKER, section.trim() + "\n\n" + HEARTBEAT_MARKER)
-        : heartbeat.trimEnd() + "\n\n" + section.trim() + "\n";
+        ? heartbeat.replace(HEARTBEAT_MARKER, section.trim() + '\n\n' + HEARTBEAT_MARKER)
+        : heartbeat.trimEnd() + '\n\n' + section.trim() + '\n';
 
       await writeFile(heartbeatPath, updated);
       onProgress(`+ agents/${modRole.name}/HEARTBEAT.md (${moduleName}, heartbeat section)`);
@@ -333,17 +324,17 @@ export async function assembleCompany({
   }
 
   // 5. Add shared doc references to all AGENTS.md files
-  const finalDocsDir = join(companyDir, "docs");
+  const finalDocsDir = join(companyDir, 'docs');
   if (await exists(finalDocsDir)) {
     const docs = await readdir(finalDocsDir);
     if (docs.length > 0) {
-      const agentsBaseDir = join(companyDir, "agents");
+      const agentsBaseDir = join(companyDir, 'agents');
       const agentRoles = await readdir(agentsBaseDir, { withFileTypes: true });
       for (const role of agentRoles) {
         if (!role.isDirectory()) continue;
-        const agentsMd = join(agentsBaseDir, role.name, "AGENTS.md");
+        const agentsMd = join(agentsBaseDir, role.name, 'AGENTS.md');
         if (await exists(agentsMd)) {
-          let docRefs = "\n## Shared Documentation\n";
+          let docRefs = '\n## Shared Documentation\n';
           for (const doc of docs) {
             docRefs += `\nRead: \`docs/${doc}\`\n`;
           }
@@ -356,7 +347,10 @@ export async function assembleCompany({
   // 6. Generate BOOTSTRAP.md
   const rolesList = [...allRoles];
   const formatRole = (r) =>
-    r.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    r
+      .split('-')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
 
   let bootstrap = `# Bootstrap: ${companyName}\n\n`;
 
@@ -372,7 +366,7 @@ export async function assembleCompany({
 
   // Project
   const projectName = project?.name || companyName;
-  const projectCwd = join(companyDir, "projects", toPascalCase(projectName));
+  const projectCwd = join(companyDir, 'projects', toPascalCase(projectName));
   bootstrap += `## Project\n\n`;
   bootstrap += `- **Name**: ${projectName}\n`;
   if (project?.description) {
@@ -425,8 +419,8 @@ export async function assembleCompany({
   }
   bootstrap += `${stepN}. Start the CEO heartbeat\n`;
 
-  await writeFile(join(companyDir, "BOOTSTRAP.md"), bootstrap);
-  onProgress("+ BOOTSTRAP.md");
+  await writeFile(join(companyDir, 'BOOTSTRAP.md'), bootstrap);
+  onProgress('+ BOOTSTRAP.md');
 
   return { companyDir, allRoles, initialTasks };
 }

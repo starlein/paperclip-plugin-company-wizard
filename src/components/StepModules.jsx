@@ -1,22 +1,15 @@
-import React, { useMemo } from "react";
-import MultiSelect from "./MultiSelect.jsx";
-import {
-  buildModuleDeps,
-  expandModuleDeps,
-  getBlockingDependents,
-} from "../logic/resolve.js";
+import React, { useMemo } from 'react';
+import MultiSelect from './MultiSelect.jsx';
+import { buildModuleDeps, expandModuleDeps, getBlockingDependents } from '../logic/resolve.js';
 
 export default function StepModules({ modules, preselected, onComplete }) {
-  const { requires, requiredBy } = useMemo(
-    () => buildModuleDeps(modules),
-    [modules]
-  );
+  const { requires, requiredBy } = useMemo(() => buildModuleDeps(modules), [modules]);
 
   const items = modules.map((m) => {
-    const desc = m.description || "";
+    const desc = m.description || '';
     const gated = m.activatesWithRoles?.length
-      ? `Needs role: ${m.activatesWithRoles.join(" or ")}`
-      : "";
+      ? `Needs role: ${m.activatesWithRoles.join(' or ')}`
+      : '';
     return {
       value: m.name,
       label: m.name,
@@ -39,15 +32,11 @@ export default function StepModules({ modules, preselected, onComplete }) {
         };
       }}
       onToggleOff={(value, selected) => {
-        const blockers = getBlockingDependents(
-          value,
-          [...selected],
-          requiredBy
-        );
+        const blockers = getBlockingDependents(value, [...selected], requiredBy);
         if (blockers.length > 0) {
           return {
             blocked: true,
-            hint: `Cannot deselect: required by ${blockers.join(", ")}`,
+            hint: `Cannot deselect: required by ${blockers.join(', ')}`,
           };
         }
         return { blocked: false };
