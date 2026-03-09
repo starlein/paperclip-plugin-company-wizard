@@ -78,6 +78,7 @@ $ clipper --api
   Select a preset:
   ❯ fast — Speed-optimized for solo engineer...
     quality — Quality-optimized with PR review...
+    rad — Rapid development with tech evaluation...
     startup — Strategy-first bootstrapping...
     research — Research and planning only...
     full — Full company setup with everything...
@@ -117,6 +118,9 @@ $ clipper --api
 | `--api-url <url>` | Paperclip API URL (implies `--api`) | `http://localhost:3100` |
 | `--model <model>` | Default LLM model for all agents | adapter default |
 | `--start` | Start CEO heartbeat after provisioning (implies `--api`) | off |
+| `--ai` | AI interview: 3 guided questions, then auto-config | — |
+| `--ai <desc>` | AI single-shot: describe company, auto-config | — |
+| `--ai-model <model>` | Model for AI wizard | `claude-opus-4-6` |
 
 > Company directories use PascalCase: `"Black Mesa"` becomes `companies/BlackMesa/`
 
@@ -142,6 +146,46 @@ clipper --name "$COMPANY" --preset "$PRESET" --api --api-url "$API_URL" --start
 ```
 
 `--modules` and `--roles` are additive — they merge with whatever the preset includes.
+
+### AI wizard mode
+
+Let Claude figure out the best setup. Two sub-modes — **interview** (3 guided questions) and **single-shot** (one description).
+
+Requires `ANTHROPIC_API_KEY` — pass it inline or export it:
+
+```sh
+# Inline
+ANTHROPIC_API_KEY=sk-ant-... clipper --ai
+
+# Or export once
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+```sh
+# Interview — AI asks 3 questions, each building on previous answers
+clipper --ai
+
+# Single-shot — describe everything upfront
+clipper --ai "A fintech startup building a payment processing API, focus on security"
+
+# Override AI choices with explicit flags
+clipper --ai --name "PixelForge" --api
+clipper --ai "Enterprise SaaS with CI/CD" --preset quality
+```
+
+The AI selects the best preset, modules, and roles based on your input. Explicit flags (`--name`, `--preset`, `--modules`, `--roles`) always override AI choices.
+
+#### One-liner: description to running company
+
+Combine single-shot with `--api` and `--start` for full programmatic integration — describe a company in natural language, assemble files, provision via API, and start the CEO heartbeat in one command:
+
+```sh
+ANTHROPIC_API_KEY=sk-ant-... clipper --ai "A dev agency that builds React apps" --api --start
+```
+
+No prompts, no interaction, no TTY required — fully scriptable.
+
+AI wizard prompts are stored in `templates/ai-wizard/` and can be edited to customize the wizard's behavior.
 
 <br>
 

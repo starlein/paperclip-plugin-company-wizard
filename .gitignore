@@ -10,3 +10,7 @@ node_modules/
 
 # System files
 .DS_Store
+
+# Secrets
+.env*
+!.env*.example

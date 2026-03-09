@@ -38444,7 +38444,7 @@ var import_react27 = __toESM(require_react(), 1);
 var import_react28 = __toESM(require_react(), 1);
 
 // src/cli.jsx
-import { dirname, join as join4, resolve } from "node:path";
+import { dirname, join as join5, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // src/app.jsx
@@ -39194,18 +39194,26 @@ var SelectInput_default = SelectInput;
 // src/components/StepPreset.jsx
 var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
 function StepPreset({ presets, onComplete }) {
+  const [highlighted, setHighlighted] = (0, import_react37.useState)(presets[0] || null);
+  const maxLen = Math.max(...presets.map((p) => p.name.length), "custom".length);
   const items = [
     ...presets.map((p) => ({
       key: p.name,
-      label: `${p.name}`,
+      label: p.name.padEnd(maxLen),
       value: p
     })),
     {
       key: "custom",
-      label: "custom",
-      value: { name: "custom" }
+      label: "custom".padEnd(maxLen),
+      value: { name: "custom", description: "Pick modules manually" }
     }
   ];
+  const shortDesc = (desc) => {
+    if (!desc) return "";
+    const dot = desc.indexOf(". ");
+    return dot > 0 ? desc.slice(0, dot + 1) : desc;
+  };
+  const detail = highlighted?.description || "";
   return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(Box_default, { flexDirection: "column", children: [
     /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(Box_default, { children: [
       /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Text, { color: "cyan", bold: true, children: "? " }),
@@ -39216,19 +39224,18 @@ function StepPreset({ presets, onComplete }) {
       {
         items,
         onSelect: (item) => onComplete(item.value),
-        itemComponent: PresetItem
+        onHighlight: (item) => setHighlighted(item.value),
+        itemComponent: ({ isSelected, label, value }) => {
+          const name = value?.name || label?.trim() || "";
+          const desc = shortDesc(value?.description);
+          return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(Text, { color: isSelected ? "cyan" : void 0, bold: isSelected, children: [
+            name.padEnd(maxLen + 2),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Text, { dimColor: true, children: desc })
+          ] });
+        }
       }
-    ) })
-  ] });
-}
-function PresetItem({ isSelected, label, value }) {
-  const desc = value?.description || (label === "custom" ? "Pick modules manually" : "");
-  return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(Box_default, { children: [
-    /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Text, { color: isSelected ? "cyan" : void 0, bold: isSelected, children: label }),
-    desc ? /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(Text, { dimColor: true, children: [
-      " \u2014 ",
-      desc
-    ] }) : null
+    ) }),
+    detail ? /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Box_default, { marginLeft: 2, marginTop: 1, children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Text, { dimColor: true, children: detail }) }) : null
   ] });
 }
 
@@ -40895,10 +40902,426 @@ async function runHeadless(opts) {
   }
 }
 
+// src/logic/ai-wizard.js
+import { readFileSync as readFileSync2 } from "node:fs";
+import { join as join4 } from "node:path";
+import { createInterface } from "node:readline";
+function loadPromptFile(templatesDir, filename) {
+  return readFileSync2(join4(templatesDir, "ai-wizard", filename), "utf-8").trim();
+}
+function loadMessages(templatesDir) {
+  return JSON.parse(
+    readFileSync2(join4(templatesDir, "ai-wizard", "messages.json"), "utf-8")
+  );
+}
+function renderTemplate(template, vars) {
+  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? "");
+}
+function buildCatalog(presets, modules, roles) {
+  const presetCatalog = presets.map(
+    (p) => `- **${p.name}**: ${p.description}` + (p.modules?.length ? `
+  Modules: ${p.modules.join(", ")}` : "") + (p.roles?.length ? `
+  Roles: ${p.roles.join(", ")}` : "") + (p.constraints?.length ? `
+  Constraints: ${p.constraints.join("; ")}` : "")
+  ).join("\n");
+  const moduleCatalog = modules.map((m) => `- **${m.name}**: ${m.description || "(no description)"}`).join("\n");
+  const roleCatalog = roles.map((r) => `- **${r.name}** (${r.title}): ${r.description}`).join("\n");
+  return { presetCatalog, moduleCatalog, roleCatalog };
+}
+function getApiKey(opts) {
+  const apiKey = opts.apiKey || process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "ANTHROPIC_API_KEY environment variable is required for --ai mode.\nSet it with: export ANTHROPIC_API_KEY=sk-ant-..."
+    );
+  }
+  return apiKey;
+}
+async function callClaude({ apiKey, model, system, messages, maxTokens = 1024 }) {
+  let response;
+  try {
+    response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01"
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: maxTokens,
+        messages,
+        system
+      })
+    });
+  } catch (err) {
+    throw new Error(`Network error: ${err.message}`);
+  }
+  if (!response.ok) {
+    const body = await response.text();
+    let detail = body;
+    try {
+      const parsed = JSON.parse(body);
+      detail = parsed.error?.message || body;
+    } catch {
+    }
+    if (response.status === 401) {
+      throw new Error("Invalid API key. Check your ANTHROPIC_API_KEY.");
+    }
+    if (response.status === 429) {
+      throw new Error("Rate limited by Anthropic API. Wait a moment and try again.");
+    }
+    if (response.status === 529) {
+      throw new Error("Anthropic API is overloaded. Try again shortly.");
+    }
+    throw new Error(`Anthropic API error (${response.status}): ${detail}`);
+  }
+  const data = await response.json();
+  if (data.stop_reason === "refusal") {
+    throw new Error(
+      "Claude declined to respond \u2014 your description may have triggered a safety filter. Try rephrasing."
+    );
+  }
+  const text = data.content?.[0]?.text;
+  if (!text) {
+    const reason = data.stop_reason || "unknown";
+    throw new Error(
+      `Empty response from Anthropic API (stop_reason: ${reason}, model: ${model})`
+    );
+  }
+  return text;
+}
+var RETRYABLE = /network error|rate limited|overloaded/i;
+async function callClaudeWithRetry(opts, { log, retries = 2, delay = 3e3 } = {}) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await callClaude(opts);
+    } catch (err) {
+      if (attempt < retries && RETRYABLE.test(err.message)) {
+        if (log) log(`  ${DIM}\u26A0 ${err.message} \u2014 retrying in ${delay / 1e3}s...${RESET}`);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+async function callClaudeInteractive(claudeOpts, { log, rl, messages }) {
+  while (true) {
+    try {
+      return await callClaudeWithRetry(claudeOpts, { log });
+    } catch (err) {
+      log("");
+      log(`  ${"\x1B[31m"}\u2717${RESET} ${err.message}`);
+      log("");
+      const lastUserIdx = messages.findLastIndex((m) => m.role === "user");
+      if (lastUserIdx >= 0) {
+        log(`  ${DIM}Revise your last answer, or type "q" to quit.${RESET}`);
+        log("");
+        const revised = await ask(rl, "  \u2192 ");
+        if (revised.toLowerCase() === "q" || revised.toLowerCase() === "quit") {
+          return null;
+        }
+        messages[lastUserIdx].content = revised;
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+function parseConfigJson(text) {
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error(`No JSON object found in AI response: ${text}`);
+  }
+  const cleaned = jsonMatch[0].trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    throw new Error(`Failed to parse AI response as JSON: ${cleaned}`);
+  }
+}
+function normalizeResult(result) {
+  return {
+    name: result.name || "NewCompany",
+    goal: result.goal || "",
+    goalDescription: result.goalDescription || "",
+    preset: result.preset || "fast",
+    modules: result.extraModules || [],
+    roles: result.extraRoles || [],
+    reasoning: result.reasoning || ""
+  };
+}
+async function aiWizard(opts) {
+  const apiKey = getApiKey(opts);
+  const model = opts.model || "claude-opus-4-6";
+  const { presetCatalog, moduleCatalog, roleCatalog } = buildCatalog(
+    opts.presets,
+    opts.modules,
+    opts.roles
+  );
+  const configFormat = loadPromptFile(opts.templatesDir, "config-format.md");
+  const systemTemplate = loadPromptFile(opts.templatesDir, "single-shot-system.md");
+  const system = renderTemplate(systemTemplate, {
+    PRESET_CATALOG: presetCatalog,
+    MODULE_CATALOG: moduleCatalog,
+    ROLE_CATALOG: roleCatalog,
+    CONFIG_FORMAT: configFormat
+  });
+  printHeader(console.log);
+  printSpinner(console.log, "Analyzing your description...");
+  console.log("");
+  const text = await callClaudeWithRetry({
+    apiKey,
+    model,
+    system,
+    messages: [{ role: "user", content: opts.description }]
+  }, { log: console.log });
+  return normalizeResult(parseConfigJson(text));
+}
+var MAGENTA = "\x1B[35m";
+var CYAN = "\x1B[36m";
+var GREEN = "\x1B[32m";
+var YELLOW = "\x1B[33m";
+var BG_HIGHLIGHT = "\x1B[48;5;236m";
+var BOLD = "\x1B[1m";
+var DIM = "\x1B[2m";
+var RESET = "\x1B[0m";
+var CLEAR_LINE = "\x1B[2K";
+function printHeader(log) {
+  log("");
+  log(`  ${BOLD}${MAGENTA}Clipper${RESET} ${DIM}\u2014 Bootstrap a Paperclip company${RESET}`);
+  log("");
+}
+function printSpinner(log, text) {
+  log(`  ${DIM}\u25CC${RESET} ${text}`);
+}
+function printDone(log, text) {
+  log(`  ${GREEN}\u25CF${RESET} ${text}`);
+}
+function renderMarkdown(text) {
+  return text.replace(/\*\*(.+?)\*\*/g, `${BOLD}$1${RESET}`).replace(/\*(.+?)\*/g, `\x1B[3m$1${RESET}`).replace(/`(.+?)`/g, `${CYAN}$1${RESET}`);
+}
+function ask(rl, question) {
+  return new Promise((resolve2) => {
+    rl.question(`${BG_HIGHLIGHT}${CLEAR_LINE}${DIM}${question}${RESET}${BG_HIGHLIGHT}${BOLD}`, (answer) => {
+      const cols = process.stdout.columns || 80;
+      const fullText = `${question}${answer}`;
+      const inputLines = Math.ceil(fullText.length / cols) || 1;
+      const totalUp = inputLines;
+      let redraw = "";
+      for (let l = 0; l < totalUp; l++) {
+        redraw += `\x1B[A${CLEAR_LINE}`;
+      }
+      for (let offset = 0; offset < fullText.length; offset += cols) {
+        const chunk = fullText.slice(offset, offset + cols);
+        const pad = " ".repeat(Math.max(0, cols - chunk.length));
+        if (offset === 0) {
+          const promptPart = question;
+          const answerStart = answer.slice(0, cols - question.length);
+          redraw += `${BG_HIGHLIGHT}${DIM}${promptPart}${RESET}${BG_HIGHLIGHT}${BOLD}${answerStart}${pad}${RESET}
+`;
+        } else {
+          const answerChunk = fullText.slice(offset, offset + cols);
+          const chunkPad = " ".repeat(Math.max(0, cols - answerChunk.length));
+          redraw += `${BG_HIGHLIGHT}${BOLD}${answerChunk}${chunkPad}${RESET}
+`;
+        }
+      }
+      redraw += `${CLEAR_LINE}\x1B[A
+`;
+      process.stdout.write(redraw);
+      resolve2(answer.trim());
+    });
+  });
+}
+function buildInterviewSystem(templatesDir, presetCatalog, moduleCatalog, roleCatalog) {
+  const configFormat = loadPromptFile(templatesDir, "config-format.md");
+  const systemTemplate = loadPromptFile(templatesDir, "interview-system.md");
+  return renderTemplate(systemTemplate, {
+    PRESET_CATALOG: presetCatalog,
+    MODULE_CATALOG: moduleCatalog,
+    ROLE_CATALOG: roleCatalog,
+    CONFIG_FORMAT: configFormat
+  });
+}
+async function aiWizardInterview(opts) {
+  const apiKey = getApiKey(opts);
+  const model = opts.model || "claude-opus-4-6";
+  const log = opts.log || console.log;
+  const { presetCatalog, moduleCatalog, roleCatalog } = buildCatalog(
+    opts.presets,
+    opts.modules,
+    opts.roles
+  );
+  const system = buildInterviewSystem(opts.templatesDir, presetCatalog, moduleCatalog, roleCatalog);
+  const msgs = loadMessages(opts.templatesDir);
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+  const messages = [];
+  try {
+    printHeader(log);
+    log(`  ${CYAN}${BOLD}AI Wizard${RESET} ${DIM}\u2014 guided setup${RESET}`);
+    log(`  ${DIM}Answer a few questions, then review the AI's recommendation.${RESET}`);
+    log(`  ${DIM}Tip: override any choice with flags (--name, --preset, --modules)${RESET}`);
+    let round = 1;
+    let needQuestions = true;
+    while (true) {
+      if (needQuestions) {
+        log("");
+        if (round > 1) {
+          log(`  ${YELLOW}\u21BB${RESET} ${DIM}Round ${round} \u2014 let's refine...${RESET}`);
+        }
+        for (let i = 0; i < 3; i++) {
+          const questionNum = (round - 1) * 3 + i + 1;
+          if (messages.length === 0) {
+            messages.push({
+              role: "user",
+              content: msgs.interviewStart
+            });
+          }
+          const question = await callClaudeInteractive({
+            apiKey,
+            model,
+            system,
+            messages,
+            maxTokens: 256
+          }, { log, rl, messages });
+          if (question === null) return null;
+          messages.push({ role: "assistant", content: question });
+          log("");
+          log(`  ${CYAN}${questionNum}.${RESET} ${renderMarkdown(question)}`);
+          log("");
+          const answer = await ask(rl, "  \u2192 ");
+          messages.push({ role: "user", content: answer });
+        }
+        messages.push({
+          role: "user",
+          content: msgs.summaryRequest
+        });
+        const lastAnswer = messages[messages.length - 2].content;
+        messages.pop();
+        messages.pop();
+        messages.push({
+          role: "user",
+          content: `${lastAnswer}
+
+---
+${msgs.summaryRequest}`
+        });
+        log("");
+        printSpinner(log, "Summarizing...");
+        const summary = await callClaudeInteractive({
+          apiKey,
+          model,
+          system,
+          messages,
+          maxTokens: 512
+        }, { log, rl, messages });
+        if (summary === null) return null;
+        messages.push({ role: "assistant", content: summary });
+        log("");
+        for (const line of renderMarkdown(summary).split("\n")) {
+          log(`  ${line}`);
+        }
+        log("");
+        const confirm = await ask(rl, "  Correct? (y/n) \u2192 ");
+        if (!confirm.toLowerCase().startsWith("y")) {
+          messages.push({
+            role: "user",
+            content: msgs.iterateRequest
+          });
+          round++;
+          continue;
+        }
+      }
+      needQuestions = true;
+      messages.push({
+        role: "user",
+        content: `${msgs.recommendationRequest}
+
+${loadPromptFile(opts.templatesDir, "config-format.md")}`
+      });
+      log("");
+      printSpinner(log, "Generating recommendation...");
+      const recommendationText = await callClaudeInteractive({
+        apiKey,
+        model,
+        system,
+        messages,
+        maxTokens: 2048
+      }, { log, rl, messages });
+      if (recommendationText === null) return null;
+      messages.push({ role: "assistant", content: recommendationText });
+      const jsonStart = recommendationText.indexOf("{");
+      const prose = jsonStart > 0 ? renderMarkdown(recommendationText.slice(0, jsonStart).trim()) : "";
+      if (prose) {
+        log("");
+        for (const line of prose.split("\n")) {
+          log(`  ${line}`);
+        }
+      }
+      const result = normalizeResult(parseConfigJson(recommendationText));
+      const rows = [
+        [`${BOLD}Company${RESET}`, result.name],
+        [`${BOLD}Preset${RESET}`, result.preset]
+      ];
+      if (result.modules.length) {
+        rows.push([`${CYAN}Modules${RESET}`, result.modules.join(", ")]);
+      }
+      if (result.roles.length) {
+        rows.push([`${CYAN}Roles${RESET}`, result.roles.join(", ")]);
+      }
+      rows.push([`${DIM}Goal${RESET}`, result.goal]);
+      const labelWidth = 10;
+      const maxValueLen = Math.max(...rows.map(([, v]) => v.length));
+      const W = Math.max(labelWidth + maxValueLen + 4, 30);
+      log("");
+      log(`  ${DIM}\u250C${"\u2500".repeat(W)}\u2510${RESET}`);
+      for (const [label, value] of rows) {
+        log(`  ${DIM}\u2502${RESET}  ${label}${" ".repeat(labelWidth - 7)}${value.padEnd(W - labelWidth - 2)}${DIM}\u2502${RESET}`);
+      }
+      log(`  ${DIM}\u2514${"\u2500".repeat(W)}\u2518${RESET}`);
+      log("");
+      log(`  ${DIM}c${RESET} continue  ${DIM}\u2502${RESET}  ${DIM}i${RESET} iterate  ${DIM}\u2502${RESET}  ${DIM}r${RESET} restart  ${DIM}\u2502${RESET}  ${DIM}q${RESET} quit`);
+      log("");
+      const decision = await ask(rl, "  \u2192 ");
+      const choice = decision.toLowerCase();
+      if (choice === "q" || choice === "quit") {
+        log("");
+        log(`  ${DIM}Aborted \u2014 no files were created.${RESET}`);
+        return null;
+      }
+      if (choice === "r" || choice === "restart") {
+        messages.length = 0;
+        round = 1;
+        log("");
+        log(`  ${YELLOW}\u21BB${RESET} Starting over...`);
+        continue;
+      }
+      if (choice === "i" || choice === "iterate") {
+        messages.push({
+          role: "user",
+          content: msgs.iterateRequest
+        });
+        round++;
+        continue;
+      }
+      log("");
+      printDone(log, "Configuration accepted");
+      return result;
+    }
+  } finally {
+    rl.close();
+  }
+}
+
 // src/cli.jsx
 var import_jsx_runtime15 = __toESM(require_jsx_runtime(), 1);
 var __dirname = dirname(fileURLToPath(import.meta.url));
-var TEMPLATES_DIR = join4(__dirname, "..", "templates");
+var TEMPLATES_DIR = join5(__dirname, "..", "templates");
 var HELP = `
   Clipper \u2014 Bootstrap a Paperclip company workspace
 
@@ -40923,9 +41346,16 @@ var HELP = `
     --model <model>            LLM model for agents (default: adapter default)
     --start                    Start CEO heartbeat after provisioning (implies --api)
 
+  AI wizard:
+    --ai                       AI interview: 3 guided questions, then auto-config
+    --ai <description>         AI single-shot: describe company, auto-config
+    --ai-model <model>         Model for AI wizard (default: claude-opus-4-6)
+
   Modes:
     Interactive (default)      Wizard prompts for missing values
     Non-interactive            Pass --name and --preset (minimum) to skip the wizard
+    AI interview               Pass --ai for a 3-question guided setup
+    AI single-shot             Pass --ai "description" to skip questions
 
   Examples:
     clipper                                          # interactive wizard
@@ -40933,17 +41363,25 @@ var HELP = `
     clipper --name "Acme" --preset startup --api      # headless + API provisioning
     clipper --name "Acme" --preset fast --roles product-owner --modules pr-review
     clipper --name "Acme" --preset custom --modules github-repo,auto-assign
+    clipper --ai                                        # AI interview (3 questions)
+    clipper --ai "A fintech startup building a payment API" # AI single-shot
+
+  Environment:
+    ANTHROPIC_API_KEY            Required for --ai mode
 
   -h, --help                   Show this help
 `;
 function parseArgs(argv) {
   const args = argv.slice(2);
   const config2 = {
-    outputDir: join4(process.cwd(), "companies"),
+    outputDir: join5(process.cwd(), "companies"),
     apiEnabled: false,
     apiBaseUrl: "http://localhost:3100",
     model: null,
     startCeo: false,
+    // AI wizard
+    aiDescription: null,
+    aiModel: null,
     // Company options
     name: null,
     goal: null,
@@ -40977,6 +41415,18 @@ function parseArgs(argv) {
         break;
       case "--model":
         config2.model = next;
+        i++;
+        break;
+      case "--ai":
+        if (next && !next.startsWith("-")) {
+          config2.aiDescription = next;
+          i++;
+        } else {
+          config2.aiDescription = "";
+        }
+        break;
+      case "--ai-model":
+        config2.aiModel = next;
         i++;
         break;
       case "--name":
@@ -41031,8 +41481,70 @@ function parseArgs(argv) {
   return config2;
 }
 var config = parseArgs(process.argv);
-var isHeadless = config.name && config.preset;
-if (isHeadless) {
+if (config.aiDescription !== null) {
+  (async () => {
+    try {
+      const [presets, modules, allRoles] = await Promise.all([
+        loadPresets(TEMPLATES_DIR),
+        loadModules(TEMPLATES_DIR),
+        loadRoles(TEMPLATES_DIR)
+      ]);
+      const optionalRoles = allRoles.filter((r) => !r._base);
+      let aiResult;
+      if (config.aiDescription) {
+        aiResult = await aiWizard({
+          description: config.aiDescription,
+          presets,
+          modules,
+          roles: optionalRoles,
+          model: config.aiModel || void 0,
+          templatesDir: TEMPLATES_DIR
+        });
+      } else {
+        aiResult = await aiWizardInterview({
+          presets,
+          modules,
+          roles: optionalRoles,
+          model: config.aiModel || void 0,
+          templatesDir: TEMPLATES_DIR
+        });
+      }
+      if (!aiResult) {
+        process.exit(0);
+      }
+      if (config.aiDescription) {
+        console.log(`  \x1B[32m\u25CF\x1B[0m ${aiResult.reasoning}`);
+        console.log("");
+        console.log(`  \x1B[1mCompany:\x1B[0m ${aiResult.name}  \x1B[2m\u2502\x1B[0m  \x1B[1mPreset:\x1B[0m ${aiResult.preset}`);
+        if (aiResult.modules.length) {
+          console.log(`  \x1B[36mModules:\x1B[0m ${aiResult.modules.join(", ")}`);
+        }
+        if (aiResult.roles.length) {
+          console.log(`  \x1B[36mRoles:\x1B[0m   ${aiResult.roles.join(", ")}`);
+        }
+        console.log("");
+      }
+      const merged = {
+        ...config,
+        name: config.name || aiResult.name,
+        goal: config.goal || aiResult.goal,
+        goalDescription: config.goalDescription || aiResult.goalDescription,
+        preset: config.preset || aiResult.preset,
+        modules: config.modules.length ? config.modules : aiResult.modules,
+        roles: config.roles.length ? config.roles : aiResult.roles
+      };
+      await runHeadless({
+        ...merged,
+        templatesDir: TEMPLATES_DIR
+      });
+    } catch (err) {
+      console.error("");
+      console.error(`  \x1B[31m\u2717\x1B[0m ${err.message}`);
+      console.error("");
+      process.exit(1);
+    }
+  })();
+} else if (config.name && config.preset) {
   runHeadless({
     ...config,
     templatesDir: TEMPLATES_DIR

@@ -7,6 +7,7 @@ Clipper is a company-as-code bootstrapping CLI for the [Paperclip](https://githu
 Clipper supports two usage modes:
 - **Interactive** — An Ink-based terminal wizard that walks through each configuration step (requires TTY).
 - **Headless** — Pass `--name` and `--preset` (minimum) as CLI flags to skip the wizard entirely. Runs assembly and optional API provisioning with plain stdout. Designed for scripting, CI pipelines, and programmatic use by other agents.
+- **AI wizard** — Pass `--ai "description"` to describe your company in natural language. Claude analyzes the description and auto-selects the best preset, modules, and roles. Requires `ANTHROPIC_API_KEY`.
 
 ## Why
 
@@ -68,7 +69,12 @@ clipper/
 │   │   ├── user-testing/       # Usability evaluations
 │   │   ├── ci-cd/              # CI/CD pipeline
 │   │   └── monitoring/         # Observability and alerting
-│   └── presets/                # Curated combinations (fast, quality, rad, startup, research, full)
+│   ├── presets/                # Curated combinations (fast, quality, rad, startup, research, full)
+│   └── ai-wizard/             # Configurable prompts for --ai mode
+│       ├── config-format.md   # JSON output format + selection rules
+│       ├── single-shot-system.md  # System prompt for --ai "description"
+│       ├── interview-system.md    # System prompt for --ai interview
+│       └── messages.json      # User-turn instructions (interview flow)
 ├── dist/cli.mjs                # Built CLI (esbuild bundle)
 └── esbuild.config.mjs          # Build config
 ```
@@ -83,6 +89,5 @@ Each module contains:
 
 See [ROADMAP.md](ROADMAP.md) for the full backlog. Key areas:
 
-- **AI wizard mode** — Describe the company in natural language, let an LLM select the best configuration
 - **`--dry-run` flag** — Show summary and exit without writing files
 - **Excalidraw MCP integration** — Visual diagram generation as an agent skill

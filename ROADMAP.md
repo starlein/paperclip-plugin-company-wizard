@@ -20,6 +20,7 @@
 - Wire cmo into brand-identity and market-analysis modules (fallback chains)
 - Expand pr-review activatesWithRoles to include ui-designer, ux-researcher, qa, devops
 - Wire ui-designer, ux-researcher, qa, devops into pr-review module (design review, UX review, QA review, infra review skill files)
+- AI wizard mode — `--ai "description"` calls Claude API to auto-select preset, modules, and roles
 
 ## In Progress
 
@@ -27,7 +28,6 @@
 
 ### Clipper CLI
 
-- [ ] AI wizard mode — describe the company in natural language and let an LLM select the best configuration automatically
 - [ ] `--dry-run` flag — show summary and exit without writing files
 
 ### Template System

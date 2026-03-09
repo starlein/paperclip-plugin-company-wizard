@@ -17,6 +17,9 @@ node dist/cli.mjs   # Run built CLI (interactive wizard)
 node dist/cli.mjs --name "Acme Corp" --preset fast
 node dist/cli.mjs --name "Acme Corp" --preset quality --goal "Ship MVP" \
   --project MyApp --repo https://github.com/org/repo --api
+
+# AI wizard — describe company, Claude selects config (needs ANTHROPIC_API_KEY)
+node dist/cli.mjs --ai "A fintech startup building a payment API, focus on security"
 ```
 
 ## Architecture
@@ -27,8 +30,9 @@ node dist/cli.mjs --name "Acme Corp" --preset quality --goal "Ship MVP" \
 
 ### Source Layout
 
-- `src/cli.jsx` — Entry point, CLI flag parsing, routes to `<App>` (interactive) or `headless()`
+- `src/cli.jsx` — Entry point, CLI flag parsing, routes to `<App>` (interactive), `headless()`, or AI wizard
 - `src/headless.js` — Non-interactive mode: runs assembly + provisioning with plain stdout logging
+- `src/logic/ai-wizard.js` — AI wizard: calls Claude API to analyze description and select config. Prompts loaded from `templates/ai-wizard/`
 - `src/app.jsx` — Main state machine, step transitions, derived state
 - `src/components/Step*.jsx` — One component per wizard step
 - `src/components/MultiSelect.jsx` — Reusable multi-select (used by StepModules, StepRoles)
@@ -53,7 +57,12 @@ templates/
 │       │   ├── <skill>.md             # Override (replaces shared for this role)
 │       │   └── <skill>.fallback.md    # Fallback (reduced scope for non-primary)
 │       └── docs/                      # Shared docs injected into all agents
-└── presets/         # Curated module+role combinations (fast, quality, startup, research, full)
+├── presets/         # Curated module+role combinations (fast, quality, startup, research, full)
+└── ai-wizard/       # Configurable prompts for --ai mode
+    ├── config-format.md       # JSON output format + selection rules
+    ├── single-shot-system.md  # System prompt for --ai "description"
+    ├── interview-system.md    # System prompt for --ai interview
+    └── messages.json          # User-turn instructions (interview flow)
 ```
 
 ### Skill Resolution
@@ -68,6 +77,7 @@ This avoids duplicating identical skill files across roles. Most capabilities us
 ### Key Concepts
 
 - **Headless mode** — When `--name` and `--preset` are both provided, the CLI skips the Ink wizard entirely and runs assembly + provisioning via `src/headless.js` with plain stdout. Available flags: `--name`, `--goal`, `--goal-description`, `--project`, `--project-description`, `--repo`, `--preset`, `--modules` (comma-separated), `--roles` (comma-separated).
+- **AI wizard mode** — Two sub-modes: `--ai` starts a 3-question interview (multi-turn conversation with Claude); `--ai "description"` does single-shot analysis. Both auto-select preset, modules, and roles. Requires `ANTHROPIC_API_KEY` env var. Explicit flags override AI choices. Uses `src/logic/ai-wizard.js`.
 - **Gracefully optimistic architecture** — Capabilities extend when roles are present, degrade gracefully when absent. A capability's `owners[]` chain determines primary/fallback assignment at assembly time.
 - **Shared vs role-specific skills** — Shared skills (`skills/`) work for any owner. Role-specific overrides (`agents/<role>/skills/`) exist only for genuinely different behavior. Fallbacks are always role-specific.
 - **role.json `adapter` field** — Per-agent model config (`model`, `effort`, etc.). `--model` CLI flag is a fallback.
