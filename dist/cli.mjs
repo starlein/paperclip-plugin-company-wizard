@@ -40340,26 +40340,28 @@ function StepProvision({
       email: apiEmail,
       password: apiPassword
     });
-    client.connect().then(() => provisionCompany({
-      client,
-      companyName,
-      companyDir,
-      goal,
-      projectName: project?.name || companyName,
-      projectDescription: project?.description,
-      repoUrl: project?.repoUrl,
-      allRoles,
-      rolesData,
-      initialTasks,
-      model,
-      remoteCompanyDir: apiWorkspaceRoot ? join3(apiWorkspaceRoot, basename(companyDir)) : null,
-      startCeo,
-      onProgress: (line) => {
-        if (!cancelled) {
-          setLog((prev) => [...prev, line]);
+    client.connect().then(
+      () => provisionCompany({
+        client,
+        companyName,
+        companyDir,
+        goal,
+        projectName: project?.name || companyName,
+        projectDescription: project?.description,
+        repoUrl: project?.repoUrl,
+        allRoles,
+        rolesData,
+        initialTasks,
+        model,
+        remoteCompanyDir: apiWorkspaceRoot ? join3(apiWorkspaceRoot, basename(companyDir)) : null,
+        startCeo,
+        onProgress: (line) => {
+          if (!cancelled) {
+            setLog((prev) => [...prev, line]);
+          }
         }
-      }
-    })).then((result) => {
+      })
+    ).then((result) => {
       if (!cancelled) {
         setDone(true);
         onComplete(result);
