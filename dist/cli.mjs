@@ -40263,14 +40263,15 @@ var PaperclipClient = class {
       })
     });
   }
-  async createGoal(companyId, { title, description, level }) {
+  async createGoal(companyId, { title, description, level, parentId }) {
     return this._fetch(`/api/companies/${companyId}/goals`, {
       method: "POST",
       body: JSON.stringify({
         title,
         description: description || null,
         level: level || "company",
-        status: "active"
+        status: "active",
+        ...parentId ? { parentId } : {}
       })
     });
   }
@@ -40417,19 +40418,42 @@ async function provisionCompany({
     });
     goalTemplateId = tg.id;
     onProgress(`\u2713 Starter goal created: ${goalTemplate.title}`);
+    const milestoneIds = /* @__PURE__ */ new Map();
+    if (goalTemplate.milestones?.length) {
+      for (const milestone of goalTemplate.milestones) {
+        try {
+          onProgress(`Creating milestone: ${milestone.title}...`);
+          const mg = await client.createGoal(companyId, {
+            title: milestone.title,
+            description: milestone.description,
+            level: "task",
+            parentId: goalTemplateId
+          });
+          milestoneIds.set(milestone.id, mg.id);
+          onProgress(`\u2713 Milestone created: ${milestone.title}`);
+        } catch (err) {
+          goalTemplateErrors.push({ title: milestone.title, error: err.message });
+          onProgress(`! Failed to create milestone: ${milestone.title} \u2014 ${err.message}`);
+        }
+      }
+    }
     if (goalTemplate.issues?.length) {
       for (const issue of goalTemplate.issues) {
         try {
+          const issueGoalId = issue.milestone && milestoneIds.get(issue.milestone) || goalTemplateId;
+          const assigneeAgentId = issue.assignTo ? agentIds.get(issue.assignTo) || null : null;
           onProgress(`Creating issue: ${issue.title}...`);
           const created = await client.createIssue(companyId, {
             title: issue.title,
             description: issue.description,
             priority: issue.priority,
             projectId,
-            goalId: goalTemplateId
+            goalId: issueGoalId,
+            assigneeAgentId
           });
           issueIds.push(created.id);
-          onProgress(`\u2713 Issue created: ${issue.title}`);
+          const assignLabel = assigneeAgentId ? ` \u2192 ${issue.assignTo}` : "";
+          onProgress(`\u2713 Issue created: ${issue.title}${assignLabel}`);
         } catch (err) {
           goalTemplateErrors.push({ title: issue.title, error: err.message });
           onProgress(`! Failed to create issue: ${issue.title} \u2014 ${err.message}`);

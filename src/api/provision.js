@@ -144,8 +144,7 @@ export async function provisionCompany({
     onProgress(`✓ Issue created: ${task.title}${assignLabel}`);
   }
 
-  // 6. Create goal template goal and issues (if selected)
-  // Issues are left unassigned — auto-assign handles assignment.
+  // 6. Create goal template goal, milestones (sub-goals), and issues (if selected)
   let goalTemplateId = null;
   const goalTemplateErrors = [];
   if (goalTemplate) {
@@ -158,19 +157,46 @@ export async function provisionCompany({
     goalTemplateId = tg.id;
     onProgress(`✓ Starter goal created: ${goalTemplate.title}`);
 
+    // 6a. Create milestones as sub-goals under the starter goal
+    const milestoneIds = new Map(); // milestone id string → API goal UUID
+    if (goalTemplate.milestones?.length) {
+      for (const milestone of goalTemplate.milestones) {
+        try {
+          onProgress(`Creating milestone: ${milestone.title}...`);
+          const mg = await client.createGoal(companyId, {
+            title: milestone.title,
+            description: milestone.description,
+            level: 'task',
+            parentId: goalTemplateId,
+          });
+          milestoneIds.set(milestone.id, mg.id);
+          onProgress(`✓ Milestone created: ${milestone.title}`);
+        } catch (err) {
+          goalTemplateErrors.push({ title: milestone.title, error: err.message });
+          onProgress(`! Failed to create milestone: ${milestone.title} — ${err.message}`);
+        }
+      }
+    }
+
+    // 6b. Create issues linked to milestones and assigned to agents
     if (goalTemplate.issues?.length) {
       for (const issue of goalTemplate.issues) {
         try {
+          const issueGoalId =
+            (issue.milestone && milestoneIds.get(issue.milestone)) || goalTemplateId;
+          const assigneeAgentId = issue.assignTo ? agentIds.get(issue.assignTo) || null : null;
           onProgress(`Creating issue: ${issue.title}...`);
           const created = await client.createIssue(companyId, {
             title: issue.title,
             description: issue.description,
             priority: issue.priority,
             projectId,
-            goalId: goalTemplateId,
+            goalId: issueGoalId,
+            assigneeAgentId,
           });
           issueIds.push(created.id);
-          onProgress(`✓ Issue created: ${issue.title}`);
+          const assignLabel = assigneeAgentId ? ` → ${issue.assignTo}` : '';
+          onProgress(`✓ Issue created: ${issue.title}${assignLabel}`);
         } catch (err) {
           goalTemplateErrors.push({ title: issue.title, error: err.message });
           onProgress(`! Failed to create issue: ${issue.title} — ${err.message}`);

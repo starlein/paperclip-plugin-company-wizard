@@ -114,7 +114,7 @@ describe('provisionCompany', () => {
     assert.equal(issueCalls[1].priority, 'low');
   });
 
-  it('leaves goal template issues unassigned', async () => {
+  it('assigns goal template issues to agents when assignTo is set', async () => {
     const client = makeMockClient();
     await provisionCompany({
       ...baseOpts,
@@ -130,10 +130,10 @@ describe('provisionCompany', () => {
     });
 
     const issueCalls = client.calls.filter((c) => c.method === 'createIssue');
-    // Both should have no assigneeAgentId — auto-assign handles it
-    for (const call of issueCalls) {
-      assert.equal(call.assigneeAgentId, undefined, `"${call.title}" should be unassigned`);
-    }
+    const withAssign = issueCalls.find((c) => c.title === 'Task with assignTo');
+    const withoutAssign = issueCalls.find((c) => c.title === 'Task without assignTo');
+    assert.ok(withAssign.assigneeAgentId, 'should have assigneeAgentId');
+    assert.equal(withoutAssign.assigneeAgentId, null, 'should be unassigned');
   });
 
   it('handles partial failures — continues after issue creation error', async () => {

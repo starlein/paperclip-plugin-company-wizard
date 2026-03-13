@@ -148,7 +148,7 @@ export class PaperclipClient {
     });
   }
 
-  async createGoal(companyId, { title, description, level }) {
+  async createGoal(companyId, { title, description, level, parentId }) {
     return this._fetch(`/api/companies/${companyId}/goals`, {
       method: 'POST',
       body: JSON.stringify({
@@ -156,6 +156,7 @@ export class PaperclipClient {
         description: description || null,
         level: level || 'company',
         status: 'active',
+        ...(parentId ? { parentId } : {}),
       }),
     });
   }
