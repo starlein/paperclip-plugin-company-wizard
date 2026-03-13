@@ -40990,7 +40990,7 @@ function App2({
           goalTemplates,
           onComplete: (template) => {
             setSelectedGoalTemplate(template);
-            setStep(preselectedRoles.length > 0 ? STEPS.SUMMARY : STEPS.ROLES);
+            setStep(initialPreset ? STEPS.SUMMARY : STEPS.ROLES);
           }
         }
       )

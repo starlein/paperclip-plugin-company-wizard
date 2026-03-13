@@ -295,8 +295,8 @@ export default function App({
             goalTemplates={goalTemplates}
             onComplete={(template) => {
               setSelectedGoalTemplate(template);
-              // Skip ROLES if preset already pre-filled them
-              setStep(preselectedRoles.length > 0 ? STEPS.SUMMARY : STEPS.ROLES);
+              // Skip ROLES only when preset was provided via CLI flag (not interactive)
+              setStep(initialPreset ? STEPS.SUMMARY : STEPS.ROLES);
             }}
           />
         </>
