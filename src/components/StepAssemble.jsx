@@ -10,7 +10,6 @@ export default function StepAssemble({
   moduleNames,
   extraRoleNames,
   goalTemplate,
-  presetName,
   outputDir,
   templatesDir,
   onComplete,
@@ -29,7 +28,6 @@ export default function StepAssemble({
       moduleNames,
       extraRoleNames,
       goalTemplate,
-      presetName,
       outputDir,
       templatesDir,
       onProgress: (line) => {

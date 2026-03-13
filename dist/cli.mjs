@@ -39713,7 +39713,6 @@ async function assembleCompany({
   moduleNames,
   extraRoleNames,
   goalTemplate = null,
-  presetName = null,
   outputDir,
   templatesDir,
   onProgress = () => {
@@ -39789,7 +39788,6 @@ async function assembleCompany({
     onProgress(`+ agents/${roleName}/ (role)`);
   }
   const initialTasks = [];
-  const manifestModules = [];
   for (const moduleName of moduleNames) {
     const moduleDir = join(templatesDir, "modules", moduleName);
     if (!await exists(moduleDir)) {
@@ -39834,12 +39832,6 @@ async function assembleCompany({
         }
       }
     }
-    const moduleCapabilities = [];
-    for (const [skillName, { primary, cap }] of capabilityOwners) {
-      const fallbacks = cap.owners.filter((r) => r !== primary && allRoles.has(r));
-      moduleCapabilities.push({ skill: skillName, primary, fallbacks });
-    }
-    manifestModules.push({ module: moduleName, capabilities: moduleCapabilities });
     const sharedSkillsDir = join(moduleDir, "skills");
     const agentsDir = join(moduleDir, "agents");
     async function resolveSkillFile(roleName, fileName) {
@@ -40078,14 +40070,6 @@ Read: \`docs/${doc}\`
 `;
   await writeFile(join(companyDir, "BOOTSTRAP.md"), bootstrap);
   onProgress("+ BOOTSTRAP.md");
-  const manifest = {
-    assembledAt: (/* @__PURE__ */ new Date()).toISOString(),
-    preset: presetName || null,
-    roles: [...allRoles],
-    modules: manifestModules
-  };
-  await writeFile(join(companyDir, "capabilities.json"), JSON.stringify(manifest, null, 2) + "\n");
-  onProgress("+ capabilities.json");
   return { companyDir, allRoles, initialTasks, goalTemplate };
 }
 
@@ -40098,7 +40082,6 @@ function StepAssemble({
   moduleNames,
   extraRoleNames,
   goalTemplate,
-  presetName,
   outputDir,
   templatesDir,
   onComplete,
@@ -40115,7 +40098,6 @@ function StepAssemble({
       moduleNames,
       extraRoleNames,
       goalTemplate,
-      presetName,
       outputDir,
       templatesDir,
       onProgress: (line) => {
@@ -41044,7 +41026,6 @@ function App2({
         moduleNames: selectedModules,
         extraRoleNames: selectedRoles,
         goalTemplate: selectedGoalTemplate,
-        presetName,
         outputDir,
         templatesDir,
         onComplete: (result) => {
@@ -41206,7 +41187,6 @@ async function runHeadless(opts) {
     moduleNames: selectedModules,
     extraRoleNames: selectedRoles,
     goalTemplate: selectedGoalTemplate,
-    presetName: opts.preset || null,
     outputDir: opts.outputDir,
     templatesDir: opts.templatesDir,
     onProgress: (line) => log(`  ${line}`)

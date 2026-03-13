@@ -147,7 +147,6 @@ export async function runHeadless(opts) {
     moduleNames: selectedModules,
     extraRoleNames: selectedRoles,
     goalTemplate: selectedGoalTemplate,
-    presetName: opts.preset || null,
     outputDir: opts.outputDir,
     templatesDir: opts.templatesDir,
     onProgress: (line) => log(`  ${line}`),
