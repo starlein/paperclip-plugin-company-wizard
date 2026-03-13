@@ -15,9 +15,9 @@ export function StepDone() {
       <div className="flex items-start gap-3">
         <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0 mt-0.5" />
         <div>
-          <h2 className="text-xl font-semibold tracking-tight">Company provisioned</h2>
+          <h2 className="text-xl font-semibold tracking-tight">{state.companyName}</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            <strong>{state.companyName}</strong> has been assembled and registered with Paperclip.
+            Company has been assembled and registered with Paperclip.
           </p>
         </div>
       </div>
