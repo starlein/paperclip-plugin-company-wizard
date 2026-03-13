@@ -40812,9 +40812,13 @@ function App2({
     if (!project.name && !initialProjectName) {
       setProject((p) => ({ ...p, name: companyName }));
     }
+    let goalTemplateResolved = false;
     if (initialGoalTemplate) {
       const tmpl = loadedGoals.find((g) => g.name === initialGoalTemplate);
-      if (tmpl) setSelectedGoalTemplate(tmpl);
+      if (tmpl) {
+        setSelectedGoalTemplate(tmpl);
+        goalTemplateResolved = true;
+      }
     }
     if (initialPreset) {
       const preset = loadedPresets.find((p) => p.name === initialPreset);
@@ -40826,7 +40830,7 @@ function App2({
         setSelectedModules(mods);
         setPreselectedRoles(roles);
         setSelectedRoles(roles);
-        return initialGoalTemplate ? STEPS.SUMMARY : STEPS.GOAL_TEMPLATES;
+        return goalTemplateResolved ? STEPS.SUMMARY : STEPS.GOAL_TEMPLATES;
       }
     }
     return STEPS.PRESET;

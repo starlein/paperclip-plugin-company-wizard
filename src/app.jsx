@@ -97,9 +97,13 @@ export default function App({
     if (!project.name && !initialProjectName) {
       setProject((p) => ({ ...p, name: companyName }));
     }
+    let goalTemplateResolved = false;
     if (initialGoalTemplate) {
       const tmpl = loadedGoals.find((g) => g.name === initialGoalTemplate);
-      if (tmpl) setSelectedGoalTemplate(tmpl);
+      if (tmpl) {
+        setSelectedGoalTemplate(tmpl);
+        goalTemplateResolved = true;
+      }
     }
     if (initialPreset) {
       // Apply preset immediately
@@ -112,8 +116,8 @@ export default function App({
         setSelectedModules(mods);
         setPreselectedRoles(roles);
         setSelectedRoles(roles);
-        // Skip goal template selection only if one was already provided via flag
-        return initialGoalTemplate ? STEPS.SUMMARY : STEPS.GOAL_TEMPLATES;
+        // Skip goal template selection only if one was successfully resolved
+        return goalTemplateResolved ? STEPS.SUMMARY : STEPS.GOAL_TEMPLATES;
       }
     }
     return STEPS.PRESET;
