@@ -478,5 +478,5 @@ export async function assembleCompany({
   await writeFile(join(companyDir, 'BOOTSTRAP.md'), bootstrap);
   onProgress('+ BOOTSTRAP.md');
 
-  return { companyDir, allRoles, initialTasks, goalTemplate };
+  return { companyDir, allRoles, initialTasks };
 }

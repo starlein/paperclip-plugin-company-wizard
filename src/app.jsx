@@ -112,7 +112,8 @@ export default function App({
         setSelectedModules(mods);
         setPreselectedRoles(roles);
         setSelectedRoles(roles);
-        return STEPS.SUMMARY;
+        // Skip goal template selection only if one was already provided via flag
+        return initialGoalTemplate ? STEPS.SUMMARY : STEPS.GOAL_TEMPLATES;
       }
     }
     return STEPS.PRESET;

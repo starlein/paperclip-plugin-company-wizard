@@ -40074,7 +40074,7 @@ Read: \`docs/${doc}\`
 `;
   await writeFile(join(companyDir, "BOOTSTRAP.md"), bootstrap);
   onProgress("+ BOOTSTRAP.md");
-  return { companyDir, allRoles, initialTasks, goalTemplate };
+  return { companyDir, allRoles, initialTasks };
 }
 
 // src/components/StepAssemble.jsx
@@ -40826,7 +40826,7 @@ function App2({
         setSelectedModules(mods);
         setPreselectedRoles(roles);
         setSelectedRoles(roles);
-        return STEPS.SUMMARY;
+        return initialGoalTemplate ? STEPS.SUMMARY : STEPS.GOAL_TEMPLATES;
       }
     }
     return STEPS.PRESET;
