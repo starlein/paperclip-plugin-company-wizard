@@ -2,7 +2,18 @@
 
 All notable changes to Clipper are documented here.
 
-## [0.3.8] — 2026-03-xx
+## [0.3.9] — 2026-03-14
+
+### Added
+
+- **Repo maintenance preset** (`repo-maintenance`) — Custodial maintenance for existing repositories: PR review, issue triage, codebase health, dependency management, and release process. Includes a 4-milestone inline goal (Repo Onboarding → Process Setup → Initial Sweep → Steady State) with 8 bootstrap issues. Composes github-repo, pr-review, triage, codebase-onboarding, dependency-management, release-management, backlog, auto-assign, and stall-detection. Adds Code Reviewer and Product Owner roles.
+- **4 new modules:**
+    - **`codebase-onboarding`** — Audit an existing codebase and maintain its health over time. `codebase-audit` capability (owners: engineer → ceo) covers initial architecture mapping, tech debt inventory, test coverage assessment, and ongoing cleanup via heartbeat-driven health checks. Produces `docs/CODEBASE-AUDIT.md`.
+    - **`triage`** — Process inbound GitHub issues: classify (bug/feature/enhancement/question/duplicate/invalid), prioritize (P0–P3), respond to reporters, and convert actionable items into Paperclip tasks. `issue-triage` capability (owners: product-owner → engineer → ceo). Uses `gh issue list` and GitHub API for labeling and responses.
+    - **`dependency-management`** — Dependency lifecycle management: vulnerability scanning, outdated package detection, safe patch updates, and major version migration planning. `dependency-audit` capability (owners: devops → security-engineer → engineer). Produces `docs/DEPENDENCY-AUDIT.md`.
+    - **`release-management`** — Release lifecycle: semver versioning, changelog generation, git tagging, GitHub Releases, and rollback procedures. `release-process` capability (owners: devops → engineer → ceo). Produces `docs/RELEASE-PROCESS.md`.
+
+## [0.3.8] — 2026-03-14
 
 ### Added
 

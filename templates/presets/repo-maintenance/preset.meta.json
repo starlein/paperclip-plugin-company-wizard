@@ -1,0 +1,111 @@
+{
+  "name": "repo-maintenance",
+  "description": "Maintain an existing repository: review PRs, triage issues, audit codebase health, manage dependencies and releases. For custodial maintenance, not greenfield development.",
+  "constraints": [],
+  "roles": [
+    "code-reviewer",
+    "product-owner"
+  ],
+  "modules": [
+    "github-repo",
+    "pr-review",
+    "triage",
+    "codebase-onboarding",
+    "dependency-management",
+    "release-management",
+    "backlog",
+    "auto-assign",
+    "stall-detection"
+  ],
+  "goals": [
+    {
+      "title": "Repository Maintenance Bootstrap",
+      "description": "Onboard to the existing codebase and establish maintenance processes: audit the repo, set up quality gates, triage open issues, and reach steady-state maintenance.",
+      "project": false,
+      "milestones": [
+        {
+          "id": "repo-onboarding",
+          "title": "Repo Onboarding",
+          "description": "Understand the existing codebase and document its current state.",
+          "completionCriteria": "docs/CODEBASE-AUDIT.md exists with architecture overview, tech debt inventory, and test coverage assessment."
+        },
+        {
+          "id": "process-setup",
+          "title": "Process Setup",
+          "description": "Establish PR review, issue triage, and release workflows.",
+          "completionCriteria": "Branch protection configured, PR conventions documented, issue labels created, release process documented."
+        },
+        {
+          "id": "initial-sweep",
+          "title": "Initial Sweep",
+          "description": "Process all existing open PRs and issues, run first dependency audit and codebase health pass.",
+          "completionCriteria": "All open PRs reviewed, all open issues triaged, dependency audit complete, first batch of cleanup issues created."
+        },
+        {
+          "id": "steady-state",
+          "title": "Steady State",
+          "description": "Ongoing maintenance loop — agents handle PRs, issues, and health on every heartbeat.",
+          "completionCriteria": "Maintenance processes running autonomously for 3+ heartbeat cycles with no backlog buildup."
+        }
+      ],
+      "issues": [
+        {
+          "title": "Audit codebase and document architecture",
+          "description": "Read the existing codebase, map architecture, identify tech debt hotspots and test coverage gaps. Document in docs/CODEBASE-AUDIT.md.",
+          "priority": "high",
+          "milestone": "repo-onboarding",
+          "assignTo": "engineer"
+        },
+        {
+          "title": "Run initial dependency audit",
+          "description": "Audit all dependencies for outdated versions and known vulnerabilities. Document in docs/DEPENDENCY-AUDIT.md. Apply safe patch updates.",
+          "priority": "high",
+          "milestone": "repo-onboarding",
+          "assignTo": "engineer"
+        },
+        {
+          "title": "Configure branch protection and PR workflow",
+          "description": "Set up branch protection on main, require PR reviews, configure review conventions. Document in docs/pr-conventions.md.",
+          "priority": "high",
+          "milestone": "process-setup",
+          "assignTo": "engineer"
+        },
+        {
+          "title": "Set up issue labels and triage workflow",
+          "description": "Create GitHub labels for issue classification (bug, feature, enhancement, question, duplicate, invalid) and priority levels (P0-P3). Document the triage process.",
+          "priority": "medium",
+          "milestone": "process-setup",
+          "assignTo": "user"
+        },
+        {
+          "title": "Document or establish release process",
+          "description": "Review current release workflow. If none exists, establish semver + changelog. Document in docs/RELEASE-PROCESS.md.",
+          "priority": "medium",
+          "milestone": "process-setup",
+          "assignTo": "engineer"
+        },
+        {
+          "title": "Review all open pull requests",
+          "description": "Fetch all open PRs on the GitHub repo. Review each for correctness, security, and style. Approve and merge those that pass, request changes on those that don't.",
+          "priority": "high",
+          "milestone": "initial-sweep",
+          "assignTo": "engineer"
+        },
+        {
+          "title": "Triage all open GitHub issues",
+          "description": "Review all open issues. Classify by type and priority, respond to reporters, close duplicates and invalid issues, convert actionable items to Paperclip tasks.",
+          "priority": "high",
+          "milestone": "initial-sweep",
+          "assignTo": "engineer"
+        },
+        {
+          "title": "First codebase health pass",
+          "description": "Based on the codebase audit, execute the highest-priority cleanup tasks: remove dead code, fix inconsistencies, simplify overly complex areas. Create PRs for each fix.",
+          "priority": "medium",
+          "milestone": "initial-sweep",
+          "assignTo": "engineer"
+        }
+      ]
+    }
+  ]
+}

@@ -39709,9 +39709,7 @@ function validateGoal(goal, sourceName) {
     }
     for (const m of goal.milestones) {
       if (!m.id || typeof m.id !== "string" || !MILESTONE_ID_RE.test(m.id)) {
-        throw new Error(
-          `Goal in ${sourceName}: milestone "id" must be kebab-case (got "${m.id}")`
-        );
+        throw new Error(`Goal in ${sourceName}: milestone "id" must be kebab-case (got "${m.id}")`);
       }
       if (milestoneIds.has(m.id)) {
         throw new Error(`Goal in ${sourceName}: duplicate milestone id "${m.id}"`);
@@ -39732,9 +39730,7 @@ function validateGoal(goal, sourceName) {
         throw new Error(`Goal in ${sourceName}: issue[${i}] missing "title"`);
       }
       if (issue.priority && !VALID_PRIORITIES.has(issue.priority)) {
-        throw new Error(
-          `Goal in ${sourceName}: issue[${i}] invalid priority "${issue.priority}"`
-        );
+        throw new Error(`Goal in ${sourceName}: issue[${i}] invalid priority "${issue.priority}"`);
       }
       if (issue.milestone && !milestoneIds.has(issue.milestone)) {
         throw new Error(
@@ -40931,11 +40927,7 @@ function App2({
     return STEPS.PRESET;
   }
   (0, import_react46.useEffect)(() => {
-    Promise.all([
-      loadPresets(templatesDir),
-      loadModules(templatesDir),
-      loadRoles(templatesDir)
-    ]).then(([p, m, r]) => {
+    Promise.all([loadPresets(templatesDir), loadModules(templatesDir), loadRoles(templatesDir)]).then(([p, m, r]) => {
       setPresets(p);
       setModules(m);
       setAvailableRoles(r);

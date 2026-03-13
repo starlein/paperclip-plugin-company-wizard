@@ -1,0 +1,18 @@
+{
+  "name": "release-management",
+  "requires": ["github-repo"],
+  "capabilities": [
+    {
+      "skill": "release-process",
+      "owners": ["devops", "engineer", "ceo"],
+      "fallbackSkill": "release-process.fallback"
+    }
+  ],
+  "tasks": [
+    {
+      "title": "Document or establish release process",
+      "assignTo": "capability:release-process",
+      "description": "Review the current release workflow. If one exists, document it in docs/RELEASE-PROCESS.md. If not, establish a semver + changelog workflow with tagging conventions."
+    }
+  ]
+}

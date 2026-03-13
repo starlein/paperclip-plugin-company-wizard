@@ -110,7 +110,7 @@ $ clipper --api
 | `--project <name>` | Project name | company name |
 | `--project-description <desc>` | Project description | _(wizard prompt)_ |
 | `--repo <url>` | GitHub repository URL | _(wizard prompt)_ |
-| `--preset <name>` | Preset: `fast`, `quality`, `rad`, `startup`, `research`, `full`, `secure`, `gtm`, `content` | _(wizard prompt)_ |
+| `--preset <name>` | Preset: `fast`, `quality`, `rad`, `startup`, `research`, `full`, `secure`, `gtm`, `content`, `repo-maintenance` | _(wizard prompt)_ |
 | `--modules <a,b,c>` | Comma-separated module names (merged with preset) | _(wizard prompt)_ |
 | `--roles <a,b>` | Comma-separated extra role names (merged with preset) | _(wizard prompt)_ |
 
@@ -252,6 +252,10 @@ Start with CEO + Engineer. Everything works. Add specialists and responsibilitie
 | `project-docs` | Technical Writer &rarr; Engineer | CEO | documentation |
 | `competitive-tracking` | Customer Success &rarr; CMO &rarr; Product Owner | CEO | competitive-intel |
 | `accessibility-audit` | QA &rarr; UI Designer | Engineer | accessibility |
+| `codebase-audit` | Engineer | CEO | codebase-onboarding |
+| `issue-triage` | Product Owner &rarr; Engineer | CEO | triage |
+| `dependency-audit` | DevOps &rarr; Security Engineer | Engineer | dependency-management |
+| `release-process` | DevOps &rarr; Engineer | CEO | release-management |
 | `stall-detection` | CEO (always) | — | stall-detection |
 | `vision-workshop` | CEO (always) | — | vision-workshop |
 
@@ -277,6 +281,7 @@ Start with CEO + Engineer. Everything works. Add specialists and responsibilitie
 | **`launch-mvp`** | launch-mvp, github-repo, backlog, auto-assign, stall-detection | Ship a first version end-to-end |
 | **`build-api`** | build-api, github-repo, backlog, auto-assign, ci-cd, stall-detection | Build a REST/GraphQL API from scratch |
 | **`website-relaunch`** | website-relaunch, github-repo, pr-review, backlog, auto-assign, stall-detection + UI Designer + PO | Relaunch a website with external design assets |
+| **`repo-maintenance`** | triage, codebase-onboarding, dependency-management, release-management, github-repo, pr-review, backlog, auto-assign, stall-detection + Code Reviewer + PO | Maintain an existing repository |
 
 > **`fast`** is for a single engineer — multiple engineers without review will cause conflicts.
 >
@@ -305,6 +310,8 @@ Start with CEO + Engineer. Everything works. Add specialists and responsibilitie
 
 **website-relaunch** — Relaunch an existing website with external design assets. Site audit, design ingestion, implementation, content migration, QA, and go-live. UI Designer for design analysis, Product Owner for backlog management. Includes a user-assigned "Provide design assets" issue as the entry point — upload your agency's designs, the team handles the rest.
 
+**repo-maintenance** — Custodial maintenance for existing repositories. Agents review and merge open PRs, triage inbound GitHub issues, audit codebase health, manage dependencies, and handle releases. Code Reviewer for PR quality gates, Product Owner for issue triage and backlog. Inline goal bootstraps the team through repo onboarding, process setup, initial sweep, and steady-state maintenance.
+
 </details>
 
 <br>
@@ -328,6 +335,15 @@ Start with CEO + Engineer. Everything works. Add specialists and responsibilitie
 | **`accessibility`** | WCAG 2.2 compliance audit and remediation | Primary owner runs audit |
 | **`website-relaunch`** | Website relaunch: audit, design ingestion, implementation, migration | Engineer audits + analyzes designs |
 | **`launch-mvp`** | MVP lifecycle: scope, build core feature, deploy, iterate from feedback | CEO scopes, Engineer builds |
+
+### Maintenance & Operations
+
+| Module | What it does | Kickoff task |
+| :----- | :----------- | :----------- |
+| **`codebase-onboarding`** | Audit existing codebase, map architecture, track tech debt, ongoing cleanup | Primary owner audits codebase |
+| **`triage`** | Classify, prioritize, and respond to inbound GitHub issues | Primary owner triages open issues |
+| **`dependency-management`** | Dependency audits, CVE scanning, safe patching, upgrade planning | Primary owner audits dependencies |
+| **`release-management`** | Semver, changelogs, git tagging, GitHub Releases, rollback procedures | Primary owner documents release process |
 
 ### Engineering Workflow
 
@@ -495,6 +511,37 @@ REST API development from schema to documentation. Includes an `api-design` skil
 MVP project lifecycle: define scope tightly, build the core feature, deploy, and iterate from user feedback. No capabilities or skills — this module is a structured goal with milestones and issues that guide the team through the MVP process.
 
 - **Goal:** Launch MVP (with dedicated project, 4 milestones, 8 issues)
+
+#### codebase-onboarding
+
+Audit an existing codebase and maintain its health over time. Initial pass maps architecture, identifies tech debt hotspots, and assesses test coverage. Ongoing heartbeat-driven health checks find refactoring opportunities, remove dead code, and create focused cleanup PRs. Requires `github-repo`.
+
+- **Capability:** `codebase-audit` — owners: `engineer` &rarr; `ceo`
+- **Fallback:** CEO writes high-level architecture overview only
+- **Output:** `docs/CODEBASE-AUDIT.md`
+
+#### triage
+
+Processes inbound GitHub issues: classify by type (bug, feature, enhancement, question, duplicate, invalid) and priority (P0–P3), respond to reporters, close duplicates, and convert actionable items into Paperclip tasks. Requires `github-repo`.
+
+- **Capability:** `issue-triage` — owners: `product-owner` &rarr; `engineer` &rarr; `ceo`
+- **Fallback:** CEO triages P0/P1 only, skips product decisions on feature requests
+
+#### dependency-management
+
+Dependency lifecycle: vulnerability scanning, outdated package detection, safe patch-level updates, and major version migration planning. Requires `github-repo`.
+
+- **Capability:** `dependency-audit` — owners: `devops` &rarr; `security-engineer` &rarr; `engineer`
+- **Fallback:** Engineer runs audit and applies safe patches only
+- **Output:** `docs/DEPENDENCY-AUDIT.md`
+
+#### release-management
+
+Release lifecycle: semantic versioning, changelog generation, git tagging, GitHub Releases, and rollback documentation. Requires `github-repo`.
+
+- **Capability:** `release-process` — owners: `devops` &rarr; `engineer` &rarr; `ceo`
+- **Fallback:** Engineer documents current process and sets up basic semver
+- **Output:** `docs/RELEASE-PROCESS.md`
 
 #### stall-detection
 

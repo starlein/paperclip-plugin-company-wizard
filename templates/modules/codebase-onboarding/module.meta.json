@@ -1,0 +1,18 @@
+{
+  "name": "codebase-onboarding",
+  "requires": ["github-repo"],
+  "capabilities": [
+    {
+      "skill": "codebase-audit",
+      "owners": ["engineer", "ceo"],
+      "fallbackSkill": "codebase-audit.fallback"
+    }
+  ],
+  "tasks": [
+    {
+      "title": "Audit codebase and document architecture",
+      "assignTo": "capability:codebase-audit",
+      "description": "Read the existing codebase, map the architecture, identify tech debt hotspots and test coverage gaps. Document findings in docs/CODEBASE-AUDIT.md. Create follow-up issues for cleanup opportunities."
+    }
+  ]
+}
