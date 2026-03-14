@@ -20,3 +20,8 @@ node_modules/
 # Claude user settings (local only)
 .claude/settings.local.json
 .mcp.json
+
+# Custom templates
+templates/modules/custom-*/
+templates/presets/custom-*/
+templates/roles/custom-*/

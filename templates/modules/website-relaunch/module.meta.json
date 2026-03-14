@@ -85,8 +85,15 @@
         "assignTo": "ui-designer"
       },
       {
+        "title": "Content audit of current website",
+        "description": "Crawl every page of the current website and audit the existing content to inform the redesign:\n\nFor each page, document:\n- **Content type** — hero copy, body text, testimonials, FAQs, CTAs, legal, blog posts\n- **Key messages** — what is the page trying to communicate? What value propositions are present?\n- **Content quality** — is the copy clear, current, and on-brand? Flag outdated, placeholder, or thin content\n- **Media assets** — images, videos, downloads — note which are reusable vs need replacement\n- **SEO content** — headings, meta descriptions, alt text — what's working, what's missing\n- **Gaps** — messaging that should exist but doesn't (e.g., missing social proof, no pricing clarity)\n\nFor each page, recommend a migration strategy:\n- **Keep** — content is strong, migrate as-is into the new design\n- **Rewrite** — message is right but copy needs updating for the new design/voice\n- **Merge** — overlapping content across pages, consolidate\n- **Drop** — no longer relevant, redirect or remove\n\nOutput: `docs/CONTENT-AUDIT.md` — this is a key input for the design handoff and content migration milestones.",
+        "priority": "high",
+        "milestone": "discovery",
+        "assignTo": "engineer"
+      },
+      {
         "title": "Create content inventory spreadsheet",
-        "description": "Based on the site audit, create a structured content inventory:\n- Page URL, title, word count, images, last updated\n- Content owner (if identifiable)\n- Migration decision: keep as-is, rewrite, merge, or drop\n- Priority: critical (homepage, key landing pages) vs secondary\n\nOutput: `docs/CONTENT-INVENTORY.md`.",
+        "description": "Based on the site audit and content review, create a structured content inventory:\n- Page URL, title, word count, images, last updated\n- Content status from review (keep / rewrite / merge / drop)\n- Content owner (if identifiable)\n- Migration priority: critical (homepage, key landing pages) vs secondary\n\nOutput: `docs/CONTENT-INVENTORY.md`.",
         "priority": "high",
         "milestone": "discovery",
         "assignTo": "ceo"
