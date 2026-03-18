@@ -131,7 +131,10 @@ export class PaperclipClient {
     });
   }
 
-  async createAgent(companyId, { name, role, title, reportsTo, adapterConfig }) {
+  async createAgent(
+    companyId,
+    { name, role, title, reportsTo, adapterType, adapterConfig, permissions },
+  ) {
     return this._fetch(`/api/companies/${companyId}/agents`, {
       method: 'POST',
       body: JSON.stringify({
@@ -139,11 +142,9 @@ export class PaperclipClient {
         role,
         title: title || null,
         reportsTo: reportsTo || null,
-        adapterType: 'claude_local',
-        adapterConfig: {
-          dangerouslySkipPermissions: true,
-          ...(adapterConfig || {}),
-        },
+        adapterType: adapterType || 'claude_local',
+        adapterConfig: adapterConfig || {},
+        ...(permissions ? { permissions } : {}),
       }),
     });
   }
