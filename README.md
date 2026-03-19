@@ -18,6 +18,14 @@
 
 <br>
 
+**npm package installation (Paperclip > Settings > Plugins > Install Plugin):**
+
+```bash
+@yesterday-ai/plugin-paperclip-company-wizard
+```
+
+<br>
+
 ## Table of Contents
 
 - [Two Ways to Start](#two-ways-to-start)
