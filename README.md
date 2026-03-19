@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Yesterday-AI/plugin-paperclip-company-wizard/main/web/public/favicon.svg" alt="Company Wizard" width="48" height="48">
+  <img src="https://raw.githubusercontent.com/Yesterday-AI/plugin-paperclip-company-wizard/main/public/favicon.svg" alt="Company Wizard" width="48" height="48">
   <h1 align="center">Company Wizard</h1>
   <p align="center">
     <strong>Bootstrap AI agent teams from modular templates.</strong>
