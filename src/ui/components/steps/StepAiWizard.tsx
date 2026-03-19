@@ -387,9 +387,24 @@ export function StepAiWizard() {
     const config = pendingConfigRef.current;
     if (!config) return;
 
-    const validModules = ((config.modules as string[]) || []).filter((m: string) =>
-      state.modules.some((mod) => mod.name === m),
+    // Expand module dependencies so required modules are included
+    const knownModuleNames = new Set(state.modules.map((m) => m.name));
+    const requiresMap = new Map(state.modules.map((m) => [m.name, m.requires ?? []]));
+    const aiModules = ((config.modules as string[]) || []).filter((m: string) =>
+      knownModuleNames.has(m),
     );
+    const expanded = new Set(aiModules);
+    const queue = [...aiModules];
+    while (queue.length > 0) {
+      const mod = queue.shift()!;
+      for (const dep of requiresMap.get(mod) ?? []) {
+        if (!expanded.has(dep) && knownModuleNames.has(dep)) {
+          expanded.add(dep);
+          queue.push(dep);
+        }
+      }
+    }
+    const validModules = [...expanded];
     const validRoles = ((config.roles as string[]) || []).filter((r: string) =>
       state.roles.some((role) => role.name === r),
     );
