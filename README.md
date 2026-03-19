@@ -1,6 +1,16 @@
-# Company Wizard
-
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Yesterday-AI/paperclipper/main/web/public/favicon.svg" alt="Company Wizard" width="48" height="48">
+  <h1 align="center">Company Wizard</h1>
+  <p align="center">
+    <strong>Bootstrap AI agent teams from modular templates.</strong>
+  </p>
+  <p align="center">
+    <a href="https://www.npmjs.com/package/@yesterday-ai/plugin-paperclip-company-wizard"><img src="https://img.shields.io/npm/v/@yesterday-ai/plugin-paperclip-company-wizard?color=cb3837&label=npm" alt="npm version"></a>
+    <a href="https://github.com/Yesterday-AI/plugin-paperclip-company-wizard/actions/workflows/ci.yml"><img src="https://github.com/Yesterday-AI/plugin-paperclip-company-wizard/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License"></a>
+    <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen" alt="Node.js"></a>
+  </p>
+</p>
 
 ---
 
