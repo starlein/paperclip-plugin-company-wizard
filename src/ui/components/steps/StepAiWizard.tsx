@@ -390,8 +390,8 @@ export function StepAiWizard() {
     // Expand module dependencies so required modules are included
     const knownModuleNames = new Set(state.modules.map((m) => m.name));
     const requiresMap = new Map(state.modules.map((m) => [m.name, m.requires ?? []]));
-    const aiModules = ((config.modules as string[]) || []).filter((m: string) =>
-      knownModuleNames.has(m),
+    const aiModules = (Array.isArray(config.modules) ? (config.modules as string[]) : []).filter(
+      (m: string) => knownModuleNames.has(m),
     );
     const expanded = new Set(aiModules);
     const queue = [...aiModules];
@@ -405,8 +405,8 @@ export function StepAiWizard() {
       }
     }
     const validModules = [...expanded];
-    const validRoles = ((config.roles as string[]) || []).filter((r: string) =>
-      state.roles.some((role) => role.name === r),
+    const validRoles = (Array.isArray(config.roles) ? (config.roles as string[]) : []).filter(
+      (r: string) => state.roles.some((role) => role.name === r),
     );
 
     // Apply config to wizard state but stay on ai-wizard step

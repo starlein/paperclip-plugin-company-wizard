@@ -297,10 +297,6 @@ const plugin = definePlugin({
       }
     });
 
-    // Provisioning action — assembles files, then creates company/agent/issue.
-    // Uses the plugin SDK host services where available (issues, goals),
-    // falls back to PaperclipClient HTTP for operations the SDK doesn't support
-    // yet (company creation, agent creation).
     // Auth check action — called by the summary step to surface credential issues early.
     ctx.actions.register('check-auth', async () => {
       const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
@@ -353,6 +349,10 @@ const plugin = definePlugin({
       return { text: data.content?.[0]?.text || '' };
     });
 
+    // Provisioning action — assembles files, then creates company/agent/issue.
+    // Uses the plugin SDK host services where available (issues, goals),
+    // falls back to PaperclipClient HTTP for operations the SDK doesn't support
+    // yet (company creation, agent creation).
     ctx.actions.register('start-provision', async (params) => {
       const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
       const paperclipUrl =

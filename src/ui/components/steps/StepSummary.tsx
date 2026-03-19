@@ -4,15 +4,7 @@ import { usePluginAction } from '@paperclipai/plugin-sdk/ui';
 import { Button } from '../ui/button';
 import { ConfigReview } from '../ConfigReview';
 import { AlertTriangle, Settings } from 'lucide-react';
-
-function getPluginSettingsUrl(): string {
-  const link = document.querySelector<HTMLAnchorElement>('a[href*="/settings/plugins/"]');
-  if (link) {
-    const match = link.href.match(/\/settings\/plugins\/([0-9a-f-]+)/);
-    if (match) return `/instance/settings/plugins/${match[1]}`;
-  }
-  return `/instance/settings/plugins`;
-}
+import { getPluginSettingsUrl } from '../../lib/utils';
 
 export function StepSummary() {
   const state = useWizard();

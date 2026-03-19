@@ -3,22 +3,12 @@ import { useWizard, useWizardDispatch, getAllRoles } from '../../context/WizardC
 import { usePluginAction } from '@paperclipai/plugin-sdk/ui';
 import { Loader2, Settings, AlertTriangle, RotateCcw } from 'lucide-react';
 import { Button } from '../ui/button';
+import { getPluginSettingsUrl } from '../../lib/utils';
 
 function isConfigError(error: string): boolean {
   return /authenticat|PAPERCLIP_EMAIL|PAPERCLIP_PASSWORD|paperclipEmail|paperclipPassword|credentials|unauthorized|forbidden/i.test(
     error,
   );
-}
-
-function getPluginSettingsUrl(): string {
-  // The breadcrumb "Plugins > Company Wizard" link embeds the plugin UUID.
-  // Extract it from the nearest anchor with href containing /settings/plugins/.
-  const link = document.querySelector<HTMLAnchorElement>('a[href*="/settings/plugins/"]');
-  if (link) {
-    const match = link.href.match(/\/settings\/plugins\/([0-9a-f-]+)/);
-    if (match) return `/instance/settings/plugins/${match[1]}`;
-  }
-  return `/instance/settings/plugins`;
 }
 
 export function StepProvision() {

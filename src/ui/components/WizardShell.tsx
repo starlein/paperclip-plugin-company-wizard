@@ -16,7 +16,6 @@ import { StepSummary } from './steps/StepSummary';
 import { StepAiWizard } from './steps/StepAiWizard';
 import { StepProvision } from './steps/StepProvision';
 import { StepDone } from './steps/StepDone';
-import { ArrowLeft, Paperclip, Sun, Moon } from 'lucide-react';
 import { Button } from './ui/button';
 
 const STEP_COMPONENTS = {
@@ -62,30 +61,11 @@ function StepIndicator() {
   );
 }
 
-function ThemeToggle() {
-  const toggle = () => {
-    const isDark = document.documentElement.classList.toggle('dark');
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-  };
-
-  return (
-    <Button variant="ghost" size="icon" onClick={toggle} className="h-8 w-8">
-      <Sun className="h-4 w-4 dark:hidden" />
-      <Moon className="hidden h-4 w-4 dark:block" />
-    </Button>
-  );
-}
-
 export function WizardShell() {
   const state = useWizard();
   const dispatch = useWizardDispatch();
 
   const StepComponent = STEP_COMPONENTS[state.step];
-  const showBack =
-    state.step !== 'onboarding' &&
-    state.step !== 'ai-wizard' &&
-    state.step !== 'provision' &&
-    state.step !== 'done';
 
   useEffect(() => {
     window.scrollTo({ top: 0 });

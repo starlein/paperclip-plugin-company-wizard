@@ -95,18 +95,18 @@ function HoverCardContent({
     let left: number;
 
     if (side === 'top') {
-      top = rect.top - sideOffset + window.scrollY;
+      top = rect.top - sideOffset;
       // Will be adjusted after render with transform
     } else {
-      top = rect.bottom + sideOffset + window.scrollY;
+      top = rect.bottom + sideOffset;
     }
 
     if (align === 'center') {
-      left = rect.left + rect.width / 2 - contentWidth / 2 + window.scrollX;
+      left = rect.left + rect.width / 2 - contentWidth / 2;
     } else if (align === 'end') {
-      left = rect.right - contentWidth + window.scrollX;
+      left = rect.right - contentWidth;
     } else {
-      left = rect.left + window.scrollX;
+      left = rect.left;
     }
 
     // Keep within viewport
