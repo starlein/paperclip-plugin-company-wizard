@@ -16,7 +16,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // --- Template loader ---
 
 const DEFAULT_TEMPLATES_REPO_URL =
-  'https://github.com/Yesterday-AI/paperclipper/tree/main/templates';
+  'https://github.com/Yesterday-AI/plugin-paperclip-company-wizard/tree/main/templates';
 const BUNDLED_TEMPLATES_DIR = path.resolve(__dirname, '..', 'templates');
 
 /** Recursively copy a directory (sync). */

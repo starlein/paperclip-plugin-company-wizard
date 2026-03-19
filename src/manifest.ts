@@ -41,7 +41,8 @@ const manifest: PaperclipPluginManifestV1 = {
       templatesRepoUrl: {
         'x-order': 3,
         type: 'string',
-        default: 'https://github.com/Yesterday-AI/paperclipper/tree/main/templates',
+        default:
+          'https://github.com/Yesterday-AI/plugin-paperclip-company-wizard/tree/main/templates',
         description:
           'GitHub tree URL to pull templates from when the templates directory does not exist.',
       },
