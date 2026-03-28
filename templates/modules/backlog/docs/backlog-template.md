@@ -18,14 +18,19 @@ Break the company goal into milestones. Each milestone is a coherent chunk of va
 | 2 | | | |
 | 3 | | | |
 
-## Issue Categories
+## Issue Labels
 
-Categorize issues when creating them to keep the backlog navigable:
+These categories must exist as Paperclip labels. Create them via `POST /api/companies/{companyId}/labels` with `{ "name": "...", "color": "..." }` before creating your first issues. Attach labels to every issue via `labelIds`.
 
-- **Feature** — new user-facing capability
-- **Bug** — defect or regression
-- **Chore** — refactoring, cleanup, dependency updates
-- **Spike** — research or investigation with a time-box
+| Label | Color | Use for |
+|:------|:------|:--------|
+| feature | `0075ca` | New user-facing capability |
+| bug | `d73a4a` | Defect or regression |
+| chore | `7057ff` | Refactoring, cleanup, dependency updates |
+| spike | `006b75` | Research or investigation with a time-box |
+| blocked | `e4e669` | Cannot proceed, needs unblocking |
+
+Add more labels as the project evolves (e.g., `docs`, `design`, `security`). Pick distinct hex colors. Fetch existing labels: `GET /api/companies/{companyId}/labels`.
 
 ## Backlog Snapshot
 

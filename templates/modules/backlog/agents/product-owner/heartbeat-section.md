@@ -7,6 +7,7 @@ After handling your own assignments:
    - Review the company goal and current progress.
    - Identify the next logical chunk of work from the roadmap.
    - Create 3-5 new issues via `POST /api/companies/{companyId}/issues`.
-   - Each issue needs: `title`, `description`, `priority`, `goalId`.
+   - Each issue needs: `title`, `description`, `priority`, `goalId`, `labelIds`.
+   - Fetch labels once per session: `GET /api/companies/{companyId}/labels`. If none exist, create them first (see `backlog-health` skill).
    - Write clear acceptance criteria. Leave issues unassigned.
 3. Record what you generated in daily notes.

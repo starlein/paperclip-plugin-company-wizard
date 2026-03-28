@@ -9,6 +9,7 @@ On your heartbeat, after handling assignments:
 1. Query unassigned issues: `GET /api/companies/{companyId}/issues?status=todo&unassigned=true`
 2. If fewer than 1 unassigned issue remains AND the Product Owner hasn't acted recently:
    - Create 1-2 high-priority issues from the roadmap to keep engineers unblocked
+   - Attach `labelIds` — fetch available labels via `GET /api/companies/{companyId}/labels`. If no labels exist yet, create the defaults (see `backlog-health` skill for the label table) before creating issues.
    - Comment on the issue tagging the Product Owner to take over backlog grooming
 3. If the Product Owner is active and the backlog has 1+ issues, skip this step.
 
