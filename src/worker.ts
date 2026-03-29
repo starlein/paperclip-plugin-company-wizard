@@ -165,6 +165,20 @@ const plugin = definePlugin({
       return loadTemplates(await ensureTemplatesDir(cfg));
     });
 
+    // Refresh templates — delete cached dir so next load re-downloads from GitHub.
+    ctx.actions.register('refresh-templates', async () => {
+      const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+      const repoUrl = cfg.templatesRepoUrl || DEFAULT_TEMPLATES_REPO_URL;
+      const targetDir =
+        cfg.templatesPath || path.join(os.homedir(), '.paperclip', 'plugin-templates');
+
+      if (fs.existsSync(targetDir)) {
+        fs.rmSync(targetDir, { recursive: true, force: true });
+      }
+      downloadTemplatesFromGithub(targetDir, repoUrl);
+      return { ok: true };
+    });
+
     // Preview action — assembles files to a temp dir and returns their contents.
     // Used by the UI review step to show/edit generated MD files before provisioning.
     ctx.actions.register('preview-files', async (params) => {

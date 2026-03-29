@@ -20,10 +20,11 @@ After `pnpm build`, reload the plugin in the Paperclip UI. No reinstall required
 
 ## Architecture
 
-**Plugin worker** (`src/worker.ts`) — Registers three actions via the Paperclip Plugin SDK:
+**Plugin worker** (`src/worker.ts`) — Registers actions via the Paperclip Plugin SDK:
 - `preview-files` — Assembles to a temp dir, returns `.md` file tree as `{path, content}[]`, cleans up. Used by the ConfigReview step for inline preview+edit before provisioning.
 - `start-provision` — Assembles to the workspace `companies/` dir, applies `fileOverrides` (edits from preview), then provisions via Paperclip API.
 - `check-auth` — Validates API credentials early (used by the summary step).
+- `refresh-templates` — Deletes cached templates dir and re-downloads from GitHub. Triggered by the "Update templates" button on the onboarding screen.
 
 **Plugin UI** (`src/ui/`) — React state machine (WizardContext + reducer). Manual path: ONBOARDING → NAME → GOAL → PRESET → MODULES → ROLES → SUMMARY → PROVISION → DONE. AI path: ONBOARDING → AI_WIZARD → PROVISION → DONE.
 

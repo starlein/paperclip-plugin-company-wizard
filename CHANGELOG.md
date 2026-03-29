@@ -6,7 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [0.1.8] — 2026-03-29
+## [0.1.9] — 2026-03-29
 
 ### Added
 
@@ -16,6 +16,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Subgoal expansion — `goal.subgoals[]` are expanded into the goal hierarchy as nested goals with `level: "team"` and `parentGoal`
 - Robust JSON parser — string-aware brace tracking, trailing comma cleanup, markdown code fence fallback, `console.error` debug logging on parse failure
 - ConfigReview file grouping — agent files grouped by `agents/<role>/` instead of flat `agents/`
+- "Update templates" button on onboarding screen — `refresh-templates` worker action deletes cached templates and re-downloads from GitHub
 
 ### Changed
 

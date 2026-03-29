@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useWizardDispatch } from '../../context/WizardContext';
+import { usePluginAction } from '@paperclipai/plugin-sdk/ui';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/card';
-import { Building2, Sparkles } from 'lucide-react';
+import { Building2, Sparkles, RefreshCw } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 function PathCard({
@@ -52,6 +54,22 @@ function PathCard({
 
 export function StepOnboarding() {
   const dispatch = useWizardDispatch();
+  const refreshTemplates = usePluginAction('refresh-templates');
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshMsg, setRefreshMsg] = useState<string | null>(null);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setRefreshMsg(null);
+    try {
+      await refreshTemplates({});
+      setRefreshMsg('Templates updated — reload the page to use them.');
+    } catch (err) {
+      setRefreshMsg(err instanceof Error ? err.message : 'Refresh failed');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -87,6 +105,18 @@ export function StepOnboarding() {
           ]}
           onClick={() => dispatch({ type: 'SET_PATH', path: 'ai' })}
         />
+      </div>
+
+      <div className="flex items-center justify-center gap-2 pt-2">
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={cn('h-3 w-3', refreshing && 'animate-spin')} />
+          {refreshing ? 'Updating templates…' : 'Update templates'}
+        </button>
+        {refreshMsg && <span className="text-xs text-muted-foreground">{refreshMsg}</span>}
       </div>
     </div>
   );
