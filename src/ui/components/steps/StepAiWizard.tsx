@@ -240,15 +240,31 @@ export function StepAiWizard() {
   };
 
   const tryExtractConfig = (text: string) => {
-    // Extract all top-level JSON objects by tracking brace depth
+    // Extract top-level JSON objects by tracking brace depth, skipping string contents.
     const candidates: string[] = [];
     let depth = 0;
     let start = -1;
+    let inString = false;
+    let escape = false;
     for (let i = 0; i < text.length; i++) {
-      if (text[i] === '{') {
+      const ch = text[i];
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (ch === '\\' && inString) {
+        escape = true;
+        continue;
+      }
+      if (ch === '"') {
+        inString = !inString;
+        continue;
+      }
+      if (inString) continue;
+      if (ch === '{') {
         if (depth === 0) start = i;
         depth++;
-      } else if (text[i] === '}') {
+      } else if (ch === '}') {
         depth--;
         if (depth === 0 && start !== -1) {
           candidates.push(text.slice(start, i + 1));
@@ -256,13 +272,45 @@ export function StepAiWizard() {
         }
       }
     }
-    for (const candidate of candidates) {
+    const isValidConfig = (obj: any) => obj && typeof obj === 'object' && obj.name && obj.preset;
+    const tryParse = (raw: string) => {
+      // 1. Try strict JSON
       try {
-        const config = JSON.parse(candidate);
-        if (config.name && config.preset) return config;
+        return JSON.parse(raw);
       } catch {
-        // not valid JSON, try next
+        /* continue to cleanup */
       }
+      // 2. Clean common AI artifacts and retry
+      try {
+        const cleaned = raw
+          .replace(/,\s*([\]}])/g, '$1') // trailing commas
+          .replace(/\/\/[^\n]*/g, '') // line comments
+          .replace(/\n/g, '\\n') // unescaped newlines inside strings
+          .replace(/\t/g, '\\t'); // unescaped tabs
+        return JSON.parse(cleaned);
+      } catch {
+        /* continue to last resort */
+      }
+      // 3. Last resort: try to fix unescaped newlines only inside JSON string values
+      try {
+        // Replace actual newlines between quotes with \n escape
+        const fixed = raw.replace(/"([^"\\]|\\.)*"/g, (match) =>
+          match.replace(/\n/g, '\\n').replace(/\t/g, '\\t'),
+        );
+        return JSON.parse(fixed.replace(/,\s*([\]}])/g, '$1'));
+      } catch {
+        return null;
+      }
+    };
+    for (const candidate of candidates) {
+      const config = tryParse(candidate);
+      if (isValidConfig(config)) return config;
+    }
+    // Fallback: try extracting from markdown code fence
+    const fenceMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+    if (fenceMatch) {
+      const config = tryParse(fenceMatch[1].trim());
+      if (isValidConfig(config)) return config;
     }
     return null;
   };
@@ -319,6 +367,7 @@ export function StepAiWizard() {
         pendingConfigRef.current = config;
         setConfigReady(true);
       } else {
+        console.error('[AI Wizard] Failed to parse config from single-shot response:', reply);
         throw new Error('Could not parse configuration from AI response');
       }
     } catch (err) {
@@ -378,6 +427,7 @@ export function StepAiWizard() {
         pendingConfigRef.current = config;
         setConfigReady(true);
       } else {
+        console.error('[AI Wizard] Failed to parse config from interview response:', reply);
         throw new Error('Could not parse configuration from AI response');
       }
     } catch (err) {

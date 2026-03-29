@@ -6,6 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.1.7] — 2026-03-29
+
+### Changed
+
+- `ai-chat` action: `max_tokens` increased from 1024 to 16384 — prevents truncated JSON when AI generates thorough goal descriptions with the new `goals[]`/`projects[]` format
+
+### Fixed
+
+- JSON parser in `tryExtractConfig` now string-aware: brace-depth tracker skips `{`/`}` inside quoted strings, preventing false matches on text like `"Build API with {userId}"`
+- JSON parser handles trailing commas, line comments, unescaped newlines/tabs in AI-generated JSON
+- JSON parser falls back to markdown code fence extraction (`\`\`\`json ... \`\`\``) when brace tracking finds no valid config
+- Added `console.error` debug logging when config parsing fails — raw AI response is now visible in browser devtools
+
+---
+
 ## [0.1.6] — 2026-03-29
 
 ### Changed
