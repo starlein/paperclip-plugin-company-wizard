@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.1.13] — 2026-03-30
+
+### Changed
+
+- CEO agent default model: `claude-opus-4-6` (was: no default, Paperclip fallback)
+- CEO agent heartbeat interval: 3600s / 1 hour (was: Paperclip default 300s / 5 min)
+- `createAgent()` API client now accepts `runtimeConfig` (used for `heartbeat.intervalSec`)
+
+---
+
 ## [0.1.12] — 2026-03-30
 
 ### Added

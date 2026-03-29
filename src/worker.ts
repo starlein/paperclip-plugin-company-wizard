@@ -434,7 +434,7 @@ const plugin = definePlugin({
           ...(assembleResult.roleAdapterOverrides?.get('ceo') ?? {}),
           cwd: userCwd || companyDir,
           instructionsFilePath: path.join(companyDir, 'agents', 'ceo', 'AGENTS.md'),
-          ...(userModel ? { model: userModel } : {}),
+          model: userModel || 'claude-opus-4-6',
         };
 
         if (adapterType === 'claude_local') {
@@ -451,6 +451,9 @@ const plugin = definePlugin({
           reportsTo: null,
           adapterType,
           adapterConfig,
+          runtimeConfig: {
+            heartbeat: { enabled: true, intervalSec: 3600 },
+          },
           permissions: { canCreateAgents: true },
         });
         ceoAgentId = ceoAgent.id;

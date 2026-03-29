@@ -137,7 +137,7 @@ export class PaperclipClient {
 
   async createAgent(
     companyId,
-    { name, role, title, reportsTo, adapterType, adapterConfig, permissions },
+    { name, role, title, reportsTo, adapterType, adapterConfig, runtimeConfig, permissions },
   ) {
     return this._fetch(`/api/companies/${companyId}/agents`, {
       method: 'POST',
@@ -148,6 +148,7 @@ export class PaperclipClient {
         reportsTo: reportsTo || null,
         adapterType: adapterType || 'claude_local',
         adapterConfig: adapterConfig || {},
+        ...(runtimeConfig ? { runtimeConfig } : {}),
         ...(permissions ? { permissions } : {}),
       }),
     });
