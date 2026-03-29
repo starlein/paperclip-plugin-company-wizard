@@ -33,8 +33,8 @@ describe('assembleCompany integration (real templates)', () => {
     // Quality preset: roles = product-owner, code-reviewer; modules = github-repo, pr-review, backlog, auto-assign, stall-detection
     const { companyDir, allRoles, initialTasks } = await assembleCompany({
       companyName: 'Integration Test Co',
-      goal: { title: 'Ship the MVP', description: 'Build and launch a working product' },
-      project: { name: 'test-app', repoUrl: 'https://github.com/test/test-app' },
+      userGoals: [{ title: 'Ship the MVP', description: 'Build and launch a working product' }],
+      userProjects: [{ name: 'test-app', description: '', goals: ['Ship the MVP'] }],
       moduleNames: ['github-repo', 'pr-review', 'backlog', 'auto-assign', 'stall-detection'],
       extraRoleNames: ['engineer', 'product-owner', 'code-reviewer'],
       outputDir,
@@ -86,13 +86,12 @@ describe('assembleCompany integration (real templates)', () => {
     // --- Verify BOOTSTRAP.md ---
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
     assert.ok(bootstrap.includes('# Bootstrap: Integration Test Co'));
-    assert.ok(bootstrap.includes('**Ship the MVP**'), 'BOOTSTRAP.md should include goal title');
+    assert.ok(bootstrap.includes('### Ship the MVP'), 'BOOTSTRAP.md should include goal title');
     assert.ok(
       bootstrap.includes('Build and launch a working product'),
       'should include goal description',
     );
     assert.ok(bootstrap.includes('test-app'), 'should include project name');
-    assert.ok(bootstrap.includes('https://github.com/test/test-app'), 'should include repo URL');
     assert.ok(bootstrap.includes('instructionsFilePath'), 'should have agent setup instructions');
     for (const role of expectedRoles) {
       assert.ok(

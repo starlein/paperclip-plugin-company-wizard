@@ -39,7 +39,7 @@ After `pnpm build`, reload the plugin in the Paperclip UI. No reinstall required
 - `src/logic/ai-wizard.js` — AI wizard: calls Claude API to analyze description and select config
 - `src/api/client.js` — Paperclip REST API client (auto-detects auth: no-op for local_trusted, Better Auth sign-in for authenticated)
 - `src/api/provision.js` — Provisioning orchestration: Company → Goal → Project → Agents → Issues → Inline goals → CEO heartbeat
-- `src/ui/context/WizardContext.tsx` — State machine + reducer. Includes `fileOverrides: Record<string,string>` for edits made in ConfigReview
+- `src/ui/context/WizardContext.tsx` — State machine + reducer. Key state: `goals: Goal[]`, `projects: WizardProject[]`, `fileOverrides: Record<string,string>`
 - `src/ui/components/ConfigReview.tsx` — Review step: calls `preview-files`, shows collapsible `FileEntry` components with inline edit. Overrides dispatched via `SET_FILE_OVERRIDE`/`DELETE_FILE_OVERRIDE`
 - `src/ui/components/steps/StepProvision.tsx` — Passes `fileOverrides` to `start-provision`
 
@@ -93,15 +93,17 @@ Currently 3 modules have heartbeat sections: `stall-detection` (CEO), `auto-assi
 
 ### Key Concepts
 
-- **Inline goals** — Goals live inside presets (`goals: []` array) or modules (`goal: {}` single object). `collectGoals()` merges them at runtime. When a module has an active goal, its `tasks` array is skipped (the goal's issues replace them). Goals support `project: boolean` (default true) to control whether a dedicated Paperclip project is created.
-- **Hierarchical project resolution** — Issues resolve: milestone project → goal project → main project.
+- **Goals and projects** — `WizardState.goals: Goal[]` holds user-specified goals (from manual step or AI wizard). `WizardState.projects: WizardProject[]` holds user-specified projects. Each `Goal` has `title`, `description`, and optional `parentGoal` for sub-goal hierarchy. Each `WizardProject` has `name`, `description`, and `goals[]` (goal titles it's linked to, matching Paperclip API `goalIds`).
+- **Inline goals** — Module-level goals (`goal: {}` in `module.meta.json`) and preset goals (`goals: []` in `preset.meta.json`). `collectGoals()` merges them at runtime as `inlineGoals`. During assembly, these become sub-goals of the main user goal (first in `userGoals[]`). When a module has an active goal, its `tasks` array is skipped (the goal's issues replace them).
+- **`assembleCompany()` params** — `userGoals` (from wizard), `userProjects` (from wizard), `inlineGoals` (from `collectGoals()`). Module inline goals are auto-parented to `userGoals[0]`. If no `userProjects` specified, a default project linked to all goals is created.
+- **Paperclip object model** — Goals are company-level, nested via `parentId`. Projects link to goals via `goalIds`. Issues link to projects via `projectId` (NOT directly to goals). `instructionsFilePath` sets the agent's working directory.
 - **`assignTo: "user"`** — Issues assigned to the board user via `assigneeUserId` (resolved during `client.connect()`).
-- **`companyDescription`** — AI wizard generates a comprehensive description of the company (what it does, what it's building, priorities, constraints). Stored in `WizardContext.companyDescription`, passed to `start-provision`, and sent to the Paperclip API as the company's `description` field.
+- **`companyDescription`** — AI wizard generates a comprehensive description. Stored in `WizardContext.companyDescription`, rendered in BOOTSTRAP.md, and sent to the Paperclip API as the company's `description` field.
 - **File overrides** — `WizardContext.fileOverrides` (`Record<string,string>`) stores edits made in ConfigReview. Passed to `start-provision` as `params.fileOverrides`; written over assembled files before API provisioning.
 - **Gracefully optimistic architecture** — Capabilities extend when roles are present, degrade gracefully when absent. A capability's `owners[]` chain determines primary/fallback assignment at assembly time.
 - **`adapterOverrides` field** — Module-level adapter config (e.g., `{ "chrome": true }`) merged into agent `adapterConfig` at provisioning. Keeps role templates clean.
 - **toPascalCase** — Company and project names become PascalCase directory names. Special characters are stripped.
-- **BOOTSTRAP.md** — Generated guide describing what was assembled and how to provision manually if not using the wizard.
+- **BOOTSTRAP.md** — Generated guide with: company description, goal hierarchy (### top-level, #### sub-goals), projects with workspace + goal links, agents with instructionsFilePath, issues grouped by goal with project annotations, and provisioning steps in API dependency order.
 
 ### Paperclip API Flow (start-provision)
 

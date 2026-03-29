@@ -233,7 +233,7 @@ describe('assembleCompany', () => {
   it('includes goal in BOOTSTRAP.md when provided', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'GoalCo',
-      goal: { title: 'Ship MVP', description: 'Build and launch the MVP' },
+      userGoals: [{ title: 'Ship MVP', description: 'Build and launch the MVP' }],
       moduleNames: [],
       extraRoleNames: [],
       outputDir,
@@ -241,15 +241,15 @@ describe('assembleCompany', () => {
     });
 
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
-    assert.ok(bootstrap.includes('## Goal'));
-    assert.ok(bootstrap.includes('**Ship MVP**'));
+    assert.ok(bootstrap.includes('## Goals'));
+    assert.ok(bootstrap.includes('### Ship MVP'));
     assert.ok(bootstrap.includes('Build and launch the MVP'));
   });
 
   it('includes project info in BOOTSTRAP.md', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'ProjCo',
-      project: { name: 'my-app', repoUrl: 'https://github.com/test/my-app' },
+      userProjects: [{ name: 'my-app', description: '', goals: [] }],
       moduleNames: [],
       extraRoleNames: [],
       outputDir,
@@ -258,7 +258,6 @@ describe('assembleCompany', () => {
 
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
     assert.ok(bootstrap.includes('my-app'));
-    assert.ok(bootstrap.includes('https://github.com/test/my-app'));
   });
 
   it('includes initial tasks in BOOTSTRAP.md from modules', async () => {
@@ -275,7 +274,7 @@ describe('assembleCompany', () => {
     assert.equal(initialTasks[0].assignTo, 'engineer');
 
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
-    assert.ok(bootstrap.includes('Initial Tasks'));
+    assert.ok(bootstrap.includes('## Issues'));
     assert.ok(bootstrap.includes('Init repo'));
   });
 

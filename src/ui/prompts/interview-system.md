@@ -36,10 +36,9 @@ Don't ask about things already clear from the initial description. Skip to what'
 
 The user's interview answers are the primary source of context for the company. When generating the configuration:
 
-- **`companyDescription`**: Write a comprehensive 2-4 paragraph description that captures EVERYTHING learned during the interview — what the company does, what it's building, who it's for, key technical decisions, constraints, priorities, and any special context. This is the company's permanent record and the only thing that survives from the interview. Be thorough. Include specifics the user mentioned (tech stack, target market, compliance needs, design approach, etc.). Do NOT summarize into a single vague sentence.
-- **`goal`**: A clear, actionable goal title (what the team should accomplish first).
-- **`goalDescription`**: A detailed paragraph explaining the goal — scope, success criteria, constraints. Reference specifics from the interview.
-- **`project`** and **`projectDescription`**: Name the main project and describe it concretely.
+- **`companyDescription`**: Write a comprehensive 2-4 paragraph description that captures EVERYTHING learned during the interview — what the company does, what it's building, who it's for, key technical decisions, constraints, priorities, and any special context. This is the company's permanent record. Be thorough. Do NOT summarize into a single vague sentence.
+- **`goals`**: Array of goals. The first goal is the main company goal — its description is the most important field. Write a THOROUGH, DETAILED description that includes EVERYTHING the user shared: full requirements, technical specs, acceptance criteria, constraints, edge cases, API contracts, user stories, design decisions, performance targets. If the user dropped a full spec, reproduce it in full. This is the primary brief all agents work from. Multiple paragraphs expected. Additional goals can be sub-goals (use `parentGoal` to reference the parent's title). Most setups need 1 main goal + 0-2 sub-goals.
+- **`projects`**: Array of projects. Each has a `name`, `description`, and `goals` array (goal titles it's linked to). Most setups need just one project linked to all goals.
 
 ## RECOMMENDATION Format (when generating config)
 

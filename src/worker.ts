@@ -252,13 +252,23 @@ const plugin = definePlugin({
           new Set((params.selectedModules as string[]) ?? []),
         );
 
+        // Normalize goals/projects for preview (same logic as start-provision)
+        const previewGoals: any[] = Array.isArray(params.goals)
+          ? (params.goals as any[])
+          : params.goal
+            ? [params.goal]
+            : [];
+        const previewProjects: any[] = Array.isArray(params.projects)
+          ? (params.projects as any[])
+          : [];
+
         const result = await assembleCompany({
           companyName,
-          goal: (params.goal as any) || {},
-          project: {},
+          userGoals: previewGoals,
+          userProjects: previewProjects,
           moduleNames: (params.selectedModules as string[]) ?? [],
           extraRoleNames: (params.selectedRoles as string[]) ?? [],
-          goals,
+          inlineGoals: goals,
           outputDir: tmpDir,
           templatesDir,
         });
@@ -389,13 +399,25 @@ const plugin = definePlugin({
       fs.mkdirSync(outputDir, { recursive: true });
       log('Assembling company workspace...');
 
+      const companyDescription =
+        typeof params.companyDescription === 'string' ? params.companyDescription.trim() : '';
+
+      // Normalize goals: support both old single-goal and new array format
+      const userGoals: any[] = Array.isArray(params.goals)
+        ? (params.goals as any[])
+        : params.goal
+          ? [params.goal]
+          : [];
+      const userProjects: any[] = Array.isArray(params.projects) ? (params.projects as any[]) : [];
+
       const assembleResult = await assembleCompany({
         companyName,
-        goal: (params.goal as any) || {},
-        project: {},
+        companyDescription,
+        userGoals,
+        userProjects,
         moduleNames: (params.selectedModules as string[]) ?? [],
         extraRoleNames: (params.selectedRoles as string[]) ?? [],
-        goals,
+        inlineGoals: goals,
         outputDir,
         templatesDir,
         onProgress: log,
@@ -434,8 +456,6 @@ const plugin = definePlugin({
 
       // Step 5: Create company (SDK: companies.read only → HTTP client)
       log('Creating company...');
-      const companyDescription =
-        typeof params.companyDescription === 'string' ? params.companyDescription.trim() : '';
       const company = await client.createCompany({
         name: companyName,
         description: companyDescription || undefined,
@@ -482,12 +502,11 @@ const plugin = definePlugin({
         log(`✓ CEO agent created (${ceoAgentId})`);
 
         // Step 7: Create bootstrap issue (SDK: ctx.issues.create ✓)
-        const goalData = (params.goal as any) || {};
         const bootstrapDescription = generateBootstrapDescription({
           companyName,
           generatedFilesPath: companyDir,
           userCwd,
-          goal: goalData,
+          goal: userGoals[0] || {},
         });
 
         log('Creating bootstrap task for CEO...');

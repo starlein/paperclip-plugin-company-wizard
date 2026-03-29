@@ -20,6 +20,13 @@ export type Step =
 export interface Goal {
   title: string;
   description: string;
+  parentGoal?: string;
+}
+
+export interface WizardProject {
+  name: string;
+  description: string;
+  goals: string[]; // goal titles this project is linked to
 }
 
 export interface CeoAdapter {
@@ -43,7 +50,8 @@ export interface WizardState {
 
   // User input
   companyName: string;
-  goal: Goal;
+  goals: Goal[];
+  projects: WizardProject[];
   ceoAdapter: CeoAdapter;
   presetName: string;
   selectedModules: string[];
@@ -76,7 +84,8 @@ type Action =
   | { type: 'SET_PATH'; path: WizardPath }
   | { type: 'GO_TO'; step: Step }
   | { type: 'SET_COMPANY_NAME'; value: string }
-  | { type: 'SET_GOAL'; goal: Partial<Goal> }
+  | { type: 'SET_GOALS'; goals: Goal[] }
+  | { type: 'SET_PROJECTS'; projects: WizardProject[] }
   | { type: 'SET_CEO_ADAPTER'; adapter: Partial<CeoAdapter> }
   | { type: 'SET_PRESET'; name: string }
   | { type: 'SET_MODULES'; modules: string[] }
@@ -161,7 +170,8 @@ const initialState: WizardState = {
   step: 'onboarding',
   path: null,
   companyName: '',
-  goal: { title: '', description: '' },
+  goals: [],
+  projects: [],
   ceoAdapter: { type: 'claude_local', cwd: '', model: '' },
   presetName: '',
   selectedModules: [],
@@ -192,8 +202,10 @@ function reducer(state: WizardState, action: Action): WizardState {
       return { ...state, step: action.step, error: null };
     case 'SET_COMPANY_NAME':
       return { ...state, companyName: action.value };
-    case 'SET_GOAL':
-      return { ...state, goal: { ...state.goal, ...action.goal } };
+    case 'SET_GOALS':
+      return { ...state, goals: action.goals };
+    case 'SET_PROJECTS':
+      return { ...state, projects: action.projects };
     case 'SET_CEO_ADAPTER':
       return { ...state, ceoAdapter: { ...state.ceoAdapter, ...action.adapter } };
     case 'SET_PRESET': {

@@ -25,8 +25,13 @@ export function StepGoal() {
           <label className="text-sm font-medium">Goal title</label>
           <Input
             placeholder="e.g. Ship MVP by end of month"
-            value={state.goal.title}
-            onChange={(e) => dispatch({ type: 'SET_GOAL', goal: { title: e.target.value } })}
+            value={state.goals[0]?.title || ''}
+            onChange={(e) =>
+              dispatch({
+                type: 'SET_GOALS',
+                goals: [{ title: e.target.value, description: state.goals[0]?.description || '' }],
+              })
+            }
             onKeyDown={(e) => e.key === 'Enter' && handleNext()}
             autoFocus
           />
@@ -38,8 +43,13 @@ export function StepGoal() {
           <textarea
             className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
             placeholder="More context about what success looks like..."
-            value={state.goal.description}
-            onChange={(e) => dispatch({ type: 'SET_GOAL', goal: { description: e.target.value } })}
+            value={state.goals[0]?.description || ''}
+            onChange={(e) =>
+              dispatch({
+                type: 'SET_GOALS',
+                goals: [{ title: state.goals[0]?.title || '', description: e.target.value }],
+              })
+            }
             style={{ fieldSizing: 'content' } as React.CSSProperties}
           />
         </div>

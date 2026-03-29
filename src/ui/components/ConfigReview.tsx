@@ -466,7 +466,8 @@ export function ConfigReview() {
         presetName: state.presetName,
         selectedModules: state.selectedModules,
         selectedRoles: state.selectedRoles,
-        goal: state.goal.title ? state.goal : undefined,
+        goals: state.goals.length > 0 ? state.goals : undefined,
+        projects: state.projects.length > 0 ? state.projects : undefined,
       })) as { files: Record<string, string> };
       setPreviewFiles(result.files);
     } catch (e) {
@@ -479,7 +480,8 @@ export function ConfigReview() {
     state.presetName,
     state.selectedModules,
     state.selectedRoles,
-    state.goal,
+    state.goals,
+    state.projects,
     previewFilesAction,
   ]);
 
@@ -555,14 +557,17 @@ export function ConfigReview() {
             </SummaryRow>
           </div>
 
-          {/* Goal */}
+          {/* Goals */}
           <div className="px-4">
             <SummaryRow icon={Target} label="Goal" onEdit={() => setEditing('goal')}>
               {editing === 'goal' ? (
                 <InlineEdit
-                  value={state.goal.title}
+                  value={state.goals[0]?.title || ''}
                   onSave={(v) => {
-                    dispatch({ type: 'SET_GOAL', goal: { title: v } });
+                    const updated = [...state.goals];
+                    if (updated.length === 0) updated.push({ title: '', description: '' });
+                    updated[0] = { ...updated[0], title: v };
+                    dispatch({ type: 'SET_GOALS', goals: updated });
                     setEditing('goalDesc');
                   }}
                   onCancel={() => setEditing(null)}
@@ -570,11 +575,14 @@ export function ConfigReview() {
                 />
               ) : editing === 'goalDesc' ? (
                 <div className="space-y-1">
-                  <span>{state.goal.title || '(no goal)'}</span>
+                  <span>{state.goals[0]?.title || '(no goal)'}</span>
                   <InlineEdit
-                    value={state.goal.description}
+                    value={state.goals[0]?.description || ''}
                     onSave={(v) => {
-                      dispatch({ type: 'SET_GOAL', goal: { description: v } });
+                      const updated = [...state.goals];
+                      if (updated.length === 0) updated.push({ title: '', description: '' });
+                      updated[0] = { ...updated[0], description: v };
+                      dispatch({ type: 'SET_GOALS', goals: updated });
                       setEditing(null);
                     }}
                     onCancel={() => setEditing(null)}
@@ -584,9 +592,16 @@ export function ConfigReview() {
                 </div>
               ) : (
                 <>
-                  <span>{state.goal.title || '(no goal)'}</span>
-                  {state.goal.description && (
-                    <p className="text-xs text-muted-foreground mt-0.5">{state.goal.description}</p>
+                  <span>{state.goals[0]?.title || '(no goal)'}</span>
+                  {state.goals[0]?.description && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {state.goals[0].description}
+                    </p>
+                  )}
+                  {state.goals.length > 1 && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      + {state.goals.length - 1} sub-goal{state.goals.length > 2 ? 's' : ''}
+                    </p>
                   )}
                 </>
               )}

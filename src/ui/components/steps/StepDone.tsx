@@ -24,12 +24,12 @@ export function StepDone() {
 
       <Card>
         <CardContent className="pt-6 space-y-4">
-          {state.goal.title && (
+          {state.goals[0]?.title && (
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
                 Goal
               </p>
-              <p className="text-sm">{state.goal.title}</p>
+              <p className="text-sm">{state.goals[0].title}</p>
             </div>
           )}
 

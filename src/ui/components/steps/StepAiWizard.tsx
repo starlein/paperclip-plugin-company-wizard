@@ -1,6 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { usePluginAction } from '@paperclipai/plugin-sdk/ui';
-import { useWizard, useWizardDispatch } from '../../context/WizardContext';
+import {
+  useWizard,
+  useWizardDispatch,
+  type Goal,
+  type WizardProject,
+} from '../../context/WizardContext';
 import { Button } from '../ui/button';
 import { ConfigReview } from '../ConfigReview';
 import { cn } from '../../lib/utils';
@@ -199,7 +204,8 @@ export function StepAiWizard() {
     return [
       '## Available Presets',
       ...state.presets.map(
-        (p) => `- **${p.name}**: ${p.description} (modules: ${p.modules?.join(', ')})`,
+        (p) =>
+          `- **${p.name}**: ${p.description} (modules: ${p.modules?.join(', ')}; roles: ${(p.roles as string[] | undefined)?.length ? (p.roles as string[]).join(', ') : 'none'})`,
       ),
       '',
       '## Available Modules',
@@ -404,29 +410,71 @@ export function StepAiWizard() {
         }
       }
     }
-    const validModules = [...expanded];
     const validRoles = (Array.isArray(config.roles) ? (config.roles as string[]) : []).filter(
       (r: string) => state.roles.some((role) => role.name === r && !role._base),
     );
 
-    // Merge preset roles with AI-selected roles so preset roles aren't lost
+    // Merge preset modules and roles with AI-selected ones so preset defaults aren't lost
     const chosenPreset = state.presets.find((p) => p.name === config.preset);
+    const presetModules = ((chosenPreset?.modules ?? []) as string[]).filter((m) =>
+      knownModuleNames.has(m),
+    );
+    const mergedModules = [...new Set([...presetModules, ...expanded])];
     const presetRoles = (chosenPreset?.roles ?? []) as string[];
     const mergedRoles = [...new Set([...presetRoles, ...validRoles])];
+
+    // Normalize goals: support both old flat format and new array format
+    let parsedGoals: Goal[];
+    if (Array.isArray(config.goals)) {
+      parsedGoals = (config.goals as any[]).map((g: any) => ({
+        title: String(g.title || ''),
+        description: String(g.description || ''),
+        ...(g.parentGoal ? { parentGoal: String(g.parentGoal) } : {}),
+      }));
+    } else if (config.goal) {
+      // Backward compat: old flat format
+      parsedGoals = [
+        {
+          title: String(config.goal),
+          description: String(config.goalDescription || ''),
+        },
+      ];
+    } else {
+      parsedGoals = [];
+    }
+
+    // Normalize projects: support both old flat format and new array format
+    let parsedProjects: WizardProject[];
+    if (Array.isArray(config.projects)) {
+      parsedProjects = (config.projects as any[]).map((p: any) => ({
+        name: String(p.name || ''),
+        description: String(p.description || ''),
+        goals: Array.isArray(p.goals) ? p.goals.map(String) : [],
+      }));
+    } else if (config.project) {
+      // Backward compat: old flat format
+      parsedProjects = [
+        {
+          name: String(config.project),
+          description: String(config.projectDescription || ''),
+          goals: parsedGoals.map((g) => g.title),
+        },
+      ];
+    } else {
+      parsedProjects = [];
+    }
 
     // Apply config to wizard state but stay on ai-wizard step
     dispatch({
       type: 'APPLY_AI_RESULT',
       result: {
         companyName: (config.name as string) || state.aiDescription.slice(0, 30),
-        goal: {
-          title: (config.goal as string) || '',
-          description: (config.goalDescription as string) || '',
-        },
+        goals: parsedGoals,
+        projects: parsedProjects,
         presetName: state.presets.some((p) => p.name === config.preset)
           ? (config.preset as string)
           : 'custom',
-        selectedModules: validModules,
+        selectedModules: mergedModules,
         selectedRoles: mergedRoles,
         companyDescription: (config.companyDescription as string) || '',
         aiExplanation: (config.explanation as string) || (config.reasoning as string) || '',

@@ -6,6 +6,37 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.1.5] — 2026-03-29
+
+### Added
+
+- **Multi-goal support** — `goals[]` array replaces singular `goal` field; AI wizard generates hierarchical goals with `parentGoal` for sub-goals
+- **Multi-project support** — `projects[]` array replaces singular `project` field; projects linked to goals via `goals[]` array (matches Paperclip API `goalIds`)
+- `WizardProject` interface (`name`, `description`, `goals[]`) and `Goal.parentGoal` field
+- `companyDescription` rendered in BOOTSTRAP.md (was previously only sent to the API)
+- Full issue details in BOOTSTRAP.md: descriptions, `[priority]` annotations, `_(milestone: id)_` references
+- Full milestone details in BOOTSTRAP.md: descriptions and `_Done when:_` completion criteria
+- Preset roles shown in AI wizard catalog — `buildCatalog()` now includes `roles: engineer, ...` for each preset so the AI knows what selecting a preset implies
+
+### Changed
+
+- **BOOTSTRAP.md structure** — unified hierarchy: Goals (### top-level, #### sub-goals) → Projects (with workspace + goal links) → Agents (instructionsFilePath only) → Issues (grouped by goal, annotated with target project) → Provisioning Steps (explicit API creation order)
+- **AI wizard config format** — `goal`/`goalDescription`/`project`/`projectDescription` (flat) → `goals: [{title, description, parentGoal?}]` + `projects: [{name, description, goals[]}]` (backward compatible with old format)
+- **AI wizard prompts** — `goalDescription` instructions now demand thorough, spec-level detail; system prompts explain `goals[]`/`projects[]` format
+- `assembleCompany()` signature — `goal`/`project`/`goals` → `userGoals`/`userProjects`/`inlineGoals`; module inline goals auto-linked as sub-goals of the main user goal
+- Agent listings in BOOTSTRAP.md show `instructionsFilePath` only (removed legacy `cwd` field)
+- Issues in BOOTSTRAP.md are grouped by goal with `_Project: "name"_` annotation instead of `goalId →` references (issues link to projects, not goals)
+- Ungrouped module tasks rendered under "Initial tasks" heading (not under main goal title)
+
+### Fixed
+
+- AI wizard silently dropped preset modules — only roles were merged with AI-selected ones; now both modules and roles are defensively merged from the preset definition
+- AI wizard rarely selected engineer — `buildCatalog()` listed presets with modules but not roles, so the AI didn't see that selecting a preset doesn't auto-add its roles
+- BOOTSTRAP.md had two confusing issue sections ("Goal: ..." with issues and separate "Initial Tasks") — now unified under single `## Issues`
+- `project` and `projectDescription` from AI wizard config were silently ignored — never reached `assembleCompany` or BOOTSTRAP.md
+
+---
+
 ## [0.1.4] — 2026-03-28
 
 ### Added

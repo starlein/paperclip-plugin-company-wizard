@@ -45,6 +45,10 @@
 - 4 maintenance modules: codebase-onboarding, triage, dependency-management, release-management
 - `game-design` module — GDD creation, mechanics design, balancing
 - 8 new optional roles: technical-writer, security-engineer, customer-success, game-designer, level-designer, game-artist, audio-designer
+- Multi-goal/project support — `goals[]` and `projects[]` arrays replace singular fields; AI wizard generates hierarchical goals with `parentGoal`; projects linked to goals via `goals[]`
+- Preset module merging — AI wizard merges preset modules with AI-selected ones (was only merging roles)
+- Preset roles in AI catalog — `buildCatalog()` shows roles per preset so AI knows what each preset includes
+- BOOTSTRAP.md overhaul — hierarchical goal tree, full issue details (descriptions, priority, milestones), project annotations, correct Paperclip API provisioning steps
 
 ## In Progress
 

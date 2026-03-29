@@ -63,11 +63,12 @@ export function toPascalCase(name) {
  *
  * @param {object} opts
  * @param {string} opts.companyName
- * @param {object} opts.goal - { title, description }
- * @param {object} opts.project - { name, repoUrl }
+ * @param {string} [opts.companyDescription] - Comprehensive company description
+ * @param {Array} [opts.userGoals] - User/AI-specified goals: [{ title, description, parentGoal? }]
+ * @param {Array} [opts.userProjects] - User/AI-specified projects: [{ name, description, goals[] }]
  * @param {string[]} opts.moduleNames
  * @param {string[]} opts.extraRoleNames
- * @param {Array} opts.goals - Inline goals from preset/modules (from collectGoals)
+ * @param {Array} opts.inlineGoals - Inline goals from preset/modules (from collectGoals)
  * @param {string} opts.outputDir
  * @param {string} opts.templatesDir
  * @param {(line: string) => void} opts.onProgress
@@ -75,15 +76,38 @@ export function toPascalCase(name) {
  */
 export async function assembleCompany({
   companyName,
-  goal = {},
-  project = {},
+  companyDescription = '',
+  userGoals = [],
+  userProjects = [],
   moduleNames,
   extraRoleNames,
-  goals = [],
+  inlineGoals = [],
   outputDir,
   templatesDir,
   onProgress = () => {},
 }) {
+  // --- Merge goals and projects ---
+  // The first user goal is the "main" company goal.
+  // Module inline goals become sub-goals of the main goal.
+  const mainGoal = userGoals[0] || null;
+  const mergedInlineGoals = inlineGoals.map((g) => ({
+    ...g,
+    parentGoal: g.parentGoal || mainGoal?.title || undefined,
+  }));
+  const allGoals = [...userGoals, ...mergedInlineGoals];
+
+  // If user specified projects, use them. Otherwise, create a default project linked to all goals.
+  const resolvedProjects =
+    userProjects.length > 0
+      ? userProjects
+      : [
+          {
+            name: companyName,
+            description: mainGoal?.description || '',
+            goals: allGoals.map((g) => g.title),
+          },
+        ];
+
   const baseDirName = toPascalCase(companyName);
   let dirName = baseDirName;
   let companyDir = join(outputDir, dirName);
@@ -169,7 +193,7 @@ export async function assembleCompany({
   // 3. Apply modules with capability-aware skill assignment
   const initialTasks = [];
   const roleAdapterOverrides = new Map(); // role name → merged adapter overrides from modules
-  const skipTaskModules = modulesWithActiveGoals(goals);
+  const skipTaskModules = modulesWithActiveGoals(inlineGoals);
   for (const moduleName of moduleNames) {
     const moduleDir = join(templatesDir, 'modules', moduleName);
     if (!(await exists(moduleDir))) {
@@ -412,94 +436,183 @@ export async function assembleCompany({
 
   let bootstrap = `# Bootstrap: ${companyName}\n\n`;
 
-  // Goal
-  if (goal?.title) {
-    bootstrap += `## Goal\n\n`;
-    bootstrap += `**${goal.title}**\n`;
-    if (goal.description) {
-      bootstrap += `${goal.description}\n`;
+  // Company description
+  if (companyDescription) {
+    bootstrap += `${companyDescription}\n\n`;
+  }
+
+  // --- Goals ---
+  // Render as a tree: top-level goals at ###, sub-goals at ####.
+  if (allGoals.length > 0) {
+    bootstrap += `## Goals\n\n`;
+    const topLevel = allGoals.filter((g) => !g.parentGoal);
+    const subGoals = allGoals.filter((g) => g.parentGoal);
+
+    for (const g of topLevel) {
+      bootstrap += `### ${g.title}\n\n`;
+      if (g.description) {
+        bootstrap += `${g.description}\n\n`;
+      }
+
+      // Render sub-goals nested under their parent
+      const children = subGoals.filter((sg) => sg.parentGoal === g.title);
+      for (const sg of children) {
+        bootstrap += `#### ${sg.title}\n\n`;
+        if (sg.description) {
+          bootstrap += `${sg.description}\n\n`;
+        }
+        if (sg.milestones?.length) {
+          bootstrap += `**Milestones:**\n\n`;
+          for (const m of sg.milestones) {
+            bootstrap += `- **${m.title}**${m.project ? ' _(+ dedicated project)_' : ''}\n`;
+            if (m.description) {
+              bootstrap += `  ${m.description}\n`;
+            }
+            if (m.completionCriteria) {
+              bootstrap += `  _Done when:_ ${m.completionCriteria}\n`;
+            }
+          }
+          bootstrap += `\n`;
+        }
+      }
     }
-    bootstrap += `\n`;
+
+    // Any orphan sub-goals (parentGoal doesn't match a top-level goal)
+    const renderedChildren = new Set(
+      subGoals
+        .filter((sg) => topLevel.some((tl) => tl.title === sg.parentGoal))
+        .map((sg) => sg.title),
+    );
+    const orphans = subGoals.filter((sg) => !renderedChildren.has(sg.title));
+    for (const g of orphans) {
+      bootstrap += `### ${g.title}\n\n`;
+      if (g.description) {
+        bootstrap += `${g.description}\n\n`;
+      }
+      if (g.parentGoal) {
+        bootstrap += `- **Parent goal**: ${g.parentGoal}\n\n`;
+      }
+    }
   }
 
-  // Project
-  const projectName = project?.name || companyName;
-  const projectCwd = join(companyDir, 'projects', toPascalCase(projectName));
-  bootstrap += `## Project\n\n`;
-  bootstrap += `- **Name**: ${projectName}\n`;
-  if (project?.description) {
-    bootstrap += `- **Description**: ${project.description}\n`;
-  }
-  bootstrap += `- **Workspace**: \`${projectCwd}\`\n`;
-  if (project?.repoUrl) {
-    bootstrap += `- **Repository**: ${project.repoUrl}\n`;
-  }
-  bootstrap += `\n`;
+  // --- Projects ---
+  const mainProject = resolvedProjects[0];
+  const mainProjectName = mainProject?.name || companyName;
 
-  // Agents
+  if (resolvedProjects.length > 0) {
+    bootstrap += `## Projects\n\n`;
+    for (const proj of resolvedProjects) {
+      const projCwd = join(companyDir, 'projects', toPascalCase(proj.name));
+      bootstrap += `### ${proj.name}\n\n`;
+      if (proj.description) {
+        bootstrap += `${proj.description}\n\n`;
+      }
+      bootstrap += `- **Workspace**: \`${projCwd}\`\n`;
+      if (proj.goals?.length > 0) {
+        bootstrap += `- **Goal links**: ${proj.goals.join(', ')}\n`;
+      }
+      bootstrap += `\n`;
+    }
+  }
+
+  // --- Agents ---
   bootstrap += `## Agents\n\n`;
-  bootstrap += `Create the following agents in Paperclip. Set each agent's working directory to this workspace and the instructions file as shown.\n\n`;
   for (const role of rolesList) {
     bootstrap += `### ${formatRole(role)}\n`;
-    bootstrap += `- **instructionsFilePath**: \`${companyDir}/agents/${role}/AGENTS.md\`\n`;
-    bootstrap += `- **cwd**: \`${companyDir}\`\n\n`;
+    bootstrap += `- **instructionsFilePath**: \`${companyDir}/agents/${role}/AGENTS.md\`\n\n`;
   }
 
-  // Inline goals (from preset and/or modules)
-  for (const ig of goals) {
-    bootstrap += `## Goal: ${ig.title}\n\n`;
-    bootstrap += `${ig.description}\n\n`;
-    if (ig.milestones?.length) {
-      bootstrap += `**Milestones:**\n`;
-      for (const m of ig.milestones) {
-        bootstrap += `- ${m.title}${m.project ? ' (+ project)' : ''}\n`;
+  // --- Issues ---
+  // Issues are linked to projects (via projectId). Projects link to goals (via goalIds).
+  const renderIssue = (issue) => {
+    const assignLabel = issue.assignTo ? ` → ${issue.assignTo}` : '';
+    const priorityLabel =
+      issue.priority && issue.priority !== 'medium' ? ` [${issue.priority}]` : '';
+    const milestoneLabel = issue.milestone ? ` _(milestone: ${issue.milestone})_` : '';
+    let line = `- **${issue.title}**${assignLabel}${priorityLabel}${milestoneLabel}\n`;
+    if (issue.description) {
+      line += `  ${issue.description}\n`;
+    }
+    return line;
+  };
+
+  // Collect all issues: from inline goals + module tasks
+  const allIssues = [];
+  for (const g of mergedInlineGoals) {
+    if (g.issues?.length) {
+      for (const issue of g.issues) {
+        allIssues.push({ ...issue, _goal: g.title, _goalHasProject: g.project !== false });
+      }
+    }
+  }
+  for (const task of initialTasks) {
+    allIssues.push(task);
+  }
+  if (allIssues.length > 0) {
+    bootstrap += `## Issues\n\n`;
+
+    // Group by goal for readability
+    const goalIssuesByGoal = new Map();
+    const ungrouped = [];
+    for (const issue of allIssues) {
+      if (issue._goal) {
+        if (!goalIssuesByGoal.has(issue._goal)) goalIssuesByGoal.set(issue._goal, []);
+        goalIssuesByGoal.get(issue._goal).push(issue);
+      } else {
+        ungrouped.push(issue);
+      }
+    }
+
+    // Find which project an issue group belongs to
+    const findProjectForGoal = (goalTitle) => {
+      // Check if any project explicitly links to this goal
+      for (const proj of resolvedProjects) {
+        if (proj.goals?.includes(goalTitle)) return proj.name;
+      }
+      return mainProjectName;
+    };
+
+    for (const [goalTitle, issues] of goalIssuesByGoal) {
+      const targetProject = findProjectForGoal(goalTitle);
+      bootstrap += `### ${goalTitle}\n\n`;
+      bootstrap += `_Project: "${targetProject}"_\n\n`;
+      for (const issue of issues) {
+        bootstrap += renderIssue(issue);
       }
       bootstrap += `\n`;
     }
-    if (ig.issues?.length) {
-      bootstrap += `**Issues:**\n`;
-      for (const issue of ig.issues) {
-        const assignLabel = issue.assignTo ? ` → ${issue.assignTo}` : '';
-        bootstrap += `- ${issue.title}${assignLabel}\n`;
+
+    if (ungrouped.length > 0) {
+      bootstrap += `### Initial tasks\n\n`;
+      bootstrap += `_Project: "${mainProjectName}"_\n\n`;
+      for (const task of ungrouped) {
+        bootstrap += renderIssue(task);
       }
       bootstrap += `\n`;
     }
   }
 
-  // Initial tasks
-  if (initialTasks.length > 0) {
-    bootstrap += `## Initial Tasks\n\n`;
-    bootstrap += `Create these as issues (linked to the project and goal) to kick off workflows:\n\n`;
-    for (const task of initialTasks) {
-      bootstrap += `- **${task.title}** → assign to ${task.assignTo}\n`;
-      if (task.description) {
-        bootstrap += `  ${task.description}\n`;
-      }
-    }
-    bootstrap += `\n`;
+  // --- Provisioning steps ---
+  bootstrap += `## Provisioning Steps\n\n`;
+  bootstrap += `The Company Wizard "Provision" step creates all of the above automatically.\n\n`;
+  bootstrap += `Manual setup order (respects Paperclip object dependencies):\n\n`;
+  let stepN = 1;
+  bootstrap += `${stepN++}. **Create company** "${companyName}"${companyDescription ? ' (with description above)' : ''}\n`;
+  for (const g of allGoals) {
+    const parentNote = g.parentGoal ? `, parentId → "${g.parentGoal}"` : '';
+    bootstrap += `${stepN++}. **Create goal** "${g.title}" (level: company${parentNote})\n`;
   }
-
-  // Get started
-  bootstrap += `## Get Started\n\n`;
-  bootstrap += `If using the Company Wizard plugin's "Provision" step, all of the above is created automatically.\n\n`;
-  bootstrap += `Otherwise, create manually in the Paperclip UI:\n`;
-  bootstrap += `1. Create the company "${companyName}"\n`;
-  bootstrap += `2. Create the project "${projectName}" with workspace → \`${projectCwd}\`\n`;
-  if (project?.repoUrl) {
-    bootstrap += `   Set the repository to: ${project.repoUrl}\n`;
+  for (const proj of resolvedProjects) {
+    const projCwd = join(companyDir, 'projects', toPascalCase(proj.name));
+    const goalLinks =
+      proj.goals?.length > 0 ? `, goalIds → [${proj.goals.map((g) => `"${g}"`).join(', ')}]` : '';
+    bootstrap += `${stepN++}. **Create project** "${proj.name}" (workspace: \`${projCwd}\`${goalLinks})\n`;
   }
-  let stepN = 3;
-  bootstrap += `${stepN++}. Create each agent listed above\n`;
-  if (goal?.title) {
-    bootstrap += `${stepN++}. Create the goal: "${goal.title}"\n`;
+  bootstrap += `${stepN++}. **Create agents** — each with instructionsFilePath as listed above\n`;
+  if (allIssues.length > 0) {
+    bootstrap += `${stepN++}. **Create issues** — link each to its project as noted above\n`;
   }
-  for (const ig of goals) {
-    bootstrap += `${stepN++}. Create the goal "${ig.title}" and its issues listed above\n`;
-  }
-  if (initialTasks.length > 0) {
-    bootstrap += `${stepN++}. Create the initial issues listed above\n`;
-  }
-  bootstrap += `${stepN}. Start the CEO heartbeat\n`;
+  bootstrap += `${stepN}. **Start CEO heartbeat**\n`;
 
   await writeFile(join(companyDir, 'BOOTSTRAP.md'), bootstrap);
   onProgress('+ BOOTSTRAP.md');

@@ -10,21 +10,29 @@ description: Prepare a new release by updating CHANGELOG.md, verifying documenta
 Understand what changed since the last release:
 
 1. **Read current version** from `package.json`.
-2. **Read `CHANGELOG.md`** to understand the last documented version and its date.
-3. **Run `git log`** from the last version tag (or last changelog date) to HEAD. Collect all commit messages.
-4. **Run `git diff`** against the last release to see all file changes. Pay attention to:
+2. **Read `CHANGELOG.md`** to understand the last documented version and its date. Note any gap — if `package.json` is ahead of the changelog, intermediate releases were shipped without entries.
+3. **Find the release boundary.** Try `git tag -l 'v*' --sort=-v:refname | head -5` for the latest tag. If no tags exist, find the commit that last bumped the version (e.g., `git log --oneline --all -- package.json | head -5`) and use that SHA as the base.
+4. **Run `git log <base>..HEAD`** to collect all commit messages since the last release.
+5. **Run `git diff <base>..HEAD`** to see all committed file changes. Also run **`git diff HEAD`** to capture any uncommitted work in the working tree — this may contain unreleased feature work.
+6. **Count templates from the filesystem** to verify against documentation:
+   - `ls templates/presets/ | wc -l`
+   - `ls templates/modules/ | wc -l`
+   - `ls templates/roles/ | wc -l`
+7. Pay attention to:
    - New features (new files, new actions, new UI steps)
    - Bug fixes (error handling, logic corrections)
    - Template changes (new presets, modules, roles, prompt updates)
    - Configuration changes (new settings, defaults)
    - Breaking changes (removed features, renamed fields, API changes)
-5. **Categorize changes** into: Added, Changed, Fixed, Removed, Template system (if applicable).
+8. **Categorize changes** into: Added, Changed, Fixed, Removed, Template system (if applicable).
 
 ## Phase 2: Update CHANGELOG.md
 
 1. **Read** `CHANGELOG.md` to understand the existing format and style.
-2. **Add a new version section** at the top (below the header), following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format:
-   ```
+2. **If intermediate versions exist without changelog entries** (e.g., `package.json` jumped from 0.1.0 to 0.1.2 but the changelog only has 0.1.0), create brief entries for the skipped versions too — even if they were just version bumps or metadata changes.
+3. **Add a new version section** at the top (below the header), following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format:
+
+   ```text
    ## [X.Y.Z] — YYYY-MM-DD
 
    ### Added
@@ -36,14 +44,15 @@ Understand what changed since the last release:
    ### Fixed
    - Bug fix description
    ```
-3. **Match the tone and detail level** of existing entries. Be specific — mention file names, action names, field names where relevant.
-4. **Do NOT include** trivial changes (formatting, comments) unless they affect behavior.
+
+4. **Match the tone and detail level** of existing entries. Be specific — mention file names, action names, field names where relevant.
+5. **Do NOT include** trivial changes (formatting, comments) unless they affect behavior.
 
 ## Phase 3: Verify Documentation
 
 Check each documentation file against the actual codebase. For each file, read it and verify accuracy. Only edit if something is factually wrong or missing due to the changes being released.
 
-### Files to check:
+### Files to check
 
 1. **`README.md`** — Verify:
    - Feature descriptions match current behavior
@@ -73,7 +82,8 @@ Check each documentation file against the actual codebase. For each file, read i
    - Any documentation files are consistent with template/module changes
    - Cross-references between docs are still valid
 
-### Documentation rules:
+### Documentation rules
+
 - Only update what's actually wrong or missing. Don't rewrite prose that's still accurate.
 - If counts changed (e.g., "14 presets" → "15 presets"), update all occurrences across all files.
 - If a new state field was added, ensure CLAUDE.md's WizardContext description mentions it.
@@ -82,15 +92,17 @@ Check each documentation file against the actual codebase. For each file, read i
 ## Phase 4: Bump Version
 
 1. **Read** `package.json` to get the current version.
-2. **Increment the patch version** (e.g., `0.1.2` → `0.1.3`). Use minor for new features, patch for fixes and enhancements.
-3. **Edit** `package.json` to update the `"version"` field.
-4. **Also check** if the version appears in any other files (manifest, README badges, etc.) and update those too.
+2. **Check for recent version-bump commits** — run `git log --oneline -5 -- package.json` to ensure you're not colliding with a version that was already bumped externally. If the current version was bumped by a recent commit you haven't accounted for, increment from that version instead.
+3. **Increment the version** (e.g., `0.1.3` → `0.1.4`). Use minor for new features, patch for fixes and enhancements.
+4. **Edit** `package.json` to update the `"version"` field.
+5. **Also check** if the version appears in any other files (manifest, README badges, etc.) and update those too.
 
 ## Phase 5: Build and Verify
 
 1. **Run `pnpm build`** — ensure it succeeds with no errors.
 2. **Run `pnpm typecheck`** — ensure no type errors.
-3. **Run `pnpm test`** — if tests exist and are configured, run them.
+3. **Run `pnpm test`** — vitest plugin tests.
+4. **Run `pnpm test:logic`** — node:test logic suite. Both test suites must pass.
 
 If any step fails, fix the issue before proceeding.
 
@@ -100,7 +112,7 @@ Do NOT run these commands — just print them for the user to review and execute
 
 Present the commands in order:
 
-```
+```bash
 # Review the changes one more time:
 git diff
 
