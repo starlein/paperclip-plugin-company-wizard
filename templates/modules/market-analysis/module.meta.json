@@ -13,7 +13,7 @@
       "fallbackSkill": "market-analysis.fallback"
     }
   ],
-  "tasks": [
+  "issues": [
     {
       "title": "Conduct initial market analysis",
       "assignTo": "capability:market-analysis",

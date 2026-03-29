@@ -286,8 +286,14 @@ function RoleDetail({ role }: { role: RoleData }) {
 function groupFiles(files: Record<string, string>): Array<{ group: string; paths: string[] }> {
   const map = new Map<string, string[]>();
   for (const p of Object.keys(files).sort()) {
-    const slash = p.indexOf('/');
-    const group = slash === -1 ? '' : p.slice(0, slash);
+    // For agents/, group by agents/<role>/ (two levels deep)
+    const parts = p.split('/');
+    let group: string;
+    if (parts.length >= 3 && parts[0] === 'agents') {
+      group = `${parts[0]}/${parts[1]}`;
+    } else {
+      group = parts.length > 1 ? parts[0] : '';
+    }
     if (!map.has(group)) map.set(group, []);
     map.get(group)!.push(p);
   }
@@ -316,7 +322,10 @@ function FileEntry({
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(override ?? content);
-  const fileName = filePath.split('/').pop()!;
+  // Show filename relative to group: for "agents/ceo/skills/foo.md" under group "agents/ceo", show "skills/foo.md"
+  const parts = filePath.split('/');
+  const fileName =
+    parts.length >= 3 && parts[0] === 'agents' ? parts.slice(2).join('/') : parts.pop()!;
   const hasOverride = override !== undefined;
 
   const handleEdit = () => {

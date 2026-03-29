@@ -165,15 +165,16 @@ export class PaperclipClient {
     });
   }
 
-  async createGoal(companyId, { title, description, level, parentId }) {
+  async createGoal(companyId, { title, description, level, parentId, status, ownerAgentId }) {
     return this._fetch(`/api/companies/${companyId}/goals`, {
       method: 'POST',
       body: JSON.stringify({
         title,
         description: description || null,
         level: level || 'company',
-        status: 'active',
+        status: status || 'active',
         ...(parentId ? { parentId } : {}),
+        ...(ownerAgentId ? { ownerAgentId } : {}),
       }),
     });
   }
@@ -192,6 +193,45 @@ export class PaperclipClient {
         goalId: goalId || undefined,
         assigneeAgentId: assigneeAgentId || undefined,
         assigneeUserId: assigneeUserId || undefined,
+      }),
+    });
+  }
+
+  async createRoutine(
+    companyId,
+    {
+      title,
+      description,
+      assigneeAgentId,
+      projectId,
+      priority,
+      status,
+      concurrencyPolicy,
+      catchUpPolicy,
+    },
+  ) {
+    return this._fetch(`/api/companies/${companyId}/routines`, {
+      method: 'POST',
+      body: JSON.stringify({
+        title,
+        description: description || null,
+        assigneeAgentId: assigneeAgentId || undefined,
+        projectId: projectId || undefined,
+        priority: priority || 'medium',
+        status: status || 'active',
+        concurrencyPolicy: concurrencyPolicy || 'skip_if_active',
+        catchUpPolicy: catchUpPolicy || 'skip_missed',
+      }),
+    });
+  }
+
+  async createRoutineTrigger(routineId, { kind, cronExpression, timezone }) {
+    return this._fetch(`/api/routines/${routineId}/triggers`, {
+      method: 'POST',
+      body: JSON.stringify({
+        kind: kind || 'schedule',
+        ...(cronExpression ? { cronExpression } : {}),
+        ...(timezone ? { timezone } : {}),
       }),
     });
   }

@@ -2,7 +2,7 @@
   "name": "github-repo",
   "description": "Connects the team to a GitHub repository. Required by most engineering workflow modules.",
   "capabilities": [],
-  "tasks": [
+  "issues": [
     {
       "title": "Initialize GitHub repository",
       "assignTo": "engineer",

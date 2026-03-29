@@ -12,7 +12,7 @@
       "fallbackSkill": "project-docs.fallback"
     }
   ],
-  "tasks": [
+  "issues": [
     {
       "title": "Create initial project documentation",
       "assignTo": "capability:project-docs",

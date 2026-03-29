@@ -48,7 +48,10 @@
 - Multi-goal/project support — `goals[]` and `projects[]` arrays replace singular fields; AI wizard generates hierarchical goals with `parentGoal`; projects linked to goals via `goals[]`
 - Preset module merging — AI wizard merges preset modules with AI-selected ones (was only merging roles)
 - Preset roles in AI catalog — `buildCatalog()` shows roles per preset so AI knows what each preset includes
-- BOOTSTRAP.md overhaul — hierarchical goal tree, full issue details (descriptions, priority, milestones), project annotations, correct Paperclip API provisioning steps
+- BOOTSTRAP.md overhaul — hierarchical goal tree, full issue details (descriptions, priority), project annotations, routines with cron schedules, correct Paperclip API provisioning steps
+- Milestones → subgoals — template system aligned with Paperclip API (multi-level goals with `parentId` instead of invented milestones). `tasks` → `issues`, `goal.issues` moved to module level
+- Routines in templates — 6 modules define `routines[]` with cron schedules (stall-detection, auto-assign, backlog, ci-cd, build-api, website-relaunch)
+- `createRoutine()` + `createRoutineTrigger()` API client methods
 
 ## In Progress
 

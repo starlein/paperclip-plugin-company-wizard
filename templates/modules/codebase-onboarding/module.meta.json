@@ -14,7 +14,7 @@
       "fallbackSkill": "codebase-audit.fallback"
     }
   ],
-  "tasks": [
+  "issues": [
     {
       "title": "Audit codebase and document architecture",
       "assignTo": "capability:codebase-audit",

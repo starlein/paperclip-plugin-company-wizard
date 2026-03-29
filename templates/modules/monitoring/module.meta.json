@@ -14,7 +14,7 @@
       "fallbackSkill": "monitoring.fallback"
     }
   ],
-  "tasks": [
+  "issues": [
     {
       "title": "Set up monitoring and observability",
       "assignTo": "capability:monitoring",

@@ -13,5 +13,15 @@
       ],
       "fallbackSkill": "auto-assign.fallback"
     }
+  ],
+  "routines": [
+    {
+      "title": "Auto-assign unassigned issues",
+      "description": "Find unassigned todo issues and assign to the best available agent based on role and workload.",
+      "assignTo": "capability:auto-assign",
+      "schedule": "0 9,13 * * 1-5",
+      "priority": "medium",
+      "concurrencyPolicy": "skip_if_active"
+    }
   ]
 }

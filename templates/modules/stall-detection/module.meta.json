@@ -1,5 +1,15 @@
 {
   "name": "stall-detection",
   "description": "Detects when issues go stale or agents get stuck. Prompts the CEO to unblock work automatically.",
-  "capabilities": []
+  "capabilities": [],
+  "routines": [
+    {
+      "title": "Stall detection",
+      "description": "Check all in_progress issues for signs of stalling. Nudge assigned agents, escalate if blocked for >24h.",
+      "assignTo": "ceo",
+      "schedule": "0 9,14 * * 1-5",
+      "priority": "medium",
+      "concurrencyPolicy": "skip_if_active"
+    }
+  ]
 }

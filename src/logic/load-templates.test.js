@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateGoalTemplate, collectGoals, modulesWithActiveGoals } from './load-templates.js';
+import { validateGoalTemplate, collectGoals } from './load-templates.js';
 
 describe('validateGoalTemplate', () => {
   it('accepts a valid minimal goal (title + description only)', () => {
@@ -9,17 +9,13 @@ describe('validateGoalTemplate', () => {
     );
   });
 
-  it('accepts a valid goal with milestones and issues', () => {
+  it('accepts a valid goal with subgoals', () => {
     const goal = {
       title: 'Ship MVP',
       description: 'Launch v1.',
-      milestones: [
-        { id: 'design', title: 'Design phase', completionCriteria: 'Figma approved' },
+      subgoals: [
+        { id: 'design', title: 'Design phase', level: 'team', description: 'Complete design' },
         { id: 'build', title: 'Build phase' },
-      ],
-      issues: [
-        { title: 'Create wireframes', priority: 'high', milestone: 'design' },
-        { title: 'Implement API', milestone: 'build', assignTo: 'engineer' },
       ],
     };
     assert.doesNotThrow(() => validateGoalTemplate(goal, 'mvp'));
@@ -39,14 +35,14 @@ describe('validateGoalTemplate', () => {
     );
   });
 
-  it('throws when milestone id is not kebab-case', () => {
+  it('throws when subgoal id is not kebab-case', () => {
     assert.throws(
       () =>
         validateGoalTemplate(
           {
             title: 'T',
             description: 'D',
-            milestones: [{ id: 'Bad Id', title: 'M' }],
+            subgoals: [{ id: 'Bad Id', title: 'M' }],
           },
           'bad',
         ),
@@ -54,25 +50,25 @@ describe('validateGoalTemplate', () => {
     );
   });
 
-  it('throws on duplicate milestone ids', () => {
+  it('throws on duplicate subgoal ids', () => {
     assert.throws(
       () =>
         validateGoalTemplate(
           {
             title: 'T',
             description: 'D',
-            milestones: [
+            subgoals: [
               { id: 'alpha', title: 'A' },
               { id: 'alpha', title: 'B' },
             ],
           },
           'bad',
         ),
-      /duplicate milestone id "alpha"/,
+      /duplicate subgoal id "alpha"/,
     );
   });
 
-  it('throws when issue references unknown milestone', () => {
+  it('throws on deprecated milestones field', () => {
     assert.throws(
       () =>
         validateGoalTemplate(
@@ -80,41 +76,25 @@ describe('validateGoalTemplate', () => {
             title: 'T',
             description: 'D',
             milestones: [{ id: 'alpha', title: 'A' }],
-            issues: [{ title: 'Task', milestone: 'beta' }],
           },
           'bad',
         ),
-      /unknown milestone "beta"/,
+      /deprecated/,
     );
   });
 
-  it('throws on invalid priority', () => {
+  it('throws on deprecated issues field inside goal', () => {
     assert.throws(
       () =>
         validateGoalTemplate(
           {
             title: 'T',
             description: 'D',
-            issues: [{ title: 'Task', priority: 'urgent' }],
+            issues: [{ title: 'Task' }],
           },
           'bad',
         ),
-      /invalid priority "urgent"/,
-    );
-  });
-
-  it('throws when issue title is missing', () => {
-    assert.throws(
-      () =>
-        validateGoalTemplate(
-          {
-            title: 'T',
-            description: 'D',
-            issues: [{ description: 'no title' }],
-          },
-          'bad',
-        ),
-      /issue\[0\] missing "title"/,
+      /deprecated/,
     );
   });
 });
@@ -168,25 +148,5 @@ describe('collectGoals', () => {
     assert.equal(goals.length, 2);
     assert.equal(goals[0]._source, 'preset:quality');
     assert.equal(goals[1]._source, 'module:ci-cd');
-  });
-});
-
-describe('modulesWithActiveGoals', () => {
-  it('returns empty set when no module goals', () => {
-    const goals = [{ title: 'A', _source: 'preset:fast' }];
-    const result = modulesWithActiveGoals(goals);
-    assert.equal(result.size, 0);
-  });
-
-  it('returns module names that have active goals', () => {
-    const goals = [
-      { title: 'A', _source: 'module:ci-cd', _module: 'ci-cd' },
-      { title: 'B', _source: 'preset:fast' },
-      { title: 'C', _source: 'module:website-relaunch', _module: 'website-relaunch' },
-    ];
-    const result = modulesWithActiveGoals(goals);
-    assert.equal(result.size, 2);
-    assert.ok(result.has('ci-cd'));
-    assert.ok(result.has('website-relaunch'));
   });
 });

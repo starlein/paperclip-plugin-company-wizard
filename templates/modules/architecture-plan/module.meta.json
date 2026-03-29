@@ -22,7 +22,7 @@
       "fallbackSkill": "design-system.fallback"
     }
   ],
-  "tasks": [
+  "issues": [
     {
       "title": "Design initial system architecture",
       "assignTo": "capability:architecture-plan",

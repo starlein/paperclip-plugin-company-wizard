@@ -12,7 +12,7 @@
       "fallbackSkill": "brand-identity.fallback"
     }
   ],
-  "tasks": [
+  "issues": [
     {
       "title": "Define brand identity and visual guidelines",
       "assignTo": "capability:brand-identity",

@@ -11,7 +11,7 @@
       "fallbackSkill": "hiring-review.fallback"
     }
   ],
-  "tasks": [
+  "issues": [
     {
       "title": "Evaluate team composition and propose new hires",
       "assignTo": "capability:hiring-review",

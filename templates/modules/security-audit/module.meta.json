@@ -21,7 +21,7 @@
       "fallbackSkill": "security-review.fallback"
     }
   ],
-  "tasks": [
+  "issues": [
     {
       "title": "Conduct initial threat model",
       "assignTo": "capability:threat-model",

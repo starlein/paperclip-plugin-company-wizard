@@ -261,7 +261,7 @@ describe('assembleCompany', () => {
   });
 
   it('includes initial tasks in BOOTSTRAP.md from modules', async () => {
-    const { companyDir, initialTasks } = await assembleCompany({
+    const { companyDir, initialIssues } = await assembleCompany({
       companyName: 'TaskCo',
       moduleNames: ['github-repo'],
       extraRoleNames: [],
@@ -269,9 +269,9 @@ describe('assembleCompany', () => {
       templatesDir,
     });
 
-    assert.equal(initialTasks.length, 1);
-    assert.equal(initialTasks[0].title, 'Init repo');
-    assert.equal(initialTasks[0].assignTo, 'engineer');
+    assert.equal(initialIssues.length, 1);
+    assert.equal(initialIssues[0].title, 'Init repo');
+    assert.equal(initialIssues[0].assignTo, 'engineer');
 
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
     assert.ok(bootstrap.includes('## Issues'));
@@ -608,7 +608,7 @@ describe('assembleCompany', () => {
       tasks: [{ title: 'Configure auto-assign', assignTo: 'capability:auto-assign' }],
     });
 
-    const { initialTasks } = await assembleCompany({
+    const { initialIssues } = await assembleCompany({
       companyName: 'CapTaskCo',
       moduleNames: ['auto-assign'],
       extraRoleNames: ['product-owner'],
@@ -616,7 +616,7 @@ describe('assembleCompany', () => {
       templatesDir,
     });
 
-    assert.equal(initialTasks.length, 1);
-    assert.equal(initialTasks[0].assignTo, 'product-owner');
+    assert.equal(initialIssues.length, 1);
+    assert.equal(initialIssues[0].assignTo, 'product-owner');
   });
 });

@@ -15,7 +15,7 @@
       "fallbackSkill": "release-process.fallback"
     }
   ],
-  "tasks": [
+  "issues": [
     {
       "title": "Document or establish release process",
       "assignTo": "capability:release-process",

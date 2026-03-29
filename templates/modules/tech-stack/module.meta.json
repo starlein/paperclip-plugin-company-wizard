@@ -11,7 +11,7 @@
       "fallbackSkill": "tech-stack.fallback"
     }
   ],
-  "tasks": [
+  "issues": [
     {
       "title": "Evaluate and document technology choices",
       "assignTo": "capability:tech-stack",

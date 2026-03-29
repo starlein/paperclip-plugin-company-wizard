@@ -13,7 +13,7 @@
       "fallbackSkill": "user-testing.fallback"
     }
   ],
-  "tasks": [
+  "issues": [
     {
       "title": "Design and execute initial usability evaluation",
       "assignTo": "capability:user-testing",

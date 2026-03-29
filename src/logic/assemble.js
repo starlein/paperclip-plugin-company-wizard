@@ -8,7 +8,7 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { join } from 'node:path';
-import { modulesWithActiveGoals } from './load-templates.js';
+// modulesWithActiveGoals removed — goals no longer contain issues
 
 async function exists(p) {
   try {
@@ -72,7 +72,7 @@ export function toPascalCase(name) {
  * @param {string} opts.outputDir
  * @param {string} opts.templatesDir
  * @param {(line: string) => void} opts.onProgress
- * @returns {Promise<{companyDir: string, allRoles: Set<string>, initialTasks: Array, roleAdapterOverrides: Map<string, object>}>}
+ * @returns {Promise<{companyDir: string, allRoles: Set<string>, initialIssues: Array, initialRoutines: Array, roleAdapterOverrides: Map<string, object>}>}
  */
 export async function assembleCompany({
   companyName,
@@ -86,15 +86,31 @@ export async function assembleCompany({
   templatesDir,
   onProgress = () => {},
 }) {
-  // --- Merge goals and projects ---
+  // --- Merge goals ---
   // The first user goal is the "main" company goal.
   // Module inline goals become sub-goals of the main goal.
+  // Subgoals (formerly milestones) are expanded into allGoals with parentGoal + level.
   const mainGoal = userGoals[0] || null;
   const mergedInlineGoals = inlineGoals.map((g) => ({
     ...g,
     parentGoal: g.parentGoal || mainGoal?.title || undefined,
   }));
-  const allGoals = [...userGoals, ...mergedInlineGoals];
+
+  const allGoals = [];
+  for (const g of [...userGoals, ...mergedInlineGoals]) {
+    allGoals.push(g);
+    // Expand subgoals as nested goals
+    if (g.subgoals?.length) {
+      for (const sg of g.subgoals) {
+        allGoals.push({
+          title: sg.title,
+          description: sg.description || '',
+          level: sg.level || 'team',
+          parentGoal: g.title,
+        });
+      }
+    }
+  }
 
   // If user specified projects, use them. Otherwise, create a default project linked to all goals.
   const resolvedProjects =
@@ -191,9 +207,22 @@ export async function assembleCompany({
   }
 
   // 3. Apply modules with capability-aware skill assignment
-  const initialTasks = [];
+  const initialIssues = [];
+  const initialRoutines = [];
   const roleAdapterOverrides = new Map(); // role name → merged adapter overrides from modules
-  const skipTaskModules = modulesWithActiveGoals(inlineGoals);
+
+  // Helper: resolve assignee for a role name or capability reference
+  const resolveAssignee = (assignee, moduleJson) => {
+    if (assignee?.startsWith('capability:')) {
+      const capName = assignee.slice('capability:'.length);
+      const cap = moduleJson?.capabilities?.find((c) => c.skill === capName);
+      if (cap) return cap.owners.find((r) => allRoles.has(r)) || assignee;
+    } else if (assignee && assignee !== 'ceo' && assignee !== 'user' && !allRoles.has(assignee)) {
+      return 'ceo'; // Named role not in this team — fall back to CEO
+    }
+    return assignee;
+  };
+
   for (const moduleName of moduleNames) {
     const moduleDir = join(templatesDir, 'modules', moduleName);
     if (!(await exists(moduleDir))) {
@@ -212,26 +241,24 @@ export async function assembleCompany({
       }
     }
 
-    // Collect initial tasks (skip modules whose goal is active — goal issues replace tasks)
-    if (moduleJson?.tasks?.length && !skipTaskModules.has(moduleName)) {
-      for (const task of moduleJson.tasks) {
-        let assignee = task.assignTo;
-        if (assignee?.startsWith('capability:')) {
-          const capName = assignee.slice('capability:'.length);
-          const cap = moduleJson.capabilities?.find((c) => c.skill === capName);
-          if (cap) {
-            assignee = cap.owners.find((r) => allRoles.has(r)) || assignee;
-          }
-        } else if (
-          assignee &&
-          assignee !== 'ceo' &&
-          assignee !== 'user' &&
-          !allRoles.has(assignee)
-        ) {
-          // Named role not in this team — fall back to CEO
-          assignee = 'ceo';
-        }
-        initialTasks.push({ ...task, assignTo: assignee, module: moduleName });
+    // Collect issues (backward compat: read tasks[] if issues[] not present)
+    const moduleIssues = moduleJson?.issues || moduleJson?.tasks || [];
+    for (const issue of moduleIssues) {
+      initialIssues.push({
+        ...issue,
+        assignTo: resolveAssignee(issue.assignTo, moduleJson),
+        module: moduleName,
+      });
+    }
+
+    // Collect routines
+    if (moduleJson?.routines?.length) {
+      for (const routine of moduleJson.routines) {
+        initialRoutines.push({
+          ...routine,
+          assignTo: resolveAssignee(routine.assignTo, moduleJson),
+          module: moduleName,
+        });
       }
     }
 
@@ -434,6 +461,20 @@ export async function assembleCompany({
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join(' ');
 
+  // --- Helper: render frontmatter code block ---
+  const renderFrontmatter = (fields) => {
+    const lines = fields.filter(([, v]) => v !== undefined && v !== null && v !== '');
+    if (lines.length === 0) return '';
+    return '<!--\n' + lines.map(([k, v]) => `${k}: ${v}`).join('\n') + '\n-->\n\n';
+  };
+
+  // --- Helper: escape # in description body ---
+  const escapeBody = (text) =>
+    text
+      .split('\n')
+      .map((l) => l.replace(/^(#+)/, '\\$1'))
+      .join('\n');
+
   let bootstrap = `# Bootstrap: ${companyName}\n\n`;
 
   // Company description
@@ -442,55 +483,18 @@ export async function assembleCompany({
   }
 
   // --- Goals ---
-  // Render as a tree: top-level goals at ###, sub-goals at ####.
+  // All goals (user goals + inline goals + expanded subgoals) rendered uniformly.
   if (allGoals.length > 0) {
     bootstrap += `## Goals\n\n`;
-    const topLevel = allGoals.filter((g) => !g.parentGoal);
-    const subGoals = allGoals.filter((g) => g.parentGoal);
-
-    for (const g of topLevel) {
+    for (const g of allGoals) {
       bootstrap += `### ${g.title}\n\n`;
+      bootstrap += renderFrontmatter([
+        ['level', g.level || 'company'],
+        ['status', 'active'],
+        ['parentGoal', g.parentGoal],
+      ]);
       if (g.description) {
-        bootstrap += `${g.description}\n\n`;
-      }
-
-      // Render sub-goals nested under their parent
-      const children = subGoals.filter((sg) => sg.parentGoal === g.title);
-      for (const sg of children) {
-        bootstrap += `#### ${sg.title}\n\n`;
-        if (sg.description) {
-          bootstrap += `${sg.description}\n\n`;
-        }
-        if (sg.milestones?.length) {
-          bootstrap += `**Milestones:**\n\n`;
-          for (const m of sg.milestones) {
-            bootstrap += `- **${m.title}**${m.project ? ' _(+ dedicated project)_' : ''}\n`;
-            if (m.description) {
-              bootstrap += `  ${m.description}\n`;
-            }
-            if (m.completionCriteria) {
-              bootstrap += `  _Done when:_ ${m.completionCriteria}\n`;
-            }
-          }
-          bootstrap += `\n`;
-        }
-      }
-    }
-
-    // Any orphan sub-goals (parentGoal doesn't match a top-level goal)
-    const renderedChildren = new Set(
-      subGoals
-        .filter((sg) => topLevel.some((tl) => tl.title === sg.parentGoal))
-        .map((sg) => sg.title),
-    );
-    const orphans = subGoals.filter((sg) => !renderedChildren.has(sg.title));
-    for (const g of orphans) {
-      bootstrap += `### ${g.title}\n\n`;
-      if (g.description) {
-        bootstrap += `${g.description}\n\n`;
-      }
-      if (g.parentGoal) {
-        bootstrap += `- **Parent goal**: ${g.parentGoal}\n\n`;
+        bootstrap += `${escapeBody(g.description)}\n\n`;
       }
     }
   }
@@ -504,91 +508,61 @@ export async function assembleCompany({
     for (const proj of resolvedProjects) {
       const projCwd = join(companyDir, 'projects', toPascalCase(proj.name));
       bootstrap += `### ${proj.name}\n\n`;
+      bootstrap += renderFrontmatter([
+        ['workspace', projCwd],
+        ['goals', proj.goals?.length > 0 ? proj.goals.join(', ') : undefined],
+      ]);
       if (proj.description) {
-        bootstrap += `${proj.description}\n\n`;
+        bootstrap += `${escapeBody(proj.description)}\n\n`;
       }
-      bootstrap += `- **Workspace**: \`${projCwd}\`\n`;
-      if (proj.goals?.length > 0) {
-        bootstrap += `- **Goal links**: ${proj.goals.join(', ')}\n`;
-      }
-      bootstrap += `\n`;
     }
   }
 
   // --- Agents ---
   bootstrap += `## Agents\n\n`;
   for (const role of rolesList) {
-    bootstrap += `### ${formatRole(role)}\n`;
-    bootstrap += `- **instructionsFilePath**: \`${companyDir}/agents/${role}/AGENTS.md\`\n\n`;
+    bootstrap += `### ${formatRole(role)}\n\n`;
+    bootstrap += renderFrontmatter([
+      ['role', role],
+      ['instructionsFilePath', `${companyDir}/agents/${role}/AGENTS.md`],
+    ]);
   }
 
   // --- Issues ---
-  // Issues are linked to projects (via projectId). Projects link to goals (via goalIds).
-  const renderIssue = (issue) => {
-    const assignLabel = issue.assignTo ? ` → ${issue.assignTo}` : '';
-    const priorityLabel =
-      issue.priority && issue.priority !== 'medium' ? ` [${issue.priority}]` : '';
-    const milestoneLabel = issue.milestone ? ` _(milestone: ${issue.milestone})_` : '';
-    let line = `- **${issue.title}**${assignLabel}${priorityLabel}${milestoneLabel}\n`;
-    if (issue.description) {
-      line += `  ${issue.description}\n`;
-    }
-    return line;
-  };
-
-  // Collect all issues: from inline goals + module tasks
-  const allIssues = [];
-  for (const g of mergedInlineGoals) {
-    if (g.issues?.length) {
-      for (const issue of g.issues) {
-        allIssues.push({ ...issue, _goal: g.title, _goalHasProject: g.project !== false });
-      }
-    }
-  }
-  for (const task of initialTasks) {
-    allIssues.push(task);
-  }
-  if (allIssues.length > 0) {
+  // All issues come from module.issues[] (project-scoped), not from goals.
+  if (initialIssues.length > 0) {
     bootstrap += `## Issues\n\n`;
-
-    // Group by goal for readability
-    const goalIssuesByGoal = new Map();
-    const ungrouped = [];
-    for (const issue of allIssues) {
-      if (issue._goal) {
-        if (!goalIssuesByGoal.has(issue._goal)) goalIssuesByGoal.set(issue._goal, []);
-        goalIssuesByGoal.get(issue._goal).push(issue);
-      } else {
-        ungrouped.push(issue);
+    for (const issue of initialIssues) {
+      bootstrap += `### ${issue.title}\n\n`;
+      bootstrap += renderFrontmatter([
+        ['assignee', issue.assignTo],
+        ['priority', issue.priority && issue.priority !== 'medium' ? issue.priority : undefined],
+        ['project', mainProjectName],
+      ]);
+      if (issue.description) {
+        bootstrap += `${escapeBody(issue.description)}\n\n`;
       }
     }
+  }
 
-    // Find which project an issue group belongs to
-    const findProjectForGoal = (goalTitle) => {
-      // Check if any project explicitly links to this goal
-      for (const proj of resolvedProjects) {
-        if (proj.goals?.includes(goalTitle)) return proj.name;
+  // --- Routines ---
+  if (initialRoutines.length > 0) {
+    bootstrap += `## Routines\n\n`;
+    for (const routine of initialRoutines) {
+      bootstrap += `### ${routine.title}\n\n`;
+      bootstrap += renderFrontmatter([
+        ['assignee', routine.assignTo],
+        ['schedule', routine.schedule],
+        [
+          'priority',
+          routine.priority && routine.priority !== 'medium' ? routine.priority : undefined,
+        ],
+        ['concurrencyPolicy', routine.concurrencyPolicy],
+        ['project', mainProjectName],
+      ]);
+      if (routine.description) {
+        bootstrap += `${escapeBody(routine.description)}\n\n`;
       }
-      return mainProjectName;
-    };
-
-    for (const [goalTitle, issues] of goalIssuesByGoal) {
-      const targetProject = findProjectForGoal(goalTitle);
-      bootstrap += `### ${goalTitle}\n\n`;
-      bootstrap += `_Project: "${targetProject}"_\n\n`;
-      for (const issue of issues) {
-        bootstrap += renderIssue(issue);
-      }
-      bootstrap += `\n`;
-    }
-
-    if (ungrouped.length > 0) {
-      bootstrap += `### Initial tasks\n\n`;
-      bootstrap += `_Project: "${mainProjectName}"_\n\n`;
-      for (const task of ungrouped) {
-        bootstrap += renderIssue(task);
-      }
-      bootstrap += `\n`;
     }
   }
 
@@ -600,7 +574,8 @@ export async function assembleCompany({
   bootstrap += `${stepN++}. **Create company** "${companyName}"${companyDescription ? ' (with description above)' : ''}\n`;
   for (const g of allGoals) {
     const parentNote = g.parentGoal ? `, parentId → "${g.parentGoal}"` : '';
-    bootstrap += `${stepN++}. **Create goal** "${g.title}" (level: company${parentNote})\n`;
+    const level = g.level || 'company';
+    bootstrap += `${stepN++}. **Create goal** "${g.title}" (level: ${level}${parentNote})\n`;
   }
   for (const proj of resolvedProjects) {
     const projCwd = join(companyDir, 'projects', toPascalCase(proj.name));
@@ -609,13 +584,16 @@ export async function assembleCompany({
     bootstrap += `${stepN++}. **Create project** "${proj.name}" (workspace: \`${projCwd}\`${goalLinks})\n`;
   }
   bootstrap += `${stepN++}. **Create agents** — each with instructionsFilePath as listed above\n`;
-  if (allIssues.length > 0) {
-    bootstrap += `${stepN++}. **Create issues** — link each to its project as noted above\n`;
+  if (initialIssues.length > 0) {
+    bootstrap += `${stepN++}. **Create issues** — link each to its project\n`;
   }
-  bootstrap += `${stepN}. **Start CEO heartbeat**\n`;
+  if (initialRoutines.length > 0) {
+    bootstrap += `${stepN++}. **Create routines** with cron triggers as listed above\n`;
+  }
+  bootstrap += `${stepN}. **Start CEO heartbeat** (one-time initial wakeup)\n`;
 
   await writeFile(join(companyDir, 'BOOTSTRAP.md'), bootstrap);
   onProgress('+ BOOTSTRAP.md');
 
-  return { companyDir, allRoles, initialTasks, roleAdapterOverrides };
+  return { companyDir, allRoles, initialIssues, initialRoutines, roleAdapterOverrides };
 }

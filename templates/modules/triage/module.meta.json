@@ -15,7 +15,7 @@
       "fallbackSkill": "issue-triage.fallback"
     }
   ],
-  "tasks": [
+  "issues": [
     {
       "title": "Triage all open GitHub issues",
       "assignTo": "capability:issue-triage",

@@ -13,7 +13,7 @@
       "fallbackSkill": "competitive-tracking.fallback"
     }
   ],
-  "tasks": [
+  "issues": [
     {
       "title": "Build initial competitive landscape",
       "assignTo": "capability:competitive-tracking",

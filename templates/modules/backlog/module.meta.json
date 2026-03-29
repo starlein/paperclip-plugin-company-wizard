@@ -11,11 +11,21 @@
       "fallbackSkill": "backlog-health.fallback"
     }
   ],
-  "tasks": [
+  "issues": [
     {
       "title": "Create roadmap and generate initial backlog",
       "assignTo": "capability:backlog-health",
       "description": "Review the company goal, create a ROADMAP.md with milestones, then generate the first batch of actionable issues from it."
+    }
+  ],
+  "routines": [
+    {
+      "title": "Backlog grooming",
+      "description": "Ensure backlog has at least 3 actionable unassigned issues. If running low, generate new issues from the roadmap.",
+      "assignTo": "capability:backlog-health",
+      "schedule": "0 10 * * 1,3,5",
+      "priority": "medium",
+      "concurrencyPolicy": "skip_if_active"
     }
   ]
 }

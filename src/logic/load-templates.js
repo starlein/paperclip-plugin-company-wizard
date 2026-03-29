@@ -2,30 +2,36 @@ import { access, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 /**
- * @typedef {Object} GoalMilestone
- * @property {string} id - Unique identifier (kebab-case), referenced by issues.
+ * @typedef {Object} SubGoal
+ * @property {string} id - Unique identifier (kebab-case).
  * @property {string} title
+ * @property {'company'|'team'|'agent'|'task'} [level] - Goal level. Default: 'team'.
  * @property {string} [description]
- * @property {string} [completionCriteria]
- * @property {boolean} [project] - If true, creates a dedicated project for this milestone.
- */
-
-/**
- * @typedef {Object} GoalIssue
- * @property {string} title
- * @property {string} [description]
- * @property {'critical'|'high'|'medium'|'low'} [priority]
- * @property {string} [milestone] - ID of the milestone this issue belongs to.
- * @property {string} [assignTo] - Role name, 'capability:<skill>', or 'user' (unassigned, for human pickup).
  */
 
 /**
  * @typedef {Object} InlineGoal
  * @property {string} title
  * @property {string} description
- * @property {boolean} [project] - If true, creates a dedicated project for this goal. Default: true.
- * @property {GoalMilestone[]} [milestones]
- * @property {GoalIssue[]} [issues]
+ * @property {SubGoal[]} [subgoals]
+ */
+
+/**
+ * @typedef {Object} TemplateIssue
+ * @property {string} title
+ * @property {string} [description]
+ * @property {'critical'|'high'|'medium'|'low'} [priority]
+ * @property {string} [assignTo] - Role name, 'capability:<skill>', or 'user'.
+ */
+
+/**
+ * @typedef {Object} TemplateRoutine
+ * @property {string} title
+ * @property {string} [description]
+ * @property {string} assignTo - Role name or 'capability:<skill>'.
+ * @property {string} schedule - Cron expression.
+ * @property {'critical'|'high'|'medium'|'low'} [priority]
+ * @property {string} [concurrencyPolicy] - 'skip_if_active' | 'coalesce_if_active' | 'always_enqueue'
  */
 
 async function exists(p) {
@@ -80,6 +86,11 @@ export async function loadModules(templatesDir) {
       description = descLine?.trim() || '';
     }
     const mod = { name: dir.name, description, ...(moduleJson || {}) };
+    // Backward compat: rename tasks → issues if old format
+    if (mod.tasks && !mod.issues) {
+      mod.issues = mod.tasks;
+      delete mod.tasks;
+    }
     // Validate inline goal if present
     if (mod.goal) {
       validateGoal(mod.goal, `module "${mod.name}"`);
@@ -107,13 +118,13 @@ export async function loadRoles(templatesDir) {
 }
 
 const VALID_PRIORITIES = new Set(['critical', 'high', 'medium', 'low']);
-const MILESTONE_ID_RE = /^[a-z][a-z0-9-]*$/;
+const SUBGOAL_ID_RE = /^[a-z][a-z0-9-]*$/;
 
 /**
  * Validate an inline goal object (from module or preset).
  * Throws on invalid data.
  * @param {InlineGoal} goal
- * @param {string} sourceName - context for error messages (e.g. 'module "ci-cd"')
+ * @param {string} sourceName - context for error messages
  */
 function validateGoal(goal, sourceName) {
   if (!goal.title || typeof goal.title !== 'string') {
@@ -123,56 +134,38 @@ function validateGoal(goal, sourceName) {
     throw new Error(`Goal in ${sourceName}: missing or invalid "description"`);
   }
 
-  const milestoneIds = new Set();
-
-  if (goal.milestones) {
-    if (!Array.isArray(goal.milestones)) {
-      throw new Error(`Goal in ${sourceName}: "milestones" must be an array`);
+  if (goal.subgoals) {
+    if (!Array.isArray(goal.subgoals)) {
+      throw new Error(`Goal in ${sourceName}: "subgoals" must be an array`);
     }
-    for (const m of goal.milestones) {
-      if (!m.id || typeof m.id !== 'string' || !MILESTONE_ID_RE.test(m.id)) {
-        throw new Error(`Goal in ${sourceName}: milestone "id" must be kebab-case (got "${m.id}")`);
+    const ids = new Set();
+    for (const sg of goal.subgoals) {
+      if (!sg.id || typeof sg.id !== 'string' || !SUBGOAL_ID_RE.test(sg.id)) {
+        throw new Error(`Goal in ${sourceName}: subgoal "id" must be kebab-case (got "${sg.id}")`);
       }
-      if (milestoneIds.has(m.id)) {
-        throw new Error(`Goal in ${sourceName}: duplicate milestone id "${m.id}"`);
+      if (ids.has(sg.id)) {
+        throw new Error(`Goal in ${sourceName}: duplicate subgoal id "${sg.id}"`);
       }
-      milestoneIds.add(m.id);
-      if (!m.title || typeof m.title !== 'string') {
-        throw new Error(`Goal in ${sourceName}: milestone "${m.id}" missing "title"`);
+      ids.add(sg.id);
+      if (!sg.title || typeof sg.title !== 'string') {
+        throw new Error(`Goal in ${sourceName}: subgoal "${sg.id}" missing "title"`);
       }
     }
   }
 
+  // Legacy support: warn if old fields are still present
+  if (goal.milestones) {
+    throw new Error(`Goal in ${sourceName}: "milestones" is deprecated — use "subgoals" instead`);
+  }
   if (goal.issues) {
-    if (!Array.isArray(goal.issues)) {
-      throw new Error(`Goal in ${sourceName}: "issues" must be an array`);
-    }
-    for (let i = 0; i < goal.issues.length; i++) {
-      const issue = goal.issues[i];
-      if (!issue.title || typeof issue.title !== 'string') {
-        throw new Error(`Goal in ${sourceName}: issue[${i}] missing "title"`);
-      }
-      if (issue.priority && !VALID_PRIORITIES.has(issue.priority)) {
-        throw new Error(`Goal in ${sourceName}: issue[${i}] invalid priority "${issue.priority}"`);
-      }
-      if (issue.milestone && !milestoneIds.has(issue.milestone)) {
-        throw new Error(
-          `Goal in ${sourceName}: issue[${i}] references unknown milestone "${issue.milestone}"`,
-        );
-      }
-    }
+    throw new Error(
+      `Goal in ${sourceName}: "issues" inside goals is deprecated — move to module/preset level "issues[]"`,
+    );
   }
 }
 
 /**
  * Collect all active goals from selected preset and modules.
- *
- * Sources (in order):
- *   1. Preset `goals[]` — inline goals from the selected preset
- *   2. Module `goal` — inline goal from each selected module that has one
- *
- * When a module has a `goal`, its `tasks` are skipped from initialTasks
- * (the goal's issues are the comprehensive version).
  *
  * @param {object|null} preset - The selected preset object
  * @param {object[]} modules - All loaded modules
@@ -197,20 +190,6 @@ export function collectGoals(preset, modules, selectedModules) {
   }
 
   return goals;
-}
-
-/**
- * Return the set of module names that have an active goal.
- * Used to skip their tasks from initialTasks during assembly.
- * @param {InlineGoal[]} goals - from collectGoals()
- * @returns {Set<string>}
- */
-export function modulesWithActiveGoals(goals) {
-  const names = new Set();
-  for (const g of goals) {
-    if (g._module) names.add(g._module);
-  }
-  return names;
 }
 
 export { validateGoal, validateGoal as validateGoalTemplate };

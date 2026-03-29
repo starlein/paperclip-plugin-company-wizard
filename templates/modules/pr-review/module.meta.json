@@ -14,7 +14,7 @@
     "devops"
   ],
   "capabilities": [],
-  "tasks": [
+  "issues": [
     {
       "title": "Set up branch protection and PR requirements",
       "assignTo": "engineer",

@@ -12,7 +12,7 @@
       "fallbackSkill": "game-design.fallback"
     }
   ],
-  "tasks": [
+  "issues": [
     {
       "title": "Create Game Design Document",
       "assignTo": "capability:game-design",

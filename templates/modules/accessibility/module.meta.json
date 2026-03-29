@@ -12,7 +12,7 @@
       "fallbackSkill": "accessibility-audit.fallback"
     }
   ],
-  "tasks": [
+  "issues": [
     {
       "title": "Conduct initial accessibility audit",
       "assignTo": "capability:accessibility-audit",

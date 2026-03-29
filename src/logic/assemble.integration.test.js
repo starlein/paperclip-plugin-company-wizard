@@ -31,7 +31,7 @@ describe('assembleCompany integration (real templates)', () => {
 
   it('assembles quality preset with all expected role directories and files', async () => {
     // Quality preset: roles = product-owner, code-reviewer; modules = github-repo, pr-review, backlog, auto-assign, stall-detection
-    const { companyDir, allRoles, initialTasks } = await assembleCompany({
+    const { companyDir, allRoles, initialIssues } = await assembleCompany({
       companyName: 'Integration Test Co',
       userGoals: [{ title: 'Ship the MVP', description: 'Build and launch a working product' }],
       userProjects: [{ name: 'test-app', description: '', goals: ['Ship the MVP'] }],
@@ -101,8 +101,8 @@ describe('assembleCompany integration (real templates)', () => {
     }
 
     // --- Verify initial tasks ---
-    assert.ok(initialTasks.length > 0, 'should have initial tasks from modules');
-    const taskTitles = initialTasks.map((t) => t.title);
+    assert.ok(initialIssues.length > 0, 'should have initial tasks from modules');
+    const taskTitles = initialIssues.map((t) => t.title);
     assert.ok(taskTitles.includes('Initialize GitHub repository'), 'should have github-repo task');
     assert.ok(
       taskTitles.includes('Create roadmap and generate initial backlog'),
@@ -110,7 +110,7 @@ describe('assembleCompany integration (real templates)', () => {
     );
 
     // --- Verify initial tasks have resolved assignees (no unresolved capability:* references) ---
-    for (const task of initialTasks) {
+    for (const task of initialIssues) {
       assert.ok(
         !task.assignTo.startsWith('capability:'),
         `task "${task.title}" should have resolved assignee, got ${task.assignTo}`,
@@ -179,7 +179,7 @@ describe('assembleCompany integration (real templates)', () => {
   });
 
   it('falls back capability ownership to ceo when product-owner is absent', async () => {
-    const { companyDir, initialTasks } = await assembleCompany({
+    const { companyDir, initialIssues } = await assembleCompany({
       companyName: 'FallbackCo',
       moduleNames: ['backlog', 'auto-assign'],
       extraRoleNames: [],
@@ -202,7 +202,7 @@ describe('assembleCompany integration (real templates)', () => {
     );
 
     // Backlog task should resolve to ceo
-    const backlogTask = initialTasks.find(
+    const backlogTask = initialIssues.find(
       (t) => t.title === 'Create roadmap and generate initial backlog',
     );
     assert.ok(backlogTask, 'should have backlog task');
@@ -255,7 +255,7 @@ describe('assembleCompany integration (real templates)', () => {
   });
 
   it('generates complete output for minimal config (base roles only, no modules)', async () => {
-    const { companyDir, allRoles, initialTasks } = await assembleCompany({
+    const { companyDir, allRoles, initialIssues } = await assembleCompany({
       companyName: 'MinimalCo',
       moduleNames: [],
       extraRoleNames: [],
@@ -265,7 +265,7 @@ describe('assembleCompany integration (real templates)', () => {
 
     // Only base roles (engineer is now optional, not a base role)
     assert.deepEqual(allRoles, new Set(['ceo']));
-    assert.equal(initialTasks.length, 0, 'no modules = no tasks');
+    assert.equal(initialIssues.length, 0, 'no modules = no tasks');
 
     // Core files still present
     for (const role of ['ceo']) {

@@ -6,6 +6,37 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.1.8] — 2026-03-29
+
+### Added
+
+- **Routines** — new `routines[]` field in module/preset meta.json for recurring scheduled agent work. Modules `stall-detection`, `auto-assign`, `backlog`, `ci-cd`, `build-api`, and `website-relaunch` now define routines with cron schedules
+- `## Routines` section in BOOTSTRAP.md with `<!-- assignee, schedule, concurrencyPolicy -->` frontmatter per routine
+- `createRoutine()` and `createRoutineTrigger()` methods in API client
+- Subgoal expansion — `goal.subgoals[]` are expanded into the goal hierarchy as nested goals with `level: "team"` and `parentGoal`
+- Robust JSON parser — string-aware brace tracking, trailing comma cleanup, markdown code fence fallback, `console.error` debug logging on parse failure
+- ConfigReview file grouping — agent files grouped by `agents/<role>/` instead of flat `agents/`
+
+### Changed
+
+- **Template schema harmonized with Paperclip API** — `milestones[]` → `subgoals[]` (with `id`, `title`, `level`, `description`); `goal.issues[]` removed (issues belong to projects, not goals); `tasks[]` → `issues[]` everywhere
+- BOOTSTRAP.md uses `<!-- -->` HTML-comment frontmatter instead of code fences (safe when descriptions contain code blocks)
+- BOOTSTRAP.md issue frontmatter: only `assignee` + `project` (removed `milestone`)
+- BOOTSTRAP.md provisioning steps show correct goal `level` (not hardcoded to `company`)
+- `assembleCompany()` returns `initialIssues` + `initialRoutines` (was `initialTasks`)
+- `createGoal()` API client now accepts `status` and `ownerAgentId` fields
+- `ai-chat` action: `max_tokens` increased from 1024 to 16384
+
+### Removed
+
+- `GoalMilestone` typedef, `GoalIssue` typedef, `modulesWithActiveGoals()` export
+- `milestone` field on template issues
+- `completionCriteria` field on milestones (folded into subgoal `description`)
+- `generateBootstrapDescription()` — bootstrap issue uses BOOTSTRAP.md directly
+- `skipTaskModules` logic — goals no longer contain issues, so no skip needed
+
+---
+
 ## [0.1.7] — 2026-03-29
 
 ### Changed
