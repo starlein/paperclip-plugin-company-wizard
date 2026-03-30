@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.1.14] — 2026-03-30
+
+### Fixed
+
+- `ai-chat` action: `max_tokens` reduced from 16384 to 8192 — 16K caused Paperclip's 30s RPC timeout to trigger before Sonnet could finish generating
+
+---
+
 ## [0.1.13] — 2026-03-30
 
 ### Changed

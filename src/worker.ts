@@ -299,7 +299,7 @@ const plugin = definePlugin({
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 16384,
+          max_tokens: 8192,
           ...(params.system ? { system: params.system } : {}),
           messages: params.messages,
         }),
