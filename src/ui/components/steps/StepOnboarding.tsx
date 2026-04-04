@@ -62,8 +62,12 @@ export function StepOnboarding() {
     setRefreshing(true);
     setRefreshMsg(null);
     try {
-      await refreshTemplates({});
-      setRefreshMsg('Templates updated — reload the page to use them.');
+      const result = (await refreshTemplates({})) as { ok?: boolean; error?: string };
+      if (result?.error) {
+        setRefreshMsg(result.error);
+      } else {
+        setRefreshMsg('Templates updated — reload the page to use them.');
+      }
     } catch (err) {
       setRefreshMsg(err instanceof Error ? err.message : 'Refresh failed');
     } finally {

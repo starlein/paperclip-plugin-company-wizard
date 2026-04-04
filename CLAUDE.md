@@ -23,8 +23,12 @@ After `pnpm build`, reload the plugin in the Paperclip UI. No reinstall required
 **Plugin worker** (`src/worker.ts`) — Registers actions via the Paperclip Plugin SDK:
 - `preview-files` — Assembles to a temp dir, returns `.md` file tree as `{path, content}[]`, cleans up. Used by the ConfigReview step for inline preview+edit before provisioning.
 - `start-provision` — Assembles to the workspace `companies/` dir, applies `fileOverrides` (edits from preview), then provisions via Paperclip API.
-- `check-auth` — Validates API credentials early (used by the summary step).
+- `check-auth` — Validates Paperclip API credentials early (used by the summary step).
+- `ai-chat` — Proxies messages to the Anthropic API using the configured key. Returns `{ text, error? }` — never throws.
+- `check-ai-config` — Lightweight check that `anthropicApiKey` is configured. Called by the AI wizard on mount to show a warning banner.
 - `refresh-templates` — Deletes cached templates dir and re-downloads from GitHub. Triggered by the "Update templates" button on the onboarding screen.
+
+All worker actions return errors as `{ error }` instead of throwing, so the plugin host never swallows messages in generic 502 responses.
 
 **Plugin UI** (`src/ui/`) — React state machine (WizardContext + reducer). Manual path: ONBOARDING → NAME → GOAL → PRESET → MODULES → ROLES → SUMMARY → PROVISION → DONE. AI path: ONBOARDING → AI_WIZARD → PROVISION → DONE.
 
@@ -33,12 +37,11 @@ After `pnpm build`, reload the plugin in the Paperclip UI. No reinstall required
 ### Source Layout
 
 - `src/worker.ts` — Worker entry point; registers actions with `ctx.actions.register`
-- `src/manifest.ts` — Plugin manifest: `id: "paperclipai.plugin-clipper"`, `displayName: "Company Wizard"`
+- `src/manifest.ts` — Plugin manifest: `id: "yesterday-ai.paperclip-plugin-company-wizard"`, `displayName: "Company Wizard"`
 - `src/logic/assemble.js` — File assembly: copies templates, resolves capabilities, generates BOOTSTRAP.md
 - `src/logic/resolve.js` — Capability resolution, role formatting, module dependency expansion
 - `src/logic/load-templates.js` — Loads presets, modules, roles. Exports `collectGoals()`, `validateGoal()`
-- `src/logic/ai-wizard.js` — AI wizard: calls Claude API to analyze description and select config
-- `src/api/client.js` — Paperclip REST API client (auto-detects auth: no-op for local_trusted, Better Auth sign-in for authenticated). Methods: `createCompany`, `createAgent`, `createGoal`, `createProject`, `createIssue`, `createRoutine`, `createRoutineTrigger`, `triggerHeartbeat`
+- `src/api/client.js` — Paperclip REST API client (auto-detects auth: no-op for local_trusted, Better Auth sign-in for authenticated). Network errors wrapped with actionable messages. Methods: `createCompany`, `createAgent`, `createGoal`, `createProject`, `createIssue`, `createRoutine`, `createRoutineTrigger`, `triggerHeartbeat`
 - `src/ui/context/WizardContext.tsx` — State machine + reducer. Key state: `goals: Goal[]`, `projects: WizardProject[]`, `fileOverrides: Record<string,string>`
 - `src/ui/components/ConfigReview.tsx` — Review step: calls `preview-files`, shows collapsible `FileEntry` components with inline edit. Overrides dispatched via `SET_FILE_OVERRIDE`/`DELETE_FILE_OVERRIDE`
 - `src/ui/components/steps/StepProvision.tsx` — Passes `fileOverrides` to `start-provision`

@@ -477,7 +477,11 @@ export function ConfigReview() {
         selectedRoles: state.selectedRoles,
         goals: state.goals.length > 0 ? state.goals : undefined,
         projects: state.projects.length > 0 ? state.projects : undefined,
-      })) as { files: Record<string, string> };
+      })) as { files: Record<string, string>; error?: string };
+      if (result.error) {
+        setPreviewError(result.error);
+        return;
+      }
       setPreviewFiles(result.files);
     } catch (e) {
       setPreviewError(e instanceof Error ? e.message : 'Failed to load preview');

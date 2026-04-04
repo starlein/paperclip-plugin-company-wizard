@@ -42,7 +42,7 @@ Every company starts functional and gets better as you add roles. No capability 
 
 ```text
 src/
-├── worker.ts                  # Plugin worker (actions: preview-files, start-provision, check-auth)
+├── worker.ts                  # Plugin worker (actions: preview-files, start-provision, check-auth, ai-chat, check-ai-config, refresh-templates)
 ├── manifest.ts                # Plugin manifest (id, displayName, sidebar slot)
 ├── logic/                     # Pure functions (assembly, resolution, template loading, AI wizard)
 ├── api/                       # Paperclip REST API client + provisioning

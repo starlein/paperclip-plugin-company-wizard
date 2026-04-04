@@ -6,6 +6,29 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.1.15] — 2026-04-05
+
+### Added
+
+- **`check-ai-config` worker action** — lightweight pre-check that verifies the Anthropic API key is configured. Called on AI wizard mount to show a warning banner with a link to plugin settings before the user starts typing
+- **API key warning banner** in the AI wizard describe phase — amber alert with "Plugin Settings" button when `anthropicApiKey` is missing
+
+### Changed
+
+- **Graceful error handling across all worker actions** — `ai-chat`, `start-provision`, `preview-files`, and `refresh-templates` now return `{ error }` instead of throwing. This prevents the plugin host from swallowing error messages in generic 502 responses (fixes [#5](https://github.com/Yesterday-AI/paperclip-plugin-company-wizard/issues/5))
+- **`PaperclipClient.connect()`** — wraps the initial fetch in try/catch to surface network errors (wrong port, connection refused) with actionable messages mentioning `paperclipUrl` in plugin settings
+- **`PaperclipClient._fetch()`** — same network-error handling for all API calls during a session
+- **All error messages** now reference plugin settings fields instead of CLI flags (legacy from the standalone CLI)
+- UI components (`StepProvision`, `ConfigReview`, `StepOnboarding`) updated to handle graceful error returns from worker actions
+
+### Fixed
+
+- AI wizard 502 error after first step — error messages from the worker (missing API key, Anthropic API errors, network failures) were lost when the plugin host converted thrown errors to generic 502 responses. Now returned as structured data that flows through to the UI error bar
+- "fetch failed" on non-default ports — `PaperclipClient` now catches `TypeError` from `fetch()` and surfaces the configured URL in the error message
+- `start-provision` compensation logic preserved — inner try/catch still deletes partially created companies, outer try/catch returns the error gracefully with full provisioning logs
+
+---
+
 ## [0.1.14] — 2026-03-30
 
 ### Fixed

@@ -19,8 +19,9 @@ describe("plugin-clipper", () => {
     const harness = createTestHarness({ manifest, capabilities: manifest.capabilities });
     await plugin.definition.setup(harness.ctx);
 
-    // Should fail gracefully without a companyName
-    await expect(harness.performAction("start-provision", {})).rejects.toThrow("companyName is required");
+    // Should return graceful error without a companyName (no longer throws)
+    const result = await harness.performAction("start-provision", {}) as { error?: string };
+    expect(result.error).toBe("companyName is required");
   });
 
   it("reports healthy", async () => {

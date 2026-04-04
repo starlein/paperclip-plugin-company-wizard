@@ -8,7 +8,7 @@ import {
 } from '../../context/WizardContext';
 import { Button } from '../ui/button';
 import { ConfigReview } from '../ConfigReview';
-import { cn } from '../../lib/utils';
+import { cn, getPluginSettingsUrl } from '../../lib/utils';
 import {
   Sparkles,
   Loader2,
@@ -22,6 +22,8 @@ import {
   ArrowRight,
   CheckCircle2,
   ChevronLeft,
+  AlertTriangle,
+  Settings,
 } from 'lucide-react';
 import interviewSystemPrompt from '../../prompts/interview-system.md?raw';
 import singleShotSystemPrompt from '../../prompts/single-shot-system.md?raw';
@@ -171,6 +173,7 @@ export function StepAiWizard() {
   const state = useWizard();
   const dispatch = useWizardDispatch();
   const aiChat = usePluginAction('ai-chat');
+  const checkAiConfig = usePluginAction('check-ai-config');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -178,9 +181,21 @@ export function StepAiWizard() {
   const [questionCount, setQuestionCount] = useState(0);
   const [loadingMsg, setLoadingMsg] = useState(LOADING_MESSAGES[0]);
   const [configReady, setConfigReady] = useState(false);
+  const [configWarning, setConfigWarning] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const pendingConfigRef = useRef<Record<string, unknown> | null>(null);
+
+  // Pre-check: surface missing API key before the user types anything
+  useEffect(() => {
+    checkAiConfig({})
+      .then((result: any) => {
+        if (!result.ok) setConfigWarning(result.error);
+        else setConfigWarning(null);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -235,7 +250,10 @@ export function StepAiWizard() {
     const result = (await aiChat({
       messages: allMessages.map((m) => ({ role: m.role, content: m.content })),
       system: system || systemPrompt,
-    })) as { text: string };
+    })) as { text: string; error?: string };
+    if (result.error) {
+      throw new Error(result.error);
+    }
     return result.text;
   };
 
@@ -557,6 +575,30 @@ export function StepAiWizard() {
             </p>
           </div>
         </div>
+
+        {configWarning && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 dark:bg-amber-500/5 p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-500 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium">API key missing</p>
+                <p className="text-sm text-muted-foreground">{configWarning}</p>
+              </div>
+            </div>
+            <div className="mt-3 pl-8">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  window.location.href = getPluginSettingsUrl();
+                }}
+              >
+                <Settings className="h-3.5 w-3.5 mr-1.5" />
+                Plugin Settings
+              </Button>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-3">
           <textarea

@@ -52,6 +52,7 @@
 - Milestones → subgoals — template system aligned with Paperclip API (multi-level goals with `parentId` instead of invented milestones). `tasks` → `issues`, `goal.issues` moved to module level
 - Routines in templates — 6 modules define `routines[]` with cron schedules (stall-detection, auto-assign, backlog, ci-cd, build-api, website-relaunch)
 - `createRoutine()` + `createRoutineTrigger()` API client methods
+- Graceful error handling — all worker actions return `{ error }` instead of throwing, preventing generic 502s. `PaperclipClient` wraps network errors with actionable messages (wrong port, connection refused). AI wizard shows API key warning on mount.
 
 ## In Progress
 

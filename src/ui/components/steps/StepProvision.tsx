@@ -51,12 +51,19 @@ export function StepProvision() {
             dispatch({ type: 'ADD_PROVISION_LOG', line });
           }
         }
+        // Graceful error return — action no longer throws, check result.error
+        if (result?.error) {
+          dispatch({ type: 'SET_PROVISIONING', value: false });
+          dispatch({ type: 'SET_ERROR', error: result.error });
+          return;
+        }
         dispatch({ type: 'ADD_PROVISION_LOG', line: '' });
         dispatch({ type: 'ADD_PROVISION_LOG', line: 'All done!' });
         dispatch({ type: 'SET_PROVISION_RESULT', result });
         setTimeout(() => dispatch({ type: 'GO_TO', step: 'done' }), 2000);
       })
       .catch((err: unknown) => {
+        // Fallback — should rarely fire now that the worker returns errors gracefully
         const message =
           err instanceof Error
             ? err.message

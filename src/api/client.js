@@ -26,7 +26,14 @@ export class PaperclipClient {
     if (this.sessionCookie) {
       headers['Cookie'] = this.sessionCookie;
     }
-    const res = await fetch(url, { ...opts, headers });
+    let res;
+    try {
+      res = await fetch(url, { ...opts, headers });
+    } catch (err) {
+      throw new Error(
+        `${opts.method || 'GET'} ${path} — network error: ${err.message}. Is Paperclip running at ${this.baseUrl}?`,
+      );
+    }
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       throw new Error(`${opts.method || 'GET'} ${path} → ${res.status}: ${body}`);
@@ -40,10 +47,19 @@ export class PaperclipClient {
    * For local_trusted instances this is a no-op beyond the connectivity check.
    */
   async connect() {
-    const res = await fetch(`${this.baseUrl}/api/companies`, {
-      method: 'GET',
-      headers: { Origin: this.origin },
-    });
+    let res;
+    try {
+      res = await fetch(`${this.baseUrl}/api/companies`, {
+        method: 'GET',
+        headers: { Origin: this.origin },
+      });
+    } catch (err) {
+      // Network error (connection refused, DNS failure, wrong port, etc.)
+      throw new Error(
+        `Could not reach Paperclip at ${this.baseUrl} (${err.message}).\n` +
+          `  If your instance runs on a different port, set paperclipUrl in plugin settings.`,
+      );
+    }
 
     // local_trusted — no auth needed
     if (res.ok) {
@@ -57,8 +73,7 @@ export class PaperclipClient {
       if (!email || !password) {
         throw new Error(
           `Paperclip instance requires authentication.\n` +
-            `  Set PAPERCLIP_EMAIL and PAPERCLIP_PASSWORD env vars,\n` +
-            `  or pass --api-email and --api-password.`,
+            `  Configure paperclipEmail and paperclipPassword in plugin settings.`,
         );
       }
       await this._signIn(email, password);
@@ -72,7 +87,10 @@ export class PaperclipClient {
       return;
     }
 
-    throw new Error(`Paperclip API unreachable (${res.status})`);
+    throw new Error(
+      `Paperclip API at ${this.baseUrl} returned unexpected status ${res.status}.\n` +
+        `  Check that paperclipUrl in plugin settings points to the correct instance.`,
+    );
   }
 
   /**

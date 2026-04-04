@@ -167,35 +167,40 @@ const plugin = definePlugin({
 
     // Refresh templates — delete cached dir so next load re-downloads from GitHub.
     ctx.actions.register('refresh-templates', async () => {
-      const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
-      const repoUrl = cfg.templatesRepoUrl || DEFAULT_TEMPLATES_REPO_URL;
-      const targetDir =
-        cfg.templatesPath || path.join(os.homedir(), '.paperclip', 'plugin-templates');
+      try {
+        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+        const repoUrl = cfg.templatesRepoUrl || DEFAULT_TEMPLATES_REPO_URL;
+        const targetDir =
+          cfg.templatesPath || path.join(os.homedir(), '.paperclip', 'plugin-templates');
 
-      if (fs.existsSync(targetDir)) {
-        fs.rmSync(targetDir, { recursive: true, force: true });
+        if (fs.existsSync(targetDir)) {
+          fs.rmSync(targetDir, { recursive: true, force: true });
+        }
+        downloadTemplatesFromGithub(targetDir, repoUrl);
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
       }
-      downloadTemplatesFromGithub(targetDir, repoUrl);
-      return { ok: true };
     });
 
     // Preview action — assembles files to a temp dir and returns their contents.
     // Used by the UI review step to show/edit generated MD files before provisioning.
     ctx.actions.register('preview-files', async (params) => {
-      const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
-
-      const companyName =
-        typeof params.companyName === 'string' && params.companyName.trim()
-          ? params.companyName.trim()
-          : 'Preview';
-
-      const templatesDir = await ensureTemplatesDir(cfg);
-      const tmpDir = path.join(os.tmpdir(), `clipper-preview-${Date.now()}`);
-
-      // Resolve the companies dir so BOOTSTRAP.md shows correct paths in preview.
-      const companiesDir = resolveCompaniesDir(cfg);
-
+      let tmpDir: string | undefined;
       try {
+        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+
+        const companyName =
+          typeof params.companyName === 'string' && params.companyName.trim()
+            ? params.companyName.trim()
+            : 'Preview';
+
+        const templatesDir = await ensureTemplatesDir(cfg);
+        tmpDir = path.join(os.tmpdir(), `clipper-preview-${Date.now()}`);
+
+        // Resolve the companies dir so BOOTSTRAP.md shows correct paths in preview.
+        const companiesDir = resolveCompaniesDir(cfg);
+
         const [presets, allModules] = await Promise.all([
           loadPresets(templatesDir),
           loadModules(templatesDir),
@@ -253,11 +258,15 @@ const plugin = definePlugin({
 
         collectMdFiles(result.companyDir, '');
         return { files };
+      } catch (err) {
+        return { files: {}, error: err instanceof Error ? err.message : String(err) };
       } finally {
-        try {
-          fs.rmSync(tmpDir, { recursive: true, force: true });
-        } catch {
-          /* */
+        if (tmpDir) {
+          try {
+            fs.rmSync(tmpDir, { recursive: true, force: true });
+          } catch {
+            /* */
+          }
         }
       }
     });
@@ -281,231 +290,265 @@ const plugin = definePlugin({
 
     // AI chat action — proxies messages to the Anthropic API using the configured key.
     // Keeps the API key server-side; the UI never touches it directly.
+    // Returns { text, error? } — never throws, so the plugin host doesn't swallow the message in a 502.
     ctx.actions.register('ai-chat', async (params) => {
-      const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
-      const apiKey = cfg.anthropicApiKey || '';
-      if (!apiKey) {
-        throw new Error(
-          'Anthropic API key not configured. Add it in plugin settings (anthropicApiKey).',
-        );
+      try {
+        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+        const apiKey = cfg.anthropicApiKey || '';
+        if (!apiKey) {
+          return {
+            text: '',
+            error: 'Anthropic API key not configured. Add it in plugin settings (anthropicApiKey).',
+          };
+        }
+
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 8192,
+            ...(params.system ? { system: params.system } : {}),
+            messages: params.messages,
+          }),
+        });
+
+        if (!response.ok) {
+          const body = await response.text();
+          return { text: '', error: `Anthropic API error (${response.status}): ${body}` };
+        }
+
+        const data = (await response.json()) as { content?: { text: string }[] };
+        return { text: data.content?.[0]?.text || '' };
+      } catch (err) {
+        return { text: '', error: err instanceof Error ? err.message : String(err) };
       }
+    });
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 8192,
-          ...(params.system ? { system: params.system } : {}),
-          messages: params.messages,
-        }),
-      });
-
-      if (!response.ok) {
-        const err = await response.text();
-        throw new Error(`Anthropic API error: ${response.status} ${err}`);
+    // Lightweight config check — UI calls this on mount to show a warning before the user types.
+    ctx.actions.register('check-ai-config', async () => {
+      try {
+        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+        if (!cfg.anthropicApiKey) {
+          return {
+            ok: false,
+            error: 'Anthropic API key not configured. Add it in plugin settings (anthropicApiKey).',
+          };
+        }
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
       }
-
-      const data = (await response.json()) as { content?: { text: string }[] };
-      return { text: data.content?.[0]?.text || '' };
     });
 
     // Provisioning action — assembles files, then creates company/agent/issue.
     // Uses the plugin SDK host services where available (issues, goals),
     // falls back to PaperclipClient HTTP for operations the SDK doesn't support
     // yet (company creation, agent creation).
+    // Returns { ..., logs } on success or { error, logs } on failure — never throws.
     ctx.actions.register('start-provision', async (params) => {
-      const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
-      const paperclipUrl =
-        cfg.paperclipUrl || process.env.PAPERCLIP_PUBLIC_URL || 'http://localhost:3100';
-      const paperclipEmail = cfg.paperclipEmail || '';
-      const paperclipPassword = cfg.paperclipPassword || '';
-
-      const companyName = typeof params.companyName === 'string' ? params.companyName : '';
-      if (!companyName) throw new Error('companyName is required');
-
       const logs: string[] = [];
       const log = (msg: string) => {
         logs.push(msg);
         ctx.logger.info(msg);
       };
 
-      const templatesDir = await ensureTemplatesDir(cfg);
-
-      // Step 1: Collect inline goals
-      const [presets, allModules] = await Promise.all([
-        loadPresets(templatesDir),
-        loadModules(templatesDir),
-      ]);
-      const selectedPreset = presets.find((p: any) => p.name === params.presetName) || null;
-      const goals = collectGoals(
-        selectedPreset,
-        allModules,
-        new Set((params.selectedModules as string[]) ?? []),
-      );
-
-      // Step 2: Assemble files on disk
-      const outputDir = resolveCompaniesDir(cfg);
-
-      fs.mkdirSync(outputDir, { recursive: true });
-      log('Assembling company workspace...');
-
-      const companyDescription =
-        typeof params.companyDescription === 'string' ? params.companyDescription.trim() : '';
-
-      // Normalize goals: support both old single-goal and new array format
-      const userGoals: any[] = Array.isArray(params.goals)
-        ? (params.goals as any[])
-        : params.goal
-          ? [params.goal]
-          : [];
-      const userProjects: any[] = Array.isArray(params.projects) ? (params.projects as any[]) : [];
-
-      const assembleResult = await assembleCompany({
-        companyName,
-        companyDescription,
-        userGoals,
-        userProjects,
-        moduleNames: (params.selectedModules as string[]) ?? [],
-        extraRoleNames: (params.selectedRoles as string[]) ?? [],
-        inlineGoals: goals,
-        outputDir,
-        templatesDir,
-        onProgress: log,
-      });
-
-      const { companyDir } = assembleResult;
-
-      // Apply file overrides from UI edits
-      const fileOverrides = (params.fileOverrides as Record<string, string>) ?? {};
-      for (const [relPath, content] of Object.entries(fileOverrides)) {
-        const absPath = path.resolve(companyDir, relPath);
-        if (!absPath.startsWith(companyDir + path.sep) && absPath !== companyDir) {
-          log(`⚠ Skipped override outside company dir: ${relPath}`);
-          continue;
-        }
-        if (fs.existsSync(absPath)) {
-          fs.writeFileSync(absPath, content, 'utf-8');
-          log(`✎ Override: ${relPath}`);
-        }
-      }
-
-      log('');
-      log(`✓ Generated files: ${companyDir}`);
-
-      // Step 3: Connect to Paperclip API
-      // The SDK doesn't support company/agent creation yet, so we use PaperclipClient
-      // for those. It auto-detects auth mode (no-op for local_trusted).
-      log('Connecting to Paperclip API...');
-      const client = new PaperclipClient(paperclipUrl, {
-        email: paperclipEmail,
-        password: paperclipPassword,
-      });
-      await client.connect();
-      log('Connected.');
-      log('');
-
-      // Step 5: Create company (SDK: companies.read only → HTTP client)
-      log('Creating company...');
-      const company = await client.createCompany({
-        name: companyName,
-        description: companyDescription || undefined,
-      });
-      const companyId = company.id;
-      log(`✓ Company "${companyName}" created`);
-
-      // Steps 6-7 are wrapped so we can delete the company on partial failure.
-      let ceoAgentId: string;
-      let bootstrapIssue: { id: string; identifier?: string };
       try {
-        // Step 6: Create CEO agent (SDK: agents.read only → HTTP client)
-        const userCeoAdapter = (params.ceoAdapter as any) || {};
-        const adapterType =
-          typeof userCeoAdapter.type === 'string' ? userCeoAdapter.type.trim() : 'claude_local';
-        const userCwd = typeof userCeoAdapter.cwd === 'string' ? userCeoAdapter.cwd.trim() : '';
-        const userModel =
-          typeof userCeoAdapter.model === 'string' ? userCeoAdapter.model.trim() : '';
+        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+        const paperclipUrl =
+          cfg.paperclipUrl || process.env.PAPERCLIP_PUBLIC_URL || 'http://localhost:3100';
+        const paperclipEmail = cfg.paperclipEmail || '';
+        const paperclipPassword = cfg.paperclipPassword || '';
 
-        const adapterConfig: Record<string, unknown> = {
-          ...(assembleResult.roleAdapterOverrides?.get('ceo') ?? {}),
-          cwd: userCwd || companyDir,
-          instructionsFilePath: path.join(companyDir, 'agents', 'ceo', 'AGENTS.md'),
-          model: userModel || 'claude-opus-4-6',
-        };
+        const companyName = typeof params.companyName === 'string' ? params.companyName : '';
+        if (!companyName) return { error: 'companyName is required', logs };
 
-        if (adapterType === 'claude_local') {
-          adapterConfig.dangerouslySkipPermissions = true;
-        } else if (adapterType === 'codex_local') {
-          adapterConfig.dangerouslyBypassApprovalsAndSandbox = true;
-        }
+        const templatesDir = await ensureTemplatesDir(cfg);
 
-        log('Creating CEO agent...');
-        const ceoAgent = await client.createAgent(companyId, {
-          name: 'CEO',
-          role: 'ceo',
-          title: 'CEO',
-          reportsTo: null,
-          adapterType,
-          adapterConfig,
-          runtimeConfig: {
-            heartbeat: { enabled: true, intervalSec: 3600 },
-          },
-          permissions: { canCreateAgents: true },
-        });
-        ceoAgentId = ceoAgent.id;
-        log(`✓ CEO agent created (${ceoAgentId})`);
-
-        // Step 7: Create bootstrap issue (SDK: ctx.issues.create ✓)
-        // BOOTSTRAP.md IS the bootstrap issue — read it directly.
-        const bootstrapDescription = fs.readFileSync(
-          path.join(companyDir, 'BOOTSTRAP.md'),
-          'utf-8',
+        // Step 1: Collect inline goals
+        const [presets, allModules] = await Promise.all([
+          loadPresets(templatesDir),
+          loadModules(templatesDir),
+        ]);
+        const selectedPreset = presets.find((p: any) => p.name === params.presetName) || null;
+        const goals = collectGoals(
+          selectedPreset,
+          allModules,
+          new Set((params.selectedModules as string[]) ?? []),
         );
 
-        log('Creating bootstrap task for CEO...');
-        const issue = await ctx.issues.create({
-          companyId,
-          title: `Bootstrap ${companyName}`,
-          description: bootstrapDescription,
-          assigneeAgentId: ceoAgentId,
+        // Step 2: Assemble files on disk
+        const outputDir = resolveCompaniesDir(cfg);
+
+        fs.mkdirSync(outputDir, { recursive: true });
+        log('Assembling company workspace...');
+
+        const companyDescription =
+          typeof params.companyDescription === 'string' ? params.companyDescription.trim() : '';
+
+        // Normalize goals: support both old single-goal and new array format
+        const userGoals: any[] = Array.isArray(params.goals)
+          ? (params.goals as any[])
+          : params.goal
+            ? [params.goal]
+            : [];
+        const userProjects: any[] = Array.isArray(params.projects)
+          ? (params.projects as any[])
+          : [];
+
+        const assembleResult = await assembleCompany({
+          companyName,
+          companyDescription,
+          userGoals,
+          userProjects,
+          moduleNames: (params.selectedModules as string[]) ?? [],
+          extraRoleNames: (params.selectedRoles as string[]) ?? [],
+          inlineGoals: goals,
+          outputDir,
+          templatesDir,
+          onProgress: log,
         });
-        await ctx.issues.update(issue.id, { status: 'todo' }, companyId);
-        bootstrapIssue = issue as { id: string; identifier?: string };
-        log(`✓ Bootstrap task created: ${bootstrapIssue.identifier || bootstrapIssue.id}`);
-      } catch (err) {
-        // Compensate: delete the company so the user isn't left with a partial stub.
-        log(`✗ Provisioning failed: ${err instanceof Error ? err.message : String(err)}`);
-        log(`Cleaning up — deleting partially created company (${companyId})...`);
-        try {
-          await client.deleteCompany(companyId);
-          log('✓ Company deleted.');
-        } catch (cleanupErr) {
-          log(
-            `⚠ Could not delete company ${companyId}: ${cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr)}`,
-          );
-          log(`  Delete it manually in the Paperclip UI to clean up.`);
+
+        const { companyDir } = assembleResult;
+
+        // Apply file overrides from UI edits
+        const fileOverrides = (params.fileOverrides as Record<string, string>) ?? {};
+        for (const [relPath, content] of Object.entries(fileOverrides)) {
+          const absPath = path.resolve(companyDir, relPath);
+          if (!absPath.startsWith(companyDir + path.sep) && absPath !== companyDir) {
+            log(`⚠ Skipped override outside company dir: ${relPath}`);
+            continue;
+          }
+          if (fs.existsSync(absPath)) {
+            fs.writeFileSync(absPath, content, 'utf-8');
+            log(`✎ Override: ${relPath}`);
+          }
         }
-        throw err;
+
+        log('');
+        log(`✓ Generated files: ${companyDir}`);
+
+        // Step 3: Connect to Paperclip API
+        // The SDK doesn't support company/agent creation yet, so we use PaperclipClient
+        // for those. It auto-detects auth mode (no-op for local_trusted).
+        log('Connecting to Paperclip API...');
+        const client = new PaperclipClient(paperclipUrl, {
+          email: paperclipEmail,
+          password: paperclipPassword,
+        });
+        await client.connect();
+        log('Connected.');
+        log('');
+
+        // Step 5: Create company (SDK: companies.read only → HTTP client)
+        log('Creating company...');
+        const company = await client.createCompany({
+          name: companyName,
+          description: companyDescription || undefined,
+        });
+        const companyId = company.id;
+        log(`✓ Company "${companyName}" created`);
+
+        // Steps 6-7 are wrapped so we can delete the company on partial failure.
+        let ceoAgentId: string;
+        let bootstrapIssue: { id: string; identifier?: string };
+        try {
+          // Step 6: Create CEO agent (SDK: agents.read only → HTTP client)
+          const userCeoAdapter = (params.ceoAdapter as any) || {};
+          const adapterType =
+            typeof userCeoAdapter.type === 'string' ? userCeoAdapter.type.trim() : 'claude_local';
+          const userCwd = typeof userCeoAdapter.cwd === 'string' ? userCeoAdapter.cwd.trim() : '';
+          const userModel =
+            typeof userCeoAdapter.model === 'string' ? userCeoAdapter.model.trim() : '';
+
+          const adapterConfig: Record<string, unknown> = {
+            ...(assembleResult.roleAdapterOverrides?.get('ceo') ?? {}),
+            cwd: userCwd || companyDir,
+            instructionsFilePath: path.join(companyDir, 'agents', 'ceo', 'AGENTS.md'),
+            model: userModel || 'claude-opus-4-6',
+          };
+
+          if (adapterType === 'claude_local') {
+            adapterConfig.dangerouslySkipPermissions = true;
+          } else if (adapterType === 'codex_local') {
+            adapterConfig.dangerouslyBypassApprovalsAndSandbox = true;
+          }
+
+          log('Creating CEO agent...');
+          const ceoAgent = await client.createAgent(companyId, {
+            name: 'CEO',
+            role: 'ceo',
+            title: 'CEO',
+            reportsTo: null,
+            adapterType,
+            adapterConfig,
+            runtimeConfig: {
+              heartbeat: { enabled: true, intervalSec: 3600 },
+            },
+            permissions: { canCreateAgents: true },
+          });
+          ceoAgentId = ceoAgent.id;
+          log(`✓ CEO agent created (${ceoAgentId})`);
+
+          // Step 7: Create bootstrap issue (SDK: ctx.issues.create ✓)
+          // BOOTSTRAP.md IS the bootstrap issue — read it directly.
+          const bootstrapDescription = fs.readFileSync(
+            path.join(companyDir, 'BOOTSTRAP.md'),
+            'utf-8',
+          );
+
+          log('Creating bootstrap task for CEO...');
+          const issue = await ctx.issues.create({
+            companyId,
+            title: `Bootstrap ${companyName}`,
+            description: bootstrapDescription,
+            assigneeAgentId: ceoAgentId,
+          });
+          await ctx.issues.update(issue.id, { status: 'todo' }, companyId);
+          bootstrapIssue = issue as { id: string; identifier?: string };
+          log(`✓ Bootstrap task created: ${bootstrapIssue.identifier || bootstrapIssue.id}`);
+        } catch (err) {
+          // Compensate: delete the company so the user isn't left with a partial stub.
+          log(`✗ Provisioning failed: ${err instanceof Error ? err.message : String(err)}`);
+          log(`Cleaning up — deleting partially created company (${companyId})...`);
+          try {
+            await client.deleteCompany(companyId);
+            log('✓ Company deleted.');
+          } catch (cleanupErr) {
+            log(
+              `⚠ Could not delete company ${companyId}: ${cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr)}`,
+            );
+            log(`  Delete it manually in the Paperclip UI to clean up.`);
+          }
+          throw err;
+        }
+
+        log('');
+        log('Provisioning complete!');
+        log(
+          'The CEO agent is ready. Trigger its first heartbeat to hire the rest of the team and create the initial backlog.',
+        );
+
+        return {
+          companyId,
+          issuePrefix: company.issuePrefix,
+          paperclipUrl,
+          agentIds: { ceo: ceoAgentId! },
+          issueIds: [bootstrapIssue!.id],
+          logs,
+        };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        // Only log if it wasn't already logged by the inner compensation catch
+        if (!logs.some((l) => l.includes('Provisioning failed'))) {
+          log(`✗ ${message}`);
+        }
+        return { error: message, logs };
       }
-
-      log('');
-      log('Provisioning complete!');
-      log(
-        'The CEO agent is ready. Trigger its first heartbeat to hire the rest of the team and create the initial backlog.',
-      );
-
-      return {
-        companyId,
-        issuePrefix: company.issuePrefix,
-        paperclipUrl,
-        agentIds: { ceo: ceoAgentId! },
-        issueIds: [bootstrapIssue!.id],
-        logs,
-      };
     });
   },
 
