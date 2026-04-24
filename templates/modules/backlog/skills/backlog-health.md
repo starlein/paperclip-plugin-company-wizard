@@ -39,6 +39,8 @@ Run this on every heartbeat, after handling your own assignments.
 
 - Don't create duplicate issues. Check existing issues before creating new ones.
 - Keep issues small and actionable. Each should be completable in a single agent session.
+- Split into subissues only when each child can be completed, tested, and merged independently in its own isolated workspace.
+- Do not split tightly coupled implementation work across sibling subissues (same core code path/file cluster changed together). Keep coupled work in one issue, or sequence it explicitly so later work starts only after the prerequisite issue is done.
 - Set priority based on roadmap order and dependencies.
 - Always attach at least one label to every issue you create.
 - If the goal is fully decomposed into issues, don't create more. Report to the CEO instead.

@@ -11,4 +11,5 @@ After handling your own assignments:
    - Use the active roadmap project's `projectId`. Do not leave top-level backlog issues projectless.
    - Fetch labels once per session: `GET /api/companies/{companyId}/labels`. If none exist, create them first (see `backlog-health` skill).
    - Write clear acceptance criteria. Leave issues unassigned.
+   - Only create subissues for independently deliverable slices. Do not split tightly coupled implementation across sibling subissues.
 3. Record what you generated in daily notes.
