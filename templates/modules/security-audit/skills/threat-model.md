@@ -12,7 +12,7 @@ You own threat modeling for the project. This identifies security risks before t
    - **Risk ratings**: Likelihood x Impact = Risk (Critical/High/Medium/Low)
    - **Mitigations**: Recommended controls for each threat
 3. Create follow-up issues for Critical and High risks:
-   - `POST /api/companies/{companyId}/issues` with specific remediation tasks
+   - `POST /api/companies/{companyId}/issues` with specific remediation tasks. Include the active `projectId` (and `goalId` / `parentId` when applicable).
 4. Record summary in your daily notes
 
 ## Rules

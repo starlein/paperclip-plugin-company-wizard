@@ -15,7 +15,7 @@ Each section (Goals, Projects, Agents, Issues, Routines) contains objects to cre
 2. **Projects** — reference goals via `goalIds`. Create after all goals exist
 3. **Labels** — create issue labels (`POST /api/companies/{companyId}/labels` with `{ name, color }`). Use them to categorize issues
 4. **Agents** — hire via governance. Set `instructionsFilePath` from the metadata
-5. **Issues** — reference project via `projectId`, assign to agent via `assigneeAgentId` or to the board user via `assigneeUserId`. Attach labels via `labelIds`
+5. **Issues** — reference project via `projectId`, assign to agent via `assigneeAgentId` or to the board user via `assigneeUserId`. Attach labels via `labelIds`. Do not omit `projectId` on top-level issues; subtasks should carry the parent's project scope.
 6. **Routines** — reference project and agent. Add a cron trigger with the `schedule` value
 
-**After bootstrap**: keep labels current. When creating new issues in your heartbeat, always assign appropriate labels.
+**After bootstrap**: keep labels current. When creating new issues in your heartbeat, always assign appropriate labels and always include the correct `projectId`.

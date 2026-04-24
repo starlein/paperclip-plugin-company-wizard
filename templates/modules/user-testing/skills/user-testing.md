@@ -16,7 +16,7 @@ You own usability evaluations and user testing. This ensures the product meets r
    - **Major**: Significant friction or confusion
    - **Minor**: Cosmetic or low-impact usability issues
 6. Create follow-up issues for critical and major findings:
-   - `POST /api/companies/{companyId}/issues` with finding details and reproduction steps
+   - `POST /api/companies/{companyId}/issues` with finding details and reproduction steps. Include the active `projectId` (and `goalId` / `parentId` when applicable).
 7. Record summary in your daily notes
 
 ## Rules

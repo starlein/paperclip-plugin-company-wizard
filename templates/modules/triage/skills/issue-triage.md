@@ -28,7 +28,7 @@ Run this on every heartbeat, after handling your own assignments.
       - Set expectations ("we'll look into this" / "this is out of scope because...")
       - For duplicates: link to the original issue and close
       - For invalid: explain why and close politely
-   f. **Convert to Paperclip task** — For actionable issues (bug, feature, enhancement), create a corresponding issue in Paperclip via `POST /api/companies/{companyId}/issues` with the GitHub issue number in the description for traceability.
+   f. **Convert to Paperclip task** — For actionable issues (bug, feature, enhancement), create a corresponding issue in Paperclip via `POST /api/companies/{companyId}/issues` with the GitHub issue number in the description for traceability. Include the active `projectId` (and `goalId` / `parentId` when applicable).
 
 3. **Record** what you triaged in your daily notes.
 

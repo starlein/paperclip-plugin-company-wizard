@@ -16,7 +16,7 @@ You own competitive intelligence. This is a living analysis — profiles evolve 
    - **Gaps and opportunities**: Where competitors are weak and we can win
    - **Threats**: Where competitors are strong and we need to defend
 3. Create follow-up issues for strategic decisions informed by competitive insights:
-   - `POST /api/companies/{companyId}/issues` with specific recommendations
+   - `POST /api/companies/{companyId}/issues` with specific recommendations. Include the active `projectId` (and `goalId` / `parentId` when applicable).
 4. Record summary in your daily notes
 
 ## Rules

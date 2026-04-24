@@ -27,8 +27,9 @@ Run this on every heartbeat, after handling your own assignments.
 2. If fewer than 3 unassigned issues remain:
    - Review the company goal and current progress
    - Identify the next logical chunk of work from the roadmap
-   - Create 3-5 new issues via `POST /api/companies/{companyId}/issues`
-   - Each issue must have: `title`, `description`, `priority`, `goalId`, `labelIds`
+   - Create 3-5 new issues via `POST /api/companies/{companyId}/issues`, making sure each payload includes the correct `projectId`
+   - Each issue must have: `title`, `description`, `priority`, `projectId`, `goalId`, `labelIds`
+   - Use the current roadmap project's `projectId`; never create top-level backlog issues with `projectId: null`
    - Fetch label IDs once per session: `GET /api/companies/{companyId}/labels`
    - Write clear acceptance criteria in the description
    - Leave issues unassigned — assignment happens separately

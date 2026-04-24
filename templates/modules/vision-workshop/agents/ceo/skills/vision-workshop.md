@@ -12,7 +12,7 @@ You own the company vision. Refine the initial goal into a strategic foundation 
    - **Strategic milestones**: Ordered list of milestones that lead to the vision
    - **Non-goals**: What the company explicitly does NOT do (prevents scope creep)
 3. Create issues for the first milestone's deliverables:
-   - `POST /api/companies/{companyId}/issues` with milestone context
+   - `POST /api/companies/{companyId}/issues` with milestone context. Include the active `projectId` (and `goalId` / `parentId` when applicable).
 4. Share the vision doc with the team via daily notes
 
 ## Rules

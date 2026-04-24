@@ -13,7 +13,7 @@ You own system architecture. Design the structure that implements the tech stack
    - **Deployment model**: How the system is built, tested, and deployed
    - **Key decisions**: Architectural decisions with rationale (ADR-style)
 3. Create implementation issues for the foundational structure:
-   - `POST /api/companies/{companyId}/issues` for scaffolding, core modules, etc.
+   - `POST /api/companies/{companyId}/issues` for scaffolding, core modules, etc. Include the active `projectId` (and `goalId` / `parentId` when applicable).
 
 ## Rules
 

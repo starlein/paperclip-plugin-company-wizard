@@ -15,7 +15,7 @@ You own technology decisions. Evaluate options and document choices that align w
    - **Trade-offs**: What was considered and rejected, and why
    - **Dependencies**: Key libraries and their purposes
 4. Create setup issues if needed:
-   - `POST /api/companies/{companyId}/issues` for initial project scaffolding
+   - `POST /api/companies/{companyId}/issues` for initial project scaffolding. Include the active `projectId` (and `goalId` / `parentId` when applicable).
 
 ## Rules
 

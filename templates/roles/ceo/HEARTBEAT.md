@@ -37,7 +37,7 @@ If `PAPERCLIP_APPROVAL_ID` is set:
 
 ## 6. Delegation
 
-- Create subtasks with `POST /api/companies/{companyId}/issues`. Always set `parentId` and `goalId`.
+- Create subtasks with `POST /api/companies/{companyId}/issues`. Always set `parentId`, `projectId`, and `goalId`. For top-level follow-ons, include the active project's `projectId` explicitly.
 - Use `paperclip-create-agent` skill when hiring new agents.
 - Assign work to the right agent for the job.
 

@@ -12,7 +12,7 @@ Owns the product backlog lifecycle — from goal decomposition to a steady pipel
 On every heartbeat, the backlog owner checks the issue pipeline:
 1. Count unassigned issues with status `todo`
 2. If count < threshold (default: 3), decompose the next chunk of work from the goal/roadmap into concrete issues
-3. New issues are created with proper `goalId`, priority, and acceptance criteria
+3. New issues are created with proper `projectId`, `goalId`, priority, and acceptance criteria. For top-level backlog issues, never omit `projectId`.
 4. Issues are left unassigned for the auto-assign module (or manual assignment)
 
 ## Ownership

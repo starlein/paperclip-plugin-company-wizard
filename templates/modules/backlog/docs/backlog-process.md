@@ -9,7 +9,7 @@ Goal → Roadmap → Issues → Assignment → Execution → Done
 ```
 
 1. **Goal decomposition** — The backlog owner breaks the company goal into milestones, then milestones into actionable issues.
-2. **Issue creation** — New issues enter the backlog via `POST /api/companies/{companyId}/issues` with `title`, `description`, `priority`, `goalId`, and `labelIds`.
+2. **Issue creation** — New issues enter the backlog via `POST /api/companies/{companyId}/issues` with `title`, `description`, `priority`, `projectId`, `goalId`, and `labelIds`. Top-level backlog issues must always include the active roadmap `projectId`.
 3. **Pipeline health** — The backlog owner monitors unassigned issue count. When fewer than 3 remain, the next batch is generated from the roadmap.
 4. **Assignment** — Issues are left unassigned at creation. Assignment happens separately (auto-assign module or manual).
 5. **Execution** — Agents check out assigned issues, work them, and mark done.

@@ -18,7 +18,7 @@ You are the QA engineer and user-facing quality is your core domain. You own tes
    - **Major**: Significant friction or confusion
    - **Minor**: Cosmetic or low-impact usability issues
 7. Create follow-up issues for critical and major findings:
-   - `POST /api/companies/{companyId}/issues` with finding details and reproduction steps
+   - `POST /api/companies/{companyId}/issues` with finding details and reproduction steps. Include the active `projectId` (and `goalId` / `parentId` when applicable).
 8. Record summary in your daily notes
 
 ## Rules
