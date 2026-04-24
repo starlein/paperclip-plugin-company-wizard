@@ -93,6 +93,24 @@ describe('assembleCompany integration (real templates)', () => {
     );
     assert.ok(bootstrap.includes('test-app'), 'should include project name');
     assert.ok(bootstrap.includes('instructionsFilePath'), 'should have agent setup instructions');
+    assert.ok(bootstrap.includes('## Labels'), 'should include explicit Labels section');
+    assert.ok(bootstrap.includes('**labelIds**:'), 'issues should include labelIds guidance');
+    assert.ok(
+      bootstrap.includes('**projectId**: → "test-app"'),
+      'top-level issues should include explicit projectId reference',
+    );
+    assert.ok(
+      bootstrap.includes('Parent/subissue status is not implicitly coupled'),
+      'bootstrap should include status bounce guardrails',
+    );
+
+    const labelsStep = bootstrap.indexOf('**Create labels**');
+    const agentsStep = bootstrap.indexOf('**Create agents**');
+    const issuesStep = bootstrap.indexOf('**Create issues**');
+    assert.ok(labelsStep > -1, 'manual setup order should include labels step');
+    assert.ok(agentsStep > labelsStep, 'agents step should come after labels step');
+    assert.ok(issuesStep > agentsStep, 'issues step should come after agents step');
+
     for (const role of expectedRoles) {
       assert.ok(
         bootstrap.includes(`agents/${role}/AGENTS.md`),

@@ -455,11 +455,122 @@ export async function assembleCompany({
 
   // 6. Generate BOOTSTRAP.md
   const rolesList = [...allRoles];
+  const DEFAULT_BOOTSTRAP_LABELS = [
+    { name: 'feature', color: '0075ca', useFor: 'New user-facing capability' },
+    { name: 'bug', color: 'd73a4a', useFor: 'Defect or regression' },
+    { name: 'chore', color: '7057ff', useFor: 'Refactoring, cleanup, dependency updates' },
+    { name: 'spike', color: '006b75', useFor: 'Research or investigation' },
+    { name: 'blocked', color: 'e4e669', useFor: 'Cannot proceed, needs unblocking' },
+  ];
+  const DEFAULT_BOOTSTRAP_LABEL_COLOR = '6f42c1';
+
   const formatRole = (r) =>
     r
       .split('-')
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join(' ');
+
+  const normalizeLabelName = (name) =>
+    String(name || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '-');
+
+  const defaultLabelByName = new Map(
+    DEFAULT_BOOTSTRAP_LABELS.map((label) => [label.name, { ...label }]),
+  );
+
+  const parseIssueLabels = (issue) => {
+    const raw = [];
+    if (Array.isArray(issue?.labelNames)) raw.push(...issue.labelNames);
+    if (Array.isArray(issue?.labels)) raw.push(...issue.labels);
+
+    const parsed = [];
+    for (const item of raw) {
+      if (typeof item === 'string') {
+        const name = normalizeLabelName(item);
+        if (!name) continue;
+        const known = defaultLabelByName.get(name);
+        parsed.push({
+          name,
+          color: known?.color || DEFAULT_BOOTSTRAP_LABEL_COLOR,
+          useFor: known?.useFor || 'Module-defined issue category',
+        });
+      } else if (item && typeof item === 'object' && typeof item.name === 'string') {
+        const name = normalizeLabelName(item.name);
+        if (!name) continue;
+        const known = defaultLabelByName.get(name);
+        const color =
+          typeof item.color === 'string' && item.color.trim().length > 0
+            ? item.color.trim().replace(/^#/, '')
+            : known?.color || DEFAULT_BOOTSTRAP_LABEL_COLOR;
+        parsed.push({
+          name,
+          color,
+          useFor:
+            typeof item.useFor === 'string' && item.useFor.trim().length > 0
+              ? item.useFor.trim()
+              : known?.useFor || 'Module-defined issue category',
+        });
+      }
+    }
+
+    const seen = new Set();
+    return parsed.filter((label) => {
+      if (seen.has(label.name)) return false;
+      seen.add(label.name);
+      return true;
+    });
+  };
+
+  const inferIssueLabelName = (issue) => {
+    const text = `${issue?.title || ''} ${issue?.description || ''}`.toLowerCase();
+    if (/\bblocked\b|\bunblock\b/.test(text)) return 'blocked';
+    if (/\bbug\b|\bfix\b|regression|crash|error|broken/.test(text)) return 'bug';
+    if (/\bspike\b|research|investigat|analysis|audit|explor/.test(text)) return 'spike';
+    if (/\bchore\b|cleanup|refactor|dependency|maintenance|configure|setup|set up/.test(text)) {
+      return 'chore';
+    }
+    return 'feature';
+  };
+
+  const buildBootstrapLabels = (issues) => {
+    if (issues.length === 0) return [];
+
+    const labelsByName = new Map(
+      DEFAULT_BOOTSTRAP_LABELS.map((label) => [label.name, { ...label }]),
+    );
+
+    for (const issue of issues) {
+      const explicitLabels = parseIssueLabels(issue);
+      if (explicitLabels.length > 0) {
+        for (const label of explicitLabels) {
+          labelsByName.set(label.name, label);
+        }
+        continue;
+      }
+
+      const inferred = inferIssueLabelName(issue);
+      if (!labelsByName.has(inferred)) {
+        labelsByName.set(inferred, {
+          name: inferred,
+          color: DEFAULT_BOOTSTRAP_LABEL_COLOR,
+          useFor: 'Auto-inferred issue category',
+        });
+      }
+    }
+
+    return [...labelsByName.values()];
+  };
+
+  const bootstrapLabels = buildBootstrapLabels(initialIssues);
+  const labelsByName = new Map(bootstrapLabels.map((label) => [label.name, label]));
+
+  const getIssueLabelNames = (issue) => {
+    const explicit = parseIssueLabels(issue).map((label) => label.name);
+    if (explicit.length > 0) return explicit;
+    return [inferIssueLabelName(issue)];
+  };
 
   // --- Helper: render metadata as visible bullet list ---
   const renderMeta = (fields) => {
@@ -529,6 +640,21 @@ export async function assembleCompany({
     }
   }
 
+  // --- Labels ---
+  if (bootstrapLabels.length > 0) {
+    bootstrap += `## Labels\n\n`;
+    for (const label of bootstrapLabels) {
+      bootstrap += `### ${label.name}\n\n`;
+      bootstrap += renderMeta([
+        ['name', label.name],
+        ['color', label.color],
+      ]);
+      if (label.useFor) {
+        bootstrap += `${escapeBody(label.useFor)}\n\n`;
+      }
+    }
+  }
+
   // --- Agents ---
   bootstrap += `## Agents\n\n`;
   for (const role of rolesList) {
@@ -546,6 +672,34 @@ export async function assembleCompany({
     for (const issue of initialIssues) {
       bootstrap += `### ${issue.title}\n\n`;
       const isUserAssignment = issue.assignTo === 'user';
+      const parentRefRaw =
+        issue.parentId || issue.parentIssue || issue.parentIssueTitle || issue.parentTitle;
+      const parentRef =
+        typeof parentRefRaw === 'string' && parentRefRaw.trim().length > 0
+          ? parentRefRaw.trim()
+          : undefined;
+      const explicitProjectRef =
+        typeof issue.projectIdRef === 'string'
+          ? issue.projectIdRef
+          : typeof issue.projectName === 'string'
+            ? issue.projectName
+            : typeof issue.project === 'string'
+              ? issue.project
+              : undefined;
+      const resolvedProjectRef = explicitProjectRef || mainProjectName;
+      const issueLabelNames = getIssueLabelNames(issue);
+      for (const labelName of issueLabelNames) {
+        if (!labelsByName.has(labelName)) {
+          labelsByName.set(labelName, {
+            name: labelName,
+            color: DEFAULT_BOOTSTRAP_LABEL_COLOR,
+            useFor: 'Module-defined issue category',
+          });
+        }
+      }
+
+      const shouldRenderProjectId =
+        !parentRef || Boolean(explicitProjectRef) || issue.includeProjectId;
       bootstrap += renderMeta([
         [
           'assigneeAgentId',
@@ -553,12 +707,27 @@ export async function assembleCompany({
         ],
         ['assigneeUserId', isUserAssignment ? '→ board user' : undefined],
         ['priority', issue.priority || 'medium'],
-        ['projectId', `→ "${mainProjectName}"`],
+        ['parentId', parentRef ? `→ "${parentRef}"` : undefined],
+        ['projectId', shouldRenderProjectId ? `→ "${resolvedProjectRef}"` : undefined],
+        [
+          'projectScope',
+          parentRef && !shouldRenderProjectId
+            ? 'inherits from parent issue scope (do not override unless required)'
+            : undefined,
+        ],
+        ['labelIds', `→ [${issueLabelNames.map((name) => `"${name}"`).join(', ')}]`],
       ]);
       if (issue.description) {
         bootstrap += `${escapeBody(issue.description)}\n\n`;
       }
     }
+
+    bootstrap += `#### Issue Guardrails\n\n`;
+    bootstrap += `- Top-level issues must include explicit \`projectId\`.\n`;
+    bootstrap += `- Subtasks must include \`parentId\` and inherit parent project scope unless explicitly overridden.\n`;
+    bootstrap += `- Parent/subissue status is not implicitly coupled (no automatic status bounce).\n`;
+    bootstrap += `- Do not reopen \`done\` parent/subissues without an explicit reason in a comment.\n`;
+    bootstrap += `- Do not reuse parent workspaces for subissues unless explicitly requested.\n\n`;
   }
 
   // --- Routines ---
@@ -596,9 +765,12 @@ export async function assembleCompany({
       proj.goals?.length > 0 ? `, goalIds → [${proj.goals.map((g) => `"${g}"`).join(', ')}]` : '';
     bootstrap += `${stepN++}. **Create project** "${proj.name}" (workspace: \`${projCwd}\`${goalLinks})\n`;
   }
+  if (bootstrapLabels.length > 0) {
+    bootstrap += `${stepN++}. **Create labels** — create each label exactly as listed in the Labels section before creating issues\n`;
+  }
   bootstrap += `${stepN++}. **Create agents** — each with instructionsFilePath as listed above\n`;
   if (initialIssues.length > 0) {
-    bootstrap += `${stepN++}. **Create issues** — link each to its project\n`;
+    bootstrap += `${stepN++}. **Create issues** — top-level issues require explicit projectId; subtasks require parentId and inherit parent project scope unless explicitly overridden\n`;
   }
   if (initialRoutines.length > 0) {
     bootstrap += `${stepN++}. **Create routines** with cron triggers as listed above\n`;

@@ -274,8 +274,62 @@ describe('assembleCompany', () => {
     assert.equal(initialIssues[0].assignTo, 'engineer');
 
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(bootstrap.includes('## Labels'));
+    assert.ok(bootstrap.includes('### feature'));
+    assert.ok(bootstrap.includes('### chore'));
     assert.ok(bootstrap.includes('## Issues'));
     assert.ok(bootstrap.includes('Init repo'));
+    assert.ok(bootstrap.includes('**labelIds**: → ["chore"]'));
+    assert.ok(bootstrap.includes('**projectId**: → "TaskCo"'));
+    assert.ok(bootstrap.includes('#### Issue Guardrails'));
+
+    const labelsStep = bootstrap.indexOf('**Create labels**');
+    const agentsStep = bootstrap.indexOf('**Create agents**');
+    const issuesStep = bootstrap.indexOf('**Create issues**');
+    assert.ok(labelsStep > -1, 'manual setup order should include a labels step');
+    assert.ok(agentsStep > labelsStep, 'agents should be created after labels');
+    assert.ok(issuesStep > agentsStep, 'issues should be created after agents');
+  });
+
+  it('renders subtasks with explicit parentId and inherited project scope', async () => {
+    const subtasksDir = join(templatesDir, 'modules', 'subtasks-mod');
+    await mkdir(subtasksDir, { recursive: true });
+    await writeJson(join(subtasksDir, 'module.meta.json'), {
+      name: 'subtasks-mod',
+      capabilities: [],
+      issues: [
+        { title: 'Parent issue', assignTo: 'engineer', description: 'Top-level parent task' },
+        {
+          title: 'Child issue',
+          assignTo: 'engineer',
+          parentId: 'Parent issue',
+          description: 'Implementation detail owned by the parent issue scope',
+        },
+      ],
+    });
+
+    const { companyDir } = await assembleCompany({
+      companyName: 'SubtaskCo',
+      moduleNames: ['subtasks-mod'],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    const parentBlock = bootstrap.split('### Parent issue')[1] || '';
+    const childBlock = bootstrap.split('### Child issue')[1] || '';
+
+    assert.ok(parentBlock.includes('**projectId**: → "SubtaskCo"'));
+    assert.ok(childBlock.includes('**parentId**: → "Parent issue"'));
+    assert.ok(
+      childBlock.includes('**projectScope**: inherits from parent issue scope'),
+      'child issue should inherit project scope by default',
+    );
+    assert.ok(
+      !childBlock.includes('**projectId**:'),
+      'child issue should not force projectId by default',
+    );
   });
 
   it('fires onProgress callback for each step', async () => {
