@@ -107,39 +107,64 @@ async function ensureTemplatesDir(cfg: Record<string, string>): Promise<string> 
   }
 }
 
-function loadJsonFiles(dir: string, filename: string) {
-  if (!fs.existsSync(dir)) return [];
-  return fs
-    .readdirSync(dir)
-    .filter((d) => {
-      try {
-        return fs.statSync(path.join(dir, d)).isDirectory();
-      } catch {
-        return false;
-      }
-    })
-    .map((d) => {
-      const fp = path.join(dir, d, filename);
-      if (!fs.existsSync(fp)) return null;
-      try {
-        return JSON.parse(fs.readFileSync(fp, 'utf-8'));
-      } catch {
-        return null;
-      }
-    })
-    .filter(Boolean);
+function loadJsonFiles(dir: string, filename: string): { items: any[]; errors: string[] } {
+  const items: any[] = [];
+  const errors: string[] = [];
+
+  if (!fs.existsSync(dir)) return { items, errors };
+
+  for (const d of fs.readdirSync(dir)) {
+    const fullDir = path.join(dir, d);
+    try {
+      if (!fs.statSync(fullDir).isDirectory()) continue;
+    } catch {
+      continue;
+    }
+
+    const fp = path.join(fullDir, filename);
+    if (!fs.existsSync(fp)) continue;
+
+    try {
+      items.push(JSON.parse(fs.readFileSync(fp, 'utf-8')));
+    } catch (err) {
+      errors.push(`Failed to parse ${fp}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  return { items, errors };
 }
 
 function loadTemplates(templatesDir: string) {
-  const presets = loadJsonFiles(path.join(templatesDir, 'presets'), 'preset.meta.json');
-  const modules = loadJsonFiles(path.join(templatesDir, 'modules'), 'module.meta.json');
-  const roles = loadJsonFiles(path.join(templatesDir, 'roles'), 'role.meta.json').map(
-    (r: Record<string, unknown>) => {
-      if (r.base) return { ...r, _base: true };
-      return r;
-    },
-  );
-  return { presets, modules, roles };
+  const presetLoad = loadJsonFiles(path.join(templatesDir, 'presets'), 'preset.meta.json');
+  const moduleLoad = loadJsonFiles(path.join(templatesDir, 'modules'), 'module.meta.json');
+  const roleLoad = loadJsonFiles(path.join(templatesDir, 'roles'), 'role.meta.json');
+
+  const modules = moduleLoad.items.map((mod: Record<string, unknown>) => {
+    const issues = Array.isArray(mod.issues)
+      ? mod.issues
+      : Array.isArray(mod.tasks)
+        ? mod.tasks
+        : [];
+
+    return {
+      ...mod,
+      // Keep both keys so old UI callers (tasks) and new callers (issues) stay consistent.
+      issues,
+      tasks: Array.isArray(mod.tasks) ? mod.tasks : issues,
+    };
+  });
+
+  const roles = roleLoad.items.map((r: Record<string, unknown>) => {
+    if (r.base) return { ...r, _base: true };
+    return r;
+  });
+
+  return {
+    presets: presetLoad.items,
+    modules,
+    roles,
+    loadErrors: [...presetLoad.errors, ...moduleLoad.errors, ...roleLoad.errors],
+  };
 }
 
 // --- Helpers ---
@@ -162,7 +187,13 @@ const plugin = definePlugin({
   async setup(ctx) {
     ctx.data.register('templates', async () => {
       const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
-      return loadTemplates(await ensureTemplatesDir(cfg));
+      const templates = loadTemplates(await ensureTemplatesDir(cfg));
+      if (templates.loadErrors.length > 0) {
+        for (const err of templates.loadErrors) {
+          ctx.logger.info(`⚠ Template load warning: ${err}`);
+        }
+      }
+      return templates;
     });
 
     // Refresh templates — delete cached dir so next load re-downloads from GitHub.
@@ -537,6 +568,22 @@ const plugin = definePlugin({
             if (existingCeo?.id) {
               ceoAgentId = existingCeo.id;
               log(`✓ Reusing existing CEO agent (${ceoAgentId})`);
+
+              // Keep the reused CEO aligned with the newly generated workspace/instructions.
+              try {
+                await client.updateAgent(ceoAgentId, {
+                  adapterType,
+                  adapterConfig,
+                });
+                log('✓ Updated existing CEO adapter config (cwd + instructionsFilePath)');
+              } catch (updateErr) {
+                log(
+                  `⚠ Could not update existing CEO adapter config: ${updateErr instanceof Error ? updateErr.message : String(updateErr)}`,
+                );
+                log(
+                  '  Continuing with existing CEO configuration; bootstrap paths may be out of sync.',
+                );
+              }
             } else {
               log('No active CEO found — creating CEO agent...');
               const ceoAgent = await client.createAgent(companyId, {

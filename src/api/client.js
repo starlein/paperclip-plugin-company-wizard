@@ -172,6 +172,13 @@ export class PaperclipClient {
     return this._fetch(`/api/agents/${agentId}`, { method: 'GET' });
   }
 
+  async updateAgent(agentId, updates) {
+    return this._fetch(`/api/agents/${agentId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates || {}),
+    });
+  }
+
   async createAgent(
     companyId,
     { name, role, title, reportsTo, adapterType, adapterConfig, runtimeConfig, permissions },

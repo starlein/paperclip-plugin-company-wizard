@@ -17,6 +17,11 @@ export interface ModuleData {
   }>;
   activatesWithRoles?: string[];
   requires?: string[];
+  issues?: Array<{
+    title: string;
+    assignTo: string;
+    description?: string;
+  }>;
   tasks?: Array<{
     title: string;
     assignTo: string;
@@ -41,4 +46,5 @@ export interface TemplateData {
   presets: PresetData[];
   modules: ModuleData[];
   roles: RoleData[];
+  loadErrors?: string[];
 }
