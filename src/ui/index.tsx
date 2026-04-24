@@ -4,7 +4,7 @@ import {
   type PluginSidebarProps,
   type PluginWidgetProps,
 } from '@paperclipai/plugin-sdk/ui';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, AlertTriangle } from 'lucide-react';
 import { WizardShell } from './components/WizardShell';
 import { WizardProvider } from './context/WizardContext';
 import './index.css';
@@ -39,9 +39,26 @@ export function WizardPage(_props: PluginPageProps) {
   }
 
   return (
-    <WizardProvider templates={templates}>
-      <WizardShell />
-    </WizardProvider>
+    <div className="space-y-3">
+      {templates.loadErrors && templates.loadErrors.length > 0 && (
+        <div className="mx-4 mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-200">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium">Some template files could not be loaded</p>
+              <p className="mt-0.5 text-amber-700 dark:text-amber-300">
+                {templates.loadErrors.length} parse warning
+                {templates.loadErrors.length > 1 ? 's' : ''} detected. Check worker logs for
+                file-level details.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      <WizardProvider templates={templates}>
+        <WizardShell />
+      </WizardProvider>
+    </div>
   );
 }
 

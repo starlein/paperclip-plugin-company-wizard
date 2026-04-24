@@ -131,8 +131,9 @@ function InlineEdit({
 // --- Detailed view components ---
 
 function ModuleDetail({ mod, allRoleNames }: { mod: ModuleData; allRoleNames: Set<string> }) {
+  const moduleIssues = mod.issues ?? mod.tasks ?? [];
   const hasCapabilities = mod.capabilities && mod.capabilities.length > 0;
-  const hasTasks = mod.tasks && mod.tasks.length > 0;
+  const hasTasks = moduleIssues.length > 0;
   const hasRequires = mod.requires && mod.requires.length > 0;
   const hasRoleGating = mod.activatesWithRoles && mod.activatesWithRoles.length > 0;
   const isGated = hasRoleGating && !mod.activatesWithRoles!.some((r) => allRoleNames.has(r));
@@ -203,7 +204,7 @@ function ModuleDetail({ mod, allRoleNames }: { mod: ModuleData; allRoleNames: Se
             <ListChecks className="h-3 w-3" /> Initial tasks
           </p>
           <div className="space-y-1">
-            {mod.tasks!.map((task) => (
+            {moduleIssues.map((task) => (
               <div
                 key={task.title}
                 className="flex items-start gap-2 rounded bg-accent/50 px-2 py-1.5"
@@ -504,7 +505,10 @@ export function ConfigReview() {
   const skippedModules = state.selectedModules.filter(
     (name) => !activeModules.some((m) => m.name === name),
   );
-  const totalTasks = activeModules.reduce((sum, m) => sum + (m.tasks?.length ?? 0), 0);
+  const totalTasks = activeModules.reduce(
+    (sum, m) => sum + (m.issues?.length ?? m.tasks?.length ?? 0),
+    0,
+  );
 
   const selectedModSet = new Set(state.selectedModules);
   const selectedRoleSet = new Set(state.selectedRoles);

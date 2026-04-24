@@ -4,7 +4,7 @@
 set -euo pipefail
 
 CLIPPER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DOTPAPERCLIP="${PAPERCLIP_DOTPAPERCLIP_HOST:-/Users/alex/.paperclip-playground/data/paperclip/.paperclip}"
+DOTPAPERCLIP="${PAPERCLIP_DOTPAPERCLIP_HOST:-/root/paperclipai/data/docker/}"
 PLUGIN_DIR="$DOTPAPERCLIP/plugins/@yesterday-ai/paperclip-plugin-company-wizard"
 
 mkdir -p "$PLUGIN_DIR"
@@ -21,11 +21,11 @@ process.stdout.write(JSON.stringify(manifest));
 " 2>/dev/null || echo "")
 
 if [ -n "$MANIFEST_JSON" ]; then
-  docker exec paperclip-db-1 psql -U paperclip -d paperclip \
+  docker exec paperclip psql "postgresql://paperclip:paperclip@127.0.0.1:54329/paperclip" \
     -c "UPDATE plugins SET manifest_json = '$MANIFEST_JSON'::jsonb, package_name='@yesterday-ai/paperclip-plugin-company-wizard', status='ready', last_error=NULL, updated_at=now() WHERE plugin_key='yesterday-ai.paperclip-plugin-company-wizard';" \
     2>/dev/null && echo "DB manifest + status updated" || echo "DB update skipped (container not running?)"
 else
-  docker exec paperclip-db-1 psql -U paperclip -d paperclip \
+  docker exec paperclip psql "postgresql://paperclip:paperclip@127.0.0.1:54329/paperclip" \
     -c "UPDATE plugins SET status='ready', last_error=NULL WHERE plugin_key='yesterday-ai.paperclip-plugin-company-wizard';" \
     2>/dev/null && echo "DB status reset to ready" || echo "DB reset skipped (container not running?)"
 fi

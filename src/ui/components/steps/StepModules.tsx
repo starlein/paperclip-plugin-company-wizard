@@ -8,17 +8,33 @@ export function StepModules() {
   const state = useWizard();
   const dispatch = useWizardDispatch();
 
-  // Build dependency map
-  const requiredBy = new Map<string, string[]>();
-  for (const m of state.modules) {
-    for (const dep of m.requires ?? []) {
-      const list = requiredBy.get(dep) || [];
-      list.push(m.name);
-      requiredBy.set(dep, list);
-    }
-  }
-
+  // Build module index for dependency resolution
+  const modulesByName = new Map(state.modules.map((m) => [m.name, m]));
   const selected = new Set(state.selectedModules);
+
+  const getAllDependencies = (moduleName: string, seen = new Set<string>()): Set<string> => {
+    const mod = modulesByName.get(moduleName);
+    if (!mod) return seen;
+
+    for (const dep of mod.requires ?? []) {
+      if (seen.has(dep)) continue;
+      seen.add(dep);
+      getAllDependencies(dep, seen);
+    }
+
+    return seen;
+  };
+
+  const getBlockingDependents = (moduleName: string): string[] => {
+    const blockers: string[] = [];
+    for (const selectedName of selected) {
+      if (selectedName === moduleName) continue;
+      if (getAllDependencies(selectedName).has(moduleName)) {
+        blockers.push(selectedName);
+      }
+    }
+    return blockers;
+  };
 
   const toggle = (name: string) => {
     const mod = state.modules.find((m) => m.name === name);
@@ -26,15 +42,13 @@ export function StepModules() {
 
     const next = new Set(selected);
     if (next.has(name)) {
-      // Check if anything depends on this
-      const dependents = requiredBy.get(name) || [];
-      const activeDeps = dependents.filter((d) => next.has(d));
-      if (activeDeps.length > 0) return; // blocked
+      // Block deselection if any selected module depends on this one (directly or transitively)
+      if (getBlockingDependents(name).length > 0) return;
       next.delete(name);
     } else {
       next.add(name);
-      // Auto-add dependencies
-      for (const dep of mod.requires ?? []) {
+      // Auto-add full transitive dependency chain
+      for (const dep of getAllDependencies(name)) {
         next.add(dep);
       }
     }
@@ -42,8 +56,7 @@ export function StepModules() {
   };
 
   const isLocked = (name: string) => {
-    const dependents = requiredBy.get(name) || [];
-    return dependents.some((d) => selected.has(d));
+    return selected.has(name) && getBlockingDependents(name).length > 0;
   };
 
   return (
@@ -90,9 +103,9 @@ export function StepModules() {
                       needs {mod.activatesWithRoles.join('/')}
                     </Badge>
                   )}
-                  {mod.tasks && mod.tasks.length > 0 && (
+                  {(mod.issues?.length ?? mod.tasks?.length ?? 0) > 0 && (
                     <Badge variant="secondary" className="text-[10px]">
-                      {mod.tasks.length} tasks
+                      {mod.issues?.length ?? mod.tasks?.length ?? 0} tasks
                     </Badge>
                   )}
                   {capCount > 0 && (
