@@ -9,7 +9,7 @@ import { assembleCompany, toPascalCase } from './logic/assemble.js';
 // @ts-ignore
 import { PaperclipClient } from './api/client.js';
 // @ts-ignore
-import { collectGoals, loadModules, loadPresets } from './logic/load-templates.js';
+import { collectGoals, loadModules, loadPresets, loadRoles } from './logic/load-templates.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -410,11 +410,17 @@ const plugin = definePlugin({
 
         const templatesDir = await ensureTemplatesDir(cfg);
 
-        // Step 1: Collect inline goals
-        const [presets, allModules] = await Promise.all([
+        // Step 1: Collect inline goals and role metadata
+        const [presets, allModules, roleTemplates] = await Promise.all([
           loadPresets(templatesDir),
           loadModules(templatesDir),
+          loadRoles(templatesDir),
         ]);
+        const roleTemplateByName = new Map(
+          (Array.isArray(roleTemplates) ? roleTemplates : [])
+            .filter((role: any) => role && typeof role.name === 'string')
+            .map((role: any) => [role.name, role]),
+        );
         const selectedPreset = presets.find((p: any) => p.name === params.presetName) || null;
         const goals = collectGoals(
           selectedPreset,
@@ -535,6 +541,16 @@ const plugin = definePlugin({
           const userModel =
             typeof userCeoAdapter.model === 'string' ? userCeoAdapter.model.trim() : '';
 
+          const ceoTemplate = roleTemplateByName.get('ceo') || {};
+          const ceoTitle =
+            typeof ceoTemplate.title === 'string' && ceoTemplate.title.trim()
+              ? ceoTemplate.title.trim()
+              : 'CEO';
+          const ceoCapabilities =
+            typeof ceoTemplate.description === 'string' && ceoTemplate.description.trim()
+              ? ceoTemplate.description.trim()
+              : undefined;
+
           const adapterConfig: Record<string, unknown> = {
             ...(assembleResult.roleAdapterOverrides?.get('ceo') ?? {}),
             cwd: userCwd || companyDir,
@@ -571,10 +587,17 @@ const plugin = definePlugin({
 
               // Keep the reused CEO aligned with the newly generated workspace/instructions.
               try {
-                await client.updateAgent(ceoAgentId, {
+                const ceoPatch: Record<string, unknown> = {
                   adapterType,
                   adapterConfig,
-                });
+                };
+                if (!existingCeo?.title && ceoTitle) {
+                  ceoPatch.title = ceoTitle;
+                }
+                if (!existingCeo?.capabilities && ceoCapabilities) {
+                  ceoPatch.capabilities = ceoCapabilities;
+                }
+                await client.updateAgent(ceoAgentId, ceoPatch);
                 log('✓ Updated existing CEO adapter config (cwd + instructionsFilePath)');
               } catch (updateErr) {
                 log(
@@ -589,7 +612,8 @@ const plugin = definePlugin({
               const ceoAgent = await client.createAgent(companyId, {
                 name: 'CEO',
                 role: 'ceo',
-                title: 'CEO',
+                title: ceoTitle,
+                ...(ceoCapabilities ? { capabilities: ceoCapabilities } : {}),
                 reportsTo: null,
                 adapterType,
                 adapterConfig,
@@ -607,7 +631,8 @@ const plugin = definePlugin({
             const ceoAgent = await client.createAgent(companyId, {
               name: 'CEO',
               role: 'ceo',
-              title: 'CEO',
+              title: ceoTitle,
+              ...(ceoCapabilities ? { capabilities: ceoCapabilities } : {}),
               reportsTo: null,
               adapterType,
               adapterConfig,
