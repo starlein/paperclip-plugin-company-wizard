@@ -181,6 +181,79 @@ function formatRoleName(role: string): string {
     .join(' ');
 }
 
+function collectInstructionFiles(rootDir: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!fs.existsSync(rootDir)) return out;
+
+  const walk = (dir: string) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const abs = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(abs);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      const rel = path.relative(rootDir, abs).split(path.sep).join('/');
+      out[rel] = fs.readFileSync(abs, 'utf-8');
+    }
+  };
+
+  walk(rootDir);
+  return out;
+}
+
+async function syncAgentInstructionsIntoManagedBundle({
+  client,
+  agentId,
+  sourceDir,
+  entryFile,
+  fallbackEntryContent,
+  log,
+}: {
+  client: any;
+  agentId: string;
+  sourceDir: string;
+  entryFile: string;
+  fallbackEntryContent?: string;
+  log: (m: string) => void;
+}) {
+  try {
+    await client.updateInstructionsBundle(agentId, {
+      mode: 'managed',
+      entryFile,
+      clearLegacyPromptTemplate: true,
+    });
+
+    const files = collectInstructionFiles(sourceDir);
+    if (
+      !files[entryFile] &&
+      typeof fallbackEntryContent === 'string' &&
+      fallbackEntryContent.trim()
+    ) {
+      files[entryFile] = fallbackEntryContent;
+    }
+
+    const entries = Object.entries(files).sort(([a], [b]) => a.localeCompare(b));
+    if (entries.length === 0) {
+      log('⚠ No instruction files found to sync into managed bundle.');
+      return;
+    }
+
+    for (const [relativePath, content] of entries) {
+      await client.upsertInstructionsBundleFile(agentId, {
+        path: relativePath,
+        content,
+      });
+    }
+
+    log(`✓ Synced ${entries.length} instruction file(s) into managed bundle`);
+  } catch (err) {
+    log(
+      `⚠ Could not sync managed instructions bundle: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
 // --- Plugin definition ---
 
 const plugin = definePlugin({
@@ -535,10 +608,17 @@ const plugin = definePlugin({
           const userModel =
             typeof userCeoAdapter.model === 'string' ? userCeoAdapter.model.trim() : '';
 
+          const ceoInstructionsDir = path.join(companyDir, 'agents', 'ceo');
+          const ceoEntryFile = 'AGENTS.md';
+          const ceoEntryPath = path.join(ceoInstructionsDir, ceoEntryFile);
+          const ceoPromptTemplate = fs.existsSync(ceoEntryPath)
+            ? fs.readFileSync(ceoEntryPath, 'utf-8')
+            : '';
+
           const adapterConfig: Record<string, unknown> = {
             ...(assembleResult.roleAdapterOverrides?.get('ceo') ?? {}),
             cwd: userCwd || companyDir,
-            instructionsFilePath: path.join(companyDir, 'agents', 'ceo', 'AGENTS.md'),
+            ...(ceoPromptTemplate.trim() ? { promptTemplate: ceoPromptTemplate } : {}),
             model: userModel || 'claude-opus-4-6',
           };
 
@@ -575,7 +655,7 @@ const plugin = definePlugin({
                   adapterType,
                   adapterConfig,
                 });
-                log('✓ Updated existing CEO adapter config (cwd + instructionsFilePath)');
+                log('✓ Updated existing CEO adapter config (cwd + model/prompt template)');
               } catch (updateErr) {
                 log(
                   `⚠ Could not update existing CEO adapter config: ${updateErr instanceof Error ? updateErr.message : String(updateErr)}`,
@@ -620,6 +700,15 @@ const plugin = definePlugin({
             log(`✓ CEO agent created (${ceoAgentId})`);
             logPendingApproval(ceoAgent);
           }
+
+          await syncAgentInstructionsIntoManagedBundle({
+            client,
+            agentId: ceoAgentId,
+            sourceDir: ceoInstructionsDir,
+            entryFile: ceoEntryFile,
+            fallbackEntryContent: ceoPromptTemplate,
+            log,
+          });
 
           // Step 7: Create bootstrap issue (SDK: ctx.issues.create ✓)
           // BOOTSTRAP.md IS the bootstrap issue — read it directly.
