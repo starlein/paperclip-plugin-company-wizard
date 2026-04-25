@@ -18,3 +18,6 @@ You work in a GitHub repository. Follow the conventions in `docs/git-workflow.md
 - Never force push to main.
 - If you encounter merge conflicts, resolve them carefully. When in doubt, escalate to the CEO.
 - Reference the issue ID in the commit body (e.g., `Closes YES-5`).
+- Never mark an issue as `done` unless at least one new commit was created for that issue's work and pushed.
+- Before marking `done`, verify there is no uncommitted work (`git status --short` should be clean).
+- If no repository change is required, do not mark `done` silently: leave an issue comment explaining why no code change was needed and escalate to the CEO for decision.

@@ -138,11 +138,15 @@ export async function assembleCompany({
   // Discover base roles from roles/ directory (those with base: true in role.meta.json)
   const rolesDir = join(templatesDir, 'roles');
   const baseRoleNames = [];
+  const roleMetaByName = new Map();
   if (await exists(rolesDir)) {
     const roleDirs = await readdir(rolesDir, { withFileTypes: true });
     for (const dir of roleDirs) {
       if (!dir.isDirectory()) continue;
       const roleMeta = await readJson(join(rolesDir, dir.name, 'role.meta.json'));
+      if (roleMeta && typeof roleMeta === 'object') {
+        roleMetaByName.set(dir.name, roleMeta);
+      }
       if (roleMeta?.base) {
         baseRoleNames.push(dir.name);
       }
@@ -658,9 +662,16 @@ export async function assembleCompany({
   // --- Agents ---
   bootstrap += `## Agents\n\n`;
   for (const role of rolesList) {
+    const roleMeta = roleMetaByName.get(role) || {};
+    const roleTitle = typeof roleMeta.title === 'string' ? roleMeta.title : undefined;
+    const roleCapabilities =
+      typeof roleMeta.description === 'string' ? roleMeta.description : undefined;
+
     bootstrap += `### ${formatRole(role)}\n\n`;
     bootstrap += renderMeta([
       ['role', role],
+      ['title', roleTitle],
+      ['capabilities', roleCapabilities],
       ['instructionsFilePath', `${companyDir}/agents/${role}/AGENTS.md`],
     ]);
   }
