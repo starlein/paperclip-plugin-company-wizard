@@ -179,6 +179,29 @@ export class PaperclipClient {
     });
   }
 
+  async updateInstructionsBundle(agentId, updates) {
+    return this._fetch(`/api/agents/${agentId}/instructions-bundle`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates || {}),
+    });
+  }
+
+  async upsertInstructionsBundleFile(
+    agentId,
+    { path: filePath, content, clearLegacyPromptTemplate },
+  ) {
+    return this._fetch(`/api/agents/${agentId}/instructions-bundle/file`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        path: filePath,
+        content,
+        ...(clearLegacyPromptTemplate !== undefined
+          ? { clearLegacyPromptTemplate: !!clearLegacyPromptTemplate }
+          : {}),
+      }),
+    });
+  }
+
   async createAgent(
     companyId,
     { name, role, title, reportsTo, adapterType, adapterConfig, runtimeConfig, permissions },
