@@ -4,7 +4,7 @@
 set -euo pipefail
 
 CLIPPER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DOTPAPERCLIP="${PAPERCLIP_DOTPAPERCLIP_HOST:-/root/paperclipai/data/docker/}"
+DOTPAPERCLIP="${PAPERCLIP_DOTPAPERCLIP_HOST:-/root/paperclip/data/docker3/}"
 PLUGIN_DIR="$DOTPAPERCLIP/plugins/@yesterday-ai/paperclip-plugin-company-wizard"
 
 mkdir -p "$PLUGIN_DIR"
