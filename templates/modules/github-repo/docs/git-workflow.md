@@ -39,6 +39,12 @@ Rules:
 - Documentation updates
 - Infrastructure changes
 
+## Issue Completion Guardrails
+
+- Never mark an issue as `done` unless at least one new commit exists for that issue's work and has been pushed.
+- Before marking `done`, ensure the working tree is clean (`git status --short` shows no pending changes).
+- If no repository change is required, do not silently close as `done`: add an issue comment explaining why no code change was needed and escalate to the CEO for explicit decision.
+
 ## CI
 
 If the project has CI configured (e.g., GitHub Actions), always verify your push passes CI. If CI fails, fix it immediately — a broken main blocks everyone.
