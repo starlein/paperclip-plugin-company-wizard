@@ -1,8 +1,11 @@
 {
-  "name": "@yesterday-ai/paperclip-plugin-company-wizard",
+  "name": "@starlein/paperclip-plugin-company-wizard",
   "version": "0.1.16",
   "type": "module",
   "description": "AI-powered wizard to bootstrap paperclip agent companies from composable templates",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "scripts": {
     "build": "node ./esbuild.config.mjs",
     "build:rollup": "rollup -c",

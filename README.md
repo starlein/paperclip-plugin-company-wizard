@@ -5,7 +5,7 @@
     <strong>Bootstrap AI agent teams from modular templates.</strong>
   </p>
   <p align="center">
-    <a href="https://www.npmjs.com/package/@yesterday-ai/paperclip-plugin-company-wizard"><img src="https://img.shields.io/npm/v/@yesterday-ai/paperclip-plugin-company-wizard?color=cb3837&label=npm" alt="npm version"></a>
+    <a href="https://github.com/starlein/paperclip-plugin-company-wizard/pkgs/npm/paperclip-plugin-company-wizard"><img src="https://img.shields.io/badge/GitHub%20Packages-@starlein%2Fpaperclip--plugin--company--wizard-blue" alt="GitHub Packages"></a>
     <a href="https://github.com/Yesterday-AI/paperclip-plugin-company-wizard/actions/workflows/ci.yml"><img src="https://github.com/Yesterday-AI/paperclip-plugin-company-wizard/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License"></a>
     <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen" alt="Node.js"></a>
@@ -21,7 +21,7 @@
 **npm package installation (Paperclip > Settings > Plugins > Install Plugin):**
 
 ```bash
-@yesterday-ai/paperclip-plugin-company-wizard
+@starlein/paperclip-plugin-company-wizard
 ```
 
 <br>

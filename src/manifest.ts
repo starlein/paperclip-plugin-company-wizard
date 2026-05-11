@@ -1,9 +1,9 @@
 import type { PaperclipPluginManifestV1 } from '@paperclipai/plugin-sdk';
 
 const manifest: PaperclipPluginManifestV1 = {
-  id: 'yesterday-ai.paperclip-plugin-company-wizard',
+  id: 'starlein.paperclip-plugin-company-wizard',
   apiVersion: 1,
-  version: '0.1.16',
+  version: '0.1.16.2',
   displayName: 'Company Wizard',
   description: 'AI-powered wizard to bootstrap agent companies from composable templates',
   author: 'Yesterday',
@@ -38,8 +38,7 @@ const manifest: PaperclipPluginManifestV1 = {
       },
       templatesRepoUrl: {
         type: 'string',
-        default:
-          'https://github.com/Yesterday-AI/paperclip-plugin-company-wizard/tree/main/templates',
+        default: 'https://github.com/starlein/paperclip-plugin-company-wizard/tree/main/templates',
         description:
           'GitHub tree URL to pull templates from when the templates directory does not exist.',
       },

@@ -10,7 +10,7 @@ import { WizardProvider } from './context/WizardContext';
 import './index.css';
 import type { TemplateData } from './types';
 
-const PLUGIN_ID = 'yesterday-ai.paperclip-plugin-company-wizard';
+const PLUGIN_ID = 'starlein.paperclip-plugin-company-wizard';
 
 export function WizardPage(_props: PluginPageProps) {
   const { data: templates, loading, error } = usePluginData<TemplateData>('templates');

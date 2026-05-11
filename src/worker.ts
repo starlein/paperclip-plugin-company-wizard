@@ -16,7 +16,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // --- Template loader ---
 
 const DEFAULT_TEMPLATES_REPO_URL =
-  'https://github.com/Yesterday-AI/paperclip-plugin-company-wizard/tree/main/templates';
+  'https://github.com/starlein/paperclip-plugin-company-wizard/tree/main/templates';
 const BUNDLED_TEMPLATES_DIR = path.resolve(__dirname, '..', 'templates');
 
 /** Recursively copy a directory (sync). */
@@ -548,6 +548,13 @@ const plugin = definePlugin({
             log(`✎ Override: ${relPath}`);
           }
         }
+
+        const ceoInstructionsDir = path.join(companyDir, 'agents', 'ceo');
+        const ceoEntryFile = 'AGENTS.md';
+        const ceoEntryPath = path.join(ceoInstructionsDir, ceoEntryFile);
+        const ceoPromptTemplate = fs.existsSync(ceoEntryPath)
+          ? fs.readFileSync(ceoEntryPath, 'utf-8')
+          : '';
 
         log('');
         log(`✓ Generated files: ${companyDir}`);
