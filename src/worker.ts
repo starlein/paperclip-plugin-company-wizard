@@ -8,6 +8,12 @@ import { fileURLToPath } from 'node:url';
 import { assembleCompany, toPascalCase } from './logic/assemble.js';
 // @ts-ignore
 import { PaperclipClient } from './api/client.js';
+// @ts-ignore — plain JS module, bundled by esbuild
+import {
+  buildCeoAdapterConfig,
+  buildCeoAgentRuntimeConfig,
+  normalizeCeoAdapterType,
+} from './logic/ceo-defaults.js';
 // @ts-ignore
 import { collectGoals, loadModules, loadPresets, loadRoles } from './logic/load-templates.js';
 
@@ -615,34 +621,29 @@ const plugin = definePlugin({
         try {
           // Step 6: Resolve or create CEO agent
           const userCeoAdapter = (params.ceoAdapter as any) || {};
-          const adapterType =
-            typeof userCeoAdapter.type === 'string' ? userCeoAdapter.type.trim() : 'claude_local';
-          const userCwd = typeof userCeoAdapter.cwd === 'string' ? userCeoAdapter.cwd.trim() : '';
-          const userModel =
-            typeof userCeoAdapter.model === 'string' ? userCeoAdapter.model.trim() : '';
+          const adapterType = normalizeCeoAdapterType(userCeoAdapter);
 
           const ceoTemplate = roleTemplateByName.get('ceo') || {};
           const ceoTitle =
             typeof ceoTemplate.title === 'string' && ceoTemplate.title.trim()
               ? ceoTemplate.title.trim()
               : 'CEO';
-          const ceoCapabilities =
+          const ceoDescription =
             typeof ceoTemplate.description === 'string' && ceoTemplate.description.trim()
               ? ceoTemplate.description.trim()
               : undefined;
-
-          const adapterConfig: Record<string, unknown> = {
-            ...(assembleResult.roleAdapterOverrides?.get('ceo') ?? {}),
-            cwd: userCwd || companyDir,
-            ...(ceoPromptTemplate.trim() ? { promptTemplate: ceoPromptTemplate } : {}),
-            model: userModel || 'claude-opus-4-6',
+          const ceoMetadata = {
+            templateRole: 'ceo',
+            ...(ceoDescription ? { description: ceoDescription } : {}),
           };
+          const ceoRuntimeConfig = buildCeoAgentRuntimeConfig();
 
-          if (adapterType === 'claude_local') {
-            adapterConfig.dangerouslySkipPermissions = true;
-          } else if (adapterType === 'codex_local') {
-            adapterConfig.dangerouslyBypassApprovalsAndSandbox = true;
-          }
+          const adapterConfig: Record<string, unknown> = buildCeoAdapterConfig({
+            userCeoAdapter,
+            companyDir,
+            roleAdapterOverrides: assembleResult.roleAdapterOverrides?.get('ceo') ?? {},
+            promptTemplate: ceoPromptTemplate,
+          });
 
           const logPendingApproval = (agent: any) => {
             if (!agent?._pendingApprovalId) return;
@@ -670,15 +671,19 @@ const plugin = definePlugin({
                 const ceoPatch: Record<string, unknown> = {
                   adapterType,
                   adapterConfig,
+                  runtimeConfig: ceoRuntimeConfig,
+                  ...(ceoMetadata
+                    ? { metadata: { ...(existingCeo.metadata ?? {}), ...ceoMetadata } }
+                    : {}),
                 };
                 if (!existingCeo?.title && ceoTitle) {
                   ceoPatch.title = ceoTitle;
                 }
-                if (!existingCeo?.capabilities && ceoCapabilities) {
-                  ceoPatch.capabilities = ceoCapabilities;
+                if (!existingCeo?.capabilities && ceoDescription) {
+                  ceoPatch.capabilities = ceoDescription;
                 }
                 await client.updateAgent(ceoAgentId, ceoPatch);
-                log('✓ Updated existing CEO adapter config (cwd + instructionsFilePath)');
+                log('✓ Updated existing CEO adapter config (cwd + Codex defaults)');
               } catch (updateErr) {
                 log(
                   `⚠ Could not update existing CEO adapter config: ${updateErr instanceof Error ? updateErr.message : String(updateErr)}`,
@@ -693,13 +698,12 @@ const plugin = definePlugin({
                 name: 'CEO',
                 role: 'ceo',
                 title: ceoTitle,
-                ...(ceoCapabilities ? { capabilities: ceoCapabilities } : {}),
+                ...(ceoDescription ? { capabilities: ceoDescription } : {}),
+                ...(ceoMetadata ? { metadata: ceoMetadata } : {}),
                 reportsTo: null,
                 adapterType,
                 adapterConfig,
-                runtimeConfig: {
-                  heartbeat: { enabled: true, intervalSec: 3600 },
-                },
+                runtimeConfig: ceoRuntimeConfig,
                 permissions: { canCreateAgents: true },
               });
               ceoAgentId = ceoAgent.id;
@@ -712,13 +716,12 @@ const plugin = definePlugin({
               name: 'CEO',
               role: 'ceo',
               title: ceoTitle,
-              ...(ceoCapabilities ? { capabilities: ceoCapabilities } : {}),
+              ...(ceoDescription ? { capabilities: ceoDescription } : {}),
+              ...(ceoMetadata ? { metadata: ceoMetadata } : {}),
               reportsTo: null,
               adapterType,
               adapterConfig,
-              runtimeConfig: {
-                heartbeat: { enabled: true, intervalSec: 3600 },
-              },
+              runtimeConfig: ceoRuntimeConfig,
               permissions: { canCreateAgents: true },
             });
             ceoAgentId = ceoAgent.id;

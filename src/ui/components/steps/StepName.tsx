@@ -126,7 +126,7 @@ export function StepName() {
                 Model <span className="text-muted-foreground font-normal">(optional)</span>
               </label>
               <Input
-                placeholder="Default"
+                placeholder="gpt-5.5"
                 value={state.ceoAdapter.model}
                 onChange={(e) =>
                   dispatch({ type: 'SET_CEO_ADAPTER', adapter: { model: e.target.value } })

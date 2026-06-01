@@ -12,7 +12,7 @@
     "dev": "node ./esbuild.config.mjs --watch",
     "dev:ui": "paperclip-plugin-dev-server --root . --ui-dir dist/ui --port 4177",
     "test": "vitest run --config ./vitest.config.ts",
-    "test:logic": "node --test src/logic/*.test.js",
+    "test:logic": "node --test src/logic/*.test.js src/api/*.test.js",
     "typecheck": "tsc --noEmit",
     "publish:npm": "npm publish --access public",
     "prepublishOnly": "pnpm build",

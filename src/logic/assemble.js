@@ -8,6 +8,13 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { join } from 'node:path';
+import {
+  DEFAULT_CEO_ADAPTER_TYPE,
+  DEFAULT_CEO_MODEL,
+  DEFAULT_CEO_THINKING_LEVEL,
+  DEFAULT_CEO_MAX_CONCURRENT_RUNS,
+  DEFAULT_CEO_HEARTBEAT_INTERVAL_SEC,
+} from './ceo-defaults.js';
 // modulesWithActiveGoals removed — goals no longer contain issues
 
 async function exists(p) {
@@ -460,13 +467,13 @@ export async function assembleCompany({
   // 6. Generate BOOTSTRAP.md
   const rolesList = [...allRoles];
   const DEFAULT_BOOTSTRAP_LABELS = [
-    { name: 'feature', color: '0075ca', useFor: 'New user-facing capability' },
-    { name: 'bug', color: 'd73a4a', useFor: 'Defect or regression' },
-    { name: 'chore', color: '7057ff', useFor: 'Refactoring, cleanup, dependency updates' },
-    { name: 'spike', color: '006b75', useFor: 'Research or investigation' },
-    { name: 'blocked', color: 'e4e669', useFor: 'Cannot proceed, needs unblocking' },
+    { name: 'feature', color: '#0075ca', useFor: 'New user-facing capability' },
+    { name: 'bug', color: '#d73a4a', useFor: 'Defect or regression' },
+    { name: 'chore', color: '#7057ff', useFor: 'Refactoring, cleanup, dependency updates' },
+    { name: 'spike', color: '#006b75', useFor: 'Research or investigation' },
+    { name: 'blocked', color: '#e4e669', useFor: 'Cannot proceed, needs unblocking' },
   ];
-  const DEFAULT_BOOTSTRAP_LABEL_COLOR = '6f42c1';
+  const DEFAULT_BOOTSTRAP_LABEL_COLOR = '#6f42c1';
 
   const formatRole = (r) =>
     r
@@ -479,6 +486,62 @@ export async function assembleCompany({
       .trim()
       .toLowerCase()
       .replace(/\s+/g, '-');
+
+  const normalizeHexColor = (color) => {
+    const value = String(color || '').trim();
+    if (!value) return DEFAULT_BOOTSTRAP_LABEL_COLOR;
+    return value.startsWith('#') ? value : `#${value}`;
+  };
+
+  const normalizePaperclipRole = (role, roleMeta) => {
+    const apiRole = typeof roleMeta.paperclipRole === 'string' ? roleMeta.paperclipRole.trim() : '';
+    return apiRole || role;
+  };
+
+  const resolveRoleAdapterConfig = (role, roleMeta, instructionsFilePath) => {
+    const adapter = roleMeta && typeof roleMeta.adapter === 'object' ? roleMeta.adapter : {};
+    const adapterType =
+      typeof adapter.type === 'string' && adapter.type.trim()
+        ? adapter.type.trim()
+        : DEFAULT_CEO_ADAPTER_TYPE;
+    const model =
+      adapterType === DEFAULT_CEO_ADAPTER_TYPE
+        ? DEFAULT_CEO_MODEL
+        : typeof adapter.model === 'string' && adapter.model.trim()
+          ? adapter.model.trim()
+          : DEFAULT_CEO_MODEL;
+    const thinkingLevel =
+      typeof adapter.thinkingLevel === 'string' && adapter.thinkingLevel.trim()
+        ? adapter.thinkingLevel.trim()
+        : typeof adapter.modelReasoningEffort === 'string' && adapter.modelReasoningEffort.trim()
+          ? adapter.modelReasoningEffort.trim()
+          : typeof adapter.effort === 'string' && adapter.effort.trim()
+            ? adapter.effort.trim()
+            : DEFAULT_CEO_THINKING_LEVEL;
+
+    const adapterConfig = {
+      cwd: companyDir,
+      model,
+      instructionsFilePath,
+    };
+
+    if (adapter && typeof adapter === 'object') {
+      for (const [key, value] of Object.entries(adapter)) {
+        if (['type', 'model', 'effort', 'thinkingLevel', 'modelReasoningEffort'].includes(key)) {
+          continue;
+        }
+        adapterConfig[key] = value;
+      }
+    }
+
+    if (adapterType === DEFAULT_CEO_ADAPTER_TYPE) {
+      adapterConfig.modelReasoningEffort = thinkingLevel;
+      adapterConfig.thinkingLevel = thinkingLevel;
+      adapterConfig.dangerouslyBypassApprovalsAndSandbox = true;
+    }
+
+    return { adapterType, adapterConfig };
+  };
 
   const defaultLabelByName = new Map(
     DEFAULT_BOOTSTRAP_LABELS.map((label) => [label.name, { ...label }]),
@@ -504,10 +567,11 @@ export async function assembleCompany({
         const name = normalizeLabelName(item.name);
         if (!name) continue;
         const known = defaultLabelByName.get(name);
-        const color =
+        const color = normalizeHexColor(
           typeof item.color === 'string' && item.color.trim().length > 0
-            ? item.color.trim().replace(/^#/, '')
-            : known?.color || DEFAULT_BOOTSTRAP_LABEL_COLOR;
+            ? item.color.trim()
+            : known?.color || DEFAULT_BOOTSTRAP_LABEL_COLOR,
+        );
         parsed.push({
           name,
           color,
@@ -632,7 +696,9 @@ export async function assembleCompany({
       const projCwd = join(companyDir, 'projects', toPascalCase(proj.name));
       bootstrap += `### ${proj.name}\n\n`;
       bootstrap += renderMeta([
-        ['workspace', projCwd],
+        ['workspace.sourceType', 'local_path'],
+        ['workspace.cwd', projCwd],
+        ['workspace.isPrimary', 'true'],
         [
           'goalIds',
           proj.goals?.length > 0 ? proj.goals.map((g) => `"${g}"`).join(', ') : undefined,
@@ -666,13 +732,35 @@ export async function assembleCompany({
     const roleTitle = typeof roleMeta.title === 'string' ? roleMeta.title : undefined;
     const roleCapabilities =
       typeof roleMeta.description === 'string' ? roleMeta.description : undefined;
+    const instructionsFilePath = `${companyDir}/agents/${role}/AGENTS.md`;
+    const apiRole = normalizePaperclipRole(role, roleMeta);
+    const { adapterType, adapterConfig } = resolveRoleAdapterConfig(
+      role,
+      roleMeta,
+      instructionsFilePath,
+    );
 
     bootstrap += `### ${formatRole(role)}\n\n`;
     bootstrap += renderMeta([
-      ['role', role],
+      ['role', apiRole],
+      ['metadata.templateRole', role],
       ['title', roleTitle],
       ['capabilities', roleCapabilities],
-      ['instructionsFilePath', `${companyDir}/agents/${role}/AGENTS.md`],
+      ['metadata.description', roleCapabilities],
+      ['adapterType', adapterType],
+      ['adapterConfig.cwd', adapterConfig.cwd],
+      ['adapterConfig.model', adapterConfig.model],
+      ['adapterConfig.modelReasoningEffort', adapterConfig.modelReasoningEffort],
+      ['adapterConfig.thinkingLevel', adapterConfig.thinkingLevel],
+      [
+        'adapterConfig.dangerouslyBypassApprovalsAndSandbox',
+        adapterConfig.dangerouslyBypassApprovalsAndSandbox,
+      ],
+      ['adapterConfig.instructionsFilePath', adapterConfig.instructionsFilePath],
+      ['instructionsFilePath', instructionsFilePath],
+      ['runtimeConfig.heartbeat.enabled', 'true'],
+      ['runtimeConfig.heartbeat.intervalSec', String(DEFAULT_CEO_HEARTBEAT_INTERVAL_SEC)],
+      ['runtimeConfig.heartbeat.maxConcurrentRuns', String(DEFAULT_CEO_MAX_CONCURRENT_RUNS)],
     ]);
   }
 
@@ -709,8 +797,6 @@ export async function assembleCompany({
         }
       }
 
-      const shouldRenderProjectId =
-        !parentRef || Boolean(explicitProjectRef) || issue.includeProjectId;
       bootstrap += renderMeta([
         [
           'assigneeAgentId',
@@ -719,13 +805,7 @@ export async function assembleCompany({
         ['assigneeUserId', isUserAssignment ? '→ board user' : undefined],
         ['priority', issue.priority || 'medium'],
         ['parentId', parentRef ? `→ "${parentRef}"` : undefined],
-        ['projectId', shouldRenderProjectId ? `→ "${resolvedProjectRef}"` : undefined],
-        [
-          'projectScope',
-          parentRef && !shouldRenderProjectId
-            ? 'inherits from parent issue scope (do not override unless required)'
-            : undefined,
-        ],
+        ['projectId', `→ "${resolvedProjectRef}"`],
         ['labelIds', `→ [${issueLabelNames.map((name) => `"${name}"`).join(', ')}]`],
       ]);
       if (issue.description) {
@@ -735,7 +815,7 @@ export async function assembleCompany({
 
     bootstrap += `#### Issue Guardrails\n\n`;
     bootstrap += `- Top-level issues must include explicit \`projectId\`.\n`;
-    bootstrap += `- Subtasks must include \`parentId\` and inherit parent project scope unless explicitly overridden.\n`;
+    bootstrap += `- Subtasks must include explicit \`parentId\` and explicit \`projectId\` matching the parent project unless an explicit override is required.\n`;
     bootstrap += `- Parent/subissue status is not implicitly coupled (no automatic status bounce).\n`;
     bootstrap += `- Do not reopen \`done\` parent/subissues without an explicit reason in a comment.\n`;
     bootstrap += `- Do not reuse parent workspaces for subissues unless explicitly requested.\n\n`;
@@ -761,7 +841,7 @@ export async function assembleCompany({
 
   // --- Provisioning steps ---
   bootstrap += `## Provisioning Steps\n\n`;
-  bootstrap += `The Company Wizard "Provision" step creates all of the above automatically.\n\n`;
+  bootstrap += `The Company Wizard "Provision" step creates the company, the CEO, and this bootstrap issue. The CEO heartbeat creates the remaining Paperclip objects below by following this task.\n\n`;
   bootstrap += `Manual setup order (respects Paperclip object dependencies):\n\n`;
   let stepN = 1;
   bootstrap += `${stepN++}. **Create company** "${companyName}"${companyDescription ? ' (with description above)' : ''}\n`;
@@ -774,14 +854,14 @@ export async function assembleCompany({
     const projCwd = join(companyDir, 'projects', toPascalCase(proj.name));
     const goalLinks =
       proj.goals?.length > 0 ? `, goalIds → [${proj.goals.map((g) => `"${g}"`).join(', ')}]` : '';
-    bootstrap += `${stepN++}. **Create project** "${proj.name}" (workspace: \`${projCwd}\`${goalLinks})\n`;
+    bootstrap += `${stepN++}. **Create project** "${proj.name}" (workspace: { sourceType: "local_path", cwd: \`${projCwd}\`, isPrimary: true }${goalLinks})\n`;
   }
   if (bootstrapLabels.length > 0) {
     bootstrap += `${stepN++}. **Create labels** — create each label exactly as listed in the Labels section before creating issues\n`;
   }
-  bootstrap += `${stepN++}. **Create agents** — each with instructionsFilePath as listed above\n`;
+  bootstrap += `${stepN++}. **Create agents** — hire missing agents via governance using the adapter/runtime fields listed above; reuse/update an existing agent with the same metadata.templateRole instead of duplicating it\n`;
   if (initialIssues.length > 0) {
-    bootstrap += `${stepN++}. **Create issues** — top-level issues require explicit projectId; subtasks require parentId and inherit parent project scope unless explicitly overridden\n`;
+    bootstrap += `${stepN++}. **Create issues** — every issue, including subtasks, must carry explicit projectId; subtasks also require parentId\n`;
   }
   if (initialRoutines.length > 0) {
     bootstrap += `${stepN++}. **Create routines** with cron triggers as listed above\n`;

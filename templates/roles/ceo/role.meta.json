@@ -7,7 +7,8 @@
   "paperclipRole": "ceo",
   "description": "Strategic leader. Sets goals, delegates work, manages approvals.",
   "adapter": {
-    "model": "claude-opus-4-6",
-    "effort": "high"
+    "model": "gpt-5.5",
+    "effort": "high",
+    "thinkingLevel": "high"
   }
 }

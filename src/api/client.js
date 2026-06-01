@@ -202,19 +202,38 @@ export class PaperclipClient {
     });
   }
 
-  async createAgent(
-    companyId,
-    { name, role, title, reportsTo, adapterType, adapterConfig, runtimeConfig, permissions },
-  ) {
+  async createAgent(companyId, agent) {
+    const {
+      name,
+      role,
+      title,
+      icon,
+      reportsTo,
+      capabilities,
+      tags,
+      desiredSkills,
+      adapterType,
+      adapterConfig,
+      runtimeConfig,
+      budgetMonthlyCents,
+      permissions,
+      metadata,
+    } = agent || {};
     const payload = {
       name,
       role,
       title: title || null,
+      ...(icon !== undefined ? { icon: icon || null } : {}),
       reportsTo: reportsTo || null,
-      adapterType: adapterType || 'claude_local',
+      ...(capabilities !== undefined ? { capabilities: capabilities || null } : {}),
+      ...(tags !== undefined ? { tags } : {}),
+      ...(desiredSkills !== undefined ? { desiredSkills } : {}),
+      adapterType: adapterType || 'codex_local',
       adapterConfig: adapterConfig || {},
       ...(runtimeConfig ? { runtimeConfig } : {}),
+      ...(budgetMonthlyCents !== undefined ? { budgetMonthlyCents } : {}),
       ...(permissions ? { permissions } : {}),
+      ...(metadata !== undefined ? { metadata } : {}),
     };
 
     try {
@@ -266,13 +285,17 @@ export class PaperclipClient {
   }
 
   async createProject(companyId, { name, description, goalIds, workspace }) {
+    const workspacePayload =
+      typeof workspace === 'string'
+        ? { sourceType: 'local_path', cwd: workspace, isPrimary: true }
+        : workspace || undefined;
     return this._fetch(`/api/companies/${companyId}/projects`, {
       method: 'POST',
       body: JSON.stringify({
         name,
         description: description || null,
         ...(goalIds?.length ? { goalIds } : {}),
-        workspace: workspace || undefined,
+        workspace: workspacePayload,
       }),
     });
   }
@@ -293,18 +316,44 @@ export class PaperclipClient {
 
   async createIssue(
     companyId,
-    { title, description, priority, projectId, goalId, assigneeAgentId, assigneeUserId },
+    {
+      title,
+      description,
+      status,
+      priority,
+      parentId,
+      projectId,
+      projectWorkspaceId,
+      goalId,
+      labelIds,
+      assigneeAgentId,
+      assigneeUserId,
+      executionWorkspacePreference,
+      executionWorkspaceSettings,
+      executionPolicy,
+      blockedByIssueIds,
+      blockParentUntilDone,
+    },
   ) {
     return this._fetch(`/api/companies/${companyId}/issues`, {
       method: 'POST',
       body: JSON.stringify({
         title,
         description: description || null,
+        status: status || undefined,
         priority: priority || 'medium',
+        parentId: parentId || undefined,
         projectId: projectId || undefined,
+        projectWorkspaceId: projectWorkspaceId || undefined,
         goalId: goalId || undefined,
+        labelIds: labelIds || undefined,
         assigneeAgentId: assigneeAgentId || undefined,
         assigneeUserId: assigneeUserId || undefined,
+        executionWorkspacePreference: executionWorkspacePreference || undefined,
+        executionWorkspaceSettings: executionWorkspaceSettings || undefined,
+        executionPolicy: executionPolicy || undefined,
+        blockedByIssueIds: blockedByIssueIds || undefined,
+        blockParentUntilDone: blockParentUntilDone || undefined,
       }),
     });
   }
