@@ -202,19 +202,38 @@ export class PaperclipClient {
     });
   }
 
-  async createAgent(
-    companyId,
-    { name, role, title, reportsTo, adapterType, adapterConfig, runtimeConfig, permissions },
-  ) {
+  async createAgent(companyId, agent) {
+    const {
+      name,
+      role,
+      title,
+      icon,
+      reportsTo,
+      capabilities,
+      tags,
+      desiredSkills,
+      adapterType,
+      adapterConfig,
+      runtimeConfig,
+      budgetMonthlyCents,
+      permissions,
+      metadata,
+    } = agent || {};
     const payload = {
       name,
       role,
       title: title || null,
+      ...(icon !== undefined ? { icon: icon || null } : {}),
       reportsTo: reportsTo || null,
+      ...(capabilities !== undefined ? { capabilities: capabilities || null } : {}),
+      ...(tags !== undefined ? { tags } : {}),
+      ...(desiredSkills !== undefined ? { desiredSkills } : {}),
       adapterType: adapterType || 'claude_local',
       adapterConfig: adapterConfig || {},
       ...(runtimeConfig ? { runtimeConfig } : {}),
+      ...(budgetMonthlyCents !== undefined ? { budgetMonthlyCents } : {}),
       ...(permissions ? { permissions } : {}),
+      ...(metadata !== undefined ? { metadata } : {}),
     };
 
     try {

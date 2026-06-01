@@ -174,7 +174,7 @@ const initialState: WizardState = {
   companyName: '',
   goals: [],
   projects: [],
-  ceoAdapter: { type: 'claude_local', cwd: '', model: '' },
+  ceoAdapter: { type: 'codex_local', cwd: '', model: 'gpt-5.5' },
   existingCompanyId: '',
   presetName: '',
   selectedModules: [],

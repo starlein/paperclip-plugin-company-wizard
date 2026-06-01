@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- CEO provisioning now sends the role description as Paperclip `capabilities` and mirrors it into agent metadata so newly created CEOs are not saved with empty summaries.
+- CEO default runtime now caps heartbeat concurrency at one run (`maxConcurrentRuns: 1`).
+
+### Changed
+
+- CEO default adapter is Codex Local with `gpt-5.5` and high reasoning (`modelReasoningEffort`/`thinkingLevel`).
+
+---
+
 ## [0.1.16] — 2026-04-22
 
 ### Added
