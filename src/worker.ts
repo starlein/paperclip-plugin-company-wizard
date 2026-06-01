@@ -632,7 +632,10 @@ const plugin = definePlugin({
             typeof ceoTemplate.description === 'string' && ceoTemplate.description.trim()
               ? ceoTemplate.description.trim()
               : undefined;
-          const ceoMetadata = ceoDescription ? { description: ceoDescription } : undefined;
+          const ceoMetadata = {
+            templateRole: 'ceo',
+            ...(ceoDescription ? { description: ceoDescription } : {}),
+          };
           const ceoRuntimeConfig = buildCeoAgentRuntimeConfig();
 
           const adapterConfig: Record<string, unknown> = buildCeoAdapterConfig({

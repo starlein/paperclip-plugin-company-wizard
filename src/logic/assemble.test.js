@@ -279,6 +279,7 @@ describe('assembleCompany', () => {
     assert.ok(bootstrap.includes('### chore'));
     assert.ok(bootstrap.includes('## Issues'));
     assert.ok(bootstrap.includes('Init repo'));
+    assert.ok(bootstrap.includes('**color**: #7057ff'));
     assert.ok(bootstrap.includes('**labelIds**: → ["chore"]'));
     assert.ok(bootstrap.includes('**projectId**: → "TaskCo"'));
     assert.ok(bootstrap.includes('#### Issue Guardrails'));
@@ -291,7 +292,7 @@ describe('assembleCompany', () => {
     assert.ok(issuesStep > agentsStep, 'issues should be created after agents');
   });
 
-  it('renders subtasks with explicit parentId and inherited project scope', async () => {
+  it('renders subtasks with explicit parentId and explicit projectId for Paperclip v2026.403.0', async () => {
     const subtasksDir = join(templatesDir, 'modules', 'subtasks-mod');
     await mkdir(subtasksDir, { recursive: true });
     await writeJson(join(subtasksDir, 'module.meta.json'), {
@@ -323,13 +324,68 @@ describe('assembleCompany', () => {
     assert.ok(parentBlock.includes('**projectId**: → "SubtaskCo"'));
     assert.ok(childBlock.includes('**parentId**: → "Parent issue"'));
     assert.ok(
-      childBlock.includes('**projectScope**: inherits from parent issue scope'),
-      'child issue should inherit project scope by default',
+      childBlock.includes('**projectId**: → "SubtaskCo"'),
+      'child issue should carry an explicit projectId so the API cannot create projectless subissues',
     );
     assert.ok(
-      !childBlock.includes('**projectId**:'),
-      'child issue should not force projectId by default',
+      !childBlock.includes('**projectScope**: inherits from parent issue scope'),
+      'bootstrap should not rely on implicit project inheritance for subissues',
     );
+  });
+
+  it('renders project workspace metadata as a v2026.403.0 createProject workspace object', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'WorkspaceCo',
+      userProjects: [{ name: 'app', description: '', goals: [] }],
+      moduleNames: [],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    const projectBlock = bootstrap.split('### app')[1] || '';
+
+    assert.ok(projectBlock.includes('**workspace.sourceType**: local_path'));
+    assert.ok(projectBlock.includes('**workspace.cwd**:'));
+    assert.ok(projectBlock.includes('/projects/App'));
+    assert.ok(projectBlock.includes('**workspace.isPrimary**: true'));
+    assert.ok(
+      !projectBlock.includes('**workspace**: /'),
+      'workspace must not be rendered as a raw string',
+    );
+  });
+
+  it('renders agent hire metadata required by Paperclip v2026.403.0', async () => {
+    const engineerMeta = join(templatesDir, 'roles', 'engineer', 'role.meta.json');
+    await writeJson(engineerMeta, {
+      name: 'engineer',
+      base: true,
+      title: 'Software Engineer',
+      paperclipRole: 'engineer',
+      description: 'Implements features and fixes bugs.',
+      adapter: { model: 'gpt-5.5', effort: 'high' },
+    });
+
+    const { companyDir } = await assembleCompany({
+      companyName: 'AgentCo',
+      moduleNames: [],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    const engineerBlock = bootstrap.split('### Engineer')[1] || '';
+
+    assert.ok(engineerBlock.includes('**role**: engineer'));
+    assert.ok(engineerBlock.includes('**title**: Software Engineer'));
+    assert.ok(engineerBlock.includes('**capabilities**: Implements features and fixes bugs.'));
+    assert.ok(engineerBlock.includes('**adapterType**: codex_local'));
+    assert.ok(engineerBlock.includes('**adapterConfig.cwd**:'));
+    assert.ok(engineerBlock.includes('**adapterConfig.model**: gpt-5.5'));
+    assert.ok(engineerBlock.includes('**adapterConfig.modelReasoningEffort**: high'));
+    assert.ok(engineerBlock.includes('**runtimeConfig.heartbeat.maxConcurrentRuns**: 1'));
   });
 
   it('fires onProgress callback for each step', async () => {

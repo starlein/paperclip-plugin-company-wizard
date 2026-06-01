@@ -31,7 +31,7 @@ describe('PaperclipClient.createAgent', () => {
       reportsTo: null,
       capabilities: 'Strategic leader. Sets goals, delegates work, manages approvals.',
       desiredSkills: ['leadership'],
-      metadata: { description: 'Strategic leader.' },
+      metadata: { templateRole: 'ceo', description: 'Strategic leader.' },
       adapterType: 'codex_local',
       adapterConfig: { model: 'gpt-5.5', modelReasoningEffort: 'high' },
       runtimeConfig: { heartbeat: { enabled: true, intervalSec: 3600, maxConcurrentRuns: 1 } },
@@ -48,7 +48,7 @@ describe('PaperclipClient.createAgent', () => {
       reportsTo: null,
       capabilities: 'Strategic leader. Sets goals, delegates work, manages approvals.',
       desiredSkills: ['leadership'],
-      metadata: { description: 'Strategic leader.' },
+      metadata: { templateRole: 'ceo', description: 'Strategic leader.' },
       adapterType: 'codex_local',
       adapterConfig: { model: 'gpt-5.5', modelReasoningEffort: 'high' },
       runtimeConfig: { heartbeat: { enabled: true, intervalSec: 3600, maxConcurrentRuns: 1 } },
@@ -99,5 +99,69 @@ describe('PaperclipClient.createAgent', () => {
     assert.equal(hireRequest.body.adapterConfig.model, 'gpt-5.5');
     assert.equal(hireRequest.body.adapterConfig.modelReasoningEffort, 'high');
     assert.equal(hireRequest.body.runtimeConfig.heartbeat.maxConcurrentRuns, 1);
+  });
+
+  it('defaults direct agent creation to codex_local instead of a Claude adapter', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({ url, body: JSON.parse(opts.body) });
+      return jsonResponse({ id: 'agent-1' });
+    };
+
+    const client = new PaperclipClient('http://paperclip.test');
+    await client.createAgent('company-1', {
+      name: 'Engineer',
+      role: 'engineer',
+    });
+
+    assert.equal(requests[0].body.adapterType, 'codex_local');
+  });
+});
+
+describe('PaperclipClient provisioning helpers', () => {
+  it('sends a v2026.403.0 project workspace object instead of a raw workspace string', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({ url, body: JSON.parse(opts.body) });
+      return jsonResponse({ id: 'project-1' }, 201);
+    };
+
+    const client = new PaperclipClient('http://paperclip.test');
+    await client.createProject('company-1', {
+      name: 'Dialer',
+      description: 'Dialer project',
+      goalIds: ['goal-1'],
+      workspace: '/paperclip/instances/default/companies/Dialer/projects/Dialer',
+    });
+
+    assert.deepEqual(requests[0].body.workspace, {
+      sourceType: 'local_path',
+      cwd: '/paperclip/instances/default/companies/Dialer/projects/Dialer',
+      isPrimary: true,
+    });
+  });
+
+  it('forwards issue parent and label fields so bootstrap-created subissues stay scoped', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({ url, body: JSON.parse(opts.body) });
+      return jsonResponse({ id: 'issue-1' }, 201);
+    };
+
+    const client = new PaperclipClient('http://paperclip.test');
+    await client.createIssue('company-1', {
+      title: 'Child issue',
+      description: 'Scoped child task',
+      priority: 'high',
+      parentId: 'parent-1',
+      projectId: 'project-1',
+      labelIds: ['label-1'],
+      status: 'todo',
+    });
+
+    assert.equal(requests[0].body.parentId, 'parent-1');
+    assert.equal(requests[0].body.projectId, 'project-1');
+    assert.deepEqual(requests[0].body.labelIds, ['label-1']);
+    assert.equal(requests[0].body.status, 'todo');
   });
 });
