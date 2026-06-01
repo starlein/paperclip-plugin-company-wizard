@@ -6,7 +6,7 @@ const manifest: PaperclipPluginManifestV1 = {
   version: '0.1.16.2',
   displayName: 'Company Wizard',
   description: 'AI-powered wizard to bootstrap agent companies from composable templates',
-  author: 'Yesterday',
+  author: 'starlein/Yesterday-AI',
   categories: ['workspace', 'ui'],
   capabilities: [
     'companies.read',
