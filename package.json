@@ -4,7 +4,7 @@
   "type": "module",
   "description": "AI-powered wizard to bootstrap paperclip agent companies from composable templates",
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://registry.npmjs.org"
   },
   "scripts": {
     "build": "node ./esbuild.config.mjs",
