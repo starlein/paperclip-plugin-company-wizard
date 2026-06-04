@@ -37,6 +37,10 @@ describe('PaperclipClient.createAgent', () => {
       runtimeConfig: { heartbeat: { enabled: true, intervalSec: 3600, maxConcurrentRuns: 1 } },
       budgetMonthlyCents: 0,
       permissions: { canCreateAgents: true },
+      instructionsBundle: {
+        entryFile: 'AGENTS.md',
+        files: { 'AGENTS.md': 'Use managed AGENTS.md.' },
+      },
     });
 
     assert.equal(requests.length, 1);
@@ -54,6 +58,10 @@ describe('PaperclipClient.createAgent', () => {
       runtimeConfig: { heartbeat: { enabled: true, intervalSec: 3600, maxConcurrentRuns: 1 } },
       budgetMonthlyCents: 0,
       permissions: { canCreateAgents: true },
+      instructionsBundle: {
+        entryFile: 'AGENTS.md',
+        files: { 'AGENTS.md': 'Use managed AGENTS.md.' },
+      },
     });
   });
 
@@ -90,6 +98,10 @@ describe('PaperclipClient.createAgent', () => {
       adapterConfig: { model: 'gpt-5.5', modelReasoningEffort: 'high' },
       runtimeConfig: { heartbeat: { enabled: true, intervalSec: 3600, maxConcurrentRuns: 1 } },
       permissions: { canCreateAgents: true },
+      instructionsBundle: {
+        entryFile: 'AGENTS.md',
+        files: { 'AGENTS.md': 'Use managed AGENTS.md.' },
+      },
     });
 
     const hireRequest = requests.find((request) => request.url.endsWith('/agent-hires'));
@@ -99,6 +111,10 @@ describe('PaperclipClient.createAgent', () => {
     assert.equal(hireRequest.body.adapterConfig.model, 'gpt-5.5');
     assert.equal(hireRequest.body.adapterConfig.modelReasoningEffort, 'high');
     assert.equal(hireRequest.body.runtimeConfig.heartbeat.maxConcurrentRuns, 1);
+    assert.deepEqual(hireRequest.body.instructionsBundle, {
+      entryFile: 'AGENTS.md',
+      files: { 'AGENTS.md': 'Use managed AGENTS.md.' },
+    });
   });
 
   it('defaults direct agent creation to codex_local instead of a Claude adapter', async () => {
@@ -163,5 +179,20 @@ describe('PaperclipClient provisioning helpers', () => {
     assert.equal(requests[0].body.projectId, 'project-1');
     assert.deepEqual(requests[0].body.labelIds, ['label-1']);
     assert.equal(requests[0].body.status, 'todo');
+  });
+
+  it('patches issues through the top-level issue update route', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({ url, method: opts.method, body: JSON.parse(opts.body) });
+      return jsonResponse({ id: 'issue-1', status: 'todo' }, 200);
+    };
+
+    const client = new PaperclipClient('http://paperclip.test');
+    await client.updateIssue('issue-1', { status: 'todo' });
+
+    assert.equal(requests[0].url, 'http://paperclip.test/api/issues/issue-1');
+    assert.equal(requests[0].method, 'PATCH');
+    assert.deepEqual(requests[0].body, { status: 'todo' });
   });
 });

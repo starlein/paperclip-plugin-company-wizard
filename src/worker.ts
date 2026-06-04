@@ -642,8 +642,19 @@ const plugin = definePlugin({
             userCeoAdapter,
             companyDir,
             roleAdapterOverrides: assembleResult.roleAdapterOverrides?.get('ceo') ?? {},
-            promptTemplate: ceoPromptTemplate,
           });
+          const ceoInstructionFiles = collectInstructionFiles(ceoInstructionsDir);
+          if (
+            !ceoInstructionFiles[ceoEntryFile] &&
+            typeof ceoPromptTemplate === 'string' &&
+            ceoPromptTemplate.trim()
+          ) {
+            ceoInstructionFiles[ceoEntryFile] = ceoPromptTemplate;
+          }
+          const ceoInstructionsBundle =
+            Object.keys(ceoInstructionFiles).length > 0
+              ? { entryFile: ceoEntryFile, files: ceoInstructionFiles }
+              : undefined;
 
           const logPendingApproval = (agent: any) => {
             if (!agent?._pendingApprovalId) return;
@@ -703,6 +714,7 @@ const plugin = definePlugin({
                 reportsTo: null,
                 adapterType,
                 adapterConfig,
+                instructionsBundle: ceoInstructionsBundle,
                 runtimeConfig: ceoRuntimeConfig,
                 permissions: { canCreateAgents: true },
               });
@@ -721,6 +733,7 @@ const plugin = definePlugin({
               reportsTo: null,
               adapterType,
               adapterConfig,
+              instructionsBundle: ceoInstructionsBundle,
               runtimeConfig: ceoRuntimeConfig,
               permissions: { canCreateAgents: true },
             });
@@ -738,7 +751,11 @@ const plugin = definePlugin({
             log,
           });
 
-          // Step 7: Create bootstrap issue (SDK: ctx.issues.create ✓)
+          // Step 7: Create bootstrap issue.
+          // Use the HTTP client instead of ctx.issues here because the wizard may be
+          // launched from company A while provisioning a newly-created/reused company B.
+          // Paperclip master correctly scopes SDK host calls to the launching company,
+          // so ctx.issues.create({ companyId: B }) is denied when A !== B.
           // BOOTSTRAP.md IS the bootstrap issue — read it directly.
           const bootstrapDescription = fs.readFileSync(
             path.join(companyDir, 'BOOTSTRAP.md'),
@@ -746,13 +763,12 @@ const plugin = definePlugin({
           );
 
           log('Creating bootstrap task for CEO...');
-          const issue = await ctx.issues.create({
-            companyId,
+          const issue = await client.createIssue(companyId, {
             title: `Bootstrap ${company.name || companyName}`,
             description: bootstrapDescription,
             assigneeAgentId: ceoAgentId,
+            status: 'todo',
           });
-          await ctx.issues.update(issue.id, { status: 'todo' }, companyId);
           bootstrapIssue = issue as { id: string; identifier?: string };
           log(`✓ Bootstrap task created: ${bootstrapIssue.identifier || bootstrapIssue.id}`);
         } catch (err) {

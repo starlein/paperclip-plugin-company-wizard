@@ -6,11 +6,26 @@ set -euo pipefail
 CLIPPER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOTPAPERCLIP="${PAPERCLIP_DOTPAPERCLIP_HOST:-/root/paperclip/data/docker3/}"
 PLUGIN_DIR="$DOTPAPERCLIP/plugins/@starlein/paperclip-plugin-company-wizard"
+RUNTIME_PLUGIN_DIR="$DOTPAPERCLIP/plugins/node_modules/@starlein/paperclip-plugin-company-wizard"
 
-mkdir -p "$PLUGIN_DIR"
-rsync -a --delete "$CLIPPER_DIR/dist/"      "$PLUGIN_DIR/dist/"
-rsync -a --delete "$CLIPPER_DIR/templates/" "$PLUGIN_DIR/templates/"
-cp "$CLIPPER_DIR/package.json"              "$PLUGIN_DIR/package.json"
+sync_plugin_dir() {
+  local target="$1"
+  mkdir -p "$target"
+  rsync -a --delete "$CLIPPER_DIR/dist/"      "$target/dist/"
+  rsync -a --delete "$CLIPPER_DIR/templates/" "$target/templates/"
+  cp "$CLIPPER_DIR/package.json"              "$target/package.json"
+}
+
+sync_plugin_dir "$PLUGIN_DIR"
+
+# Paperclip's worker manager launches packages from plugins/node_modules when the
+# plugin has been installed through the registry/installer. Keep that runtime
+# copy in sync too, otherwise the API can report the new manifest while the old
+# worker code is still executed.
+if [ -d "$RUNTIME_PLUGIN_DIR" ]; then
+  sync_plugin_dir "$RUNTIME_PLUGIN_DIR"
+  echo "Synced runtime package to $RUNTIME_PLUGIN_DIR"
+fi
 
 echo "Synced to $PLUGIN_DIR"
 

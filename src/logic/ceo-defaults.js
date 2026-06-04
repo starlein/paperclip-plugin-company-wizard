@@ -18,7 +18,6 @@ export function buildCeoAdapterConfig({
   userCeoAdapter = {},
   companyDir,
   roleAdapterOverrides = {},
-  promptTemplate = '',
 } = {}) {
   const adapterType = normalizeCeoAdapterType(userCeoAdapter);
   const userCwd = asTrimmedString(userCeoAdapter.cwd);
@@ -39,9 +38,10 @@ export function buildCeoAdapterConfig({
   const adapterConfig = {
     ...roleAdapterOverrides,
     cwd: userCwd || companyDir,
-    ...(asTrimmedString(promptTemplate) ? { promptTemplate } : {}),
     ...(model ? { model } : {}),
   };
+  delete adapterConfig.promptTemplate;
+  delete adapterConfig.bootstrapPromptTemplate;
 
   if (adapterType === 'codex_local') {
     adapterConfig.modelReasoningEffort = thinkingLevel;

@@ -218,6 +218,7 @@ export class PaperclipClient {
       budgetMonthlyCents,
       permissions,
       metadata,
+      instructionsBundle,
     } = agent || {};
     const payload = {
       name,
@@ -234,6 +235,7 @@ export class PaperclipClient {
       ...(budgetMonthlyCents !== undefined ? { budgetMonthlyCents } : {}),
       ...(permissions ? { permissions } : {}),
       ...(metadata !== undefined ? { metadata } : {}),
+      ...(instructionsBundle !== undefined ? { instructionsBundle } : {}),
     };
 
     try {
@@ -355,6 +357,13 @@ export class PaperclipClient {
         blockedByIssueIds: blockedByIssueIds || undefined,
         blockParentUntilDone: blockParentUntilDone || undefined,
       }),
+    });
+  }
+
+  async updateIssue(issueId, updates = {}) {
+    return this._fetch(`/api/issues/${issueId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates || {}),
     });
   }
 
