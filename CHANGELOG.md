@@ -5,17 +5,41 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.2.6] — 2026-05-06
 
-## [Unreleased]
+### Added
+
+- **Repository workspace step** — new `StepRepository` wizard step in the manual path lets users choose between creating a fresh local Git repo or connecting an existing external repository (GitHub, GitLab, etc.)
+- `ProjectWorkspaceConfig` and `ProjectExecutionWorkspacePolicy` TypeScript interfaces in `WizardContext`
+- `resolveEffectiveModules()` — expands transitive module `requires` dependencies; ensures the full module graph is activated
+- `collectPresetBootstrapData()` — extracts `issues[]`, `routines[]`, and `labels[]` defined at the preset level so they are included in BOOTSTRAP.md
+- `normalizeProjectWorkspace()` / `renderWorkspaceMetaFields()` / `formatWorkspaceObject()` helpers — flexible rendering of `local_path` and `git_repo` workspace types in BOOTSTRAP.md
+- `executionWorkspacePolicy` support in project metadata (defaultMode, workspaceStrategy with git_worktree)
+- `goalId` field support on issues in BOOTSTRAP.md
+- Repository row in `ConfigReview` summary with edit link back to the repository step
+- `redactSecrets()` pass on all durable bootstrap text — strips tokens, API keys, and common secret patterns before writing
+- Secrets guardrail and PR review workflow guardrail in `templates/bootstrap-instructions.md`
+- `presetIssues`, `presetRoutines`, `presetLabels` params to `assembleCompany()`
+- `explicitBootstrapLabels` pipeline — preset/module-level labels are registered before issue-derived labels
+
+### Changed
+
+- AI wizard (`StepAiWizard`) now normalizes `workspace` and `executionWorkspacePolicy` from AI-generated project configs
+- All AI prompts (single-shot, interview, config-format, messages) updated to ask about and encode repository setup — fresh local repo vs. external Git repo; never request credentials
+- `start-provision` and `preview-files` worker actions use `resolveEffectiveModules()` and pass preset bootstrap data to assembly
+- `WizardProject` extended with `workspace`, `workspaceSourceType`, `repoUrl`, `repoRef`, `defaultRef`, `executionWorkspacePolicy`
+- `repository` added as a step in the manual wizard flow (`MANUAL_STEPS`)
+- `WizardShell` maps the `repository` step to `StepRepository`
+- `companyDescription` now passed through `escapeBody()` (which includes secret redaction)
+- `buildBootstrapLabels()` accepts explicit labels; existing label names are not overwritten by issue-derived ones
+- `pr-review` module activates an extra BOOTSTRAP.md note about PR review child issues
+- Version bumped to 0.2.6; switched to public npm registry (`--access restricted`)
+  CEO default adapter is Codex Local with `gpt-5.5` and high reasoning (`modelReasoningEffort`/`thinkingLevel`).
 
 ### Fixed
 
 - CEO provisioning now sends the role description as Paperclip `capabilities` and mirrors it into agent metadata so newly created CEOs are not saved with empty summaries.
 - CEO default runtime now caps heartbeat concurrency at one run (`maxConcurrentRuns: 1`).
-
-### Changed
-
-- CEO default adapter is Codex Local with `gpt-5.5` and high reasoning (`modelReasoningEffort`/`thinkingLevel`).
 
 ---
 
