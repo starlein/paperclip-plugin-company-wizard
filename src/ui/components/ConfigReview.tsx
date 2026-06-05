@@ -39,6 +39,7 @@ import {
   Loader2,
   RefreshCw,
   RotateCcw,
+  GitBranch,
 } from 'lucide-react';
 
 // --- Shared helpers ---
@@ -516,6 +517,16 @@ export function ConfigReview() {
 
   const activeRoleData = state.roles.filter((r) => r._base || selectedRoleSet.has(r.name));
   const selectedModuleData = state.modules.filter((m) => selectedModSet.has(m.name));
+  const primaryProject = state.projects[0];
+  const primaryWorkspace = primaryProject?.workspace;
+  const primaryRepoUrl = primaryWorkspace?.repoUrl || primaryProject?.repoUrl || '';
+  const primaryRepoRef =
+    primaryWorkspace?.defaultRef ||
+    primaryWorkspace?.repoRef ||
+    primaryProject?.defaultRef ||
+    primaryProject?.repoRef ||
+    '';
+  const isExternalRepo = primaryWorkspace?.sourceType === 'git_repo' || Boolean(primaryRepoUrl);
 
   const totalCapabilities = selectedModuleData.reduce(
     (sum, m) => sum + (m.capabilities?.length ?? 0),
@@ -600,6 +611,41 @@ export function ConfigReview() {
                 </>
               ) : (
                 <span className="text-muted-foreground">Create a new company</span>
+              )}
+            </SummaryRow>
+          </div>
+
+          {/* Repository */}
+          <div className="px-4">
+            <SummaryRow
+              icon={GitBranch}
+              label="Repository"
+              onEdit={
+                state.path === 'manual'
+                  ? () => dispatch({ type: 'GO_TO', step: 'repository' })
+                  : undefined
+              }
+            >
+              {isExternalRepo ? (
+                <>
+                  <span className="font-medium">External Git repository</span>
+                  {primaryRepoUrl && (
+                    <p className="text-xs text-muted-foreground mt-0.5 wrap-break-word">
+                      {primaryRepoUrl}
+                    </p>
+                  )}
+                  {primaryRepoRef && (
+                    <p className="text-xs text-muted-foreground mt-0.5">Ref: {primaryRepoRef}</p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span className="font-medium">Create a new Git repository</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Fresh local workspace{primaryRepoRef ? ` on ${primaryRepoRef}` : ''}
+                    {primaryWorkspace?.setupCommand ? ` · ${primaryWorkspace.setupCommand}` : ''}
+                  </p>
+                </>
               )}
             </SummaryRow>
           </div>

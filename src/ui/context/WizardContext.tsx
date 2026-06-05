@@ -9,6 +9,7 @@ export type Step =
   | 'onboarding'
   | 'name'
   | 'goal'
+  | 'repository'
   | 'preset'
   | 'modules'
   | 'roles'
@@ -27,6 +28,48 @@ export interface WizardProject {
   name: string;
   description: string;
   goals: string[]; // goal titles this project is linked to
+  workspace?: ProjectWorkspaceConfig;
+  workspaceSourceType?: ProjectWorkspaceConfig['sourceType'];
+  repoUrl?: string;
+  repoRef?: string;
+  defaultRef?: string;
+  executionWorkspacePolicy?: ProjectExecutionWorkspacePolicy;
+}
+
+export interface ProjectWorkspaceConfig {
+  name?: string;
+  sourceType?: 'local_path' | 'git_repo' | 'remote_managed' | 'non_git_path' | string;
+  cwd?: string | null;
+  repoUrl?: string | null;
+  repoRef?: string | null;
+  defaultRef?: string | null;
+  isPrimary?: boolean;
+  visibility?: 'default' | 'advanced' | string;
+  setupCommand?: string | null;
+  cleanupCommand?: string | null;
+  remoteProvider?: string | null;
+  remoteWorkspaceRef?: string | null;
+  sharedWorkspaceKey?: string | null;
+  metadata?: Record<string, unknown> | null;
+  runtimeConfig?: Record<string, unknown> | null;
+}
+
+export interface ProjectExecutionWorkspacePolicy {
+  defaultMode?:
+    | 'shared_workspace'
+    | 'isolated_workspace'
+    | 'operator_branch'
+    | 'adapter_default'
+    | string;
+  allowIssueOverride?: boolean;
+  defaultProjectWorkspaceId?: string | null;
+  environmentId?: string | null;
+  workspaceStrategy?: {
+    type?: string;
+    baseRef?: string;
+    [key: string]: unknown;
+  } | null;
+  [key: string]: unknown;
 }
 
 export interface CeoAdapter {
@@ -110,6 +153,7 @@ const MANUAL_STEPS: Step[] = [
   'onboarding',
   'name',
   'goal',
+  'repository',
   'preset',
   'modules',
   'roles',

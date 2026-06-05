@@ -3,3 +3,7 @@ packages:
 
 allowBuilds:
   esbuild: true
+
+minimumReleaseAgeExclude:
+  - '@starlein/plugin-sdk@1.0.0'
+  - '@starlein/shared@0.3.1'

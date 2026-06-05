@@ -4,6 +4,8 @@ import {
   useWizard,
   useWizardDispatch,
   type Goal,
+  type ProjectExecutionWorkspacePolicy,
+  type ProjectWorkspaceConfig,
   type WizardProject,
 } from '../../context/WizardContext';
 import { Button } from '../ui/button';
@@ -49,9 +51,65 @@ const CONFIG_STEPS = [
   'Selecting strategy preset',
   'Choosing capability modules',
   'Assembling agent team',
+  'Resolving repository setup',
   'Defining company goal',
   'Finalizing configuration',
 ];
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function copyStringField(
+  source: Record<string, unknown>,
+  target: Record<string, unknown>,
+  key: string,
+) {
+  const value = source[key];
+  if (typeof value === 'string' && value.trim()) target[key] = value.trim();
+}
+
+function normalizeWorkspaceConfig(value: unknown): ProjectWorkspaceConfig | undefined {
+  if (!isPlainObject(value)) return undefined;
+  const workspace: Record<string, unknown> = {};
+  for (const key of [
+    'name',
+    'sourceType',
+    'cwd',
+    'repoUrl',
+    'repoRef',
+    'defaultRef',
+    'visibility',
+    'setupCommand',
+    'cleanupCommand',
+    'remoteProvider',
+    'remoteWorkspaceRef',
+    'sharedWorkspaceKey',
+  ]) {
+    copyStringField(value, workspace, key);
+  }
+  if (typeof value.isPrimary === 'boolean') workspace.isPrimary = value.isPrimary;
+  if (isPlainObject(value.metadata)) workspace.metadata = value.metadata;
+  if (isPlainObject(value.runtimeConfig)) workspace.runtimeConfig = value.runtimeConfig;
+  return Object.keys(workspace).length > 0 ? (workspace as ProjectWorkspaceConfig) : undefined;
+}
+
+function normalizeExecutionWorkspacePolicy(
+  value: unknown,
+): ProjectExecutionWorkspacePolicy | undefined {
+  if (!isPlainObject(value)) return undefined;
+  const policy: Record<string, unknown> = {};
+  copyStringField(value, policy, 'defaultMode');
+  copyStringField(value, policy, 'defaultProjectWorkspaceId');
+  copyStringField(value, policy, 'environmentId');
+  if (typeof value.allowIssueOverride === 'boolean') {
+    policy.allowIssueOverride = value.allowIssueOverride;
+  }
+  if (isPlainObject(value.workspaceStrategy)) {
+    policy.workspaceStrategy = { ...value.workspaceStrategy };
+  }
+  return Object.keys(policy).length > 0 ? (policy as ProjectExecutionWorkspacePolicy) : undefined;
+}
 
 function PhaseIndicator({
   phase,
@@ -514,11 +572,28 @@ export function StepAiWizard() {
     // Normalize projects: support both old flat format and new array format
     let parsedProjects: WizardProject[];
     if (Array.isArray(config.projects)) {
-      parsedProjects = (config.projects as any[]).map((p: any) => ({
-        name: String(p.name || ''),
-        description: String(p.description || ''),
-        goals: Array.isArray(p.goals) ? p.goals.map(String) : [],
-      }));
+      parsedProjects = (config.projects as any[]).map((p: any) => {
+        const workspace = normalizeWorkspaceConfig(p.workspace);
+        const executionWorkspacePolicy = normalizeExecutionWorkspacePolicy(
+          p.executionWorkspacePolicy,
+        );
+        const project: WizardProject = {
+          name: String(p.name || ''),
+          description: String(p.description || ''),
+          goals: Array.isArray(p.goals) ? p.goals.map(String) : [],
+        };
+        if (workspace) project.workspace = workspace;
+        if (typeof p.workspaceSourceType === 'string' && p.workspaceSourceType.trim()) {
+          project.workspaceSourceType = p.workspaceSourceType.trim();
+        }
+        if (typeof p.repoUrl === 'string' && p.repoUrl.trim()) project.repoUrl = p.repoUrl.trim();
+        if (typeof p.repoRef === 'string' && p.repoRef.trim()) project.repoRef = p.repoRef.trim();
+        if (typeof p.defaultRef === 'string' && p.defaultRef.trim()) {
+          project.defaultRef = p.defaultRef.trim();
+        }
+        if (executionWorkspacePolicy) project.executionWorkspacePolicy = executionWorkspacePolicy;
+        return project;
+      });
     } else if (config.project) {
       // Backward compat: old flat format
       parsedProjects = [

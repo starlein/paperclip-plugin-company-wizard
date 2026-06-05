@@ -192,4 +192,59 @@ export function collectGoals(preset, modules, selectedModules) {
   return goals;
 }
 
+/**
+ * Return the effective module selection for a provisioning/preview run.
+ *
+ * The UI normally sends preset modules already expanded, but worker actions can
+ * be called directly and AI configs can be sparse. Treat `presetName` as a
+ * first-class source of modules so choosing build-api also activates the rest
+ * of the build-api preset (e.g. ci-cd goals), then add transitive `requires`.
+ * Unknown module names are ignored.
+ *
+ * @param {object|null} preset
+ * @param {object[]} modules
+ * @param {string[]|Set<string>} selectedModules
+ * @returns {string[]}
+ */
+export function resolveEffectiveModules(preset, modules, selectedModules) {
+  const known = new Set(modules.map((m) => m.name));
+  const requiresByName = new Map(
+    modules.map((m) => [m.name, Array.isArray(m.requires) ? m.requires : []]),
+  );
+  const effective = new Set();
+  const queue = [];
+
+  const add = (name) => {
+    if (typeof name !== 'string' || !known.has(name) || effective.has(name)) return;
+    effective.add(name);
+    queue.push(name);
+  };
+
+  for (const moduleName of Array.isArray(preset?.modules) ? preset.modules : []) {
+    add(moduleName);
+  }
+  for (const moduleName of selectedModules ?? []) {
+    add(moduleName);
+  }
+
+  while (queue.length > 0) {
+    const moduleName = queue.shift();
+    for (const dep of requiresByName.get(moduleName) ?? []) {
+      add(dep);
+    }
+  }
+
+  return [...effective];
+}
+
+export function collectPresetBootstrapData(preset) {
+  return {
+    labels: Array.isArray(preset?.labels) ? preset.labels.map((label) => ({ ...label })) : [],
+    issues: Array.isArray(preset?.issues) ? preset.issues.map((issue) => ({ ...issue })) : [],
+    routines: Array.isArray(preset?.routines)
+      ? preset.routines.map((routine) => ({ ...routine }))
+      : [],
+  };
+}
+
 export { validateGoal, validateGoal as validateGoalTemplate };

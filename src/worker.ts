@@ -15,7 +15,14 @@ import {
   normalizeCeoAdapterType,
 } from './logic/ceo-defaults.js';
 // @ts-ignore
-import { collectGoals, loadModules, loadPresets, loadRoles } from './logic/load-templates.js';
+import {
+  collectGoals,
+  collectPresetBootstrapData,
+  loadModules,
+  loadPresets,
+  loadRoles,
+  resolveEffectiveModules,
+} from './logic/load-templates.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -316,11 +323,13 @@ const plugin = definePlugin({
           loadModules(templatesDir),
         ]);
         const selectedPreset = presets.find((p: any) => p.name === params.presetName) || null;
-        const goals = collectGoals(
+        const effectiveModules = resolveEffectiveModules(
           selectedPreset,
           allModules,
-          new Set((params.selectedModules as string[]) ?? []),
+          (params.selectedModules as string[]) ?? [],
         );
+        const goals = collectGoals(selectedPreset, allModules, new Set(effectiveModules));
+        const presetBootstrapData = collectPresetBootstrapData(selectedPreset);
 
         // Normalize goals/projects for preview (same logic as start-provision)
         const previewGoals: any[] = Array.isArray(params.goals)
@@ -336,9 +345,12 @@ const plugin = definePlugin({
           companyName,
           userGoals: previewGoals,
           userProjects: previewProjects,
-          moduleNames: (params.selectedModules as string[]) ?? [],
+          moduleNames: effectiveModules,
           extraRoleNames: (params.selectedRoles as string[]) ?? [],
           inlineGoals: goals,
+          presetIssues: presetBootstrapData.issues,
+          presetRoutines: presetBootstrapData.routines,
+          presetLabels: presetBootstrapData.labels,
           outputDir: tmpDir,
           templatesDir,
         });
@@ -501,11 +513,13 @@ const plugin = definePlugin({
             .map((role: any) => [role.name, role]),
         );
         const selectedPreset = presets.find((p: any) => p.name === params.presetName) || null;
-        const goals = collectGoals(
+        const effectiveModules = resolveEffectiveModules(
           selectedPreset,
           allModules,
-          new Set((params.selectedModules as string[]) ?? []),
+          (params.selectedModules as string[]) ?? [],
         );
+        const goals = collectGoals(selectedPreset, allModules, new Set(effectiveModules));
+        const presetBootstrapData = collectPresetBootstrapData(selectedPreset);
 
         // Step 2: Assemble files on disk
         const outputDir = resolveCompaniesDir(cfg);
@@ -531,9 +545,12 @@ const plugin = definePlugin({
           companyDescription,
           userGoals,
           userProjects,
-          moduleNames: (params.selectedModules as string[]) ?? [],
+          moduleNames: effectiveModules,
           extraRoleNames: (params.selectedRoles as string[]) ?? [],
           inlineGoals: goals,
+          presetIssues: presetBootstrapData.issues,
+          presetRoutines: presetBootstrapData.routines,
+          presetLabels: presetBootstrapData.labels,
           outputDir,
           templatesDir,
           onProgress: log,

@@ -76,6 +76,9 @@ export function toPascalCase(name) {
  * @param {string[]} opts.moduleNames
  * @param {string[]} opts.extraRoleNames
  * @param {Array} opts.inlineGoals - Inline goals from preset/modules (from collectGoals)
+ * @param {Array} [opts.presetIssues] - Initial issues from the selected preset
+ * @param {Array} [opts.presetRoutines] - Initial routines from the selected preset
+ * @param {Array} [opts.presetLabels] - Explicit labels from the selected preset
  * @param {string} opts.outputDir
  * @param {string} opts.templatesDir
  * @param {(line: string) => void} opts.onProgress
@@ -89,6 +92,9 @@ export async function assembleCompany({
   moduleNames,
   extraRoleNames,
   inlineGoals = [],
+  presetIssues = [],
+  presetRoutines = [],
+  presetLabels = [],
   outputDir,
   templatesDir,
   onProgress = () => {},
@@ -218,8 +224,13 @@ export async function assembleCompany({
   }
 
   // 3. Apply modules with capability-aware skill assignment
-  const initialIssues = [];
-  const initialRoutines = [];
+  const initialIssues = Array.isArray(presetIssues)
+    ? presetIssues.map((issue) => ({ ...issue, source: issue.source || 'preset' }))
+    : [];
+  const initialRoutines = Array.isArray(presetRoutines)
+    ? presetRoutines.map((routine) => ({ ...routine, source: routine.source || 'preset' }))
+    : [];
+  const explicitBootstrapLabels = Array.isArray(presetLabels) ? [...presetLabels] : [];
   const roleAdapterOverrides = new Map(); // role name → merged adapter overrides from modules
 
   // Helper: resolve assignee for a role name or capability reference
@@ -250,6 +261,10 @@ export async function assembleCompany({
         onProgress(`○ ${moduleName} (needs ${moduleJson.activatesWithRoles.join(' or ')})`);
         continue;
       }
+    }
+
+    if (Array.isArray(moduleJson?.labels)) {
+      explicitBootstrapLabels.push(...moduleJson.labels);
     }
 
     // Collect issues (backward compat: read tasks[] if issues[] not present)
@@ -602,18 +617,26 @@ export async function assembleCompany({
     return 'feature';
   };
 
-  const buildBootstrapLabels = (issues) => {
-    if (issues.length === 0) return [];
+  const buildBootstrapLabels = (issues, explicitLabels = []) => {
+    if (issues.length === 0 && explicitLabels.length === 0) return [];
 
     const labelsByName = new Map(
       DEFAULT_BOOTSTRAP_LABELS.map((label) => [label.name, { ...label }]),
     );
 
+    for (const label of explicitLabels) {
+      for (const parsedLabel of parseIssueLabels({ labels: [label] })) {
+        labelsByName.set(parsedLabel.name, parsedLabel);
+      }
+    }
+
     for (const issue of issues) {
       const explicitLabels = parseIssueLabels(issue);
       if (explicitLabels.length > 0) {
         for (const label of explicitLabels) {
-          labelsByName.set(label.name, label);
+          if (!labelsByName.has(label.name)) {
+            labelsByName.set(label.name, label);
+          }
         }
         continue;
       }
@@ -631,7 +654,7 @@ export async function assembleCompany({
     return [...labelsByName.values()];
   };
 
-  const bootstrapLabels = buildBootstrapLabels(initialIssues);
+  const bootstrapLabels = buildBootstrapLabels(initialIssues, explicitBootstrapLabels);
   const labelsByName = new Map(bootstrapLabels.map((label) => [label.name, label]));
 
   const getIssueLabelNames = (issue) => {
@@ -647,9 +670,19 @@ export async function assembleCompany({
     return lines.map(([k, v]) => `- **${k}**: ${v}`).join('\n') + '\n\n';
   };
 
+  // --- Helper: redact obvious secrets before writing durable bootstrap/issue text ---
+  const redactSecrets = (text) =>
+    String(text || '')
+      .replace(
+        /\b(GH_TOKEN|GITHUB_TOKEN|API_KEY|SECRET|TOKEN|PASSWORD|PASS|PRIVATE_KEY)\s*=\s*[^\s`'"<>]+/gi,
+        '$1=[REDACTED]',
+      )
+      .replace(/\bgh[pousr]_[A-Za-z0-9_]{20,}\b/g, '[REDACTED]')
+      .replace(/\b(sk-[A-Za-z0-9_-]{20,}|xox[baprs]-[A-Za-z0-9-]{20,})\b/g, '[REDACTED]');
+
   // --- Helper: escape # in description body ---
   const escapeBody = (text) =>
-    text
+    redactSecrets(text)
       .split('\n')
       .map((l) => l.replace(/^(#+)/, '\\$1'))
       .join('\n');
@@ -666,7 +699,7 @@ export async function assembleCompany({
   // Company description
   if (companyDescription) {
     bootstrap += `## Company\n\n`;
-    bootstrap += `${companyDescription}\n\n`;
+    bootstrap += `${escapeBody(companyDescription)}\n\n`;
   }
 
   // --- Goals ---
@@ -687,18 +720,91 @@ export async function assembleCompany({
   }
 
   // --- Projects ---
+  const normalizeProjectWorkspace = (proj) => {
+    const explicitWorkspace =
+      proj && typeof proj.workspace === 'object' && proj.workspace !== null ? proj.workspace : {};
+    const sourceType =
+      typeof explicitWorkspace.sourceType === 'string' && explicitWorkspace.sourceType.trim()
+        ? explicitWorkspace.sourceType.trim()
+        : typeof proj?.workspaceSourceType === 'string' && proj.workspaceSourceType.trim()
+          ? proj.workspaceSourceType.trim()
+          : typeof proj?.repoUrl === 'string' && proj.repoUrl.trim()
+            ? 'git_repo'
+            : 'local_path';
+    const localCwd = join(companyDir, 'projects', toPascalCase(proj.name));
+    const workspace = {
+      sourceType,
+      ...explicitWorkspace,
+      isPrimary: explicitWorkspace.isPrimary ?? proj?.isPrimary ?? true,
+    };
+
+    if (sourceType === 'git_repo') {
+      const repoUrl = explicitWorkspace.repoUrl || proj?.repoUrl;
+      const repoRef = explicitWorkspace.repoRef || proj?.repoRef || proj?.defaultRef;
+      const defaultRef = explicitWorkspace.defaultRef || proj?.defaultRef || repoRef;
+      if (repoUrl) workspace.repoUrl = repoUrl;
+      if (repoRef) workspace.repoRef = repoRef;
+      if (defaultRef) workspace.defaultRef = defaultRef;
+      delete workspace.cwd;
+    } else if (!workspace.cwd) {
+      workspace.cwd = localCwd;
+    }
+
+    return workspace;
+  };
+
+  const renderWorkspaceMetaFields = (workspace) => {
+    const orderedKeys = ['sourceType', 'cwd', 'repoUrl', 'repoRef', 'defaultRef', 'isPrimary'];
+    const keys = [
+      ...orderedKeys.filter((key) => workspace[key] !== undefined),
+      ...Object.keys(workspace).filter((key) => !orderedKeys.includes(key)),
+    ];
+    return keys.map((key) => [`workspace.${key}`, String(workspace[key])]);
+  };
+
+  const formatWorkspaceObject = (workspace) => {
+    const orderedKeys = ['sourceType', 'cwd', 'repoUrl', 'repoRef', 'defaultRef', 'isPrimary'];
+    const entries = [
+      ...orderedKeys
+        .filter((key) => workspace[key] !== undefined)
+        .map((key) => [key, workspace[key]]),
+      ...Object.entries(workspace).filter(([key]) => !orderedKeys.includes(key)),
+    ];
+    const fields = entries
+      .filter(([, value]) => value !== undefined && value !== null && value !== '')
+      .map(([key, value]) => {
+        if (typeof value === 'boolean') return `${key}: ${value}`;
+        return `${key}: "${String(value)}"`;
+      });
+    return `{ ${fields.join(', ')} }`;
+  };
+
+  const renderExecutionPolicyMetaFields = (proj) => {
+    const policy = proj?.executionWorkspacePolicy;
+    if (!policy || typeof policy !== 'object') return [];
+    const rows = [];
+    if (policy.defaultMode) rows.push(['executionWorkspacePolicy.defaultMode', policy.defaultMode]);
+    const strategy = policy.workspaceStrategy;
+    if (strategy && typeof strategy === 'object') {
+      if (strategy.type)
+        rows.push(['executionWorkspacePolicy.workspaceStrategy.type', strategy.type]);
+      if (strategy.baseRef)
+        rows.push(['executionWorkspacePolicy.workspaceStrategy.baseRef', strategy.baseRef]);
+    }
+    return rows;
+  };
+
   const mainProject = resolvedProjects[0];
   const mainProjectName = mainProject?.name || companyName;
 
   if (resolvedProjects.length > 0) {
     bootstrap += `## Projects\n\n`;
     for (const proj of resolvedProjects) {
-      const projCwd = join(companyDir, 'projects', toPascalCase(proj.name));
+      const workspace = normalizeProjectWorkspace(proj);
       bootstrap += `### ${proj.name}\n\n`;
       bootstrap += renderMeta([
-        ['workspace.sourceType', 'local_path'],
-        ['workspace.cwd', projCwd],
-        ['workspace.isPrimary', 'true'],
+        ...renderWorkspaceMetaFields(workspace),
+        ...renderExecutionPolicyMetaFields(proj),
         [
           'goalIds',
           proj.goals?.length > 0 ? proj.goals.map((g) => `"${g}"`).join(', ') : undefined,
@@ -787,6 +893,11 @@ export async function assembleCompany({
               : undefined;
       const resolvedProjectRef = explicitProjectRef || mainProjectName;
       const issueLabelNames = getIssueLabelNames(issue);
+      const goalRefRaw = issue.goalId || issue.goalIdRef || issue.goal || issue.goalTitle;
+      const goalRef =
+        typeof goalRefRaw === 'string' && goalRefRaw.trim().length > 0
+          ? goalRefRaw.trim()
+          : undefined;
       for (const labelName of issueLabelNames) {
         if (!labelsByName.has(labelName)) {
           labelsByName.set(labelName, {
@@ -806,6 +917,7 @@ export async function assembleCompany({
         ['priority', issue.priority || 'medium'],
         ['parentId', parentRef ? `→ "${parentRef}"` : undefined],
         ['projectId', `→ "${resolvedProjectRef}"`],
+        ['goalId', goalRef ? `→ "${goalRef}"` : undefined],
         ['labelIds', `→ [${issueLabelNames.map((name) => `"${name}"`).join(', ')}]`],
       ]);
       if (issue.description) {
@@ -818,7 +930,11 @@ export async function assembleCompany({
     bootstrap += `- Subtasks must include explicit \`parentId\` and explicit \`projectId\` matching the parent project unless an explicit override is required.\n`;
     bootstrap += `- Parent/subissue status is not implicitly coupled (no automatic status bounce).\n`;
     bootstrap += `- Do not reopen \`done\` parent/subissues without an explicit reason in a comment.\n`;
-    bootstrap += `- Do not reuse parent workspaces for subissues unless explicitly requested.\n\n`;
+    bootstrap += `- Do not reuse parent workspaces for subissues unless explicitly requested.\n`;
+    if (moduleNames.includes('pr-review')) {
+      bootstrap += `- Required PR reviews are explicit assigned child issues (Code Reviewer + Product Owner; plus Security/QA/UI/DevOps when relevant), not @-mentions.\n`;
+    }
+    bootstrap += `\n`;
   }
 
   // --- Routines ---
@@ -851,10 +967,13 @@ export async function assembleCompany({
     bootstrap += `${stepN++}. **Create goal** "${g.title}" (level: ${level}${parentNote})\n`;
   }
   for (const proj of resolvedProjects) {
-    const projCwd = join(companyDir, 'projects', toPascalCase(proj.name));
+    const workspace = normalizeProjectWorkspace(proj);
     const goalLinks =
       proj.goals?.length > 0 ? `, goalIds → [${proj.goals.map((g) => `"${g}"`).join(', ')}]` : '';
-    bootstrap += `${stepN++}. **Create project** "${proj.name}" (workspace: { sourceType: "local_path", cwd: \`${projCwd}\`, isPrimary: true }${goalLinks})\n`;
+    const policy = proj.executionWorkspacePolicy?.defaultMode
+      ? `, executionWorkspacePolicy.defaultMode: "${proj.executionWorkspacePolicy.defaultMode}"`
+      : '';
+    bootstrap += `${stepN++}. **Create project** "${proj.name}" (workspace: ${formatWorkspaceObject(workspace)}${policy}${goalLinks})\n`;
   }
   if (bootstrapLabels.length > 0) {
     bootstrap += `${stepN++}. **Create labels** — create each label exactly as listed in the Labels section before creating issues\n`;

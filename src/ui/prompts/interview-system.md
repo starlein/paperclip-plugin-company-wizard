@@ -28,7 +28,7 @@ Across your 3 questions, try to cover as many of these as the user's initial des
 3. **Quality vs speed** — Ship fast, iterate? Or production-grade, high quality from the start?
 4. **Team needs** — Do they need code review, security, design, marketing, docs, DevOps?
 5. **Special requirements** — Compliance, accessibility, specific tech stack, CI/CD, game engine?
-6. **Repository** — Is there an existing repo? What language/framework?
+6. **Repository** — Should Paperclip create a new Git repository/workspace, or should the agents use an existing external repo such as GitHub/GitLab? If external, ask for URL and branch/ref; never ask for tokens.
 
 Don't ask about things already clear from the initial description. Skip to what's missing.
 
@@ -37,8 +37,8 @@ Don't ask about things already clear from the initial description. Skip to what'
 The user's interview answers are the primary source of context for the company. When generating the configuration:
 
 - **`companyDescription`**: Write a comprehensive 2-4 paragraph description that captures EVERYTHING learned during the interview — what the company does, what it's building, who it's for, key technical decisions, constraints, priorities, and any special context. This is the company's permanent record. Be thorough. Do NOT summarize into a single vague sentence.
-- **`goals`**: Array of goals. The first goal is the main company goal — its description is the most important field. Write a THOROUGH, DETAILED description that includes EVERYTHING the user shared: full requirements, technical specs, acceptance criteria, constraints, edge cases, API contracts, user stories, design decisions, performance targets. If the user dropped a full spec, reproduce it in full. This is the primary brief all agents work from. Multiple paragraphs expected. Additional goals can be sub-goals (use `parentGoal` to reference the parent's title). Most setups need 1 main goal + 0-2 sub-goals.
-- **`projects`**: Array of projects. Each has a `name`, `description`, and `goals` array (goal titles it's linked to). Most setups need just one project linked to all goals.
+- **`goals`**: Array of goals. The first goal is the main user-specific company goal — its description is the most important field. Write a THOROUGH, DETAILED description that includes EVERYTHING the user shared: full requirements, technical specs, acceptance criteria, constraints, edge cases, API contracts, user stories, design decisions, performance targets. If the user dropped a full spec, reproduce it in full. This is the primary brief all agents work from. Multiple paragraphs expected. Additional goals can be sub-goals (use `parentGoal` to reference the parent's title). Most setups need 1 main goal + 0-2 sub-goals. Preset/module template goals are added by the wizard after your JSON, so do NOT replace the user's objective with generic preset goals like "Build a REST API" or "Set up CI/CD" unless the user explicitly asked only for that.
+- **`projects`**: Array of projects. Each has a `name`, `description`, `goals` array (goal titles it's linked to), and repository workspace metadata. If the user chose an external repo, use `workspace.sourceType: "git_repo"` with `repoUrl`, `repoRef`/`defaultRef`, and isolated git worktrees. If no external repo was provided, use a fresh local Git repository with `workspace.sourceType: "local_path"`, `workspace.defaultRef: "main"`, `workspace.setupCommand: "git init -b main"`, and `workspace.isPrimary: true`.
 
 ## RECOMMENDATION Format (when generating config)
 
@@ -53,4 +53,5 @@ Then output the JSON (no markdown fences):
 - `modules` should list ALL modules to activate (including preset ones).
 - `roles` should list ALL non-base roles the company needs. This includes roles that come with the preset. The system does not auto-add preset roles — you must list them explicitly.
 - If the project involves building software, `engineer` MUST be in `roles`.
+- The primary project MUST state whether it uses a fresh local Git repository or an external Git repository. Do not put credentials or tokens in repository fields.
 - Be pragmatic — don't over-engineer. Match the config to actual needs.

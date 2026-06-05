@@ -9,6 +9,7 @@ import {
 import { StepOnboarding } from './steps/StepOnboarding';
 import { StepName } from './steps/StepName';
 import { StepGoal } from './steps/StepGoal';
+import { StepRepository } from './steps/StepRepository';
 import { StepPreset } from './steps/StepPreset';
 import { StepModules } from './steps/StepModules';
 import { StepRoles } from './steps/StepRoles';
@@ -22,6 +23,7 @@ const STEP_COMPONENTS = {
   onboarding: StepOnboarding,
   name: StepName,
   goal: StepGoal,
+  repository: StepRepository,
   preset: StepPreset,
   modules: StepModules,
   roles: StepRoles,

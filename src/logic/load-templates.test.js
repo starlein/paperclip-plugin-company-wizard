@@ -1,6 +1,11 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateGoalTemplate, collectGoals } from './load-templates.js';
+import {
+  validateGoalTemplate,
+  collectGoals,
+  collectPresetBootstrapData,
+  resolveEffectiveModules,
+} from './load-templates.js';
 
 describe('validateGoalTemplate', () => {
   it('accepts a valid minimal goal (title + description only)', () => {
@@ -148,5 +153,70 @@ describe('collectGoals', () => {
     assert.equal(goals.length, 2);
     assert.equal(goals[0]._source, 'preset:quality');
     assert.equal(goals[1]._source, 'module:ci-cd');
+  });
+});
+
+describe('collectPresetBootstrapData', () => {
+  it('copies preset labels, issues, and routines used by the bootstrap assembler', () => {
+    const preset = {
+      name: 'strategic-platform',
+      labels: [{ name: 'ai', color: '#8957e5' }],
+      issues: [{ title: 'Seed strategy issue' }],
+      routines: [{ title: 'Weekly platform review', schedule: '0 9 * * 1' }],
+    };
+
+    const data = collectPresetBootstrapData(preset);
+
+    assert.deepStrictEqual(data.labels, [{ name: 'ai', color: '#8957e5' }]);
+    assert.deepStrictEqual(data.issues, [{ title: 'Seed strategy issue' }]);
+    assert.deepStrictEqual(data.routines, [
+      { title: 'Weekly platform review', schedule: '0 9 * * 1' },
+    ]);
+    data.issues[0].title = 'mutated';
+    assert.equal(preset.issues[0].title, 'Seed strategy issue');
+  });
+});
+
+describe('resolveEffectiveModules', () => {
+  it('includes preset modules even when the selected module list is sparse', () => {
+    const preset = { name: 'build-api', modules: ['build-api', 'github-repo', 'ci-cd'] };
+    const modules = [
+      { name: 'build-api' },
+      { name: 'github-repo' },
+      { name: 'ci-cd' },
+      { name: 'backlog' },
+    ];
+
+    const effective = resolveEffectiveModules(preset, modules, ['build-api']);
+
+    assert.deepStrictEqual(effective, ['build-api', 'github-repo', 'ci-cd']);
+  });
+
+  it('adds transitive required modules', () => {
+    const modules = [
+      { name: 'build-api', requires: ['github-repo'] },
+      { name: 'github-repo', requires: ['repo-policy'] },
+      { name: 'repo-policy' },
+    ];
+
+    const effective = resolveEffectiveModules(null, modules, ['build-api']);
+
+    assert.deepStrictEqual(effective, ['build-api', 'github-repo', 'repo-policy']);
+  });
+
+  it('lets collectGoals see every goal from the effective build-api preset modules', () => {
+    const preset = { name: 'build-api', modules: ['build-api', 'ci-cd'] };
+    const modules = [
+      { name: 'build-api', goal: { title: 'Build a REST API', description: 'API work' } },
+      { name: 'ci-cd', goal: { title: 'Set up CI/CD pipeline', description: 'Pipeline work' } },
+    ];
+
+    const effective = resolveEffectiveModules(preset, modules, ['build-api']);
+    const goals = collectGoals(preset, modules, new Set(effective));
+
+    assert.deepStrictEqual(
+      goals.map((g) => g.title),
+      ['Build a REST API', 'Set up CI/CD pipeline'],
+    );
   });
 });

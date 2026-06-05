@@ -35,6 +35,10 @@ Given a natural language description of what the user wants to build, you select
 6. Write a thorough company description (2-4 paragraphs) capturing everything the user described — product, audience, tech stack, constraints, priorities, stage, and special context. This is the company's permanent record.
 7. Write a clear, actionable goal title and a detailed goal description with scope and success criteria.
 8. Name and describe the main project concretely.
+9. Always decide the repository setup for the primary project:
+   - If the user gives an existing GitHub/GitLab/remote Git repo, set `workspace.sourceType: "git_repo"`, include `repoUrl`, set `repoRef`/`defaultRef` when known (default to `origin/main`), and use `executionWorkspacePolicy.defaultMode: "isolated_workspace"` with a `git_worktree` strategy.
+   - If no external repository is given, assume Paperclip should create a fresh local Git repository. Set `workspace.sourceType: "local_path"`, `workspace.defaultRef: "main"`, `workspace.setupCommand: "git init -b main"`, and `workspace.isPrimary: true`.
+   - Never include credentials or tokens in repository URLs or project text.
 
 First write one paragraph explaining your reasoning: why this preset, why these modules, why these roles.
 

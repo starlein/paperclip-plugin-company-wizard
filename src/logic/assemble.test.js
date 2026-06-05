@@ -356,6 +356,188 @@ describe('assembleCompany', () => {
     );
   });
 
+  it('renders git_repo workspace and execution workspace policy from project config', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'GitWorkspaceCo',
+      userProjects: [
+        {
+          name: 'app',
+          description: '',
+          goals: [],
+          repoUrl: 'https://github.com/example/app',
+          repoRef: 'origin/main',
+          executionWorkspacePolicy: {
+            defaultMode: 'isolated_workspace',
+            workspaceStrategy: { type: 'git_worktree', baseRef: 'origin/main' },
+          },
+        },
+      ],
+      moduleNames: [],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    const projectBlock = bootstrap.split('### app')[1] || '';
+
+    assert.ok(projectBlock.includes('**workspace.sourceType**: git_repo'));
+    assert.ok(projectBlock.includes('**workspace.repoUrl**: https://github.com/example/app'));
+    assert.ok(projectBlock.includes('**workspace.repoRef**: origin/main'));
+    assert.ok(projectBlock.includes('**workspace.defaultRef**: origin/main'));
+    assert.ok(
+      projectBlock.includes('**executionWorkspacePolicy.defaultMode**: isolated_workspace'),
+    );
+    assert.ok(
+      projectBlock.includes('**executionWorkspacePolicy.workspaceStrategy.type**: git_worktree'),
+    );
+    assert.ok(
+      projectBlock.includes('**executionWorkspacePolicy.workspaceStrategy.baseRef**: origin/main'),
+    );
+    assert.ok(!projectBlock.includes('**workspace.cwd**:'));
+    assert.ok(
+      bootstrap.includes(
+        'workspace: { sourceType: "git_repo", repoUrl: "https://github.com/example/app", repoRef: "origin/main", defaultRef: "origin/main", isPrimary: true }',
+      ),
+    );
+  });
+
+  it('renders fresh local git repository setup from project workspace config', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'NewRepoCo',
+      userProjects: [
+        {
+          name: 'app',
+          description: '',
+          goals: [],
+          workspace: {
+            sourceType: 'local_path',
+            defaultRef: 'main',
+            setupCommand: 'git init -b main',
+            isPrimary: true,
+          },
+          executionWorkspacePolicy: {
+            defaultMode: 'isolated_workspace',
+            workspaceStrategy: { type: 'git_worktree', baseRef: 'main' },
+          },
+        },
+      ],
+      moduleNames: [],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    const projectBlock = bootstrap.split('### app')[1] || '';
+
+    assert.ok(projectBlock.includes('**workspace.sourceType**: local_path'));
+    assert.ok(projectBlock.includes('**workspace.cwd**:'));
+    assert.ok(projectBlock.includes('/projects/App'));
+    assert.ok(projectBlock.includes('**workspace.defaultRef**: main'));
+    assert.ok(projectBlock.includes('**workspace.setupCommand**: git init -b main'));
+    assert.ok(
+      projectBlock.includes('**executionWorkspacePolicy.defaultMode**: isolated_workspace'),
+    );
+    assert.ok(
+      projectBlock.includes('**executionWorkspacePolicy.workspaceStrategy.type**: git_worktree'),
+    );
+    assert.ok(
+      projectBlock.includes('**executionWorkspacePolicy.workspaceStrategy.baseRef**: main'),
+    );
+    assert.ok(bootstrap.includes('setupCommand: "git init -b main"'));
+  });
+
+  it('includes explicit module/preset labels, preset issues, and goal linkage in BOOTSTRAP.md', async () => {
+    const modDir = join(templatesDir, 'modules', 'ai-mod');
+    await mkdir(modDir, { recursive: true });
+    await writeJson(join(modDir, 'module.meta.json'), {
+      name: 'ai-mod',
+      capabilities: [],
+      labels: [{ name: 'ai', color: '#8957e5', useFor: 'AI-native capabilities' }],
+      issues: [
+        {
+          title: 'Build AI copilot',
+          assignTo: 'engineer',
+          goal: 'AI-Native Capabilities',
+          labels: ['ai', 'feature'],
+        },
+      ],
+    });
+
+    const { companyDir, initialIssues } = await assembleCompany({
+      companyName: 'LabelCo',
+      moduleNames: ['ai-mod'],
+      extraRoleNames: [],
+      presetIssues: [{ title: 'Preset strategy issue', assignTo: 'ceo', labels: ['docs'] }],
+      presetLabels: [{ name: 'docs', color: '#0969da', useFor: 'Documentation' }],
+      outputDir,
+      templatesDir,
+    });
+
+    assert.equal(initialIssues.length, 2);
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(bootstrap.includes('### ai'));
+    assert.ok(bootstrap.includes('**color**: #8957e5'));
+    assert.ok(bootstrap.includes('### docs'));
+    assert.ok(bootstrap.includes('### Preset strategy issue'));
+    const copilotBlock = bootstrap.split('### Build AI copilot')[1] || '';
+    assert.ok(copilotBlock.includes('**goalId**: → "AI-Native Capabilities"'));
+    assert.ok(copilotBlock.includes('**labelIds**: → ["ai", "feature"]'));
+  });
+
+  it('redacts obvious secrets from generated bootstrap text', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'SecretCo',
+      companyDescription: 'Use GH_TOKEN=ghp_abcdefghijklmnopqrstuvwxyz1234567890 for GitHub.',
+      userGoals: [
+        {
+          title: 'Ship securely',
+          description: 'OpenAI key sk-abcdefghijklmnopqrstuvwxyz1234567890 must never be pasted.',
+        },
+      ],
+      userProjects: [
+        {
+          name: 'app',
+          description: 'PASSWORD=hunter2 should be stored as a company secret.',
+          goals: ['Ship securely'],
+        },
+      ],
+      moduleNames: [],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(bootstrap.includes('GH_TOKEN=[REDACTED]'));
+    assert.ok(bootstrap.includes('sk-[REDACTED]') || bootstrap.includes('[REDACTED]'));
+    assert.ok(bootstrap.includes('PASSWORD=[REDACTED]'));
+    assert.ok(!bootstrap.includes('hunter2'));
+    assert.ok(!bootstrap.includes('abcdefghijklmnopqrstuvwxyz1234567890'));
+  });
+
+  it('adds PR-review child issue guardrail when pr-review module is active', async () => {
+    const prDir = join(templatesDir, 'modules', 'pr-review');
+    await mkdir(prDir, { recursive: true });
+    await writeJson(join(prDir, 'module.meta.json'), {
+      name: 'pr-review',
+      capabilities: [],
+      issues: [{ title: 'Set up PR reviews', assignTo: 'engineer' }],
+    });
+
+    const { companyDir } = await assembleCompany({
+      companyName: 'ReviewCo',
+      moduleNames: ['pr-review'],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(bootstrap.includes('Required PR reviews are explicit assigned child issues'));
+  });
+
   it('renders agent hire metadata required by Paperclip v2026.403.0', async () => {
     const engineerMeta = join(templatesDir, 'roles', 'engineer', 'role.meta.json');
     await writeJson(engineerMeta, {

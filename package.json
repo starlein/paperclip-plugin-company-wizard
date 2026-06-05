@@ -1,12 +1,9 @@
 {
   "name": "@starlein/paperclip-plugin-company-wizard",
-  "version": "0.2.4",
+  "version": "0.2.6",
   "type": "module",
   "description": "AI-powered wizard to bootstrap paperclip agent companies from composable templates (for latest paperclip version)",
   "repository": "https://github.com/starlein/paperclip-plugin-company-wizard",
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "scripts": {
     "build": "node ./esbuild.config.mjs",
     "build:rollup": "rollup -c",
@@ -15,7 +12,7 @@
     "test": "vitest run --config ./vitest.config.ts",
     "test:logic": "node --test src/logic/*.test.js src/api/*.test.js",
     "typecheck": "tsc --noEmit",
-    "publish:npm": "npm publish --access private",
+    "publish:npm": "npm publish --access restricted",
     "prepublishOnly": "pnpm build",
     "prepare": "husky"
   },
@@ -47,8 +44,8 @@
     "tailwind-merge": "^3.4.1"
   },
   "devDependencies": {
-    "@paperclipai/plugin-sdk": "link:../paperclip/packages/plugins/sdk",
-    "@paperclipai/shared": "link:../paperclip/packages/shared",
+    "@paperclipai/plugin-sdk": "^2026.529.0",
+    "@paperclipai/shared": "^2026.529.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-typescript": "^12.1.2",
     "@tailwindcss/postcss": "^4.0.7",
