@@ -99,7 +99,8 @@
       "title": "CI pipeline health check",
       "description": "Review recent CI runs for failures, flaky tests, and slow builds. Flag regressions and report pipeline health status.",
       "assignTo": "capability:ci-cd",
-      "schedule": "0 9 * * 1-5"
+      "schedule": "0 */6 * * *",
+      "concurrencyPolicy": "skip_if_active"
     }
   ]
 }

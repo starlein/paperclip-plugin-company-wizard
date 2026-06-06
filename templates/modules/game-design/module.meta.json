@@ -10,6 +10,24 @@
         "ceo"
       ],
       "fallbackSkill": "game-design.fallback"
+    },
+    {
+      "skill": "level-design",
+      "owners": [
+        "level-designer",
+        "game-designer",
+        "engineer"
+      ],
+      "fallbackSkill": "level-design.fallback"
+    },
+    {
+      "skill": "audio-design",
+      "owners": [
+        "audio-designer",
+        "game-designer",
+        "engineer"
+      ],
+      "fallbackSkill": "audio-design.fallback"
     }
   ],
   "issues": [

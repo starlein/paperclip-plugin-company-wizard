@@ -186,9 +186,16 @@ describe('assembleCompany', () => {
     );
     assert.ok(skillContent.includes('# Git skill'));
 
-    // AGENTS.md should reference the skill
+    // AGENTS.md should reference the skill via an absolute path (no unresolved $AGENT_HOME)
     const agentsMd = await readFile(join(companyDir, 'agents', 'engineer', 'AGENTS.md'), 'utf-8');
-    assert.ok(agentsMd.includes('$AGENT_HOME/skills/git-workflow.md'));
+    assert.ok(
+      agentsMd.includes(join(companyDir, 'agents', 'engineer', 'skills', 'git-workflow.md')),
+      'AGENTS.md should reference the skill by absolute path',
+    );
+    assert.ok(
+      !agentsMd.includes('$AGENT_HOME'),
+      'AGENTS.md should not contain unresolved $AGENT_HOME',
+    );
   });
 
   it('appends shared doc references to all AGENTS.md files', async () => {

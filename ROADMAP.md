@@ -4,7 +4,7 @@
 
 - Shared skills system — deduplicate primary skills, role-specific overrides only when genuinely different
 - 26 modules: vision-workshop, market-analysis, hiring-review, tech-stack, architecture-plan, github-repo, pr-review, backlog, auto-assign, stall-detection, brand-identity, user-testing, ci-cd, monitoring, competitive-intel, documentation, security-audit, accessibility, website-relaunch, build-api, launch-mvp, codebase-onboarding, triage, dependency-management, release-management, game-design
-- 17 optional roles: product-owner, code-reviewer, ui-designer, ux-researcher, cto, cmo, cfo, devops, qa, technical-writer, security-engineer, customer-success, game-designer, level-designer, game-artist, audio-designer
+- 16 optional roles: product-owner, engineer, code-reviewer, ui-designer, ux-researcher, cto, cmo, devops, qa, technical-writer, security-engineer, customer-success, game-designer, level-designer, game-artist, audio-designer
 - 15 presets: fast, quality, rad, startup, research, full, secure, gtm, content, launch-mvp, build-api, website-relaunch, repo-maintenance, build-game, launch-pack
 - Template catalogue in README
 - Special characters in company names (stripped in PascalCase)

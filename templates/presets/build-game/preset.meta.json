@@ -5,6 +5,7 @@
   "roles": [
     "engineer",
     "game-designer",
+    "level-designer",
     "game-artist",
     "audio-designer"
   ],
@@ -114,7 +115,7 @@
       "title": "Design all levels and progression",
       "description": "Create detailed level designs for the full game:\n- Level-by-level breakdown: layout, encounters, mechanics introduced, difficulty target\n- Progression curve: how difficulty ramps across the full game\n- Unlock schedule: what the player earns and when\n- Pacing map: tension/relief rhythm across the full experience\n\nOutput: docs/LEVEL-DESIGNS.md with per-level specs.",
       "priority": "high",
-      "assignTo": "game-designer"
+      "assignTo": "level-designer"
     },
     {
       "title": "Create remaining art assets",

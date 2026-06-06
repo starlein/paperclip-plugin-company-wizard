@@ -6,13 +6,15 @@
     "engineer",
     "cmo",
     "customer-success",
-    "product-owner"
+    "product-owner",
+    "ux-researcher"
   ],
   "modules": [
     "vision-workshop",
     "market-analysis",
     "competitive-intel",
     "brand-identity",
+    "user-testing",
     "github-repo",
     "backlog",
     "auto-assign",

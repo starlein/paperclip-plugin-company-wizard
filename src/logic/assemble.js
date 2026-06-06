@@ -233,6 +233,17 @@ export async function assembleCompany({
   const explicitBootstrapLabels = Array.isArray(presetLabels) ? [...presetLabels] : [];
   const roleAdapterOverrides = new Map(); // role name → merged adapter overrides from modules
 
+  // Track issue titles already queued so module issues don't duplicate a curated
+  // preset issue (or an earlier module's issue). Preset issues are seeded first, so
+  // the richer preset version always wins over a generic module issue of the same name.
+  const normalizeIssueTitle = (title) =>
+    String(title || '')
+      .trim()
+      .toLowerCase();
+  const seenIssueTitles = new Set(
+    initialIssues.map((issue) => normalizeIssueTitle(issue.title)).filter(Boolean),
+  );
+
   // Helper: resolve assignee for a role name or capability reference
   const resolveAssignee = (assignee, moduleJson) => {
     if (assignee?.startsWith('capability:')) {
@@ -270,6 +281,12 @@ export async function assembleCompany({
     // Collect issues (backward compat: read tasks[] if issues[] not present)
     const moduleIssues = moduleJson?.issues || moduleJson?.tasks || [];
     for (const issue of moduleIssues) {
+      const titleKey = normalizeIssueTitle(issue.title);
+      if (titleKey && seenIssueTitles.has(titleKey)) {
+        onProgress(`○ issue "${issue.title}" (already provided by preset or earlier module)`);
+        continue;
+      }
+      if (titleKey) seenIssueTitles.add(titleKey);
       initialIssues.push({
         ...issue,
         assignTo: resolveAssignee(issue.assignTo, moduleJson),
@@ -471,11 +488,48 @@ export async function assembleCompany({
         if (await exists(agentsMd)) {
           let docRefs = '\n## Shared Documentation\n';
           for (const doc of docs) {
-            docRefs += `\nRead: \`docs/${doc}\`\n`;
+            // Absolute path: the agent's runtime cwd is the execution workspace
+            // (often a project repo), not the company dir, so a relative `docs/`
+            // reference would not resolve. The shared docs live at companyDir/docs.
+            docRefs += `\nRead: \`${join(companyDir, 'docs', doc)}\`\n`;
           }
           await appendToFile(agentsMd, docRefs);
         }
       }
+    }
+  }
+
+  // 5b. Resolve `$AGENT_HOME` references to absolute paths.
+  //
+  // Role templates and the generated skill references use `$AGENT_HOME/...` to
+  // point at the agent's own files (HEARTBEAT.md, SOUL.md, TOOLS.md, skills/,
+  // memory/, life/). At runtime Paperclip sets AGENT_HOME to a separate per-agent
+  // workspace dir (<instanceRoot>/workspaces/<agentId>) that does NOT contain
+  // these provisioned files, so the references would not resolve. The agent's
+  // instructionsFilePath is the absolute companyDir/agents/<role>/AGENTS.md, and
+  // its sibling files live alongside it — so we rewrite `$AGENT_HOME` to that
+  // absolute directory, which resolves regardless of the agent's runtime cwd.
+  const agentsBaseDirForSubst = join(companyDir, 'agents');
+  if (await exists(agentsBaseDirForSubst)) {
+    const agentRoleDirs = await readdir(agentsBaseDirForSubst, { withFileTypes: true });
+    for (const roleDir of agentRoleDirs) {
+      if (!roleDir.isDirectory()) continue;
+      const absoluteAgentHome = join(agentsBaseDirForSubst, roleDir.name);
+      const subst = async (dir) => {
+        const entries = await readdir(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          const full = join(dir, entry.name);
+          if (entry.isDirectory()) {
+            await subst(full);
+          } else if (entry.name.endsWith('.md')) {
+            const content = await readFile(full, 'utf-8');
+            if (content.includes('$AGENT_HOME')) {
+              await writeFile(full, content.split('$AGENT_HOME').join(absoluteAgentHome));
+            }
+          }
+        }
+      };
+      await subst(join(agentsBaseDirForSubst, roleDir.name));
     }
   }
 

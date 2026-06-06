@@ -78,14 +78,19 @@ export async function loadModules(templatesDir) {
   for (const dir of dirs) {
     if (!dir.isDirectory()) continue;
     const moduleJson = await readJson(join(modulesDir, dir.name, 'module.meta.json'));
-    const readmePath = join(modulesDir, dir.name, 'README.md');
-    let description = '';
-    if (await exists(readmePath)) {
-      const content = await readFile(readmePath, 'utf-8');
-      const descLine = content.split('\n').find((l) => l.length > 0 && !l.startsWith('#'));
-      description = descLine?.trim() || '';
+    const mod = { name: dir.name, ...(moduleJson || {}) };
+    // Description precedence: module.meta.json wins. Only fall back to the first
+    // content line of README.md when the manifest has no description — otherwise
+    // the README read would be wasted work (its value is immediately discarded).
+    if (!mod.description) {
+      const readmePath = join(modulesDir, dir.name, 'README.md');
+      if (await exists(readmePath)) {
+        const content = await readFile(readmePath, 'utf-8');
+        const descLine = content.split('\n').find((l) => l.length > 0 && !l.startsWith('#'));
+        mod.description = descLine?.trim() || '';
+      }
     }
-    const mod = { name: dir.name, description, ...(moduleJson || {}) };
+    if (mod.description === undefined) mod.description = '';
     // Backward compat: rename tasks → issues if old format
     if (mod.tasks && !mod.issues) {
       mod.issues = mod.tasks;

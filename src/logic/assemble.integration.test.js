@@ -255,14 +255,15 @@ describe('assembleCompany integration (real templates)', () => {
       templatesDir: REAL_TEMPLATES_DIR,
     });
 
-    // github-repo has agent-specific skill for engineer
+    // github-repo has agent-specific skill for engineer; reference must be the
+    // absolute provisioned path, not an unresolved $AGENT_HOME placeholder.
     const engAgentsMd = await readFile(
       join(companyDir, 'agents', 'engineer', 'AGENTS.md'),
       'utf-8',
     );
     assert.ok(
-      engAgentsMd.includes('$AGENT_HOME/skills/git-workflow.md'),
-      'engineer AGENTS.md should have $AGENT_HOME skill reference for git-workflow',
+      engAgentsMd.includes(join(companyDir, 'agents', 'engineer', 'skills', 'git-workflow.md')),
+      'engineer AGENTS.md should reference git-workflow skill by absolute path',
     );
 
     // Skill file should exist at the referenced location
@@ -270,6 +271,36 @@ describe('assembleCompany integration (real templates)', () => {
       await exists(join(companyDir, 'agents', 'engineer', 'skills', 'git-workflow.md')),
       'engineer skills/git-workflow.md should exist',
     );
+  });
+
+  it('resolves all $AGENT_HOME references to absolute paths in agent files', async () => {
+    const { companyDir, allRoles } = await assembleCompany({
+      companyName: 'AgentHomeCo',
+      moduleNames: ['github-repo'],
+      extraRoleNames: ['engineer', 'product-owner'],
+      outputDir,
+      templatesDir: REAL_TEMPLATES_DIR,
+    });
+
+    for (const role of allRoles) {
+      const roleDir = join(companyDir, 'agents', role);
+      for (const file of ['AGENTS.md', 'HEARTBEAT.md', 'SOUL.md', 'TOOLS.md']) {
+        const p = join(roleDir, file);
+        if (!(await exists(p))) continue;
+        const content = await readFile(p, 'utf-8');
+        assert.ok(
+          !content.includes('$AGENT_HOME'),
+          `${role}/${file} should not contain unresolved $AGENT_HOME`,
+        );
+        // The role's own files should be referenced under its absolute home dir.
+        if (content.includes('/skills/') || content.includes('/HEARTBEAT.md')) {
+          assert.ok(
+            content.includes(roleDir),
+            `${role}/${file} should reference files under its absolute home dir`,
+          );
+        }
+      }
+    }
   });
 
   it('generates complete output for minimal config (base roles only, no modules)', async () => {

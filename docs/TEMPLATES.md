@@ -330,11 +330,10 @@ Every company starts with just the **CEO** (the only base role). All other roles
 | **UX Researcher** | `researcher` | CEO | Takes over market-analysis and user-testing |
 | **CTO** | `cto` | CEO | Technical leadership, architecture oversight |
 | **CMO** | `cmo` | CEO | Marketing strategy, go-to-market, growth metrics |
-| **CFO** | `cfo` | CEO | Financial planning, budget tracking, cost analysis |
 | **DevOps Engineer** | `devops` | CEO | Takes over ci-cd and monitoring from Engineer |
 | **QA Engineer** | `qa` | CEO | Takes over user-testing, quality gates |
 | **Technical Writer** | `general` | CEO | Takes over documentation, adds doc review pass |
-| **Security Engineer** | `general` | CEO | Takes over security-audit, adds security review pass |
+| **Security Engineer** | `security` | CEO | Takes over security-audit, adds security review pass |
 | **Customer Success** | `general` | CEO | Takes over competitive-intel customer analysis |
 | **Game Designer** | `pm` | CEO | Takes over game-design from Engineer, playtesting focus |
 | **Level Designer** | `pm` | CEO | Takes over level-specific design from Game Designer |
@@ -493,7 +492,7 @@ templates/roles/<name>/
 | `base` | `true` for always-present roles (ceo only). Omit or `false` for optional. |
 | `division` | Functional grouping: `leadership`, `engineering`, `design`, `product`. Used for display and AI selection. |
 | `tagline` | One-liner personality summary for wizard UX and AI wizard selection. |
-| `paperclipRole` | Paperclip enum: `ceo`, `engineer`, `pm`, `qa`, `designer`, `cto`, `cmo`, `cfo`, `devops`, `researcher`, `general` |
+| `paperclipRole` | Paperclip enum: `ceo`, `engineer`, `pm`, `qa`, `designer`, `cto`, `cmo`, `cfo`, `security`, `devops`, `researcher`, `general` |
 | `adapter` | Passed to `adapterConfig` during provisioning. |
 
 ### Add a preset

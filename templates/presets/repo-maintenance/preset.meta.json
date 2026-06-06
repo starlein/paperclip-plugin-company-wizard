@@ -5,7 +5,8 @@
   "roles": [
     "engineer",
     "code-reviewer",
-    "product-owner"
+    "product-owner",
+    "devops"
   ],
   "modules": [
     "github-repo",

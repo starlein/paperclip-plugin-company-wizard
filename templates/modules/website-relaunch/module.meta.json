@@ -118,7 +118,8 @@
     {
       "title": "Broken link and redirect check",
       "description": "Crawl the site and verify all internal links resolve, external links are reachable, and redirects from the old URL map return correct status codes.",
-      "schedule": "0 6 * * *",
+      "schedule": "0 */6 * * *",
+      "concurrencyPolicy": "skip_if_active",
       "assignTo": "engineer"
     },
     {

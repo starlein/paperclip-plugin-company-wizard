@@ -7,7 +7,7 @@
       "title": "Stall detection",
       "description": "Check all in_progress issues for signs of stalling. Nudge assigned agents, escalate if blocked for >24h.",
       "assignTo": "ceo",
-      "schedule": "0 9,14 * * 1-5",
+      "schedule": "0 */3 * * *",
       "priority": "medium",
       "concurrencyPolicy": "skip_if_active"
     }

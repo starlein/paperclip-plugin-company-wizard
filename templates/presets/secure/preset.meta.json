@@ -15,6 +15,7 @@
     "security-audit",
     "github-repo",
     "pr-review",
+    "monitoring",
     "backlog",
     "auto-assign",
     "stall-detection"

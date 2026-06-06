@@ -5,13 +5,15 @@
   "roles": [
     "engineer",
     "technical-writer",
-    "product-owner"
+    "product-owner",
+    "ux-researcher"
   ],
   "modules": [
     "vision-workshop",
     "market-analysis",
     "documentation",
     "accessibility",
+    "user-testing",
     "github-repo",
     "backlog",
     "auto-assign",

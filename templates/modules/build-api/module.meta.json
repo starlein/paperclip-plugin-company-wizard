@@ -75,6 +75,7 @@
       "title": "API health check",
       "description": "Verify the API health endpoint responds correctly and monitor uptime.",
       "schedule": "*/15 * * * *",
+      "concurrencyPolicy": "skip_if_active",
       "assignTo": "engineer"
     },
     {

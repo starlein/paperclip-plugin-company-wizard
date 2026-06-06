@@ -5,6 +5,36 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.2.7] — 2026-06-06
+
+### Added
+
+- Two new `game-design` capabilities: `level-design` (owners: level-designer → game-designer → engineer) and `audio-design` (owners: audio-designer → game-designer → engineer), each with a shared primary skill and role fallback — so the Level Designer and Audio Designer roles now own real module work instead of shipping empty.
+- `level-designer` added to the `build-game` preset; its "Design all levels and progression" issue reassigned to the specialist.
+- Preset coverage: `monitoring` added to `secure` and `full`; `user-testing` added to `gtm`, `content`, and `launch-pack`; `devops` role added to `repo-maintenance`, `qa` to `quality`, `ux-researcher` to `gtm` and `content`. Every module and role is now referenced by at least one preset.
+- `src/logic/load-templates.d.ts` — type declarations for the plain-JS loader (restores a clean `tsc --noEmit`).
+- Tests: `loadModules` description-precedence cases and an integration test asserting all `$AGENT_HOME` references resolve to absolute paths.
+
+### Changed
+
+- **Routines now run every few hours, around the clock** (previously weekly or business-hours only): auto-assign every 2h, stall-detection every 3h, backlog grooming every 4h, CI pipeline health every 6h, broken-link check every 6h. `concurrencyPolicy: skip_if_active` added to the frequent routines (including the `*/15` API health check) so runs never pile up. Periodic audits (dependency/security scan, Core Web Vitals) stay weekly.
+- **Initial backlog**: the `backlog` module's bootstrap issue now seeds an initial backlog of 15-20 actionable issues so the team has immediate, parallelizable work; grooming keeps at least 8 actionable issues ready (was 3).
+- `security-engineer` now maps to the dedicated Paperclip `security` role (was `general`).
+- `@paperclipai/plugin-sdk` and `@paperclipai/shared` are declared as `peerDependencies` with the minimum required version `>=2026.529.0` — the host provides the SDK at runtime (it is externalized from the bundle).
+- `loadModules()` description precedence: `module.meta.json` `description` wins; the README first line is only a fallback (removes a redundant file read).
+- `ux-review` skill now guards its `docs/USER-TESTING.md` reference with an explicit "if exists" condition, matching the other review skills.
+
+### Fixed
+
+- **Broken agent file links**: skill, shared-doc, and role-file references used `$AGENT_HOME/...` (or relative `docs/...`), but Paperclip sets `AGENT_HOME` to a separate per-agent workspace dir (`<instanceRoot>/workspaces/<agentId>`) that does not contain the provisioned files. Assembly now rewrites every `$AGENT_HOME` reference and the shared-doc references to absolute paths under `companyDir/agents/<role>/` and `companyDir/docs/`, so HEARTBEAT/SOUL/TOOLS/skills/docs resolve regardless of the agent's runtime cwd.
+- **Duplicate bootstrap issues**: a module issue sharing a title with a curated preset issue (e.g. `build-game`'s "Create Game Design Document") was emitted twice. Assembly now de-duplicates issues by title, with the preset issue winning.
+- `tsc --noEmit` failure (TS7016) on the `load-templates.js` import, via the new declaration file.
+
+### Removed
+
+- `cfo` role — it was orphaned (in no preset, owned no capability, never activated). Documentation and role counts updated. The `cfo` value remains a valid Paperclip `paperclipRole` enum entry.
+
+---
 ## [0.2.6] — 2026-05-06
 
 ### Added

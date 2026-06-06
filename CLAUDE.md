@@ -70,7 +70,7 @@ templates/
     └── messages.json
 ```
 
-**Current counts**: 15 presets, 26 modules, 17 optional roles (CEO is the only base role).
+**Current counts**: 15 presets, 26 modules, 16 optional roles (CEO is the only base role).
 
 ### Skill Resolution
 

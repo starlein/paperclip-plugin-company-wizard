@@ -1,10 +1,14 @@
-import { describe, it } from 'node:test';
+import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import {
   validateGoalTemplate,
   collectGoals,
   collectPresetBootstrapData,
   resolveEffectiveModules,
+  loadModules,
 } from './load-templates.js';
 
 describe('validateGoalTemplate', () => {
@@ -174,6 +178,52 @@ describe('collectPresetBootstrapData', () => {
     ]);
     data.issues[0].title = 'mutated';
     assert.equal(preset.issues[0].title, 'Seed strategy issue');
+  });
+});
+
+describe('loadModules description precedence', () => {
+  let tmpDir;
+  let templatesDir;
+
+  const writeModule = async (name, { meta, readme } = {}) => {
+    const modDir = join(templatesDir, 'modules', name);
+    await mkdir(modDir, { recursive: true });
+    await writeFile(join(modDir, 'module.meta.json'), JSON.stringify(meta ?? {}));
+    if (readme !== undefined) await writeFile(join(modDir, 'README.md'), readme);
+  };
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), 'load-templates-'));
+    templatesDir = join(tmpDir, 'templates');
+    await mkdir(join(templatesDir, 'modules'), { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('uses module.meta.json description when present', async () => {
+    await writeModule('alpha', {
+      meta: { description: 'From manifest' },
+      readme: '# Alpha\n\nFrom README',
+    });
+    const modules = await loadModules(templatesDir);
+    const alpha = modules.find((m) => m.name === 'alpha');
+    assert.equal(alpha.description, 'From manifest');
+  });
+
+  it('falls back to the first README content line when manifest has no description', async () => {
+    await writeModule('beta', { meta: {}, readme: '# Beta\n\nFrom README line' });
+    const modules = await loadModules(templatesDir);
+    const beta = modules.find((m) => m.name === 'beta');
+    assert.equal(beta.description, 'From README line');
+  });
+
+  it('defaults to empty string when neither manifest nor README provides a description', async () => {
+    await writeModule('gamma', { meta: {} });
+    const modules = await loadModules(templatesDir);
+    const gamma = modules.find((m) => m.name === 'gamma');
+    assert.equal(gamma.description, '');
   });
 });
 
