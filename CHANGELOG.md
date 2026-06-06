@@ -5,6 +5,13 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.0] - 2026-06-06
+
+### Fixed
+
+- Secret reference handling for plugin settings now works with the current Paperclip host secret flow.
+
+---
 ## [0.2.7] — 2026-06-06
 
 ### Added
