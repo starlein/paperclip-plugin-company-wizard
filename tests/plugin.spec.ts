@@ -1,7 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTestHarness } from "@paperclipai/plugin-sdk/testing";
 import manifest from "../src/manifest.js";
 import plugin from "../src/worker.js";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("plugin-clipper", () => {
   it("registers templates data handler", async () => {
@@ -35,6 +39,35 @@ describe("plugin-clipper", () => {
     // Should return graceful error without a companyName (no longer throws)
     const result = await harness.performAction("start-provision", {}) as { error?: string };
     expect(result.error).toBe("companyName is required");
+  });
+
+  it("resolves the configured Anthropic secret ref before calling Anthropic", async () => {
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      return new Response(JSON.stringify({ content: [{ text: "ok" }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const harness = createTestHarness({
+      manifest,
+      capabilities: manifest.capabilities,
+      config: { anthropicApiKey: "anthropic-secret-ref" },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    const result = await harness.performAction("ai-chat", {
+      messages: [{ role: "user", content: "hello" }],
+    }) as { text?: string; error?: string };
+
+    expect(result).toEqual({ text: "ok" });
+    expect(fetchMock).toHaveBeenCalledOnce();
+
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect((init.headers as Record<string, string>)["x-api-key"]).toBe(
+      "resolved:anthropic-secret-ref",
+    );
   });
 
   it("reports healthy", async () => {

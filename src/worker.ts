@@ -120,6 +120,39 @@ async function ensureTemplatesDir(cfg: Record<string, string>): Promise<string> 
   }
 }
 
+type SecretResolverContext = {
+  secrets: {
+    resolve(secretRef: string): Promise<string>;
+  };
+};
+
+function isLikelyAnthropicApiKey(value: string): boolean {
+  return value.startsWith('sk-ant-');
+}
+
+async function resolveAnthropicApiKey(
+  ctx: SecretResolverContext,
+  configuredValue: unknown,
+): Promise<string> {
+  if (typeof configuredValue !== 'string') return '';
+  const secretRef = configuredValue.trim();
+  if (!secretRef) return '';
+
+  try {
+    const resolved = await ctx.secrets.resolve(secretRef);
+    return resolved.trim();
+  } catch (err) {
+    // Backward compatibility: older installs may still have the raw Anthropic key
+    // stored in config instead of a Paperclip secret reference.
+    if (isLikelyAnthropicApiKey(secretRef)) return secretRef;
+
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Anthropic API key secret could not be resolved. Re-save the plugin setting with a valid Paperclip secret reference. ${detail}`,
+    );
+  }
+}
+
 function loadJsonFiles(dir: string, filename: string): { items: any[]; errors: string[] } {
   const items: any[] = [];
   const errors: string[] = [];
@@ -416,7 +449,7 @@ const plugin = definePlugin({
     ctx.actions.register('ai-chat', async (params) => {
       try {
         const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
-        const apiKey = cfg.anthropicApiKey || '';
+        const apiKey = await resolveAnthropicApiKey(ctx, cfg.anthropicApiKey);
         if (!apiKey) {
           return {
             text: '',
@@ -455,7 +488,8 @@ const plugin = definePlugin({
     ctx.actions.register('check-ai-config', async () => {
       try {
         const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
-        if (!cfg.anthropicApiKey) {
+        const apiKey = await resolveAnthropicApiKey(ctx, cfg.anthropicApiKey);
+        if (!apiKey) {
           return {
             ok: false,
             error: 'Anthropic API key not configured. Add it in plugin settings (anthropicApiKey).',

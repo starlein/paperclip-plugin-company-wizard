@@ -19,6 +19,7 @@ const manifest: PaperclipPluginManifestV1 = {
     'projects.read',
     'plugin.state.read',
     'plugin.state.write',
+    'secrets.read-ref',
     'events.subscribe',
     'ui.page.register',
     'ui.sidebar.register',
