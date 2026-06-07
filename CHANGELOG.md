@@ -5,6 +5,13 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.5] - 2026-06-07
+
+### Changed
+
+- **Worker agents no longer run always-on heartbeats.** Since the plugin now provisions the whole team (0.3.2) plus all routines (0.3.4), enabling a heartbeat on every agent produced a burst of concurrent and queued runs that overloaded the dev server (frequent crashes/restarts, cascading `process_lost` failures). Paperclip wakes an agent when work is assigned to it, and routines drive scheduled work, so only the CEO (coordinator) keeps an always-on heartbeat; all other agents are now created with the heartbeat disabled and woken on assignment. This sharply reduces baseline concurrency.
+
+---
 ## [0.3.4] - 2026-06-07
 
 ### Fixed

@@ -63,3 +63,20 @@ export function buildCeoAgentRuntimeConfig() {
     },
   };
 }
+
+/**
+ * Runtime config for non-CEO ("worker") agents. Heartbeat is DISABLED: Paperclip
+ * wakes an agent when work is assigned to it (and routines drive scheduled work),
+ * so always-on heartbeats for every agent are unnecessary. Enabling them for the
+ * whole team at once produced a burst of concurrent/queued runs that overloaded the
+ * server. The interval/concurrency are kept for when a heartbeat is later enabled.
+ */
+export function buildWorkerAgentRuntimeConfig() {
+  return {
+    heartbeat: {
+      enabled: false,
+      intervalSec: DEFAULT_CEO_HEARTBEAT_INTERVAL_SEC,
+      maxConcurrentRuns: DEFAULT_CEO_MAX_CONCURRENT_RUNS,
+    },
+  };
+}

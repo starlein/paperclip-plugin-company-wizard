@@ -20,3 +20,11 @@ export function buildCeoAgentRuntimeConfig(): {
     maxConcurrentRuns: number;
   };
 };
+
+export function buildWorkerAgentRuntimeConfig(): {
+  heartbeat: {
+    enabled: boolean;
+    intervalSec: number;
+    maxConcurrentRuns: number;
+  };
+};

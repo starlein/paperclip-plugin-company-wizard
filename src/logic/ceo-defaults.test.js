@@ -6,6 +6,7 @@ import {
   DEFAULT_CEO_MODEL,
   DEFAULT_CEO_THINKING_LEVEL,
   buildCeoAgentRuntimeConfig,
+  buildWorkerAgentRuntimeConfig,
   buildCeoAdapterConfig,
   normalizeCeoAdapterType,
 } from './ceo-defaults.js';
@@ -30,6 +31,12 @@ describe('CEO provisioning defaults', () => {
     );
     assert.deepEqual(buildCeoAgentRuntimeConfig(), {
       heartbeat: { enabled: true, intervalSec: 3600, maxConcurrentRuns: 1 },
+    });
+  });
+
+  it('disables always-on heartbeats for worker agents (woken on assignment + routines)', () => {
+    assert.deepEqual(buildWorkerAgentRuntimeConfig(), {
+      heartbeat: { enabled: false, intervalSec: 3600, maxConcurrentRuns: 1 },
     });
   });
 

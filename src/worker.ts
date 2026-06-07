@@ -12,6 +12,7 @@ import { PaperclipClient } from './api/client.js';
 import {
   buildCeoAdapterConfig,
   buildCeoAgentRuntimeConfig,
+  buildWorkerAgentRuntimeConfig,
   normalizeCeoAdapterType,
 } from './logic/ceo-defaults.js';
 // @ts-ignore
@@ -931,7 +932,11 @@ const plugin = definePlugin({
               templateRole: roleName,
               ...(roleDescription ? { description: roleDescription } : {}),
             };
-            const roleRuntimeConfig = buildCeoAgentRuntimeConfig();
+            // Worker agents have heartbeat DISABLED — Paperclip wakes them on
+            // assignment and their routines drive scheduled work. Enabling always-on
+            // heartbeats for the whole team at once overloaded the server with
+            // concurrent/queued runs.
+            const roleRuntimeConfig = buildWorkerAgentRuntimeConfig();
             const roleAdapterConfig: Record<string, unknown> = buildCeoAdapterConfig({
               userCeoAdapter,
               companyDir,
