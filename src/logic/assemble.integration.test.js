@@ -105,7 +105,7 @@ describe('assembleCompany integration (real templates)', () => {
     );
 
     const labelsStep = bootstrap.indexOf('**Create labels**');
-    const agentsStep = bootstrap.indexOf('**Create agents**');
+    const agentsStep = bootstrap.indexOf('**Agents already created**');
     const issuesStep = bootstrap.indexOf('**Create issues**');
     assert.ok(labelsStep > -1, 'manual setup order should include labels step');
     assert.ok(agentsStep > labelsStep, 'agents step should come after labels step');

@@ -820,8 +820,20 @@ export async function assembleCompany({
       if (repoRef) workspace.repoRef = repoRef;
       if (defaultRef) workspace.defaultRef = defaultRef;
       delete workspace.cwd;
-    } else if (!workspace.cwd) {
-      workspace.cwd = localCwd;
+    } else {
+      if (!workspace.cwd) workspace.cwd = localCwd;
+      // A bare `git init -b main` leaves an UNBORN main branch (no commits). The
+      // isolated execution policy creates a worktree with `git worktree add … main`,
+      // which fails until something makes the first commit — so the earliest issues
+      // start as "failed" with a workspace error. Seed an initial empty commit so
+      // `main` is a valid base ref immediately. Only the known-fragile default is
+      // upgraded; a real custom setupCommand is left untouched.
+      const trimmedSetup =
+        typeof workspace.setupCommand === 'string' ? workspace.setupCommand.trim() : '';
+      if (!trimmedSetup || trimmedSetup === 'git init -b main' || trimmedSetup === 'git init') {
+        workspace.setupCommand =
+          "git init -b main && git -c user.email=bootstrap@paperclip.local -c user.name='Paperclip Bootstrap' commit --allow-empty -m 'chore: initialize repository'";
+      }
     }
 
     return workspace;
@@ -907,6 +919,7 @@ export async function assembleCompany({
 
   // --- Agents ---
   bootstrap += `## Agents\n\n`;
+  bootstrap += `> **The Company Wizard has already created all agents listed below**, each with its full instructions bundle. Do NOT create new agents. Match them by \`metadata.templateRole\` when assigning issues; only re-create one if it is genuinely missing.\n\n`;
   for (const role of rolesList) {
     const roleMeta = roleMetaByName.get(role) || {};
     const roleTitle = typeof roleMeta.title === 'string' ? roleMeta.title : undefined;
@@ -1052,7 +1065,7 @@ export async function assembleCompany({
   if (bootstrapLabels.length > 0) {
     bootstrap += `${stepN++}. **Create labels** — create each label exactly as listed in the Labels section before creating issues\n`;
   }
-  bootstrap += `${stepN++}. **Create agents** — hire missing agents via governance using the adapter/runtime fields listed above; reuse/update an existing agent with the same metadata.templateRole instead of duplicating it\n`;
+  bootstrap += `${stepN++}. **Agents already created** — the Company Wizard provisioned every agent above with its full instructions bundle. Match them by metadata.templateRole when assigning issues; only hire via governance if one is genuinely missing\n`;
   if (initialIssues.length > 0) {
     bootstrap += `${stepN++}. **Create issues** — every issue, including subtasks, must carry explicit projectId; subtasks also require parentId\n`;
   }

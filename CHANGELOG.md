@@ -5,6 +5,14 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.2] - 2026-06-07
+
+### Fixed
+
+- **Agents are created with complete instructions.** The plugin now provisions the entire team directly — every non-CEO agent (engineer, code reviewer, etc.) is created with its full `instructionsBundle` (AGENTS.md + HEARTBEAT/SOUL/TOOLS + skills), the same proven path already used for the CEO. Previously the CEO created these agents during bootstrap with only an `instructionsFilePath`, so the host materialized a bundle from a single entry file and each agent ended up with a bare AGENTS.md that referenced its real skills/docs via fragile external absolute paths. BOOTSTRAP.md now tells the CEO the agents already exist (reuse by `metadata.templateRole`, do not duplicate).
+- **Isolated workspaces no longer fail on first run.** Fresh local projects used `setupCommand: "git init -b main"`, which leaves an unborn `main` (no commits); the `isolated_workspace` / `git_worktree` policy then failed `git worktree add … main` until an agent happened to make the first commit, so the earliest issues started as "failed" with a workspace error. The default now seeds an initial empty commit (`git init -b main && git … commit --allow-empty …`) so `main` is a valid base ref immediately. A real custom `setupCommand` is left untouched; a missing one is seeded.
+
+---
 ## [0.3.1] - 2026-06-07
 
 ### Added

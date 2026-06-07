@@ -292,11 +292,11 @@ describe('assembleCompany', () => {
     assert.ok(bootstrap.includes('#### Issue Guardrails'));
 
     const labelsStep = bootstrap.indexOf('**Create labels**');
-    const agentsStep = bootstrap.indexOf('**Create agents**');
+    const agentsStep = bootstrap.indexOf('**Agents already created**');
     const issuesStep = bootstrap.indexOf('**Create issues**');
     assert.ok(labelsStep > -1, 'manual setup order should include a labels step');
-    assert.ok(agentsStep > labelsStep, 'agents should be created after labels');
-    assert.ok(issuesStep > agentsStep, 'issues should be created after agents');
+    assert.ok(agentsStep > labelsStep, 'agents step should follow labels');
+    assert.ok(issuesStep > agentsStep, 'issues should be created after the agents step');
   });
 
   it('seeds user/AI domain issues at the front of the backlog, ahead of module issues', async () => {
@@ -499,7 +499,10 @@ describe('assembleCompany', () => {
     assert.ok(projectBlock.includes('**workspace.cwd**:'));
     assert.ok(projectBlock.includes('/projects/App'));
     assert.ok(projectBlock.includes('**workspace.defaultRef**: main'));
-    assert.ok(projectBlock.includes('**workspace.setupCommand**: git init -b main'));
+    // The bare `git init -b main` is upgraded to seed an initial commit so the
+    // isolated git_worktree base ref `main` is valid from the first run.
+    assert.ok(projectBlock.includes('**workspace.setupCommand**: git init -b main &&'));
+    assert.ok(projectBlock.includes('commit --allow-empty'));
     assert.ok(
       projectBlock.includes('**executionWorkspacePolicy.defaultMode**: isolated_workspace'),
     );
@@ -509,7 +512,46 @@ describe('assembleCompany', () => {
     assert.ok(
       projectBlock.includes('**executionWorkspacePolicy.workspaceStrategy.baseRef**: main'),
     );
-    assert.ok(bootstrap.includes('setupCommand: "git init -b main"'));
+    assert.ok(bootstrap.includes('setupCommand: "git init -b main &&'));
+  });
+
+  it('preserves a real custom setupCommand and seeds one when missing', async () => {
+    const customCmd = 'git init -b main && pnpm install';
+    const { companyDir } = await assembleCompany({
+      companyName: 'CustomSetupCo',
+      userProjects: [
+        // Real custom command — must be left untouched.
+        {
+          name: 'custom',
+          description: '',
+          goals: [],
+          workspace: { sourceType: 'local_path', setupCommand: customCmd, isPrimary: true },
+        },
+        // No setupCommand — must be seeded with an initial commit.
+        { name: 'empty', description: '', goals: [], workspace: { sourceType: 'local_path' } },
+      ],
+      moduleNames: [],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    const customBlock = bootstrap.split('### custom')[1]?.split('### ')[0] || '';
+    const emptyBlock = bootstrap.split('### empty')[1]?.split('### ')[0] || '';
+
+    assert.ok(
+      customBlock.includes(`**workspace.setupCommand**: ${customCmd}`),
+      'custom setupCommand must be preserved verbatim',
+    );
+    assert.ok(
+      !customBlock.includes('commit --allow-empty'),
+      'custom setupCommand must not be rewritten',
+    );
+    assert.ok(
+      emptyBlock.includes('git init -b main &&') && emptyBlock.includes('commit --allow-empty'),
+      'missing setupCommand must be seeded with an initial commit',
+    );
   });
 
   it('includes explicit module/preset labels, preset issues, and goal linkage in BOOTSTRAP.md', async () => {

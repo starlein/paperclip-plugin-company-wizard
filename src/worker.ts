@@ -752,6 +752,7 @@ const plugin = definePlugin({
 
         // Steps 6-7 are wrapped so we can delete only newly-created companies on partial failure.
         let ceoAgentId: string;
+        const teamAgentIds: Record<string, string> = {};
         let bootstrapIssue: { id: string; identifier?: string };
         try {
           // Step 6: Resolve or create CEO agent
@@ -886,6 +887,110 @@ const plugin = definePlugin({
             log,
           });
 
+          // Step 6b: Create (or reuse) the rest of the team, each with its FULL
+          // instructions bundle. The wizard assembles a complete per-role workspace
+          // (AGENTS.md + HEARTBEAT/SOUL/TOOLS + skills), and passing it as
+          // `instructionsBundle` makes the host materialize a self-contained managed
+          // bundle in a single createAgent call — because buildCeoAdapterConfig sets no
+          // instructionsFilePath, the host materializes the passed files instead of
+          // skipping them. Previously these agents were created by the CEO during
+          // bootstrap with only an instructionsFilePath, leaving each non-CEO agent with
+          // a bare AGENTS.md that referenced external, fragile absolute paths.
+          const teamRoles = [...(assembleResult.allRoles ?? [])].filter(
+            (r: string) => r && r !== 'ceo',
+          );
+
+          let existingByTemplateRole = new Map<string, any>();
+          if (existingCompanyId && teamRoles.length > 0) {
+            const agents = await client.listAgents(companyId);
+            if (Array.isArray(agents)) {
+              for (const a of agents) {
+                const tr = a?.metadata?.templateRole;
+                if (tr && a?.status !== 'terminated' && a?.role !== 'ceo') {
+                  existingByTemplateRole.set(tr, a);
+                }
+              }
+            }
+          }
+
+          for (const roleName of teamRoles) {
+            const roleTemplate = roleTemplateByName.get(roleName) || {};
+            const paperclipRole =
+              typeof roleTemplate.paperclipRole === 'string' && roleTemplate.paperclipRole.trim()
+                ? roleTemplate.paperclipRole.trim()
+                : 'general';
+            const roleTitle =
+              typeof roleTemplate.title === 'string' && roleTemplate.title.trim()
+                ? roleTemplate.title.trim()
+                : formatRoleName(roleName);
+            const roleDescription =
+              typeof roleTemplate.description === 'string' && roleTemplate.description.trim()
+                ? roleTemplate.description.trim()
+                : undefined;
+            const roleMetadata = {
+              templateRole: roleName,
+              ...(roleDescription ? { description: roleDescription } : {}),
+            };
+            const roleRuntimeConfig = buildCeoAgentRuntimeConfig();
+            const roleAdapterConfig: Record<string, unknown> = buildCeoAdapterConfig({
+              userCeoAdapter,
+              companyDir,
+              roleAdapterOverrides: assembleResult.roleAdapterOverrides?.get(roleName) ?? {},
+            });
+            const roleInstructionsDir = path.join(companyDir, 'agents', roleName);
+            const roleInstructionFiles = collectInstructionFiles(roleInstructionsDir);
+            const roleInstructionsBundle =
+              Object.keys(roleInstructionFiles).length > 0
+                ? { entryFile: 'AGENTS.md', files: roleInstructionFiles }
+                : undefined;
+
+            const existingAgent = existingByTemplateRole.get(roleName);
+            if (existingAgent?.id) {
+              try {
+                await client.updateAgent(existingAgent.id, {
+                  adapterType,
+                  adapterConfig: roleAdapterConfig,
+                  runtimeConfig: roleRuntimeConfig,
+                  metadata: { ...(existingAgent.metadata ?? {}), ...roleMetadata },
+                  ...(!existingAgent.title && roleTitle ? { title: roleTitle } : {}),
+                  ...(!existingAgent.capabilities && roleDescription
+                    ? { capabilities: roleDescription }
+                    : {}),
+                });
+                log(`✓ Reusing ${roleTitle} (${existingAgent.id})`);
+              } catch (err) {
+                log(
+                  `⚠ Could not update ${roleTitle}: ${err instanceof Error ? err.message : String(err)}`,
+                );
+              }
+              teamAgentIds[roleName] = existingAgent.id;
+              continue;
+            }
+
+            const roleAgent = await client.createAgent(companyId, {
+              name: roleTitle,
+              role: paperclipRole,
+              title: roleTitle,
+              ...(roleDescription ? { capabilities: roleDescription } : {}),
+              metadata: roleMetadata,
+              reportsTo: ceoAgentId,
+              adapterType,
+              adapterConfig: roleAdapterConfig,
+              instructionsBundle: roleInstructionsBundle,
+              runtimeConfig: roleRuntimeConfig,
+            });
+            teamAgentIds[roleName] = roleAgent.id;
+            log(`✓ ${roleTitle} created (${roleAgent.id})`);
+            if (roleAgent?._pendingApprovalId) {
+              log(
+                `⚠ ${roleTitle} hire pending approval: ${roleAgent._pendingApprovalId}. Approve it in the board.`,
+              );
+              if (roleAgent._approvalAutoApproveError) {
+                log(`  Auto-approve failed: ${roleAgent._approvalAutoApproveError}`);
+              }
+            }
+          }
+
           // Step 7: Create bootstrap issue.
           // Use the HTTP client instead of ctx.issues here because the wizard may be
           // launched from company A while provisioning a newly-created/reused company B.
@@ -937,7 +1042,7 @@ const plugin = definePlugin({
           companyId,
           issuePrefix: company.issuePrefix,
           paperclipUrl,
-          agentIds: { ceo: ceoAgentId! },
+          agentIds: { ceo: ceoAgentId!, ...teamAgentIds },
           issueIds: [bootstrapIssue!.id],
           logs,
         };
