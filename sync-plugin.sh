@@ -18,6 +18,17 @@ sync_plugin_dir() {
 
 sync_plugin_dir "$PLUGIN_DIR"
 
+# The worker resolves templates from ~/.paperclip/plugin-templates FIRST when that
+# dir exists (it's the GitHub download cache; see ensureTemplatesDir in worker.ts).
+# That cache takes precedence over the bundled templates, so a stale cache silently
+# masks every local template change. Keep it in sync with the local templates too,
+# otherwise the running worker keeps generating bootstraps from old templates.
+TEMPLATE_CACHE_DIR="${PAPERCLIP_PLUGIN_TEMPLATES_CACHE:-$HOME/.paperclip/plugin-templates}"
+if [ -d "$TEMPLATE_CACHE_DIR" ]; then
+  rsync -a --delete "$CLIPPER_DIR/templates/" "$TEMPLATE_CACHE_DIR/"
+  echo "Synced template cache to $TEMPLATE_CACHE_DIR"
+fi
+
 # Paperclip's worker manager launches packages from plugins/node_modules when the
 # plugin has been installed through the registry/installer. Keep that runtime
 # copy in sync too, otherwise the API can report the new manifest while the old

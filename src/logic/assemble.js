@@ -92,6 +92,7 @@ export async function assembleCompany({
   moduleNames,
   extraRoleNames,
   inlineGoals = [],
+  userIssues = [],
   presetIssues = [],
   presetRoutines = [],
   presetLabels = [],
@@ -255,6 +256,25 @@ export async function assembleCompany({
     }
     return assignee;
   };
+
+  // Seed user/AI-specified domain issues at the FRONT of the backlog. Module and
+  // preset issues are generic project scaffolding ("Define company vision", "Add
+  // linter"); these are the concrete, project-specific work items derived from the
+  // user's brief, so they should lead the backlog and get the project rolling in
+  // its actual domain.
+  const resolvedUserIssues = [];
+  for (const issue of Array.isArray(userIssues) ? userIssues : []) {
+    if (!issue || !issue.title) continue;
+    const titleKey = normalizeIssueTitle(issue.title);
+    if (titleKey && seenIssueTitles.has(titleKey)) continue;
+    if (titleKey) seenIssueTitles.add(titleKey);
+    resolvedUserIssues.push({
+      ...issue,
+      assignTo: resolveAssignee(issue.assignTo, null),
+      source: 'user',
+    });
+  }
+  initialIssues.unshift(...resolvedUserIssues);
 
   for (const moduleName of moduleNames) {
     const moduleDir = join(templatesDir, 'modules', moduleName);

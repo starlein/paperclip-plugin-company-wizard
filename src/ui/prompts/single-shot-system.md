@@ -25,6 +25,7 @@ Given a natural language description of what the user wants to build, you select
    - If the user gives an existing GitHub/GitLab/remote Git repo, set `workspace.sourceType: "git_repo"`, include `repoUrl`, set `repoRef`/`defaultRef` when known (default to `origin/main`), and use `executionWorkspacePolicy.defaultMode: "isolated_workspace"` with a `git_worktree` strategy.
    - If no external repository is given, assume Paperclip should create a fresh local Git repository. Set `workspace.sourceType: "local_path"`, `workspace.defaultRef: "main"`, `workspace.setupCommand: "git init -b main"`, and `workspace.isPrimary: true`.
    - Never include credentials or tokens in repository URLs or project text.
+10. Define an `issues` array of 6-12 CONCRETE, domain-specific initial work items taken straight from the description — the real features, components, and integrations the user actually described, each with a `title`, a `description` with acceptance criteria, a `priority`, and `assignTo` set to a role on the team. These seed the backlog so the project starts in its actual domain instead of only doing generic setup. Do NOT put generic scaffolding here (vision docs, linters, CI, branch protection) — the wizard adds those automatically.
 
 First write one paragraph explaining your reasoning: why this preset, why these modules, why these roles.
 

@@ -479,6 +479,7 @@ export function ConfigReview() {
         selectedRoles: state.selectedRoles,
         goals: state.goals.length > 0 ? state.goals : undefined,
         projects: state.projects.length > 0 ? state.projects : undefined,
+        issues: state.issues.length > 0 ? state.issues : undefined,
       })) as { files: Record<string, string>; error?: string };
       if (result.error) {
         setPreviewError(result.error);
@@ -497,6 +498,7 @@ export function ConfigReview() {
     state.selectedRoles,
     state.goals,
     state.projects,
+    state.issues,
     previewFilesAction,
   ]);
 

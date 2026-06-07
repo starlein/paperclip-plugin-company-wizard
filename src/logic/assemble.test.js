@@ -299,6 +299,63 @@ describe('assembleCompany', () => {
     assert.ok(issuesStep > agentsStep, 'issues should be created after agents');
   });
 
+  it('seeds user/AI domain issues at the front of the backlog, ahead of module issues', async () => {
+    const { companyDir, initialIssues } = await assembleCompany({
+      companyName: 'DomainCo',
+      moduleNames: ['github-repo'],
+      extraRoleNames: ['engineer'],
+      userIssues: [
+        {
+          title: 'Primary domain feature',
+          description: 'First concrete, project-specific work item from the brief.',
+          priority: 'critical',
+          assignTo: 'engineer',
+        },
+        {
+          title: 'Secondary domain feature',
+          description: 'Second concrete, project-specific work item from the brief.',
+          priority: 'high',
+          assignTo: 'engineer',
+        },
+      ],
+      outputDir,
+      templatesDir,
+    });
+
+    // User issues lead the backlog, ahead of the generic module issue.
+    assert.equal(initialIssues[0].title, 'Primary domain feature');
+    assert.equal(initialIssues[0].source, 'user');
+    assert.equal(initialIssues[0].assignTo, 'engineer');
+    assert.equal(initialIssues[1].title, 'Secondary domain feature');
+    assert.ok(initialIssues.some((i) => i.title === 'Init repo'));
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    const domainIdx = bootstrap.indexOf('Primary domain feature');
+    const genericIdx = bootstrap.indexOf('Init repo');
+    assert.ok(domainIdx > -1, 'domain issue should appear in BOOTSTRAP.md');
+    assert.ok(domainIdx < genericIdx, 'domain issue should precede the generic module issue');
+  });
+
+  it('falls back to CEO when a user issue targets a role not on the team', async () => {
+    const { initialIssues } = await assembleCompany({
+      companyName: 'FallbackCo',
+      moduleNames: [],
+      extraRoleNames: [],
+      userIssues: [
+        {
+          title: 'Work item for an absent role',
+          description: 'Targets a role that is not part of this team.',
+          assignTo: 'security-engineer',
+        },
+      ],
+      outputDir,
+      templatesDir,
+    });
+
+    assert.equal(initialIssues[0].title, 'Work item for an absent role');
+    assert.equal(initialIssues[0].assignTo, 'ceo');
+  });
+
   it('renders subtasks with explicit parentId and explicit projectId for Paperclip v2026.403.0', async () => {
     const subtasksDir = join(templatesDir, 'modules', 'subtasks-mod');
     await mkdir(subtasksDir, { recursive: true });

@@ -36,6 +36,13 @@ export interface WizardProject {
   executionWorkspacePolicy?: ProjectExecutionWorkspacePolicy;
 }
 
+export interface WizardIssue {
+  title: string;
+  description: string;
+  priority?: string;
+  assignTo?: string; // role name (e.g. "engineer") or "user"; resolved at assembly
+}
+
 export interface ProjectWorkspaceConfig {
   name?: string;
   sourceType?: 'local_path' | 'git_repo' | 'remote_managed' | 'non_git_path' | string;
@@ -95,6 +102,7 @@ export interface WizardState {
   companyName: string;
   goals: Goal[];
   projects: WizardProject[];
+  issues: WizardIssue[];
   ceoAdapter: CeoAdapter;
   existingCompanyId: string;
   presetName: string;
@@ -218,6 +226,7 @@ const initialState: WizardState = {
   companyName: '',
   goals: [],
   projects: [],
+  issues: [],
   ceoAdapter: { type: 'codex_local', cwd: '', model: 'gpt-5.5' },
   existingCompanyId: '',
   presetName: '',

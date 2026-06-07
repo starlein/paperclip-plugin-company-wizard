@@ -37,6 +37,7 @@ export function StepProvision() {
       companyDescription: state.companyDescription || undefined,
       goals: state.goals.length > 0 ? state.goals : undefined,
       projects: state.projects.length > 0 ? state.projects : undefined,
+      issues: state.issues.length > 0 ? state.issues : undefined,
       ceoAdapter: state.ceoAdapter,
       presetName: state.presetName,
       selectedModules: state.selectedModules,

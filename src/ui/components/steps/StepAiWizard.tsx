@@ -6,6 +6,7 @@ import {
   type Goal,
   type ProjectExecutionWorkspacePolicy,
   type ProjectWorkspaceConfig,
+  type WizardIssue,
   type WizardProject,
 } from '../../context/WizardContext';
 import { Button } from '../ui/button';
@@ -304,15 +305,35 @@ export function StepAiWizard() {
     .replace('{{CATALOG}}', buildCatalog())
     .replace('{{CONFIG_FORMAT}}', promptMessages.configFormat);
 
+  // Every Anthropic call goes through the worker's async job model (start + poll).
+  // The host kills any single performAction RPC at 30s; an Opus generation — even a
+  // short interview turn, but especially the final full-spec config — can exceed
+  // that. Starting a background job and polling means no single RPC ever blocks
+  // long enough to time out, so this is used for ALL paths (interview, chat,
+  // quick-generate, and the generate-config button).
   const callApi = async (allMessages: Message[], system?: string): Promise<string> => {
-    const result = (await aiChat({
+    const start = (await aiChat({
+      mode: 'start',
       messages: allMessages.map((m) => ({ role: m.role, content: m.content })),
       system: system || systemPrompt,
-    })) as { text: string; error?: string };
-    if (result.error) {
-      throw new Error(result.error);
+    })) as { jobId?: string; error?: string };
+    if (start.error) throw new Error(start.error);
+    if (!start.jobId) throw new Error('AI did not start a generation job');
+
+    const POLL_INTERVAL_MS = 1500;
+    const MAX_ATTEMPTS = 320; // ~8 minutes — headroom for large, full-spec configs
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+      const poll = (await aiChat({ mode: 'poll', jobId: start.jobId })) as {
+        status?: string;
+        text?: string;
+        error?: string;
+      };
+      if (poll.status === 'done') return poll.text || '';
+      if (poll.status === 'error') throw new Error(poll.error || 'AI generation failed');
+      // status === 'pending' — keep polling
     }
-    return result.text;
+    throw new Error('AI generation timed out. Please try again.');
   };
 
   const tryExtractConfig = (text: string) => {
@@ -607,6 +628,20 @@ export function StepAiWizard() {
       parsedProjects = [];
     }
 
+    // Domain-specific initial issues derived from the user's brief. These lead the
+    // backlog ahead of the generic preset/module setup issues so the project starts
+    // rolling in its actual domain instead of only doing generic scaffolding.
+    const parsedIssues: WizardIssue[] = Array.isArray(config.issues)
+      ? (config.issues as any[])
+          .filter((i: any) => i && (i.title || i.name))
+          .map((i: any) => ({
+            title: String(i.title || i.name || ''),
+            description: String(i.description || ''),
+            ...(i.priority ? { priority: String(i.priority) } : {}),
+            ...(i.assignTo ? { assignTo: String(i.assignTo) } : {}),
+          }))
+      : [];
+
     // Apply config to wizard state but stay on ai-wizard step
     dispatch({
       type: 'APPLY_AI_RESULT',
@@ -614,6 +649,7 @@ export function StepAiWizard() {
         companyName: (config.name as string) || state.aiDescription.slice(0, 30),
         goals: parsedGoals,
         projects: parsedProjects,
+        issues: parsedIssues,
         presetName: state.presets.some((p) => p.name === config.preset)
           ? (config.preset as string)
           : 'custom',

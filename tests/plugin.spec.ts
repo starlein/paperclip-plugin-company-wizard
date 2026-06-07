@@ -70,6 +70,52 @@ describe("plugin-clipper", () => {
     );
   });
 
+  it("runs ai-chat as an async job (start → poll) for long generations", async () => {
+    const fetchMock = vi.fn(async () => {
+      return new Response(JSON.stringify({ content: [{ text: "generated-config" }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const harness = createTestHarness({
+      manifest,
+      capabilities: manifest.capabilities,
+      config: { anthropicApiKey: "anthropic-secret-ref" },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    const start = (await harness.performAction("ai-chat", {
+      mode: "start",
+      messages: [{ role: "user", content: "generate" }],
+    })) as { jobId?: string; status?: string };
+
+    expect(typeof start.jobId).toBe("string");
+    expect(start.status).toBe("pending");
+
+    // Poll until the background generation resolves.
+    let result: { status?: string; text?: string; error?: string } = {};
+    for (let i = 0; i < 20; i++) {
+      await new Promise((r) => setTimeout(r, 0));
+      result = (await harness.performAction("ai-chat", {
+        mode: "poll",
+        jobId: start.jobId,
+      })) as { status?: string; text?: string; error?: string };
+      if (result.status !== "pending") break;
+    }
+
+    expect(result.status).toBe("done");
+    expect(result.text).toBe("generated-config");
+
+    // The job is consumed after a terminal poll — a second poll reports it gone.
+    const second = (await harness.performAction("ai-chat", {
+      mode: "poll",
+      jobId: start.jobId,
+    })) as { status?: string };
+    expect(second.status).toBe("error");
+  });
+
   it("reports healthy", async () => {
     const health = await plugin.definition.onHealth!();
     expect(health.status).toBe("ok");

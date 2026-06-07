@@ -5,6 +5,22 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.1] - 2026-06-07
+
+### Added
+
+- **Domain-specific initial issues.** The AI wizard now generates an `issues` array of concrete, project-specific first work items taken straight from the brief. These lead the bootstrap backlog ahead of the generic preset/module setup issues, so the project starts rolling in its actual domain instead of only doing generic scaffolding. Plumbed end-to-end (prompt → wizard state → assembly → BOOTSTRAP.md) with assignee resolution (falls back to CEO when the target role is absent) and deduplication against module issues.
+
+### Changed
+
+- AI wizard config generation now uses Claude Opus (`claude-opus-4-8`), with `max_tokens` raised to 32768 so a full-spec config is never truncated mid-JSON.
+- `sync-plugin.sh` now also syncs the `~/.paperclip/plugin-templates` cache. The worker resolves templates from that cache first, so a stale cache silently masked every local template change; the sync script keeps it current.
+
+### Fixed
+
+- AI wizard config generation no longer fails with `RPC call "performAction" timed out after 30000ms`. All Anthropic calls run as background jobs in the worker (start + poll), so no single `performAction` RPC blocks past the host's hard 30s timeout — even for long Opus generations.
+
+---
 ## [0.3.0] - 2026-06-06
 
 ### Fixed

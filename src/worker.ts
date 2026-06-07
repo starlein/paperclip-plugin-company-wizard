@@ -153,6 +153,68 @@ async function resolveAnthropicApiKey(
   }
 }
 
+/**
+ * Single Anthropic Messages API call. Returns `{ text, error? }` — never throws,
+ * so callers (sync and async job modes) can handle failures uniformly.
+ */
+async function callAnthropic(
+  apiKey: string,
+  system: unknown,
+  messages: unknown,
+): Promise<{ text: string; error?: string }> {
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-8',
+        // High ceiling so the wizard's final config — which reproduces the user's
+        // full spec in the first goal — is never truncated mid-JSON. This is only
+        // an upper bound; generation time tracks the tokens actually produced.
+        max_tokens: 32768,
+        ...(system ? { system } : {}),
+        messages,
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      return { text: '', error: `Anthropic API error (${response.status}): ${body}` };
+    }
+
+    const data = (await response.json()) as { content?: { text: string }[] };
+    return { text: data.content?.[0]?.text || '' };
+  } catch (err) {
+    return { text: '', error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/**
+ * In-memory store for async ai-chat jobs. The plugin runs one long-lived worker
+ * process, so an in-process map is sufficient. Used to decouple long Anthropic
+ * generations (e.g. the AI wizard's final config) from the host's 30s
+ * `performAction` RPC timeout: the UI starts a job, then polls for the result.
+ */
+type AiChatJob =
+  | { status: 'pending'; createdAt: number }
+  | { status: 'done'; text: string; createdAt: number }
+  | { status: 'error'; error: string; createdAt: number };
+
+const aiChatJobs = new Map<string, AiChatJob>();
+const AI_CHAT_JOB_TTL_MS = 10 * 60 * 1000;
+
+/** Drop completed/abandoned jobs so the map doesn't grow unbounded. */
+function sweepAiChatJobs(): void {
+  const now = Date.now();
+  for (const [id, job] of aiChatJobs) {
+    if (now - job.createdAt > AI_CHAT_JOB_TTL_MS) aiChatJobs.delete(id);
+  }
+}
+
 function loadJsonFiles(dir: string, filename: string): { items: any[]; errors: string[] } {
   const items: any[] = [];
   const errors: string[] = [];
@@ -373,6 +435,7 @@ const plugin = definePlugin({
         const previewProjects: any[] = Array.isArray(params.projects)
           ? (params.projects as any[])
           : [];
+        const previewIssues: any[] = Array.isArray(params.issues) ? (params.issues as any[]) : [];
 
         const result = await assembleCompany({
           companyName,
@@ -381,6 +444,7 @@ const plugin = definePlugin({
           moduleNames: effectiveModules,
           extraRoleNames: (params.selectedRoles as string[]) ?? [],
           inlineGoals: goals,
+          userIssues: previewIssues,
           presetIssues: presetBootstrapData.issues,
           presetRoutines: presetBootstrapData.routines,
           presetLabels: presetBootstrapData.labels,
@@ -448,6 +512,25 @@ const plugin = definePlugin({
     // Returns { text, error? } — never throws, so the plugin host doesn't swallow the message in a 502.
     ctx.actions.register('ai-chat', async (params) => {
       try {
+        // Poll mode: return the status of a previously started async job.
+        // Each poll returns immediately, so it never approaches the 30s RPC timeout.
+        if (params.mode === 'poll') {
+          const jobId = typeof params.jobId === 'string' ? params.jobId : '';
+          const job = jobId ? aiChatJobs.get(jobId) : undefined;
+          if (!job) {
+            return {
+              text: '',
+              status: 'error',
+              error: 'Unknown or expired generation job. Please retry.',
+            };
+          }
+          if (job.status === 'pending') return { status: 'pending' };
+          // Terminal state — hand it back and free the slot.
+          aiChatJobs.delete(jobId);
+          if (job.status === 'error') return { text: '', status: 'error', error: job.error };
+          return { text: job.text, status: 'done' };
+        }
+
         const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
         const apiKey = await resolveAnthropicApiKey(ctx, cfg.anthropicApiKey);
         if (!apiKey) {
@@ -457,28 +540,27 @@ const plugin = definePlugin({
           };
         }
 
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
-          },
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 8192,
-            ...(params.system ? { system: params.system } : {}),
-            messages: params.messages,
-          }),
-        });
-
-        if (!response.ok) {
-          const body = await response.text();
-          return { text: '', error: `Anthropic API error (${response.status}): ${body}` };
+        // Start mode: kick off generation in the background and return a job id.
+        // The UI polls with { mode: 'poll', jobId }, so a slow generation (e.g. the
+        // wizard's final config, which can take well over 30s) never trips the host's
+        // 30s performAction RPC timeout.
+        if (params.mode === 'start') {
+          sweepAiChatJobs();
+          const jobId = `aichat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+          aiChatJobs.set(jobId, { status: 'pending', createdAt: Date.now() });
+          void callAnthropic(apiKey, params.system, params.messages).then((result) => {
+            aiChatJobs.set(
+              jobId,
+              result.error
+                ? { status: 'error', error: result.error, createdAt: Date.now() }
+                : { status: 'done', text: result.text, createdAt: Date.now() },
+            );
+          });
+          return { jobId, status: 'pending' };
         }
 
-        const data = (await response.json()) as { content?: { text: string }[] };
-        return { text: data.content?.[0]?.text || '' };
+        // Synchronous mode (default): short interview turns that finish well within 30s.
+        return await callAnthropic(apiKey, params.system, params.messages);
       } catch (err) {
         return { text: '', error: err instanceof Error ? err.message : String(err) };
       }
@@ -573,6 +655,7 @@ const plugin = definePlugin({
         const userProjects: any[] = Array.isArray(params.projects)
           ? (params.projects as any[])
           : [];
+        const userIssues: any[] = Array.isArray(params.issues) ? (params.issues as any[]) : [];
 
         const assembleResult = await assembleCompany({
           companyName,
@@ -582,6 +665,7 @@ const plugin = definePlugin({
           moduleNames: effectiveModules,
           extraRoleNames: (params.selectedRoles as string[]) ?? [],
           inlineGoals: goals,
+          userIssues,
           presetIssues: presetBootstrapData.issues,
           presetRoutines: presetBootstrapData.routines,
           presetLabels: presetBootstrapData.labels,
