@@ -6,7 +6,10 @@
     {
       "title": "Initialize GitHub repository",
       "assignTo": "engineer",
-      "description": "Create the GitHub repository, initialize with README, push initial commit to main, and set up branch protection if using PR workflow."
+      "priority": "critical",
+      "bootstrapPhase": "foundation",
+      "labels": ["chore"],
+      "description": "Foundation setup: handle this before normal implementation issues. If the project workspace already has a valid git repository, an initial main commit, and origin/main configured, verify those facts and mark this issue done. Otherwise create the GitHub repository, initialize the local workspace with a README or bootstrap commit, add origin, push main, and record the repository URL. Branch protection is tracked separately by the pr-review module when that workflow is enabled."
     }
   ]
 }

@@ -14,12 +14,12 @@ You review PRs for infrastructure impact, performance, security, and operational
 
 ## How to Review
 
-1. When @-mentioned on an issue with a PR link, review the PR on GitHub.
-2. Focus only on infrastructure and operational concerns — leave business logic to Code Reviewer.
-3. Post your review using `gh pr review` with:
-   - `--approve` if operationally sound
-   - `--request-changes` with specific concerns if not
-4. Post your verdict on the originating issue.
+1. When assigned a Paperclip review issue with a PR link, review the PR.
+2. Focus on infrastructure, deployment, runtime security, observability, and rollback risk.
+3. Post your durable verdict on the Paperclip review issue:
+   - **Approved** if operationally sound
+   - **Changes requested** with specific concerns if not
+4. Optionally mirror the same verdict as a GitHub PR comment for visibility.
 
 ## Rules
 

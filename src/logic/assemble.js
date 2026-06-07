@@ -266,11 +266,19 @@ export async function assembleCompany({
     return assignee;
   };
 
-  // Seed user/AI-specified domain issues at the FRONT of the backlog. Module and
+  // Foundation issues are explicit setup gates (repository/bootstrap scaffolding)
+  // that must be created before domain implementation starts. Ordinary module and
   // preset issues are generic project scaffolding ("Define company vision", "Add
-  // linter"); these are the concrete, project-specific work items derived from the
-  // user's brief, so they should lead the backlog and get the project rolling in
-  // its actual domain.
+  // linter"), so user/AI-specified domain issues still lead those generic items.
+  const isFoundationIssue = (issue) =>
+    issue?.bootstrapPhase === 'foundation' ||
+    issue?.phase === 'foundation' ||
+    issue?.bootstrapOrder === 'foundation' ||
+    issue?.foundation === true;
+
+  // Seed user/AI-specified domain issues near the front of the backlog. Explicit
+  // foundation issues are allowed to stay ahead of them; generic module/preset
+  // issues remain behind them.
   const resolvedUserIssues = [];
   for (const issue of Array.isArray(userIssues) ? userIssues : []) {
     if (!issue || !issue.title) continue;
@@ -761,6 +769,18 @@ export async function assembleCompany({
 
     return [...labelsByName.values()];
   };
+
+  const orderInitialIssuesForBootstrap = () => {
+    const originalOrder = new Map(initialIssues.map((issue, index) => [issue, index]));
+    const rank = (issue) => {
+      if (isFoundationIssue(issue)) return 0;
+      if (issue?.source === 'user') return 1;
+      return 2;
+    };
+    initialIssues.sort((a, b) => rank(a) - rank(b) || originalOrder.get(a) - originalOrder.get(b));
+  };
+
+  orderInitialIssuesForBootstrap();
 
   const bootstrapLabels = buildBootstrapLabels(initialIssues, explicitBootstrapLabels);
   const labelsByName = new Map(bootstrapLabels.map((label) => [label.name, label]));

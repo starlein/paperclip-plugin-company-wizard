@@ -14,12 +14,12 @@ You review PRs for visual quality, brand consistency, and accessibility. When a 
 
 ## How to Review
 
-1. When @-mentioned on an issue with a PR link, review the PR on GitHub.
-2. Focus only on design and visual concerns — leave code logic to Code Reviewer.
-3. Post your review using `gh pr review` with:
-   - `--approve` if visually sound
-   - `--request-changes` with specific, actionable feedback if not
-4. Post your verdict on the originating issue.
+1. When assigned a Paperclip review issue with a PR link, review the PR.
+2. Focus only on visual/design concerns — leave code logic to Code Reviewer and product scope to Product Owner.
+3. Post your durable verdict on the Paperclip review issue:
+   - **Approved** if visually sound
+   - **Changes requested** with specific, actionable feedback if not
+4. Optionally mirror the same verdict as a GitHub PR comment for visibility.
 
 ## Rules
 

@@ -299,7 +299,7 @@ describe('assembleCompany', () => {
     assert.ok(issuesStep > agentsStep, 'issues should be created after the agents step');
   });
 
-  it('seeds user/AI domain issues at the front of the backlog, ahead of module issues', async () => {
+  it('seeds user/AI domain issues at the front of the backlog, ahead of generic module issues', async () => {
     const { companyDir, initialIssues } = await assembleCompany({
       companyName: 'DomainCo',
       moduleNames: ['github-repo'],
@@ -322,7 +322,7 @@ describe('assembleCompany', () => {
       templatesDir,
     });
 
-    // User issues lead the backlog, ahead of the generic module issue.
+    // User issues lead the backlog, ahead of ordinary/generic module issues.
     assert.equal(initialIssues[0].title, 'Primary domain feature');
     assert.equal(initialIssues[0].source, 'user');
     assert.equal(initialIssues[0].assignTo, 'engineer');
@@ -334,6 +334,66 @@ describe('assembleCompany', () => {
     const genericIdx = bootstrap.indexOf('Init repo');
     assert.ok(domainIdx > -1, 'domain issue should appear in BOOTSTRAP.md');
     assert.ok(domainIdx < genericIdx, 'domain issue should precede the generic module issue');
+  });
+
+  it('keeps foundation setup issues ahead of user domain issues and generic module issues', async () => {
+    const foundationDir = join(templatesDir, 'modules', 'foundation-mod');
+    await mkdir(foundationDir, { recursive: true });
+    await writeJson(join(foundationDir, 'module.meta.json'), {
+      name: 'foundation-mod',
+      capabilities: [],
+      issues: [
+        {
+          title: 'Set up repository foundation',
+          assignTo: 'engineer',
+          description: 'Must be ready before implementation work starts.',
+          bootstrapPhase: 'foundation',
+        },
+      ],
+    });
+
+    const genericDir = join(templatesDir, 'modules', 'generic-mod');
+    await mkdir(genericDir, { recursive: true });
+    await writeJson(join(genericDir, 'module.meta.json'), {
+      name: 'generic-mod',
+      capabilities: [],
+      issues: [
+        {
+          title: 'Generic follow-up task',
+          assignTo: 'engineer',
+          description: 'Normal module backlog item.',
+        },
+      ],
+    });
+
+    const { companyDir, initialIssues } = await assembleCompany({
+      companyName: 'FoundationCo',
+      moduleNames: ['foundation-mod', 'generic-mod'],
+      extraRoleNames: ['engineer'],
+      userIssues: [
+        {
+          title: 'Critical domain feature',
+          description: 'Specific feature from the user brief.',
+          priority: 'critical',
+          assignTo: 'engineer',
+        },
+      ],
+      outputDir,
+      templatesDir,
+    });
+
+    assert.deepEqual(
+      initialIssues.map((issue) => issue.title),
+      ['Set up repository foundation', 'Critical domain feature', 'Generic follow-up task'],
+    );
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    const foundationIdx = bootstrap.indexOf('Set up repository foundation');
+    const domainIdx = bootstrap.indexOf('Critical domain feature');
+    const genericIdx = bootstrap.indexOf('Generic follow-up task');
+    assert.ok(foundationIdx > -1, 'foundation issue should appear in BOOTSTRAP.md');
+    assert.ok(foundationIdx < domainIdx, 'foundation issue should precede domain issues');
+    assert.ok(domainIdx < genericIdx, 'domain issues should still precede generic module issues');
   });
 
   it('falls back to CEO when a user issue targets a role not on the team', async () => {

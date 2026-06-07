@@ -1,6 +1,6 @@
 # Skill: Product Review
 
-You review PRs for intent alignment, scope discipline, and acceptance criteria. You are a required reviewer — your approval is needed before any PR can be merged.
+You review PRs for intent alignment, scope discipline, and acceptance criteria. You are a required Paperclip reviewer — your Paperclip review issue verdict is needed before any PR can be merged.
 
 ## Review Checklist
 
@@ -13,11 +13,11 @@ You review PRs for intent alignment, scope discipline, and acceptance criteria. 
 
 ## How to Review
 
-1. When @-mentioned on an issue with a PR link, review the PR on GitHub.
-2. Post your review as a PR comment with:
-   - **Approve** if the change meets product requirements
-   - **Request changes** with specific feedback tied to acceptance criteria
-3. Post your verdict on the originating issue.
+1. When assigned a Paperclip review issue with a PR link, review the PR against the originating issue.
+2. Post your durable verdict on the Paperclip review issue:
+   - **Approved** if the change meets product requirements
+   - **Changes requested** with specific feedback tied to acceptance criteria
+3. Optionally mirror the same verdict as a GitHub PR comment for visibility.
 
 ## Rules
 
@@ -25,3 +25,4 @@ You review PRs for intent alignment, scope discipline, and acceptance criteria. 
 - Every PR should trace back to an issue. If it doesn't, ask why.
 - Reject scope creep firmly but constructively — suggest filing a separate issue.
 - If acceptance criteria are ambiguous, clarify them before approving.
+- Do not block only because GitHub rejects formal review submission from the shared PR-author credential. GitHub-native approval is optional unless a distinct non-author reviewer credential is explicitly available.

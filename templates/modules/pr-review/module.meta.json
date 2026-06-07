@@ -1,6 +1,6 @@
 {
   "name": "pr-review",
-  "description": "Enforces pull request reviews through branch protection. Activates additional reviewers based on the roles present in the team.",
+  "description": "Coordinates pull request reviews through explicit Paperclip review issues. Reviewers may mirror verdicts as PR comments, but GitHub-native approvals require distinct non-author GitHub credentials.",
   "requires": [
     "github-repo"
   ],
@@ -16,9 +16,9 @@
   "capabilities": [],
   "issues": [
     {
-      "title": "Set up branch protection and PR requirements",
+      "title": "Set up Paperclip PR review workflow",
       "assignTo": "engineer",
-      "description": "Configure the GitHub repository with branch protection on main: require PR reviews, disable direct pushes. Verify the PR workflow works with a test branch."
+      "description": "Document and verify the PR workflow: feature branches, PR links, explicit Paperclip review child issues for Code Reviewer and Product Owner, and engineer-owned merges after review issues are resolved. Optional branch protection may disable direct pushes or require CI, but do not require GitHub-native approving reviews unless the project has distinct non-author GitHub reviewer credentials."
     }
   ]
 }

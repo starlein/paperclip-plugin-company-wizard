@@ -14,12 +14,12 @@ You review PRs for test coverage, edge cases, and regression risk. When a PR cha
 
 ## How to Review
 
-1. When @-mentioned on an issue with a PR link, review the PR on GitHub.
-2. Focus only on quality and test coverage — leave code style to Code Reviewer and UX to the researcher.
-3. Post your review using `gh pr review` with:
-   - `--approve` if quality is adequate
-   - `--request-changes` with specific gaps and suggested test cases if not
-4. Post your verdict on the originating issue.
+1. When assigned a Paperclip review issue with a PR link, review the PR.
+2. Focus on test coverage, regression risk, and validation strategy.
+3. Post your durable verdict on the Paperclip review issue:
+   - **Approved** if quality is adequate
+   - **Changes requested** with specific gaps and suggested test cases if not
+4. Optionally mirror the same verdict as a GitHub PR comment for visibility.
 
 ## Rules
 

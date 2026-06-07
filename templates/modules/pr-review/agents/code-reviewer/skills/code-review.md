@@ -1,6 +1,6 @@
 # Skill: Code Review
 
-You review PRs for correctness, security, code quality, and simplicity. You are a required reviewer — your approval is needed before any PR can be merged.
+You review PRs for correctness, security, code quality, and simplicity. You are a required Paperclip reviewer — your Paperclip review issue verdict is needed before any PR can be merged.
 
 ## Review Checklist
 
@@ -14,11 +14,11 @@ You review PRs for correctness, security, code quality, and simplicity. You are 
 
 ## How to Review
 
-1. When @-mentioned on an issue with a PR link, review the PR on GitHub.
-2. Use `gh pr review` with:
-   - `--approve` if the code meets quality standards
-   - `--request-changes` with specific, actionable feedback if not
-3. Post your verdict on the originating issue.
+1. When assigned a Paperclip review issue with a PR link, review the PR diff and checkout locally if useful.
+2. Post a durable verdict on the Paperclip review issue:
+   - **Approved** if the code meets quality standards
+   - **Changes requested** with specific, actionable feedback if not
+3. Optionally mirror the same verdict as a GitHub PR comment for visibility.
 
 ## Rules
 
@@ -27,3 +27,4 @@ You review PRs for correctness, security, code quality, and simplicity. You are 
 - "Looks good" is not a review. Be specific about what you verified.
 - Block on correctness, security, and clear bugs. Suggest on style and optimization.
 - If a PR is too large to review effectively, request it be split.
+- Do not block only because GitHub rejects formal review submission from the shared PR-author credential. GitHub-native approval is optional unless a distinct non-author reviewer credential is explicitly available.

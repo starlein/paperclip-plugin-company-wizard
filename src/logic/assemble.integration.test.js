@@ -132,6 +132,13 @@ describe('assembleCompany integration (real templates)', () => {
     // --- Verify initial tasks ---
     assert.ok(initialIssues.length > 0, 'should have initial tasks from modules');
     const taskTitles = initialIssues.map((t) => t.title);
+    assert.equal(
+      initialIssues[0].title,
+      'Initialize GitHub repository',
+      'github repository foundation task should lead the initial backlog',
+    );
+    assert.equal(initialIssues[0].priority, 'critical');
+    assert.equal(initialIssues[0].bootstrapPhase, 'foundation');
     assert.ok(taskTitles.includes('Initialize GitHub repository'), 'should have github-repo task');
     assert.ok(
       taskTitles.includes('Create roadmap and generate initial backlog'),
@@ -255,6 +262,48 @@ describe('assembleCompany integration (real templates)', () => {
       progress.some((p) => p.includes('pr-review') && p.includes('○')),
       'pr-review should be skipped when no activating roles present',
     );
+  });
+
+  it('pr-review templates use Paperclip-governed verdicts instead of GitHub self-approval', async () => {
+    const prReviewDir = join(REAL_TEMPLATES_DIR, 'modules', 'pr-review');
+    const moduleMeta = JSON.parse(await readFile(join(prReviewDir, 'module.meta.json'), 'utf-8'));
+    assert.ok(
+      !moduleMeta.description.toLowerCase().includes('branch protection'),
+      'module description should not promise GitHub branch-protection enforcement',
+    );
+    assert.ok(
+      !moduleMeta.issues[0].description.toLowerCase().includes('require pr reviews'),
+      'setup issue should not require GitHub-native PR approvals when agents share one GitHub user',
+    );
+
+    async function readMarkdownFiles(dir) {
+      const entries = await readdir(dir, { withFileTypes: true });
+      const files = [];
+      for (const entry of entries) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) files.push(...(await readMarkdownFiles(full)));
+        if (entry.isFile() && entry.name.endsWith('.md')) files.push(full);
+      }
+      return files;
+    }
+
+    const markdownFiles = await readMarkdownFiles(prReviewDir);
+    assert.ok(markdownFiles.length > 0, 'expected pr-review markdown templates');
+    for (const file of markdownFiles) {
+      const content = await readFile(file, 'utf-8');
+      assert.ok(
+        !content.includes('gh pr review'),
+        `${file} should not instruct agents to submit formal GitHub reviews`,
+      );
+      assert.ok(
+        !content.includes('--approve'),
+        `${file} should not instruct agents to approve with the shared GitHub credential`,
+      );
+      assert.ok(
+        !content.includes('--request-changes'),
+        `${file} should not instruct agents to request changes with the shared GitHub credential`,
+      );
+    }
   });
 
   it('injects skill references into AGENTS.md with correct paths', async () => {
