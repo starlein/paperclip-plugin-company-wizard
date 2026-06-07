@@ -74,14 +74,25 @@ describe('assembleCompany integration (real templates)', () => {
       'docs/git-workflow.md should exist (from github-repo module)',
     );
 
-    // --- Verify shared doc references in AGENTS.md ---
-    for (const role of expectedRoles) {
+    // --- Verify role-scoped shared doc references in AGENTS.md ---
+    // git-workflow.md ships with the github-repo module, so it is referenced by the
+    // roles that module touches (engineer) and by the CEO coordinator — but NOT by a
+    // role it does not concern (product-owner). Paths are relative to the agent home.
+    for (const role of ['ceo', 'engineer']) {
       const agentsMd = await readFile(join(companyDir, 'agents', role, 'AGENTS.md'), 'utf-8');
       assert.ok(
         agentsMd.includes('docs/git-workflow.md'),
         `${role} AGENTS.md should reference shared doc git-workflow.md`,
       );
     }
+    const poAgentsMd = await readFile(
+      join(companyDir, 'agents', 'product-owner', 'AGENTS.md'),
+      'utf-8',
+    );
+    assert.ok(
+      !poAgentsMd.includes('docs/git-workflow.md'),
+      'product-owner AGENTS.md should NOT reference an unrelated github-repo doc',
+    );
 
     // --- Verify BOOTSTRAP.md ---
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');

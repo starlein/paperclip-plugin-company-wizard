@@ -5,6 +5,14 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.3] - 2026-06-07
+
+### Changed
+
+- **Shared docs are now scoped per role.** Each agent's AGENTS.md previously listed every doc in `docs/`, so e.g. a Code Reviewer was told to read the marketing and vision templates. Docs are now referenced only by the roles of the module that ships them (the CEO, as coordinator, still sees all); a module with no role association stays company-wide.
+- **Doc references use relative paths.** They were absolute paths that baked in the (possibly collision-suffixed) company directory name; they are now `docs/<file>` relative to the agent home, which stays valid if the company directory is renamed.
+
+---
 ## [0.3.2] - 2026-06-07
 
 ### Fixed

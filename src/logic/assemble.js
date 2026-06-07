@@ -233,6 +233,15 @@ export async function assembleCompany({
     : [];
   const explicitBootstrapLabels = Array.isArray(presetLabels) ? [...presetLabels] : [];
   const roleAdapterOverrides = new Map(); // role name → merged adapter overrides from modules
+  // doc filename → Set of roles it is relevant to. A doc whose owning module has no
+  // role association (company-wide) is marked with the '*' sentinel and goes to all
+  // agents. Used so each agent only references the docs that matter to its role.
+  const docRoleMap = new Map();
+  const addDocRoles = (docName, roles) => {
+    const set = docRoleMap.get(docName) ?? new Set();
+    for (const r of roles) set.add(r);
+    docRoleMap.set(docName, set);
+  };
 
   // Track issue titles already queued so module issues don't duplicate a curated
   // preset issue (or an earlier module's issue). Preset issues are seeded first, so
@@ -325,12 +334,27 @@ export async function assembleCompany({
       }
     }
 
-    // Copy shared docs
+    // Copy shared docs. Track which roles each doc is relevant to (the roles this
+    // module touches) so agents only reference the docs that matter to them.
     const docsDir = join(moduleDir, 'docs');
     if (await exists(docsDir)) {
       await copyDir(docsDir, join(companyDir, 'docs'));
+      const moduleRoles = new Set();
+      for (const cap of moduleJson?.capabilities ?? []) {
+        for (const owner of cap.owners ?? []) if (allRoles.has(owner)) moduleRoles.add(owner);
+      }
+      for (const issue of moduleIssues) {
+        if (issue.assignTo && allRoles.has(issue.assignTo)) moduleRoles.add(issue.assignTo);
+      }
+      for (const routine of moduleJson?.routines ?? []) {
+        if (routine.assignTo && allRoles.has(routine.assignTo)) moduleRoles.add(routine.assignTo);
+      }
+      for (const r of moduleJson?.activatesWithRoles ?? []) if (allRoles.has(r)) moduleRoles.add(r);
+      // No specific role association → treat as company-wide (visible to everyone).
+      const rolesForDocs = moduleRoles.size > 0 ? moduleRoles : new Set(['*']);
       const docs = await readdir(docsDir);
       for (const doc of docs) {
+        addDocRoles(doc, rolesForDocs);
         onProgress(`+ docs/${doc} (${moduleName})`);
       }
     }
@@ -495,26 +519,36 @@ export async function assembleCompany({
     }
   }
 
-  // 5. Add shared doc references to all AGENTS.md files
+  // 5. Add ROLE-RELEVANT shared doc references to each agent's AGENTS.md.
+  // Each agent only references docs from modules that touch its role — a code
+  // reviewer no longer gets the marketing/vision templates, etc. The CEO is the
+  // coordinator, so it still sees every doc. Paths are RELATIVE to the agent's
+  // home (its adapterConfig.cwd is the company dir), which keeps them valid even
+  // if the company directory is renamed (e.g. collision-suffixed).
   const finalDocsDir = join(companyDir, 'docs');
   if (await exists(finalDocsDir)) {
-    const docs = await readdir(finalDocsDir);
+    const docs = (await readdir(finalDocsDir)).sort();
     if (docs.length > 0) {
       const agentsBaseDir = join(companyDir, 'agents');
       const agentRoles = await readdir(agentsBaseDir, { withFileTypes: true });
       for (const role of agentRoles) {
         if (!role.isDirectory()) continue;
         const agentsMd = join(agentsBaseDir, role.name, 'AGENTS.md');
-        if (await exists(agentsMd)) {
-          let docRefs = '\n## Shared Documentation\n';
-          for (const doc of docs) {
-            // Absolute path: the agent's runtime cwd is the execution workspace
-            // (often a project repo), not the company dir, so a relative `docs/`
-            // reference would not resolve. The shared docs live at companyDir/docs.
-            docRefs += `\nRead: \`${join(companyDir, 'docs', doc)}\`\n`;
-          }
-          await appendToFile(agentsMd, docRefs);
+        if (!(await exists(agentsMd))) continue;
+
+        const relevantDocs = docs.filter((doc) => {
+          if (role.name === 'ceo') return true; // coordinator sees everything
+          const roles = docRoleMap.get(doc);
+          return !roles || roles.has('*') || roles.has(role.name);
+        });
+        if (relevantDocs.length === 0) continue;
+
+        let docRefs =
+          '\n## Shared Documentation\n\nReference docs relevant to your role (paths are relative to your workspace home):\n';
+        for (const doc of relevantDocs) {
+          docRefs += `\nRead: \`docs/${doc}\`\n`;
         }
+        await appendToFile(agentsMd, docRefs);
       }
     }
   }
