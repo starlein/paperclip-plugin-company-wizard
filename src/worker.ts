@@ -991,6 +991,53 @@ const plugin = definePlugin({
             }
           }
 
+          // Step 6c: Create the scheduled routines directly. Paperclip only lets an
+          // agent create routines assigned to ITSELF, so a CEO following the bootstrap
+          // cannot create routines owned by other agents (backlog grooming, auto-assign,
+          // …) — that previously blocked the bootstrap issue. The wizard connects with
+          // board authority, so it can create routines for any agent. New companies only;
+          // existing-company runs leave routines untouched to avoid duplicates.
+          if (!existingCompanyId) {
+            const routines = Array.isArray(assembleResult.initialRoutines)
+              ? assembleResult.initialRoutines
+              : [];
+            for (const routine of routines) {
+              const title =
+                typeof routine.title === 'string' && routine.title.trim()
+                  ? routine.title.trim()
+                  : typeof routine.name === 'string'
+                    ? routine.name.trim()
+                    : '';
+              if (!title) continue;
+              const role = routine.assignTo;
+              const assigneeAgentId =
+                !role || role === 'ceo' ? ceoAgentId : (teamAgentIds[role] ?? ceoAgentId);
+              try {
+                const createdRoutine = await client.createRoutine(companyId, {
+                  title,
+                  description: routine.description,
+                  assigneeAgentId,
+                  priority: routine.priority || 'medium',
+                  concurrencyPolicy: routine.concurrencyPolicy || 'skip_if_active',
+                });
+                if (routine.schedule && createdRoutine?.id) {
+                  await client.createRoutineTrigger(createdRoutine.id, {
+                    kind: 'schedule',
+                    cronExpression: routine.schedule,
+                    timezone: 'UTC',
+                  });
+                }
+                log(
+                  `✓ Routine "${title}" created${routine.schedule ? ` (${routine.schedule})` : ''}`,
+                );
+              } catch (err) {
+                log(
+                  `⚠ Could not create routine "${title}": ${err instanceof Error ? err.message : String(err)}`,
+                );
+              }
+            }
+          }
+
           // Step 7: Create bootstrap issue.
           // Use the HTTP client instead of ctx.issues here because the wizard may be
           // launched from company A while provisioning a newly-created/reused company B.

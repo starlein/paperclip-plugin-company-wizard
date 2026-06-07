@@ -1061,6 +1061,7 @@ export async function assembleCompany({
   // --- Routines ---
   if (initialRoutines.length > 0) {
     bootstrap += `## Routines\n\n`;
+    bootstrap += `> **The Company Wizard has already created the routines listed below** (with board authority, so each could be assigned to its owning agent). Do NOT recreate them. Note: an agent may only create routines assigned to itself, so never try to create another agent's routine.\n\n`;
     for (const routine of initialRoutines) {
       bootstrap += `### ${routine.title}\n\n`;
       bootstrap += renderMeta([
@@ -1104,7 +1105,7 @@ export async function assembleCompany({
     bootstrap += `${stepN++}. **Create issues** — every issue, including subtasks, must carry explicit projectId; subtasks also require parentId\n`;
   }
   if (initialRoutines.length > 0) {
-    bootstrap += `${stepN++}. **Create routines** with cron triggers as listed above\n`;
+    bootstrap += `${stepN++}. **Routines already created** — the Company Wizard provisioned the routines above (with their cron triggers) using board authority. Do not recreate them; an agent can only create routines assigned to itself\n`;
   }
   bootstrap += `${stepN}. **Start CEO heartbeat** (one-time initial wakeup)\n`;
 

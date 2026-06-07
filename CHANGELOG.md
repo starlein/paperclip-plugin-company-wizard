@@ -5,6 +5,13 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.4] - 2026-06-07
+
+### Fixed
+
+- **Bootstrap no longer blocks on routine creation.** Paperclip only lets an agent create routines assigned to itself, so the CEO following the bootstrap could not create routines owned by other agents (backlog grooming and auto-assign belong to the Product Owner) — it had to delegate them to a separate issue and block the bootstrap. The plugin now creates all routines directly during provisioning (with board authority, each assigned to its owning agent, with cron triggers), the same way it already creates the agents. BOOTSTRAP.md tells the CEO the routines already exist. New companies only; existing-company runs leave routines untouched.
+
+---
 ## [0.3.3] - 2026-06-07
 
 ### Changed
