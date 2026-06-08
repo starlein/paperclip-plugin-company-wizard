@@ -266,6 +266,41 @@ export async function assembleCompany({
     return assignee;
   };
 
+  // Helper: resolve a declared reviewGate to roles present in the team. Reviewers
+  // become ordered `review` stages; the approver becomes the final `approval`
+  // stage. Roles not present in the team are dropped (no CEO fallback) — a review
+  // gate references concrete reviewer roles, and a missing one means that gate
+  // simply has one fewer stage.
+  const resolveReviewGate = (reviewGate) => {
+    if (!reviewGate || typeof reviewGate !== 'object') return null;
+    const reviewers = (Array.isArray(reviewGate.reviewers) ? reviewGate.reviewers : []).filter(
+      (role) => typeof role === 'string' && allRoles.has(role),
+    );
+    const approver =
+      typeof reviewGate.approver === 'string' && allRoles.has(reviewGate.approver)
+        ? reviewGate.approver
+        : undefined;
+    if (reviewers.length === 0 && !approver) return null;
+    return { reviewers, approver };
+  };
+
+  // Render a resolved reviewGate as an executionPolicy sketch for BOOTSTRAP.md.
+  // The CEO/Engineer resolves each role name to its agentId when setting the
+  // policy on the issue (same role→agentId resolution as `assigneeAgentId`).
+  const renderReviewGate = (gate) => {
+    const stages = [];
+    for (const role of gate.reviewers) {
+      stages.push(`  - stage ${stages.length + 1} (review) → assign "${role}"`);
+    }
+    if (gate.approver) {
+      stages.push(`  - stage ${stages.length + 1} (approval) → assign "${gate.approver}"`);
+    }
+    return (
+      `- **executionPolicy** (set when creating this issue; resolve each role to its agentId):\n` +
+      `${stages.join('\n')}\n\n`
+    );
+  };
+
   // Foundation issues are explicit setup gates (repository/bootstrap scaffolding)
   // that must be created before domain implementation starts. Ordinary module and
   // preset issues are generic project scaffolding ("Define company vision", "Add
@@ -1061,6 +1096,10 @@ export async function assembleCompany({
         ['goalId', goalRef ? `→ "${goalRef}"` : undefined],
         ['labelIds', `→ [${issueLabelNames.map((name) => `"${name}"`).join(', ')}]`],
       ]);
+      const issueReviewGate = resolveReviewGate(issue.reviewGate);
+      if (issueReviewGate) {
+        bootstrap += renderReviewGate(issueReviewGate);
+      }
       if (issue.description) {
         bootstrap += `${escapeBody(issue.description)}\n\n`;
       }

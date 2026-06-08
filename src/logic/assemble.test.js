@@ -299,6 +299,54 @@ describe('assembleCompany', () => {
     assert.ok(issuesStep > agentsStep, 'issues should be created after the agents step');
   });
 
+  it('renders a reviewGate as an ordered executionPolicy in BOOTSTRAP.md', async () => {
+    // Reviewer/approver role templates must exist or they are skipped.
+    for (const role of ['code-reviewer', 'qa', 'product-owner']) {
+      const roleDir = join(templatesDir, 'roles', role);
+      await mkdir(roleDir, { recursive: true });
+      await writeJson(join(roleDir, 'role.meta.json'), { name: role });
+      await writeFile(join(roleDir, 'AGENTS.md'), `# ${role} agent\n\n## Skills\n\n`);
+      await writeFile(join(roleDir, 'HEARTBEAT.md'), `# ${role} heartbeat\n`);
+      await writeFile(join(roleDir, 'SOUL.md'), `# ${role} soul\n`);
+    }
+
+    const modDir = join(templatesDir, 'modules', 'gated-work');
+    await mkdir(modDir, { recursive: true });
+    await writeJson(join(modDir, 'module.meta.json'), {
+      name: 'gated-work',
+      capabilities: [],
+      issues: [
+        {
+          title: 'Implement gated feature',
+          assignTo: 'engineer',
+          reviewGate: {
+            reviewers: ['code-reviewer', 'qa', 'missing-role'],
+            approver: 'product-owner',
+          },
+        },
+      ],
+    });
+
+    const { companyDir } = await assembleCompany({
+      companyName: 'GateCo',
+      moduleNames: ['gated-work'],
+      extraRoleNames: ['code-reviewer', 'qa', 'product-owner'],
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(bootstrap.includes('**executionPolicy**'), 'executionPolicy block present');
+    assert.ok(bootstrap.includes('(review) → assign "code-reviewer"'));
+    assert.ok(bootstrap.includes('(review) → assign "qa"'));
+    assert.ok(bootstrap.includes('(approval) → assign "product-owner"'));
+    assert.ok(!bootstrap.includes('missing-role'), 'role absent from team is dropped');
+
+    const crIdx = bootstrap.indexOf('"code-reviewer"');
+    const poIdx = bootstrap.indexOf('"product-owner"');
+    assert.ok(crIdx > -1 && poIdx > crIdx, 'approver renders after reviewers');
+  });
+
   it('seeds user/AI domain issues at the front of the backlog, ahead of generic module issues', async () => {
     const { companyDir, initialIssues } = await assembleCompany({
       companyName: 'DomainCo',
