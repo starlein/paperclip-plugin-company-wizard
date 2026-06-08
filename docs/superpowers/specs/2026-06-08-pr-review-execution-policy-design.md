@@ -166,6 +166,35 @@ finalizing reviewer-skill wording. Keep reviewer skills mechanism-neutral if the
 exact tool/endpoint cannot be pinned down ("record your `approved` /
 `changes_requested` verdict on your review stage").
 
+## Decision-Submit Mechanism (verified 2026-06-08)
+
+Verified against the bundled `@paperclipai/shared` and `@paperclipai/plugin-sdk`
+`2026.529.0`:
+
+- The REST `updateIssueSchema` (`PATCH /api/issues/:id`) exposes `reviewRequest`
+  (how the **requester** starts a review), `comment`, `reopen`, `resume`,
+  `interrupt` — but **no** `decision` / `outcome` / `approved` field.
+- The `PluginIssuesClient` host interface has `create`, `update` (a narrow
+  field pick that does **not** include execution-stage decisions),
+  `createComment`, `requestWakeup`, interactions — but **no** stage-decision
+  method.
+
+**Conclusion:** the stage decision (`approved` / `changes_requested`) is **agent
+runtime logic** — the agent that is the active stage participant submits its
+verdict host-side (via its run disposition / agent tooling), not through the
+public REST or plugin API. Therefore:
+
+- **Path B (plugin declaration)** is fully supported: the CEO sets
+  `executionPolicy` at issue creation via `createIssue` (the create schema
+  accepts `executionPolicy`).
+- **Path A (runtime)**: the Engineer sets `executionPolicy` via the REST PATCH
+  (`updateIssueSchema` inherits `executionPolicy` from
+  `createIssueBaseSchema.partial()`).
+- **Reviewer skills MUST stay mechanism-neutral**: "you are the active
+  participant of a review/approval stage; record your `approved` /
+  `changes_requested` verdict on your stage" — no specific REST call or tool
+  name, because none is exposed to the plugin.
+
 ## Testing
 
 - `assemble.test.js` (vitest): an issue with `reviewGate` renders the correct
