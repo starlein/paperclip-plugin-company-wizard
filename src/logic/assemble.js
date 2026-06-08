@@ -1112,7 +1112,7 @@ export async function assembleCompany({
     bootstrap += `- Do not reopen \`done\` parent/subissues without an explicit reason in a comment.\n`;
     bootstrap += `- Do not reuse parent workspaces for subissues unless explicitly requested.\n`;
     if (moduleNames.includes('pr-review')) {
-      bootstrap += `- Required PR reviews are explicit assigned child issues (Code Reviewer + Product Owner; plus Security/QA/UI/DevOps when relevant), not @-mentions.\n`;
+      bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`: a \`review\` stage for the Code Reviewer (plus any relevant domain reviewer — QA/UI/UX/DevOps), then a final \`approval\` stage for the Product Owner. Resolve each reviewer/approver role to its agentId. Do not create separate child review issues and do not use @-mentions.\n`;
     }
     bootstrap += `\n`;
   }

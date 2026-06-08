@@ -731,7 +731,7 @@ describe('assembleCompany', () => {
     assert.ok(!bootstrap.includes('abcdefghijklmnopqrstuvwxyz1234567890'));
   });
 
-  it('adds PR-review child issue guardrail when pr-review module is active', async () => {
+  it('adds PR-review executionPolicy guardrail when pr-review module is active', async () => {
     const prDir = join(templatesDir, 'modules', 'pr-review');
     await mkdir(prDir, { recursive: true });
     await writeJson(join(prDir, 'module.meta.json'), {
@@ -749,7 +749,8 @@ describe('assembleCompany', () => {
     });
 
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
-    assert.ok(bootstrap.includes('Required PR reviews are explicit assigned child issues'));
+    assert.ok(bootstrap.includes("Required PR reviews use the issue's `executionPolicy`"));
+    assert.ok(!bootstrap.includes('are explicit assigned child issues'));
   });
 
   it('renders agent hire metadata required by Paperclip v2026.403.0', async () => {
