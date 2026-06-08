@@ -1,6 +1,6 @@
 {
   "name": "pr-review",
-  "description": "Coordinates pull request reviews through explicit Paperclip review issues. Reviewers may mirror verdicts as PR comments, but GitHub-native approvals require distinct non-author GitHub credentials.",
+  "description": "Coordinates pull request reviews through the issue's native executionPolicy (review/approval stages) instead of separate child issues. Reviewers may mirror verdicts as PR comments, but GitHub-native approvals require distinct non-author GitHub credentials.",
   "requires": [
     "github-repo"
   ],
@@ -18,7 +18,11 @@
     {
       "title": "Set up Paperclip PR review workflow",
       "assignTo": "engineer",
-      "description": "Document and verify the PR workflow: feature branches, PR links, explicit Paperclip review child issues for Code Reviewer and Product Owner, and engineer-owned merges after review issues are resolved. Optional branch protection may disable direct pushes or require CI, but do not require GitHub-native approving reviews unless the project has distinct non-author GitHub reviewer credentials."
+      "reviewGate": {
+        "reviewers": ["code-reviewer"],
+        "approver": "product-owner"
+      },
+      "description": "Document and verify the PR workflow: feature branches, PR links, and review via the issue's executionPolicy — a review stage for the Code Reviewer (plus relevant domain reviewers) and a final approval stage for the Product Owner, with engineer-owned merges once all stages clear. Optional branch protection may disable direct pushes or require CI, but do not require GitHub-native approving reviews unless the project has distinct non-author GitHub reviewer credentials."
     }
   ]
 }

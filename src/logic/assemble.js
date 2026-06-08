@@ -266,6 +266,61 @@ export async function assembleCompany({
     return assignee;
   };
 
+  // Helper: resolve a declared reviewGate to roles present in the team. Reviewers
+  // become ordered `review` stages; the approver becomes the final `approval`
+  // stage. Roles not present in the team are dropped (no CEO fallback) — a review
+  // gate references concrete reviewer roles, and a missing one means that gate
+  // simply has one fewer stage.
+  const resolveReviewGate = (reviewGate) => {
+    if (!reviewGate || typeof reviewGate !== 'object') return null;
+
+    const reviewersRaw = Array.isArray(reviewGate.reviewers) ? reviewGate.reviewers : [];
+    const reviewers = [];
+    const seen = new Set();
+    for (const role of reviewersRaw) {
+      if (typeof role !== 'string') continue;
+      if (!allRoles.has(role)) continue;
+      if (seen.has(role)) continue;
+      seen.add(role);
+      reviewers.push(role);
+    }
+
+    const approver =
+      typeof reviewGate.approver === 'string' && allRoles.has(reviewGate.approver)
+        ? reviewGate.approver
+        : undefined;
+
+    // Avoid accidentally requiring the same role twice (e.g. reviewer + approver).
+    if (approver) {
+      const idx = reviewers.indexOf(approver);
+      if (idx !== -1) reviewers.splice(idx, 1);
+    }
+
+    if (reviewers.length === 0 && !approver) return null;
+    return { reviewers, approver };
+  };
+
+  // Render a resolved reviewGate as an executionPolicy sketch for BOOTSTRAP.md.
+  // The CEO/Engineer resolves each role name to its agentId when setting the
+  // policy on the issue (same role→agentId resolution as `assigneeAgentId`).
+  const renderReviewGate = (gate) => {
+    const stages = [];
+    for (const role of gate.reviewers) {
+      stages.push(
+        `  - stage ${stages.length + 1} (review) → assign ${JSON.stringify(role)}`,
+      );
+    }
+    if (gate.approver) {
+      stages.push(
+        `  - stage ${stages.length + 1} (approval) → assign ${JSON.stringify(gate.approver)}`,
+      );
+    }
+    return (
+      `- **executionPolicy** (set when creating this issue; resolve each role to its agentId):\n` +
+      `${stages.join('\n')}\n\n`
+    );
+  };
+
   // Foundation issues are explicit setup gates (repository/bootstrap scaffolding)
   // that must be created before domain implementation starts. Ordinary module and
   // preset issues are generic project scaffolding ("Define company vision", "Add
@@ -1061,6 +1116,10 @@ export async function assembleCompany({
         ['goalId', goalRef ? `→ "${goalRef}"` : undefined],
         ['labelIds', `→ [${issueLabelNames.map((name) => `"${name}"`).join(', ')}]`],
       ]);
+      const issueReviewGate = resolveReviewGate(issue.reviewGate);
+      if (issueReviewGate) {
+        bootstrap += renderReviewGate(issueReviewGate);
+      }
       if (issue.description) {
         bootstrap += `${escapeBody(issue.description)}\n\n`;
       }
@@ -1073,7 +1132,7 @@ export async function assembleCompany({
     bootstrap += `- Do not reopen \`done\` parent/subissues without an explicit reason in a comment.\n`;
     bootstrap += `- Do not reuse parent workspaces for subissues unless explicitly requested.\n`;
     if (moduleNames.includes('pr-review')) {
-      bootstrap += `- Required PR reviews are explicit assigned child issues (Code Reviewer + Product Owner; plus Security/QA/UI/DevOps when relevant), not @-mentions.\n`;
+      bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`: a \`review\` stage for the Code Reviewer (plus any relevant domain reviewer — QA/UI/UX/DevOps), then a final \`approval\` stage for the Product Owner. Resolve each reviewer/approver role to its agentId. Do not create separate child review issues and do not use @-mentions.\n`;
     }
     bootstrap += `\n`;
   }

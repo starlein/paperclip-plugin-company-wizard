@@ -5,6 +5,39 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.9] - 2026-06-08
+
+### Changed
+
+- **PR reviews now use the issue's native `executionPolicy` instead of separate child review issues.** The Engineer sets an ordered stage chain on the originating issue — a `review` stage for the Code Reviewer, optional `review` stages for relevant domain reviewers (UI/UX/QA/DevOps), and a final `approval` stage for the Product Owner — and merges once all stages clear. Reviewer skills record `approved` / `changes_requested` on their stage (the verdict-submit path is agent-runtime logic, so the skills stay mechanism-neutral). This surfaces reviewer/approver in the native UI and removes 2–6 review issues per PR. Touches the `pr-review` engineer + six reviewer skills, `pr-conventions.md`, the module metadata, and the BOOTSTRAP guardrail.
+
+### Added
+
+- **`reviewGate` field on declared module/preset issues** (`{ reviewers: [...], approver: "..." }`). Assembly resolves the roles present in the team (dropping absent ones) and renders an ordered executionPolicy sketch into BOOTSTRAP.md; the CEO resolves roles → agentIds when creating the issue. `client.createIssue` already forwards `executionPolicy`, so no client change was needed. The `pr-review` setup issue ships a `reviewGate` as the first real example.
+
+---
+## [0.3.8] - 2026-06-08
+
+### Changed
+
+- **`anthropicApiKey` and `paperclipPassword` plugin settings are now plain string fields** instead of `secret-ref`. The Paperclip host rejects saving any `secret-ref` field until company-scoped plugin config ships (error: "Plugin secret references are disabled until company-scoped plugin config lands"), which blocked saving the plugin settings entirely. `resolveAnthropicApiKey` now uses a directly entered key (`sk-ant-...`) as-is and only falls back to host secret resolution for legacy installs that still store a secret reference. Trade-off: the Anthropic key is now stored in plain plugin config until the host secret store is available.
+
+---
+## [0.3.7] - 2026-06-08
+
+### Fixed
+
+- **Agent filter bug in the `auto-assign` module.** Corrected the agent-matching filter used in the CEO/Product Owner heartbeat sections and the primary + fallback `auto-assign` skills.
+
+---
+## [0.3.6] - 2026-06-07
+
+### Fixed
+
+- **Bootstrap ordering hardened** in `assemble.js`, with added integration coverage.
+- **PR review workflow tightened.** Review skills across all reviewing roles (code reviewer, devops, engineer, product owner, QA, UI designer, UX researcher) and the `pr-conventions` doc were updated for consistent, role-appropriate review scope; `github-repo` and `pr-review` module metadata adjusted.
+
+---
 ## [0.3.5] - 2026-06-07
 
 ### Changed

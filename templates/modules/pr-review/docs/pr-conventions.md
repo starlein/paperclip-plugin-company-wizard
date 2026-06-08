@@ -44,28 +44,28 @@ Apply one primary label: `feature`, `bug`, `docs`, `chore`, `infra`, `agent`.
 
 ## Review Workflow
 
-Two-role review via explicit Paperclip child review issues:
+Review runs through the issue's native `executionPolicy` (stages), not separate child issues:
 
-1. **Engineer** opens PR on GitHub
-2. **Engineer** sets originating issue to `in_review`
-3. **Engineer** creates explicit child issues assigned to Code Reviewer and Product Owner with the PR link
-4. **Code Reviewer** reviews for correctness, security, code style, simplicity
-5. **Product Owner** reviews for intent match, scope discipline, acceptance criteria, roadmap alignment
-6. Reviewers post their durable verdict on their Paperclip review issue and may mirror it as a PR comment
-7. **Engineer** merges when required Paperclip review issues are `done`/approved and no blocker child issues remain, then sets the originating issue to `done`
+1. **Engineer** opens the PR on GitHub.
+2. **Engineer** sets the originating issue's `executionPolicy`: a `review` stage for the Code Reviewer, optional `review` stages for relevant domain reviewers (UI Designer / UX Researcher / QA / DevOps), and a final `approval` stage for the Product Owner. Reviewer/approver roles are resolved to agentIds. The PR link is added as an issue comment.
+3. **Engineer** sets the originating issue to `in_review`.
+4. **Code Reviewer** reviews for correctness, security, code style, simplicity and records `approved` / `changes_requested` on the review stage.
+5. **Domain reviewers** (when present as stages) review their concern and record their verdict.
+6. **Product Owner** reviews for intent match, scope discipline, acceptance criteria, and records the final `approval` verdict.
+7. Verdicts are recorded on the stages and may be mirrored as PR comments.
+8. **Engineer** merges when all stages are approved (no `changes_requested` outstanding), then sets the originating issue to `done`.
 
 ## Review Roles
 
-- **Code Reviewer**: Correctness, security, style, simplicity. Posts the durable verdict on the Paperclip review issue; may also add a PR comment.
-- **Product Owner**: Intent alignment, scope discipline, acceptance criteria. Posts the durable verdict on the Paperclip review issue; may also add a PR comment.
-- **UI Designer** *(when present)*: Visual consistency, brand compliance, accessibility, design token usage.
-- **UX Researcher** *(when present)*: Usability, user flow integrity, cognitive load, error handling UX.
-- **QA Engineer** *(when present)*: Test coverage, edge cases, regression risk, boundary conditions.
-- **DevOps Engineer** *(when present)*: Infrastructure impact, security, performance, rollback safety.
+- **Code Reviewer** (`review` stage): Correctness, security, style, simplicity.
+- **Domain reviewers** (`review` stages, when relevant): UI Designer (visual/brand/accessibility), UX Researcher (flows/usability), QA (coverage/regression), DevOps (infra/security/rollback).
+- **Product Owner** (`approval` stage): Intent alignment, scope discipline, acceptance criteria — the final sign-off.
+
+Reviewers may also add a PR comment, but GitHub-native approving reviews require distinct non-author GitHub credentials and are optional.
 
 ## Merge Rules
 
-- Code Reviewer and Product Owner Paperclip review issues must approve/complete (required)
+- Code Reviewer `review` stage and Product Owner `approval` stage must be approved (required)
 - Other reviewers provide advisory feedback — blocking only for their domain-critical issues (e.g., security for DevOps, accessibility for UI Designer)
 - CI must pass
 - Do not configure GitHub branch protection to require approving reviews unless the project has distinct non-author GitHub reviewer credentials; all agents using one GitHub account cannot formally approve their own PRs

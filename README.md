@@ -14,6 +14,59 @@
 
 ---
 
+> **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for the current Paperclip API (`>=2026.529.0`) with substantial bug fixes. End-to-end company setup is largely functional as of v0.3.9.
+
+<details>
+<summary><strong>What changed vs. upstream</strong></summary>
+
+#### Paperclip API compatibility
+
+- Bootstrap metadata fields renamed to match the Paperclip API exactly: `parentId`, `assigneeAgentId`, `projectId`, `goalIds`
+- CEO is provisioned with correct `capabilities` metadata so newly created CEOs are no longer saved with empty summaries
+- `@paperclipai/plugin-sdk` and `@paperclipai/shared` declared as `peerDependencies` with minimum version `>=2026.529.0` — the host provides the SDK at runtime (externalized from the bundle)
+- `security-engineer` role now maps to the dedicated Paperclip `security` enum value (was `general`)
+
+#### Bootstrap reliability
+
+- **Agents provisioned with complete instructions** — every non-CEO agent is now created by the plugin directly with its full `instructionsBundle` (AGENTS.md + HEARTBEAT/SOUL/TOOLS + skills). Previously the CEO created these agents during bootstrap with only an `instructionsFilePath`, leaving each agent with a bare AGENTS.md and fragile external path references
+- **Routines created directly during provisioning** — Paperclip only allows an agent to create routines assigned to itself, so the CEO could not create routines owned by the Product Owner. The plugin now creates all routines with board authority at provisioning time; BOOTSTRAP.md tells the CEO they already exist
+- **Worker agents no longer run always-on heartbeats** — enabling heartbeats on every provisioned agent caused bursts of concurrent runs that crashed the dev server. Only the CEO keeps an always-on heartbeat; all other agents are woken on assignment
+- **Fresh git workspaces seeded with an initial commit** — `git init -b main` leaves an unborn `main` branch; `isolated_workspace` / `git_worktree` policy then failed the first issue. The default setup command now adds an empty commit so `main` is a valid base ref immediately
+- Bootstrap ordering hardened; agent filter bug fixed (v0.3.7)
+
+#### Assembly and template fixes
+
+- **Broken `$AGENT_HOME` references** rewritten to absolute paths under `companyDir/agents/<role>/` and `companyDir/docs/` — `AGENT_HOME` points to a per-agent workspace dir that does not contain provisioned files
+- **Shared docs scoped per role** — each agent's AGENTS.md now lists only docs from modules relevant to that role (CEO still sees all); previously every agent was told to read every module's docs
+- **Doc references use relative paths** (`docs/<file>`) instead of absolute paths that baked in the collision-suffixed company directory name
+- Duplicate bootstrap issues (same title from module + preset) are now deduplicated; preset issue wins
+- CFO role removed — was orphaned (no preset, no capability, never activated)
+
+#### AI wizard
+
+- Config generation uses `claude-opus-4-8` with `max_tokens: 32768` so a full-spec config is never truncated mid-JSON
+- All Anthropic calls run as background jobs in the worker (start + poll), eliminating the 30 s RPC timeout that previously crashed config generation
+- AI wizard now generates domain-specific initial issues from the project brief that lead the bootstrap backlog ahead of generic scaffolding issues
+- Preset roles are defensively merged with AI-selected roles so preset roles are no longer silently dropped
+
+#### Error handling
+
+- All worker actions return `{ error }` instead of throwing — prevents the plugin host from swallowing error messages in generic 502 responses
+- Network errors in `PaperclipClient` are caught and surfaced with actionable messages referencing the `paperclipUrl` plugin setting
+
+#### New features (not in upstream)
+
+- **Existing-company provisioning** — target an existing Paperclip company instead of creating a new one (`existingCompanyId`); partial-failure cleanup never deletes existing companies
+- **Approval-aware agent hiring** — detects board-approval requirements, falls back to `/agent-hires` + auto-approve; surfaces pending approval ID if auto-approve fails
+- **`disableBoardApprovalOnNewCompanies` setting** — optionally patches new companies to skip board approval for fully-autonomous bootstrap
+- **Repository workspace step** — choose between a fresh local Git repo or an existing external repository (GitHub, GitLab, etc.) in the manual wizard path
+- **Routine schedules** tightened to run every few hours around the clock (auto-assign every 2 h, stall-detection every 3 h, backlog grooming every 4 h) with `skip_if_active` concurrency policy
+- **"Update templates" button** on the onboarding screen — deletes the cached templates dir and re-downloads from GitHub without restarting the plugin
+
+</details>
+
+---
+
 **Company Wizard** is a [Paperclip](https://github.com/paperclipai/paperclip) plugin that bootstraps an AI agent company for your project — roles, workflows, skills, and tasks — in a few clicks. Open it from the sidebar, answer a few questions (or just describe your project), and it assembles the workspace files and creates the company + CEO in Paperclip. The CEO then hires the team and sets up the backlog on its first heartbeat.
 
 <br>

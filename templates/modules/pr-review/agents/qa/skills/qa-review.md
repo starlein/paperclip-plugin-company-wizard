@@ -14,11 +14,11 @@ You review PRs for test coverage, edge cases, and regression risk. When a PR cha
 
 ## How to Review
 
-1. When assigned a Paperclip review issue with a PR link, review the PR.
+1. When you are the active participant of a review stage on an issue with a PR link, review the PR.
 2. Focus on test coverage, regression risk, and validation strategy.
-3. Post your durable verdict on the Paperclip review issue:
-   - **Approved** if quality is adequate
-   - **Changes requested** with specific gaps and suggested test cases if not
+3. Record your verdict on your review stage:
+   - **approved** if quality is adequate
+   - **changes_requested** with specific gaps and suggested test cases if not
 4. Optionally mirror the same verdict as a GitHub PR comment for visibility.
 
 ## Rules
