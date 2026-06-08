@@ -1,6 +1,6 @@
 {
   "name": "@starlein/paperclip-plugin-company-wizard",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "type": "module",
   "description": "AI-powered wizard to bootstrap paperclip agent companies from composable templates (for latest paperclip version)",
   "repository": "https://github.com/starlein/paperclip-plugin-company-wizard",
@@ -12,8 +12,9 @@
     "test": "vitest run --config ./vitest.config.ts",
     "test:logic": "node --test src/logic/*.test.js src/api/*.test.js",
     "typecheck": "tsc --noEmit",
+    "build:prod": "NODE_ENV=production node ./esbuild.config.mjs",
     "publish:npm": "npm publish --access restricted",
-    "prepublishOnly": "pnpm build",
+    "prepublishOnly": "pnpm build:prod",
     "prepare": "husky"
   },
   "lint-staged": {

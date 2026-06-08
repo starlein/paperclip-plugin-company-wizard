@@ -36,9 +36,21 @@ const tailwindPlugin = {
   },
 };
 
+// The Paperclip host loads a development build of React/react-dom. esbuild's
+// automatic JSX runtime defaults to the production runtime (react/jsx-runtime,
+// i.e. jsx/jsxs), whose elements never get the "static children" flag that
+// jsxDEV sets. Against a dev react-dom that makes warnForMissingKey fire for
+// every component returning multiple static children — spurious "unique key"
+// warnings even though our lists all have keys. Emit the dev JSX runtime
+// (jsxDEV) for local/dev builds so the flag is set; publish builds opt into the
+// production runtime via NODE_ENV=production.
+const isProduction = process.env.NODE_ENV === "production";
+
 // Customize UI config
 const uiConfig = {
   ...presets.esbuild.ui,
+  jsx: "automatic",
+  jsxDev: !isProduction,
   plugins: [tailwindPlugin, rawImportPlugin, ...(presets.esbuild.ui.plugins || [])],
 };
 

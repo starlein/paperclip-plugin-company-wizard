@@ -9,38 +9,16 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { cn } from '../../lib/utils';
 import { Check, GitBranch, Github, PlusCircle } from 'lucide-react';
-
-type RepositoryMode = 'new' | 'external';
+import {
+  type RepositoryMode,
+  getRepositoryMode,
+  getRepositoryRef,
+  getRepositoryUrl,
+  repositoryProjectFields,
+} from '../../lib/repository';
 
 function getPrimaryProject(stateProjects: WizardProject[]): WizardProject | null {
   return stateProjects.length > 0 ? stateProjects[0] : null;
-}
-
-function getInitialMode(project: WizardProject | null): RepositoryMode {
-  const workspace = project?.workspace;
-  if (workspace?.sourceType === 'git_repo' || workspace?.repoUrl || project?.repoUrl) {
-    return 'external';
-  }
-  return 'new';
-}
-
-function getInitialRepoUrl(project: WizardProject | null): string {
-  return project?.workspace?.repoUrl || project?.repoUrl || '';
-}
-
-function getInitialRef(project: WizardProject | null, mode: RepositoryMode): string {
-  return (
-    project?.workspace?.defaultRef ||
-    project?.workspace?.repoRef ||
-    project?.defaultRef ||
-    project?.repoRef ||
-    (mode === 'external' ? 'origin/main' : 'main')
-  );
-}
-
-function normalizeNewRepoBranch(value: string): string {
-  const raw = value.trim().replace(/^origin\//, '') || 'main';
-  return /^[A-Za-z0-9._/-]+$/.test(raw) ? raw : 'main';
 }
 
 function buildProject({
@@ -65,49 +43,12 @@ function buildProject({
     existing?.description?.trim() || goalDescription || `Main project for ${companyName}`;
   const goals = existing?.goals?.length ? existing.goals : goalTitles;
 
-  if (mode === 'external') {
-    const ref = repoRef.trim() || 'origin/main';
-    return {
-      ...(existing ?? {}),
-      name,
-      description,
-      goals,
-      repoUrl: repoUrl.trim(),
-      repoRef: ref,
-      defaultRef: ref,
-      workspace: {
-        sourceType: 'git_repo',
-        repoUrl: repoUrl.trim(),
-        repoRef: ref,
-        defaultRef: ref,
-        isPrimary: true,
-      },
-      executionWorkspacePolicy: {
-        defaultMode: 'isolated_workspace',
-        workspaceStrategy: { type: 'git_worktree', baseRef: ref },
-      },
-    };
-  }
-
-  const branch = normalizeNewRepoBranch(repoRef);
   return {
     ...(existing ?? {}),
     name,
     description,
     goals,
-    repoUrl: undefined,
-    repoRef: undefined,
-    defaultRef: branch,
-    workspace: {
-      sourceType: 'local_path',
-      defaultRef: branch,
-      setupCommand: `git init -b ${branch}`,
-      isPrimary: true,
-    },
-    executionWorkspacePolicy: {
-      defaultMode: 'isolated_workspace',
-      workspaceStrategy: { type: 'git_worktree', baseRef: branch },
-    },
+    ...repositoryProjectFields(mode, repoUrl, repoRef),
   };
 }
 
@@ -155,10 +96,10 @@ export function StepRepository() {
   const state = useWizard();
   const dispatch = useWizardDispatch();
   const existingProject = getPrimaryProject(state.projects);
-  const initialMode = getInitialMode(existingProject);
+  const initialMode = getRepositoryMode(existingProject);
   const [mode, setMode] = useState<RepositoryMode>(initialMode);
-  const [repoUrl, setRepoUrl] = useState(getInitialRepoUrl(existingProject));
-  const [repoRef, setRepoRef] = useState(getInitialRef(existingProject, initialMode));
+  const [repoUrl, setRepoUrl] = useState(getRepositoryUrl(existingProject));
+  const [repoRef, setRepoRef] = useState(getRepositoryRef(existingProject, initialMode));
 
   const companyName = state.companyName.trim() || 'Company';
   const goalTitles = state.goals.map((g) => g.title).filter(Boolean);

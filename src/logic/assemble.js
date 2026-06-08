@@ -306,9 +306,7 @@ export async function assembleCompany({
   const renderReviewGate = (gate) => {
     const stages = [];
     for (const role of gate.reviewers) {
-      stages.push(
-        `  - stage ${stages.length + 1} (review) → assign ${JSON.stringify(role)}`,
-      );
+      stages.push(`  - stage ${stages.length + 1} (review) → assign ${JSON.stringify(role)}`);
     }
     if (gate.approver) {
       stages.push(
@@ -974,9 +972,26 @@ export async function assembleCompany({
     return `{ ${fields.join(', ')} }`;
   };
 
-  const renderExecutionPolicyMetaFields = (proj) => {
+  // A freshly-created local repository must NOT bootstrap with isolated git
+  // worktrees. The repo and its base ref do not exist yet when the first agents
+  // wake, so worktree creation fails and every early run errors out. Until the
+  // repo is established, agents work directly in the shared project workspace.
+  // Isolated worktrees stay valid for existing external repos (sourceType
+  // "git_repo"), where a real base ref already exists.
+  const isFreshLocalRepo = (workspace) => workspace?.sourceType !== 'git_repo';
+
+  const effectiveExecutionPolicy = (proj, workspace) => {
     const policy = proj?.executionWorkspacePolicy;
-    if (!policy || typeof policy !== 'object') return [];
+    if (!policy || typeof policy !== 'object') return null;
+    if (policy.defaultMode === 'isolated_workspace' && isFreshLocalRepo(workspace)) {
+      return null;
+    }
+    return policy;
+  };
+
+  const renderExecutionPolicyMetaFields = (proj, workspace) => {
+    const policy = effectiveExecutionPolicy(proj, workspace);
+    if (!policy) return [];
     const rows = [];
     if (policy.defaultMode) rows.push(['executionWorkspacePolicy.defaultMode', policy.defaultMode]);
     const strategy = policy.workspaceStrategy;
@@ -999,7 +1014,7 @@ export async function assembleCompany({
       bootstrap += `### ${proj.name}\n\n`;
       bootstrap += renderMeta([
         ...renderWorkspaceMetaFields(workspace),
-        ...renderExecutionPolicyMetaFields(proj),
+        ...renderExecutionPolicyMetaFields(proj, workspace),
         [
           'goalIds',
           proj.goals?.length > 0 ? proj.goals.map((g) => `"${g}"`).join(', ') : undefined,
@@ -1171,8 +1186,9 @@ export async function assembleCompany({
     const workspace = normalizeProjectWorkspace(proj);
     const goalLinks =
       proj.goals?.length > 0 ? `, goalIds → [${proj.goals.map((g) => `"${g}"`).join(', ')}]` : '';
-    const policy = proj.executionWorkspacePolicy?.defaultMode
-      ? `, executionWorkspacePolicy.defaultMode: "${proj.executionWorkspacePolicy.defaultMode}"`
+    const activePolicy = effectiveExecutionPolicy(proj, workspace);
+    const policy = activePolicy?.defaultMode
+      ? `, executionWorkspacePolicy.defaultMode: "${activePolicy.defaultMode}"`
       : '';
     bootstrap += `${stepN++}. **Create project** "${proj.name}" (workspace: ${formatWorkspaceObject(workspace)}${policy}${goalLinks})\n`;
   }
