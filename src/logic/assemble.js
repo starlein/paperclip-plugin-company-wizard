@@ -273,13 +273,29 @@ export async function assembleCompany({
   // simply has one fewer stage.
   const resolveReviewGate = (reviewGate) => {
     if (!reviewGate || typeof reviewGate !== 'object') return null;
-    const reviewers = (Array.isArray(reviewGate.reviewers) ? reviewGate.reviewers : []).filter(
-      (role) => typeof role === 'string' && allRoles.has(role),
-    );
+
+    const reviewersRaw = Array.isArray(reviewGate.reviewers) ? reviewGate.reviewers : [];
+    const reviewers = [];
+    const seen = new Set();
+    for (const role of reviewersRaw) {
+      if (typeof role !== 'string') continue;
+      if (!allRoles.has(role)) continue;
+      if (seen.has(role)) continue;
+      seen.add(role);
+      reviewers.push(role);
+    }
+
     const approver =
       typeof reviewGate.approver === 'string' && allRoles.has(reviewGate.approver)
         ? reviewGate.approver
         : undefined;
+
+    // Avoid accidentally requiring the same role twice (e.g. reviewer + approver).
+    if (approver) {
+      const idx = reviewers.indexOf(approver);
+      if (idx !== -1) reviewers.splice(idx, 1);
+    }
+
     if (reviewers.length === 0 && !approver) return null;
     return { reviewers, approver };
   };
