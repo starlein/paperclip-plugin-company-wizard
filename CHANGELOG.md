@@ -5,6 +5,17 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.9] - 2026-06-08
+
+### Changed
+
+- **PR reviews now use the issue's native `executionPolicy` instead of separate child review issues.** The Engineer sets an ordered stage chain on the originating issue — a `review` stage for the Code Reviewer, optional `review` stages for relevant domain reviewers (UI/UX/QA/DevOps), and a final `approval` stage for the Product Owner — and merges once all stages clear. Reviewer skills record `approved` / `changes_requested` on their stage (the verdict-submit path is agent-runtime logic, so the skills stay mechanism-neutral). This surfaces reviewer/approver in the native UI and removes 2–6 review issues per PR. Touches the `pr-review` engineer + six reviewer skills, `pr-conventions.md`, the module metadata, and the BOOTSTRAP guardrail.
+
+### Added
+
+- **`reviewGate` field on declared module/preset issues** (`{ reviewers: [...], approver: "..." }`). Assembly resolves the roles present in the team (dropping absent ones) and renders an ordered executionPolicy sketch into BOOTSTRAP.md; the CEO resolves roles → agentIds when creating the issue. `client.createIssue` already forwards `executionPolicy`, so no client change was needed. The `pr-review` setup issue ships a `reviewGate` as the first real example.
+
+---
 ## [0.3.8] - 2026-06-08
 
 ### Changed
