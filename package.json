@@ -13,9 +13,13 @@
     "test:logic": "node --test src/logic/*.test.js src/api/*.test.js",
     "typecheck": "tsc --noEmit",
     "build:prod": "NODE_ENV=production node ./esbuild.config.mjs",
-    "publish:npm": "npm publish --access restricted",
+    "publish:npm": "npm publish --access public",
     "prepublishOnly": "pnpm build:prod",
     "prepare": "husky"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "lint-staged": {
     "src/**/*.{ts,tsx,js,jsx}": [
