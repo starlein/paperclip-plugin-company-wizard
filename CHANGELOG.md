@@ -5,6 +5,13 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.12] - 2026-06-08
+
+### Changed
+
+- **Workspace isolation is now read from Paperclip instance settings** — the plugin no longer exposes an `enableIsolatedWorktrees` plugin option. `executionWorkspacePolicy` for `git_repo` projects now follows `enableIsolatedWorkspaces` from Paperclip instance experimental settings (`/api/instance/settings/experimental`). Fresh local repos continue to skip isolated worktrees during bootstrap.
+
+---
 ## [0.3.11] - 2026-06-08
 
 ### Fixed

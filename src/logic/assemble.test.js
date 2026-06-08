@@ -531,6 +531,7 @@ describe('assembleCompany', () => {
   it('renders git_repo workspace and execution workspace policy from project config', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'GitWorkspaceCo',
+      enableIsolatedWorktrees: true,
       userProjects: [
         {
           name: 'app',

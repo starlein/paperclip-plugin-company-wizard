@@ -32,6 +32,7 @@
 - **Routines created directly during provisioning** — Paperclip only allows an agent to create routines assigned to itself, so the CEO could not create routines owned by the Product Owner. The plugin now creates all routines with board authority at provisioning time; BOOTSTRAP.md tells the CEO they already exist
 - **Worker agents no longer run always-on heartbeats** — enabling heartbeats on every provisioned agent caused bursts of concurrent runs that crashed the dev server. Only the CEO keeps an always-on heartbeat; all other agents are woken on assignment
 - **Fresh local repos no longer bootstrap with isolated git worktrees** — provisioning a brand-new `local_path` project with an `isolated_workspace` / `git_worktree` policy made worker agents try to branch off `main` before the repo existed, so early runs failed and agents flipped to `error`. The isolated policy is now suppressed for fresh local repos (agents work in the shared project workspace during bootstrap); existing external repos keep it. Guarded in `assemble.js` and removed at the source in `StepRepository` and the AI wizard prompts
+- **Workspace isolation follows Paperclip instance settings** — `enableIsolatedWorktrees` is no longer a plugin setting. The wizard reads `enableIsolatedWorkspaces` from the Paperclip instance experimental settings and only applies `isolated_workspace` / `git_worktree` for external repositories when that setting is enabled.
 - Bootstrap ordering hardened; agent filter bug fixed (v0.3.7)
 
 #### Assembly and template fixes
@@ -572,6 +573,8 @@ Configure the plugin via **Settings → Plugins → Company Wizard** in the Pape
 | `paperclipPassword` | No | Board login password. Stored as a secret ref. |
 | `anthropicApiKey` | No | Anthropic API key for AI wizard mode. Stored as a secret ref. Required to use the AI-powered setup path. |
 | `disableBoardApprovalOnNewCompanies` | No | If `true`, the wizard PATCHes new companies to set `requireBoardApprovalForNewAgents=false` during provisioning. Leave `false` to preserve approval-gated hiring. Defaults to `false`. |
+
+For isolated worktrees: there is no plugin setting. The policy is controlled by Paperclip instance settings under **Settings → Instance → Experimental → enableIsolatedWorkspaces** and is consumed by the plugin during provisioning.
 
 <br>
 
