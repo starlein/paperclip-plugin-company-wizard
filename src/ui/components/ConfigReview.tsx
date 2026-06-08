@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   useWizard,
   useWizardDispatch,
@@ -14,6 +14,7 @@ import { cn, toPascalCase } from '../lib/utils';
 import {
   type RepositoryMode,
   getRepositoryMode,
+  isExternalRepository,
   getRepositoryRef,
   getRepositoryUrl,
   repositoryProjectFields,
@@ -240,6 +241,7 @@ function RepositoryEdit({
 
       <div className="flex items-center gap-1.5">
         <button
+          type="button"
           onClick={save}
           disabled={externalRepoMissing}
           className="flex items-center gap-1 text-xs px-2 py-1 rounded border hover:bg-accent disabled:opacity-50"
@@ -247,6 +249,7 @@ function RepositoryEdit({
           <Check className="h-3 w-3" /> Save
         </button>
         <button
+          type="button"
           onClick={onCancel}
           className="flex items-center gap-1 text-xs px-2 py-1 rounded border hover:bg-accent"
         >
@@ -594,6 +597,7 @@ export function ConfigReview() {
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [previewFiles, setPreviewFiles] = useState<Record<string, string> | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const lastPreviewRepoFingerprint = useRef<string>('');
   const previewFilesAction = usePluginAction('preview-files');
 
   const loadPreview = useCallback(async () => {
@@ -656,7 +660,12 @@ export function ConfigReview() {
     primaryProject?.defaultRef ||
     primaryProject?.repoRef ||
     '';
-  const isExternalRepo = primaryWorkspace?.sourceType === 'git_repo' || Boolean(primaryRepoUrl);
+  const isExternalRepo = isExternalRepository(primaryProject);
+  const repositoryFingerprint = `${isExternalRepo ? 'external' : 'new'}|${
+    primaryWorkspace?.sourceType || primaryProject?.workspaceSourceType || ''
+  }|${primaryRepoUrl}|${primaryRepoRef}|${primaryWorkspace?.defaultRef || ''}|${
+    primaryWorkspace?.setupCommand || ''
+  }`;
 
   const totalCapabilities = selectedModuleData.reduce(
     (sum, m) => sum + (m.capabilities?.length ?? 0),
@@ -685,6 +694,31 @@ export function ConfigReview() {
     if (next.has(name)) next.delete(name);
     else next.add(name);
     dispatch({ type: 'SET_ROLES', roles: [...next] });
+  };
+
+  const refreshPreview = useCallback(() => {
+    if (!showFiles || loadingFiles) return;
+    if (!previewFiles || lastPreviewRepoFingerprint.current !== repositoryFingerprint) {
+      lastPreviewRepoFingerprint.current = repositoryFingerprint;
+      loadPreview();
+    }
+  }, [loadingFiles, previewFiles, repositoryFingerprint, showFiles, loadPreview]);
+
+  useEffect(() => {
+    refreshPreview();
+  }, [refreshPreview]);
+
+  const saveRepository = (repo: ReturnType<typeof repositoryProjectFields>) => {
+    const base: WizardProject = primaryProject ?? {
+      name: state.companyName || 'Main Project',
+      description: state.goals[0]?.description || '',
+      goals: state.goals.map((g) => g.title).filter(Boolean),
+    };
+    dispatch({
+      type: 'SET_PROJECTS',
+      projects: [{ ...base, ...repo }, ...state.projects.slice(1)],
+    });
+    setEditing(null);
   };
 
   return (
@@ -752,16 +786,7 @@ export function ConfigReview() {
                 <RepositoryEdit
                   project={primaryProject ?? null}
                   onSave={(repo) => {
-                    const base: WizardProject = primaryProject ?? {
-                      name: state.companyName || 'Main Project',
-                      description: state.goals[0]?.description || '',
-                      goals: state.goals.map((g) => g.title).filter(Boolean),
-                    };
-                    dispatch({
-                      type: 'SET_PROJECTS',
-                      projects: [{ ...base, ...repo }, ...state.projects.slice(1)],
-                    });
-                    setEditing(null);
+                    saveRepository(repo);
                   }}
                   onCancel={() => setEditing(null)}
                 />
@@ -965,6 +990,7 @@ export function ConfigReview() {
 
       {/* Detailed configuration toggle */}
       <button
+        type="button"
         onClick={() => setShowDetails((v) => !v)}
         className="w-full flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
       >
@@ -982,10 +1008,10 @@ export function ConfigReview() {
 
       {/* Generated files preview */}
       <button
+        type="button"
         onClick={() => {
           const next = !showFiles;
           setShowFiles(next);
-          if (next && !previewFiles && !loadingFiles) loadPreview();
         }}
         className="w-full flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
       >
@@ -1032,6 +1058,7 @@ export function ConfigReview() {
                   provisioning.
                 </p>
                 <button
+                  type="button"
                   onClick={loadPreview}
                   className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >

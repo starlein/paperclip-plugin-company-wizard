@@ -113,6 +113,8 @@ Walk through the steps yourself: name your company, set a goal, pick a preset, a
 
 Before provisioning, you can **open any generated file and edit it inline** — tweak a persona, adjust a workflow, or add role-specific context.
 
+On the review step, repository setup is editable inline (fresh local repo vs external Git repo), and changing this now immediately updates preview/provisioning payloads in that step. Legacy source-mode values are normalized on save so mode switches can be applied reliably even when the configuration came from AI with older `workspaceSourceType` fields.
+
 <br>
 
 ## How Roles Work

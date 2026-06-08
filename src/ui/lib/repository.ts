@@ -2,13 +2,32 @@ import type { WizardProject } from '../context/WizardContext';
 
 export type RepositoryMode = 'new' | 'external';
 
+function resolveWorkspaceSourceType(project: WizardProject | null | undefined): string | undefined {
+  const sourceType = project?.workspace?.sourceType || project?.workspaceSourceType;
+  return typeof sourceType === 'string' ? sourceType.trim() : undefined;
+}
+
 /** Derives the repository mode from a project's current workspace config. */
 export function getRepositoryMode(project: WizardProject | null | undefined): RepositoryMode {
   const workspace = project?.workspace;
-  if (workspace?.sourceType === 'git_repo' || workspace?.repoUrl || project?.repoUrl) {
+  const sourceType = resolveWorkspaceSourceType(project);
+  if (
+    sourceType === 'git_repo' ||
+    workspace?.repoUrl ||
+    project?.repoUrl ||
+    (typeof sourceType === 'string' && sourceType !== 'local_path' && sourceType.length > 0)
+  ) {
     return 'external';
   }
   return 'new';
+}
+
+export function isExternalRepository(project: WizardProject | null | undefined): boolean {
+  const sourceType = resolveWorkspaceSourceType(project);
+  return (
+    (typeof sourceType === 'string' && sourceType !== 'local_path' && sourceType.length > 0) ||
+    Boolean(project?.workspace?.repoUrl || project?.repoUrl)
+  );
 }
 
 export function getRepositoryUrl(project: WizardProject | null | undefined): string {
@@ -48,12 +67,18 @@ export function repositoryProjectFields(
   repoRef: string,
 ): Pick<
   WizardProject,
-  'repoUrl' | 'repoRef' | 'defaultRef' | 'workspace' | 'executionWorkspacePolicy'
+  | 'repoUrl'
+  | 'repoRef'
+  | 'defaultRef'
+  | 'workspace'
+  | 'executionWorkspacePolicy'
+  | 'workspaceSourceType'
 > {
   if (mode === 'external') {
     const ref = repoRef.trim() || 'origin/main';
     const url = repoUrl.trim();
     return {
+      workspaceSourceType: 'git_repo',
       repoUrl: url,
       repoRef: ref,
       defaultRef: ref,
@@ -73,6 +98,7 @@ export function repositoryProjectFields(
 
   const branch = normalizeNewRepoBranch(repoRef);
   return {
+    workspaceSourceType: 'local_path',
     repoUrl: undefined,
     repoRef: undefined,
     defaultRef: branch,

@@ -5,6 +5,19 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.14] - 2026-06-08
+
+### Fixed
+
+- **Review-step repository edits now fully replace source mode metadata.** The summary/review editor now writes a canonical `workspaceSourceType` (`git_repo` or `local_path`) alongside `workspace`, preventing stale legacy `workspaceSourceType` values from blocking mode switches between new and existing repos.
+
+## [0.3.13] - 2026-06-08
+
+### Fixed
+
+- **Review-step repository editing now stays in sync.** The summary/review repository editor now handles legacy `workspaceSourceType` values consistently, so editing fresh-vs-existing repository settings in the Review step keeps the rendered preview aligned and always uses the selected mode during provisioning.
+
+---
 ## [0.3.12] - 2026-06-08
 
 ### Changed
