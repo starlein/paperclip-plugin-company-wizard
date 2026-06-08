@@ -306,10 +306,14 @@ export async function assembleCompany({
   const renderReviewGate = (gate) => {
     const stages = [];
     for (const role of gate.reviewers) {
-      stages.push(`  - stage ${stages.length + 1} (review) → assign "${role}"`);
+      stages.push(
+        `  - stage ${stages.length + 1} (review) → assign ${JSON.stringify(role)}`,
+      );
     }
     if (gate.approver) {
-      stages.push(`  - stage ${stages.length + 1} (approval) → assign "${gate.approver}"`);
+      stages.push(
+        `  - stage ${stages.length + 1} (approval) → assign ${JSON.stringify(gate.approver)}`,
+      );
     }
     return (
       `- **executionPolicy** (set when creating this issue; resolve each role to its agentId):\n` +
