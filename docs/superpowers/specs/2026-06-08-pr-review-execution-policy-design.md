@@ -1,7 +1,7 @@
 # PR Review via native `executionPolicy` — Design
 
 **Date:** 2026-06-08
-**Status:** Approved (design), pending implementation plan
+**Status:** Approved (design + implementation plan)
 **Scope owner:** Company Wizard plugin (`pr-review` module + assembly)
 
 ## Problem
