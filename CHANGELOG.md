@@ -5,6 +5,28 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.8] - 2026-06-08
+
+### Changed
+
+- **`anthropicApiKey` and `paperclipPassword` plugin settings are now plain string fields** instead of `secret-ref`. The Paperclip host rejects saving any `secret-ref` field until company-scoped plugin config ships (error: "Plugin secret references are disabled until company-scoped plugin config lands"), which blocked saving the plugin settings entirely. `resolveAnthropicApiKey` now uses a directly entered key (`sk-ant-...`) as-is and only falls back to host secret resolution for legacy installs that still store a secret reference. Trade-off: the Anthropic key is now stored in plain plugin config until the host secret store is available.
+
+---
+## [0.3.7] - 2026-06-08
+
+### Fixed
+
+- **Agent filter bug in the `auto-assign` module.** Corrected the agent-matching filter used in the CEO/Product Owner heartbeat sections and the primary + fallback `auto-assign` skills.
+
+---
+## [0.3.6] - 2026-06-07
+
+### Fixed
+
+- **Bootstrap ordering hardened** in `assemble.js`, with added integration coverage.
+- **PR review workflow tightened.** Review skills across all reviewing roles (code reviewer, devops, engineer, product owner, QA, UI designer, UX researcher) and the `pr-conventions` doc were updated for consistent, role-appropriate review scope; `github-repo` and `pr-review` module metadata adjusted.
+
+---
 ## [0.3.5] - 2026-06-07
 
 ### Changed

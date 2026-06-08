@@ -136,20 +136,21 @@ async function resolveAnthropicApiKey(
   configuredValue: unknown,
 ): Promise<string> {
   if (typeof configuredValue !== 'string') return '';
-  const secretRef = configuredValue.trim();
-  if (!secretRef) return '';
+  const value = configuredValue.trim();
+  if (!value) return '';
+
+  // The setting now stores the raw Anthropic key directly (plain string field).
+  if (isLikelyAnthropicApiKey(value)) return value;
 
   try {
-    const resolved = await ctx.secrets.resolve(secretRef);
+    // Backward compatibility: older installs may still have a Paperclip secret
+    // reference stored in config instead of the raw key.
+    const resolved = await ctx.secrets.resolve(value);
     return resolved.trim();
   } catch (err) {
-    // Backward compatibility: older installs may still have the raw Anthropic key
-    // stored in config instead of a Paperclip secret reference.
-    if (isLikelyAnthropicApiKey(secretRef)) return secretRef;
-
     const detail = err instanceof Error ? err.message : String(err);
     throw new Error(
-      `Anthropic API key secret could not be resolved. Re-save the plugin setting with a valid Paperclip secret reference. ${detail}`,
+      `Anthropic API key could not be resolved. Re-save the plugin setting with a valid Anthropic API key (sk-ant-...). ${detail}`,
     );
   }
 }
