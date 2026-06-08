@@ -5,6 +5,13 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.15] - 2026-06-08
+
+### Fixed
+
+- **PR review bootstrap issue is now a foundation task.** `Set up Paperclip PR review workflow` is explicitly marked as `bootstrapPhase: "foundation"` so it no longer gets scheduled after generic module tasks in the backlog.
+- **Regression coverage added for bootstrap issue ordering.** Added an integration assertion so PR review setup remains ahead of backlog work when both setup tasks are present.
+
 ## [0.3.14] - 2026-06-08
 
 ### Fixed

@@ -140,6 +140,20 @@ describe('assembleCompany integration (real templates)', () => {
     assert.equal(initialIssues[0].priority, 'critical');
     assert.equal(initialIssues[0].bootstrapPhase, 'foundation');
     assert.ok(taskTitles.includes('Initialize GitHub repository'), 'should have github-repo task');
+    const prReviewIndex = taskTitles.indexOf('Set up Paperclip PR review workflow');
+    const githubIndex = taskTitles.indexOf('Initialize GitHub repository');
+    const roadmapIndex = taskTitles.indexOf('Create roadmap and generate initial backlog');
+    assert.ok(prReviewIndex > -1, 'should have PR review setup task');
+    assert.equal(
+      prReviewIndex > githubIndex,
+      true,
+      'PR review setup should come after repository foundation setup when both exist',
+    );
+    assert.equal(
+      prReviewIndex < roadmapIndex,
+      true,
+      'PR review setup should be prioritized before generic module tasks',
+    );
     assert.ok(
       taskTitles.includes('Create roadmap and generate initial backlog'),
       'should have backlog task',

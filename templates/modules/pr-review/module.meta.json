@@ -17,6 +17,7 @@
   "issues": [
     {
       "title": "Set up Paperclip PR review workflow",
+      "bootstrapPhase": "foundation",
       "assignTo": "engineer",
       "reviewGate": {
         "reviewers": ["code-reviewer"],
