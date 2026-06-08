@@ -765,26 +765,44 @@ export function ConfigReview() {
                   }}
                   onCancel={() => setEditing(null)}
                 />
-              ) : isExternalRepo ? (
-                <>
-                  <span className="font-medium">External Git repository</span>
-                  {primaryRepoUrl && (
-                    <p className="text-xs text-muted-foreground mt-0.5 wrap-break-word">
-                      {primaryRepoUrl}
-                    </p>
-                  )}
-                  {primaryRepoRef && (
-                    <p className="text-xs text-muted-foreground mt-0.5">Ref: {primaryRepoRef}</p>
-                  )}
-                </>
               ) : (
-                <>
-                  <span className="font-medium">Create a new Git repository</span>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Fresh local workspace{primaryRepoRef ? ` on ${primaryRepoRef}` : ''}
-                    {primaryWorkspace?.setupCommand ? ` · ${primaryWorkspace.setupCommand}` : ''}
-                  </p>
-                </>
+                <button
+                  type="button"
+                  onClick={() => setEditing('repository')}
+                  className="group/repo w-full text-left rounded-md -mx-1 px-1 py-0.5 hover:bg-accent/50 transition-colors"
+                >
+                  {isExternalRepo ? (
+                    <>
+                      <span className="font-medium">External Git repository</span>
+                      <span className="ml-2 text-xs text-muted-foreground underline decoration-dotted underline-offset-2 group-hover/repo:text-foreground">
+                        Change
+                      </span>
+                      {primaryRepoUrl && (
+                        <p className="text-xs text-muted-foreground mt-0.5 wrap-break-word">
+                          {primaryRepoUrl}
+                        </p>
+                      )}
+                      {primaryRepoRef && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Ref: {primaryRepoRef}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-medium">Create a new Git repository</span>
+                      <span className="ml-2 text-xs text-muted-foreground underline decoration-dotted underline-offset-2 group-hover/repo:text-foreground">
+                        Change — use an existing repository
+                      </span>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Fresh local workspace{primaryRepoRef ? ` on ${primaryRepoRef}` : ''}
+                        {primaryWorkspace?.setupCommand
+                          ? ` · ${primaryWorkspace.setupCommand}`
+                          : ''}
+                      </p>
+                    </>
+                  )}
+                </button>
               )}
             </SummaryRow>
           </div>

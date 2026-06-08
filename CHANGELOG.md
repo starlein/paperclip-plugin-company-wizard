@@ -5,6 +5,17 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.11] - 2026-06-08
+
+### Fixed
+
+- **CEO bootstrap no longer reverse-engineers the Paperclip API from server source.** During bootstrap the CEO was reading/grepping `server/src/routes/*` and `packages/shared/src/validators/*` to recover exact create-payload schemas, because BOOTSTRAP.md listed *what* to create but not the create endpoints or valid enum values for goals and projects. The first create pass then failed on a project status enum (`active` is a goal status, not a project status). `templates/bootstrap-instructions.md` now documents the `POST /api/companies/{companyId}/goals` and `…/projects` endpoints, the valid `level`/`status` enums for goals and projects (explicitly noting `active` is goal-only), and instructs the agent not to inspect server source to recover schemas. Also reiterates that fresh local repos must not attach an `executionWorkspacePolicy`.
+
+### Changed
+
+- **Repository setting on the review/summary step is now an obvious clickable control.** Previously the only way to edit it was a hover-only pencil icon shared by every row, which was hard to discover. The repository value is now a button with a visible "Change" / "Change — use an existing repository" affordance that opens the inline new-vs-existing editor (both manual and AI paths).
+
+---
 ## [0.3.10] - 2026-06-08
 
 ### Fixed
