@@ -6,7 +6,7 @@ The Product Owner primarily handles issue assignment. You are the fallback — s
 
 On your heartbeat, after handling your own assignments:
 
-1. Query idle agents: `GET /api/companies/{companyId}/agents?status=idle`
+1. Query idle agents: `GET /api/companies/{companyId}/agents`, then filter client-side for those where `status == "idle"`
 2. If agents have been idle with unassigned issues available AND the Product Owner hasn't acted recently:
    - Assign the highest-priority unassigned issue to the most suitable idle agent
    - Comment on the issue noting the assignment
