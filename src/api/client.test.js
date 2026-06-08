@@ -196,3 +196,32 @@ describe('PaperclipClient provisioning helpers', () => {
     assert.deepEqual(requests[0].body, { status: 'todo' });
   });
 });
+
+describe('PaperclipClient instance settings helpers', () => {
+  it('reads experimental settings from the instance settings endpoint', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({
+        url,
+        method: opts.method || 'GET',
+        body: opts.body ? JSON.parse(opts.body) : undefined,
+      });
+      return jsonResponse(
+        {
+          enableEnvironments: false,
+          enableIsolatedWorkspaces: true,
+          enableStreamlinedLeftNavigation: false,
+        },
+        200,
+      );
+    };
+
+    const client = new PaperclipClient('http://paperclip.test');
+    const settings = await client.getInstanceExperimentalSettings();
+
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].url, 'http://paperclip.test/api/instance/settings/experimental');
+    assert.equal(requests[0].method, 'GET');
+    assert.equal(settings.enableIsolatedWorkspaces, true);
+  });
+});

@@ -142,6 +142,13 @@ export class PaperclipClient {
     }
   }
 
+  /**
+   * Read instance-wide experimental settings (including enableIsolatedWorkspaces).
+   */
+  async getInstanceExperimentalSettings() {
+    return this._fetch('/api/instance/settings/experimental');
+  }
+
   async createCompany({ name, description }) {
     return this._fetch('/api/companies', {
       method: 'POST',

@@ -31,7 +31,8 @@
 - **Agents provisioned with complete instructions** — every non-CEO agent is now created by the plugin directly with its full `instructionsBundle` (AGENTS.md + HEARTBEAT/SOUL/TOOLS + skills). Previously the CEO created these agents during bootstrap with only an `instructionsFilePath`, leaving each agent with a bare AGENTS.md and fragile external path references
 - **Routines created directly during provisioning** — Paperclip only allows an agent to create routines assigned to itself, so the CEO could not create routines owned by the Product Owner. The plugin now creates all routines with board authority at provisioning time; BOOTSTRAP.md tells the CEO they already exist
 - **Worker agents no longer run always-on heartbeats** — enabling heartbeats on every provisioned agent caused bursts of concurrent runs that crashed the dev server. Only the CEO keeps an always-on heartbeat; all other agents are woken on assignment
-- **Fresh git workspaces seeded with an initial commit** — `git init -b main` leaves an unborn `main` branch; `isolated_workspace` / `git_worktree` policy then failed the first issue. The default setup command now adds an empty commit so `main` is a valid base ref immediately
+- **Fresh local repos no longer bootstrap with isolated git worktrees** — provisioning a brand-new `local_path` project with an `isolated_workspace` / `git_worktree` policy made worker agents try to branch off `main` before the repo existed, so early runs failed and agents flipped to `error`. The isolated policy is now suppressed for fresh local repos (agents work in the shared project workspace during bootstrap); existing external repos keep it. Guarded in `assemble.js` and removed at the source in `StepRepository` and the AI wizard prompts
+- **Workspace isolation follows Paperclip instance settings** — `enableIsolatedWorktrees` is no longer a plugin setting. The wizard reads `enableIsolatedWorkspaces` from the Paperclip instance experimental settings and only applies `isolated_workspace` / `git_worktree` for external repositories when that setting is enabled.
 - Bootstrap ordering hardened; agent filter bug fixed (v0.3.7)
 
 #### Assembly and template fixes
@@ -59,7 +60,7 @@
 - **Existing-company provisioning** — target an existing Paperclip company instead of creating a new one (`existingCompanyId`); partial-failure cleanup never deletes existing companies
 - **Approval-aware agent hiring** — detects board-approval requirements, falls back to `/agent-hires` + auto-approve; surfaces pending approval ID if auto-approve fails
 - **`disableBoardApprovalOnNewCompanies` setting** — optionally patches new companies to skip board approval for fully-autonomous bootstrap
-- **Repository workspace step** — choose between a fresh local Git repo or an existing external repository (GitHub, GitLab, etc.) in the manual wizard path
+- **Repository workspace setup** — choose between a fresh local Git repo or an existing external repository (GitHub, GitLab, etc.) via the manual wizard step or inline on the review/summary screen (available in both the manual and AI paths; the external option opens a repo-URL field)
 - **Routine schedules** tightened to run every few hours around the clock (auto-assign every 2 h, stall-detection every 3 h, backlog grooming every 4 h) with `skip_if_active` concurrency policy
 - **"Update templates" button** on the onboarding screen — deletes the cached templates dir and re-downloads from GitHub without restarting the plugin
 
@@ -111,6 +112,8 @@ Great for getting started fast when you're not sure which template fits.
 Walk through the steps yourself: name your company, set a goal, pick a preset, add modules, choose roles. Each step shows descriptions and hover-card previews so you know what you're getting.
 
 Before provisioning, you can **open any generated file and edit it inline** — tweak a persona, adjust a workflow, or add role-specific context.
+
+On the review step, repository setup is editable inline (fresh local repo vs external Git repo), and changing this now immediately updates preview/provisioning payloads in that step. Legacy source-mode values are normalized on save so mode switches can be applied reliably even when the configuration came from AI with older `workspaceSourceType` fields.
 
 <br>
 
@@ -572,6 +575,8 @@ Configure the plugin via **Settings → Plugins → Company Wizard** in the Pape
 | `paperclipPassword` | No | Board login password. Stored as a secret ref. |
 | `anthropicApiKey` | No | Anthropic API key for AI wizard mode. Stored as a secret ref. Required to use the AI-powered setup path. |
 | `disableBoardApprovalOnNewCompanies` | No | If `true`, the wizard PATCHes new companies to set `requireBoardApprovalForNewAgents=false` during provisioning. Leave `false` to preserve approval-gated hiring. Defaults to `false`. |
+
+For isolated worktrees: there is no plugin setting. The policy is controlled by Paperclip instance settings under **Settings → Instance → Experimental → enableIsolatedWorkspaces** and is consumed by the plugin during provisioning.
 
 <br>
 

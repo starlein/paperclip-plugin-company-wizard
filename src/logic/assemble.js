@@ -79,6 +79,7 @@ export function toPascalCase(name) {
  * @param {Array} [opts.presetIssues] - Initial issues from the selected preset
  * @param {Array} [opts.presetRoutines] - Initial routines from the selected preset
  * @param {Array} [opts.presetLabels] - Explicit labels from the selected preset
+ * @param {boolean} [opts.enableIsolatedWorktrees] - Admin setting: when true, external-repo projects keep their isolated git_worktree executionWorkspacePolicy; when false (default), agents share the project workspace. Fresh local repos never use isolated worktrees regardless.
  * @param {string} opts.outputDir
  * @param {string} opts.templatesDir
  * @param {(line: string) => void} opts.onProgress
@@ -96,6 +97,7 @@ export async function assembleCompany({
   presetIssues = [],
   presetRoutines = [],
   presetLabels = [],
+  enableIsolatedWorktrees = false,
   outputDir,
   templatesDir,
   onProgress = () => {},
@@ -306,9 +308,7 @@ export async function assembleCompany({
   const renderReviewGate = (gate) => {
     const stages = [];
     for (const role of gate.reviewers) {
-      stages.push(
-        `  - stage ${stages.length + 1} (review) → assign ${JSON.stringify(role)}`,
-      );
+      stages.push(`  - stage ${stages.length + 1} (review) → assign ${JSON.stringify(role)}`);
     }
     if (gate.approver) {
       stages.push(
@@ -974,9 +974,29 @@ export async function assembleCompany({
     return `{ ${fields.join(', ')} }`;
   };
 
-  const renderExecutionPolicyMetaFields = (proj) => {
+  // Isolated git worktrees are gated by two conditions:
+  //
+  // 1. The `enableIsolatedWorktrees` admin setting must be on. When it is
+  //    off (the default), agents always share the project workspace.
+  // 2. Even when enabled, a freshly-created local repository must NOT use them:
+  //    the repo and its base ref do not exist yet when the first agents wake, so
+  //    worktree creation fails and every early run errors out. Isolated worktrees
+  //    only make sense for existing external repos (sourceType "git_repo"), where
+  //    a real base ref already exists.
+  const isFreshLocalRepo = (workspace) => workspace?.sourceType !== 'git_repo';
+
+  const effectiveExecutionPolicy = (proj, workspace) => {
     const policy = proj?.executionWorkspacePolicy;
-    if (!policy || typeof policy !== 'object') return [];
+    if (!policy || typeof policy !== 'object') return null;
+    if (policy.defaultMode === 'isolated_workspace') {
+      if (!enableIsolatedWorktrees || isFreshLocalRepo(workspace)) return null;
+    }
+    return policy;
+  };
+
+  const renderExecutionPolicyMetaFields = (proj, workspace) => {
+    const policy = effectiveExecutionPolicy(proj, workspace);
+    if (!policy) return [];
     const rows = [];
     if (policy.defaultMode) rows.push(['executionWorkspacePolicy.defaultMode', policy.defaultMode]);
     const strategy = policy.workspaceStrategy;
@@ -999,7 +1019,7 @@ export async function assembleCompany({
       bootstrap += `### ${proj.name}\n\n`;
       bootstrap += renderMeta([
         ...renderWorkspaceMetaFields(workspace),
-        ...renderExecutionPolicyMetaFields(proj),
+        ...renderExecutionPolicyMetaFields(proj, workspace),
         [
           'goalIds',
           proj.goals?.length > 0 ? proj.goals.map((g) => `"${g}"`).join(', ') : undefined,
@@ -1171,8 +1191,9 @@ export async function assembleCompany({
     const workspace = normalizeProjectWorkspace(proj);
     const goalLinks =
       proj.goals?.length > 0 ? `, goalIds → [${proj.goals.map((g) => `"${g}"`).join(', ')}]` : '';
-    const policy = proj.executionWorkspacePolicy?.defaultMode
-      ? `, executionWorkspacePolicy.defaultMode: "${proj.executionWorkspacePolicy.defaultMode}"`
+    const activePolicy = effectiveExecutionPolicy(proj, workspace);
+    const policy = activePolicy?.defaultMode
+      ? `, executionWorkspacePolicy.defaultMode: "${activePolicy.defaultMode}"`
       : '';
     bootstrap += `${stepN++}. **Create project** "${proj.name}" (workspace: ${formatWorkspaceObject(workspace)}${policy}${goalLinks})\n`;
   }

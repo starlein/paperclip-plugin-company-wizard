@@ -531,6 +531,7 @@ describe('assembleCompany', () => {
   it('renders git_repo workspace and execution workspace policy from project config', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'GitWorkspaceCo',
+      enableIsolatedWorktrees: true,
       userProjects: [
         {
           name: 'app',
@@ -574,7 +575,7 @@ describe('assembleCompany', () => {
     );
   });
 
-  it('renders fresh local git repository setup from project workspace config', async () => {
+  it('suppresses isolated worktree policy for a fresh local git repository', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'NewRepoCo',
       userProjects: [
@@ -588,6 +589,9 @@ describe('assembleCompany', () => {
             setupCommand: 'git init -b main',
             isPrimary: true,
           },
+          // Even when an isolated policy slips through (e.g. an AI-generated
+          // config), a fresh local repo must NOT bootstrap with git worktrees:
+          // the repo/base ref does not exist yet when the first agents wake.
           executionWorkspacePolicy: {
             defaultMode: 'isolated_workspace',
             workspaceStrategy: { type: 'git_worktree', baseRef: 'main' },
@@ -607,20 +611,20 @@ describe('assembleCompany', () => {
     assert.ok(projectBlock.includes('**workspace.cwd**:'));
     assert.ok(projectBlock.includes('/projects/App'));
     assert.ok(projectBlock.includes('**workspace.defaultRef**: main'));
-    // The bare `git init -b main` is upgraded to seed an initial commit so the
-    // isolated git_worktree base ref `main` is valid from the first run.
-    assert.ok(projectBlock.includes('**workspace.setupCommand**: git init -b main &&'));
-    assert.ok(projectBlock.includes('commit --allow-empty'));
+    assert.ok(projectBlock.includes('**workspace.setupCommand**: git init -b main'));
+    // The isolated git_worktree policy must be stripped for fresh local repos
+    // so agents work in the shared project workspace during bootstrap.
     assert.ok(
-      projectBlock.includes('**executionWorkspacePolicy.defaultMode**: isolated_workspace'),
+      !projectBlock.includes('**executionWorkspacePolicy.defaultMode**'),
+      'isolated workspace policy must not be rendered for a fresh local repo',
     );
     assert.ok(
-      projectBlock.includes('**executionWorkspacePolicy.workspaceStrategy.type**: git_worktree'),
+      !projectBlock.includes('git_worktree'),
+      'git_worktree strategy must not be rendered for a fresh local repo',
     );
-    assert.ok(
-      projectBlock.includes('**executionWorkspacePolicy.workspaceStrategy.baseRef**: main'),
-    );
-    assert.ok(bootstrap.includes('setupCommand: "git init -b main &&'));
+    // The provisioning step for the project must not carry the policy either.
+    const provisioningBlock = bootstrap.split('## Provisioning Steps')[1] || '';
+    assert.ok(!provisioningBlock.includes('executionWorkspacePolicy.defaultMode'));
   });
 
   it('preserves a real custom setupCommand and seeds one when missing', async () => {

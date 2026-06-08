@@ -279,6 +279,44 @@ function loadTemplates(templatesDir: string) {
 
 // --- Helpers ---
 
+/** Parse a boolean plugin-config value that may arrive as a real boolean or a string. */
+function cfgBool(cfg: Record<string, unknown>, key: string): boolean {
+  const raw = cfg[key];
+  return raw === true || (typeof raw === 'string' && raw.toLowerCase() === 'true');
+}
+
+type InstanceExperimentalSettings = {
+  enableIsolatedWorkspaces?: boolean;
+};
+
+async function resolveEnableIsolatedWorkspacesFromInstance(
+  cfg: Record<string, string>,
+  log?: (msg: string) => void,
+): Promise<boolean> {
+  const paperclipUrl =
+    cfg.paperclipUrl || process.env.PAPERCLIP_PUBLIC_URL || 'http://localhost:3100';
+  const paperclipEmail = cfg.paperclipEmail || '';
+  const paperclipPassword = cfg.paperclipPassword || '';
+  const instanceClient = new PaperclipClient(paperclipUrl, {
+    email: paperclipEmail,
+    password: paperclipPassword,
+  });
+
+  try {
+    await instanceClient.connect();
+    const experimentalSettings = (await instanceClient.getInstanceExperimentalSettings()) as
+      | InstanceExperimentalSettings
+      | undefined;
+    return experimentalSettings?.enableIsolatedWorkspaces === true;
+  } catch (err) {
+    if (log) {
+      const detail = err instanceof Error ? err.message : String(err);
+      log(`⚠ Could not read instance experimental settings: ${detail}. Using fallback false.`);
+    }
+    return false;
+  }
+}
+
 function resolveCompaniesDir(cfg: Record<string, string>): string {
   if (cfg.companiesDir) return cfg.companiesDir;
   return path.join(os.homedir(), '.paperclip', 'instances', 'default', 'companies');
@@ -450,6 +488,7 @@ const plugin = definePlugin({
           presetIssues: presetBootstrapData.issues,
           presetRoutines: presetBootstrapData.routines,
           presetLabels: presetBootstrapData.labels,
+          enableIsolatedWorktrees: await resolveEnableIsolatedWorkspacesFromInstance(cfg),
           outputDir: tmpDir,
           templatesDir,
         });
@@ -603,12 +642,11 @@ const plugin = definePlugin({
           cfg.paperclipUrl || process.env.PAPERCLIP_PUBLIC_URL || 'http://localhost:3100';
         const paperclipEmail = cfg.paperclipEmail || '';
         const paperclipPassword = cfg.paperclipPassword || '';
-        const rawDisableBoardApproval = (cfg as Record<string, unknown>)
-          .disableBoardApprovalOnNewCompanies;
-        const disableBoardApprovalOnNewCompanies =
-          rawDisableBoardApproval === true ||
-          (typeof rawDisableBoardApproval === 'string' &&
-            rawDisableBoardApproval.toLowerCase() === 'true');
+        const disableBoardApprovalOnNewCompanies = cfgBool(
+          cfg,
+          'disableBoardApprovalOnNewCompanies',
+        );
+        const enableIsolatedWorktrees = await resolveEnableIsolatedWorkspacesFromInstance(cfg, log);
 
         const companyName = typeof params.companyName === 'string' ? params.companyName.trim() : '';
         const existingCompanyId =
@@ -671,6 +709,7 @@ const plugin = definePlugin({
           presetIssues: presetBootstrapData.issues,
           presetRoutines: presetBootstrapData.routines,
           presetLabels: presetBootstrapData.labels,
+          enableIsolatedWorktrees,
           outputDir,
           templatesDir,
           onProgress: log,

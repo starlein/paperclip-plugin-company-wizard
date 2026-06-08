@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   useWizard,
   useWizardDispatch,
@@ -7,9 +7,18 @@ import {
 } from '../context/WizardContext';
 import { usePluginAction } from '@paperclipai/plugin-sdk/ui';
 import type { ModuleData, RoleData } from '../types';
+import type { WizardProject } from '../context/WizardContext';
 import { Badge } from './ui/badge';
 import { Card, CardContent } from './ui/card';
 import { cn, toPascalCase } from '../lib/utils';
+import {
+  type RepositoryMode,
+  getRepositoryMode,
+  isExternalRepository,
+  getRepositoryRef,
+  getRepositoryUrl,
+  repositoryProjectFields,
+} from '../lib/repository';
 import {
   HoverCardRoot,
   HoverCardTrigger,
@@ -40,6 +49,8 @@ import {
   RefreshCw,
   RotateCcw,
   GitBranch,
+  Github,
+  PlusCircle,
 } from 'lucide-react';
 
 // --- Shared helpers ---
@@ -125,6 +136,126 @@ function InlineEdit({
       >
         <X className="h-3.5 w-3.5" />
       </button>
+    </div>
+  );
+}
+
+/** Inline editor for the primary project's repository setup (new vs. external). */
+function RepositoryEdit({
+  project,
+  onSave,
+  onCancel,
+}: {
+  project: WizardProject | null;
+  onSave: (repo: ReturnType<typeof repositoryProjectFields>) => void;
+  onCancel: () => void;
+}) {
+  const initialMode = getRepositoryMode(project);
+  const [mode, setMode] = useState<RepositoryMode>(initialMode);
+  const [repoUrl, setRepoUrl] = useState(getRepositoryUrl(project));
+  const [repoRef, setRepoRef] = useState(getRepositoryRef(project, initialMode));
+
+  const chooseMode = (next: RepositoryMode) => {
+    setMode(next);
+    if (next === 'external' && (!repoRef.trim() || repoRef.trim() === 'main')) {
+      setRepoRef('origin/main');
+    }
+    if (next === 'new' && (!repoRef.trim() || repoRef.trim().startsWith('origin/'))) {
+      setRepoRef('main');
+    }
+  };
+
+  const externalRepoMissing = mode === 'external' && !repoUrl.trim();
+
+  const save = () => {
+    if (externalRepoMissing) return;
+    onSave(repositoryProjectFields(mode, repoUrl, repoRef));
+  };
+
+  const modeButton = (value: RepositoryMode, Icon: React.ElementType, label: string) => (
+    <button
+      type="button"
+      onClick={() => chooseMode(value)}
+      className={cn(
+        'flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors',
+        mode === value
+          ? 'border-foreground/30 bg-accent text-foreground'
+          : 'border-border text-muted-foreground hover:bg-accent/50',
+      )}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      {label}
+    </button>
+  );
+
+  const inputClass =
+    'flex w-full rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
+
+  return (
+    <div className="space-y-2.5 py-1">
+      <div className="flex gap-2">
+        {modeButton('new', PlusCircle, 'New repository')}
+        {modeButton('external', Github, 'Existing repository')}
+      </div>
+
+      {mode === 'external' ? (
+        <div className="space-y-2">
+          <input
+            className={inputClass}
+            value={repoUrl}
+            onChange={(e) => setRepoUrl(e.target.value)}
+            placeholder="https://github.com/org/repo"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') save();
+              if (e.key === 'Escape') onCancel();
+            }}
+          />
+          <input
+            className={inputClass}
+            value={repoRef}
+            onChange={(e) => setRepoRef(e.target.value)}
+            placeholder="Default ref (e.g. origin/main)"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') save();
+              if (e.key === 'Escape') onCancel();
+            }}
+          />
+          <p className="text-xs text-muted-foreground">
+            Do not paste tokens or credentials. Configure provider access as company secrets.
+          </p>
+        </div>
+      ) : (
+        <input
+          className={inputClass}
+          value={repoRef}
+          onChange={(e) => setRepoRef(e.target.value)}
+          placeholder="Initial branch (e.g. main)"
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') save();
+            if (e.key === 'Escape') onCancel();
+          }}
+        />
+      )}
+
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={save}
+          disabled={externalRepoMissing}
+          className="flex items-center gap-1 text-xs px-2 py-1 rounded border hover:bg-accent disabled:opacity-50"
+        >
+          <Check className="h-3 w-3" /> Save
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex items-center gap-1 text-xs px-2 py-1 rounded border hover:bg-accent"
+        >
+          <X className="h-3 w-3" /> Cancel
+        </button>
+      </div>
     </div>
   );
 }
@@ -455,7 +586,7 @@ function FileEntry({
 
 // --- Main component ---
 
-type EditingField = 'name' | 'goal' | 'goalDesc' | 'existingCompanyId' | null;
+type EditingField = 'name' | 'goal' | 'goalDesc' | 'existingCompanyId' | 'repository' | null;
 
 export function ConfigReview() {
   const state = useWizard();
@@ -466,6 +597,7 @@ export function ConfigReview() {
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [previewFiles, setPreviewFiles] = useState<Record<string, string> | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const lastPreviewRepoFingerprint = useRef<string>('');
   const previewFilesAction = usePluginAction('preview-files');
 
   const loadPreview = useCallback(async () => {
@@ -528,7 +660,12 @@ export function ConfigReview() {
     primaryProject?.defaultRef ||
     primaryProject?.repoRef ||
     '';
-  const isExternalRepo = primaryWorkspace?.sourceType === 'git_repo' || Boolean(primaryRepoUrl);
+  const isExternalRepo = isExternalRepository(primaryProject);
+  const repositoryFingerprint = `${isExternalRepo ? 'external' : 'new'}|${
+    primaryWorkspace?.sourceType || primaryProject?.workspaceSourceType || ''
+  }|${primaryRepoUrl}|${primaryRepoRef}|${primaryWorkspace?.defaultRef || ''}|${
+    primaryWorkspace?.setupCommand || ''
+  }`;
 
   const totalCapabilities = selectedModuleData.reduce(
     (sum, m) => sum + (m.capabilities?.length ?? 0),
@@ -557,6 +694,31 @@ export function ConfigReview() {
     if (next.has(name)) next.delete(name);
     else next.add(name);
     dispatch({ type: 'SET_ROLES', roles: [...next] });
+  };
+
+  const refreshPreview = useCallback(() => {
+    if (!showFiles || loadingFiles) return;
+    if (!previewFiles || lastPreviewRepoFingerprint.current !== repositoryFingerprint) {
+      lastPreviewRepoFingerprint.current = repositoryFingerprint;
+      loadPreview();
+    }
+  }, [loadingFiles, previewFiles, repositoryFingerprint, showFiles, loadPreview]);
+
+  useEffect(() => {
+    refreshPreview();
+  }, [refreshPreview]);
+
+  const saveRepository = (repo: ReturnType<typeof repositoryProjectFields>) => {
+    const base: WizardProject = primaryProject ?? {
+      name: state.companyName || 'Main Project',
+      description: state.goals[0]?.description || '',
+      goals: state.goals.map((g) => g.title).filter(Boolean),
+    };
+    dispatch({
+      type: 'SET_PROJECTS',
+      projects: [{ ...base, ...repo }, ...state.projects.slice(1)],
+    });
+    setEditing(null);
   };
 
   return (
@@ -619,35 +781,53 @@ export function ConfigReview() {
 
           {/* Repository */}
           <div className="px-4">
-            <SummaryRow
-              icon={GitBranch}
-              label="Repository"
-              onEdit={
-                state.path === 'manual'
-                  ? () => dispatch({ type: 'GO_TO', step: 'repository' })
-                  : undefined
-              }
-            >
-              {isExternalRepo ? (
-                <>
-                  <span className="font-medium">External Git repository</span>
-                  {primaryRepoUrl && (
-                    <p className="text-xs text-muted-foreground mt-0.5 wrap-break-word">
-                      {primaryRepoUrl}
-                    </p>
-                  )}
-                  {primaryRepoRef && (
-                    <p className="text-xs text-muted-foreground mt-0.5">Ref: {primaryRepoRef}</p>
-                  )}
-                </>
+            <SummaryRow icon={GitBranch} label="Repository" onEdit={() => setEditing('repository')}>
+              {editing === 'repository' ? (
+                <RepositoryEdit
+                  project={primaryProject ?? null}
+                  onSave={(repo) => {
+                    saveRepository(repo);
+                  }}
+                  onCancel={() => setEditing(null)}
+                />
               ) : (
-                <>
-                  <span className="font-medium">Create a new Git repository</span>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Fresh local workspace{primaryRepoRef ? ` on ${primaryRepoRef}` : ''}
-                    {primaryWorkspace?.setupCommand ? ` · ${primaryWorkspace.setupCommand}` : ''}
-                  </p>
-                </>
+                <button
+                  type="button"
+                  onClick={() => setEditing('repository')}
+                  className="group/repo w-full text-left rounded-md -mx-1 px-1 py-0.5 hover:bg-accent/50 transition-colors"
+                >
+                  {isExternalRepo ? (
+                    <>
+                      <span className="font-medium">External Git repository</span>
+                      <span className="ml-2 text-xs text-muted-foreground underline decoration-dotted underline-offset-2 group-hover/repo:text-foreground">
+                        Change
+                      </span>
+                      {primaryRepoUrl && (
+                        <p className="text-xs text-muted-foreground mt-0.5 wrap-break-word">
+                          {primaryRepoUrl}
+                        </p>
+                      )}
+                      {primaryRepoRef && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Ref: {primaryRepoRef}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-medium">Create a new Git repository</span>
+                      <span className="ml-2 text-xs text-muted-foreground underline decoration-dotted underline-offset-2 group-hover/repo:text-foreground">
+                        Change — use an existing repository
+                      </span>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Fresh local workspace{primaryRepoRef ? ` on ${primaryRepoRef}` : ''}
+                        {primaryWorkspace?.setupCommand
+                          ? ` · ${primaryWorkspace.setupCommand}`
+                          : ''}
+                      </p>
+                    </>
+                  )}
+                </button>
               )}
             </SummaryRow>
           </div>
@@ -810,6 +990,7 @@ export function ConfigReview() {
 
       {/* Detailed configuration toggle */}
       <button
+        type="button"
         onClick={() => setShowDetails((v) => !v)}
         className="w-full flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
       >
@@ -827,10 +1008,10 @@ export function ConfigReview() {
 
       {/* Generated files preview */}
       <button
+        type="button"
         onClick={() => {
           const next = !showFiles;
           setShowFiles(next);
-          if (next && !previewFiles && !loadingFiles) loadPreview();
         }}
         className="w-full flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
       >
@@ -877,6 +1058,7 @@ export function ConfigReview() {
                   provisioning.
                 </p>
                 <button
+                  type="button"
                   onClick={loadPreview}
                   className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >

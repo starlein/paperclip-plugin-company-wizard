@@ -5,6 +5,53 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.14] - 2026-06-08
+
+### Fixed
+
+- **Review-step repository edits now fully replace source mode metadata.** The summary/review editor now writes a canonical `workspaceSourceType` (`git_repo` or `local_path`) alongside `workspace`, preventing stale legacy `workspaceSourceType` values from blocking mode switches between new and existing repos.
+
+## [0.3.13] - 2026-06-08
+
+### Fixed
+
+- **Review-step repository editing now stays in sync.** The summary/review repository editor now handles legacy `workspaceSourceType` values consistently, so editing fresh-vs-existing repository settings in the Review step keeps the rendered preview aligned and always uses the selected mode during provisioning.
+
+---
+## [0.3.12] - 2026-06-08
+
+### Changed
+
+- **Workspace isolation is now read from Paperclip instance settings** — the plugin no longer exposes an `enableIsolatedWorktrees` plugin option. `executionWorkspacePolicy` for `git_repo` projects now follows `enableIsolatedWorkspaces` from Paperclip instance experimental settings (`/api/instance/settings/experimental`). Fresh local repos continue to skip isolated worktrees during bootstrap.
+
+---
+## [0.3.11] - 2026-06-08
+
+### Fixed
+
+- **CEO bootstrap no longer reverse-engineers the Paperclip API from server source.** During bootstrap the CEO was reading/grepping `server/src/routes/*` and `packages/shared/src/validators/*` to recover exact create-payload schemas, because BOOTSTRAP.md listed *what* to create but not the create endpoints or valid enum values for goals and projects. The first create pass then failed on a project status enum (`active` is a goal status, not a project status). `templates/bootstrap-instructions.md` now documents the `POST /api/companies/{companyId}/goals` and `…/projects` endpoints, the valid `level`/`status` enums for goals and projects (explicitly noting `active` is goal-only), and instructs the agent not to inspect server source to recover schemas. Also reiterates that fresh local repos must not attach an `executionWorkspacePolicy`.
+
+### Changed
+
+- **Repository setting on the review/summary step is now an obvious clickable control.** Previously the only way to edit it was a hover-only pencil icon shared by every row, which was hard to discover. The repository value is now a button with a visible "Change" / "Change — use an existing repository" affordance that opens the inline new-vs-existing editor (both manual and AI paths).
+
+---
+## [0.3.10] - 2026-06-08
+
+### Fixed
+
+- **Fresh local repositories no longer bootstrap with isolated git worktrees.** The wizard was provisioning `executionWorkspacePolicy: { defaultMode: "isolated_workspace", workspaceStrategy: { type: "git_worktree", baseRef: "main" } }` on brand-new `local_path` projects. Worker agents then tried to create a worktree off `main` before the repo (and its base ref) existed, so every early run failed and agents flipped to `error`. The isolated policy is now suppressed for fresh local repos — agents work in the shared project workspace during bootstrap — while existing external repos (`sourceType: "git_repo"`) keep the isolated `git_worktree` policy. Guarded centrally in `assemble.js` (so both manual and AI-generated configs are covered) and removed at the source in `StepRepository` and the AI wizard prompts (`messages.json`, `single-shot-system.md`).
+- **Spurious React "unique key" warnings in the plugin UI.** The UI bundle was compiled against the production JSX runtime (`react/jsx-runtime`), but the Paperclip host loads a development build of react-dom, which then warned about missing keys for every component returning multiple static children (`PathCard`, `StepOnboarding`, `ConfigReview`). The UI now builds with the development JSX runtime (`jsxDEV`) by default so elements carry the static-children flag; published packages still use the production runtime via `pnpm build:prod` / `prepublishOnly`.
+
+### Added
+
+- **Inline repository editor on the review/summary step** (`ConfigReview`). The Repository row is now editable in both the manual and AI paths: toggle between "New repository" (initial branch) and "Existing repository" (repo URL + default ref). Selecting an existing repository opens a URL field and applies the external-repo workspace + isolated `git_worktree` policy; switching back to a new repository clears it.
+
+### Changed
+
+- **Repository setup logic extracted to `src/ui/lib/repository.ts`** (`repositoryProjectFields`, `getRepositoryMode`, `getRepositoryRef`, `getRepositoryUrl`, `normalizeNewRepoBranch`) and shared by `StepRepository` and the new inline editor, so the new-vs-external workspace + execution-policy rules stay consistent across both entry points.
+
+---
 ## [0.3.9] - 2026-06-08
 
 ### Changed
