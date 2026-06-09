@@ -590,6 +590,7 @@ Configure the plugin via **Settings → Plugins → Company Wizard** in the Pape
 | `anthropicApiKey` | No | Anthropic API key for AI wizard mode. Stored as a secret ref. Required to use the AI-powered setup path. |
 | `disableBoardApprovalOnNewCompanies` | No | If `true`, the wizard PATCHes new companies to set `requireBoardApprovalForNewAgents=false` during provisioning. Leave `false` to preserve approval-gated hiring. Defaults to `false`. |
 | `enableEnrichedPersonas` | No | If `true`, expert roles get domain lenses (named mental models) in `SOUL.md`, module skills get concrete output/review bars, and `HEARTBEAT.md` gets explicit done-criteria. Leave `false` (default) for the lean baseline personas. |
+
 For isolated worktrees: there is no plugin setting. The policy is controlled by Paperclip instance settings under **Settings → Instance → Experimental → enableIsolatedWorkspaces** and is consumed by the plugin during provisioning.
 
 <br>

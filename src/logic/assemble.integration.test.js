@@ -483,6 +483,16 @@ describe('assembleCompany integration (real templates)', () => {
       'security-engineer HEARTBEAT.md gains done-criteria',
     );
 
+    // The security-audit primary skills (owned by security-engineer) gain their output bars.
+    const securityReview = await readFile(
+      join(companyDir, 'agents', 'security-engineer', 'skills', 'security-review.md'),
+      'utf-8',
+    );
+    assert.ok(
+      securityReview.includes('## Output / review bar'),
+      'security-review primary skill gains its output bar',
+    );
+
     // No enrichment fragment leaks as a standalone file.
     const roleFiles = await readdir(join(companyDir, 'agents', 'security-engineer'));
     assert.ok(!roleFiles.includes('LENSES.md'), 'LENSES.md must not leak as a file');
