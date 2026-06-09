@@ -455,4 +455,72 @@ describe('assembleCompany integration (real templates)', () => {
       `no .meta.json should leak into output, found: ${metaFiles.join(', ')}`,
     );
   });
+
+  it('enriches a real expert role when enableEnrichedPersonas is on', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'EnrichReal',
+      userGoals: [{ title: 'Ship securely', description: '' }],
+      moduleNames: ['github-repo', 'security-audit'],
+      extraRoleNames: ['security-engineer'],
+      enableEnrichedPersonas: true,
+      outputDir,
+      templatesDir: REAL_TEMPLATES_DIR,
+    });
+
+    const soul = await readFile(
+      join(companyDir, 'agents', 'security-engineer', 'SOUL.md'),
+      'utf-8',
+    );
+    assert.ok(soul.includes('## Domain Lenses'), 'security-engineer SOUL.md gains lenses');
+    assert.ok(soul.includes('STRIDE'), 'lens body present');
+
+    const heartbeat = await readFile(
+      join(companyDir, 'agents', 'security-engineer', 'HEARTBEAT.md'),
+      'utf-8',
+    );
+    assert.ok(
+      heartbeat.includes('## Done criteria'),
+      'security-engineer HEARTBEAT.md gains done-criteria',
+    );
+
+    // The security-audit primary skills (owned by security-engineer) gain their output bars.
+    const securityReview = await readFile(
+      join(companyDir, 'agents', 'security-engineer', 'skills', 'security-review.md'),
+      'utf-8',
+    );
+    assert.ok(
+      securityReview.includes('## Output / review bar'),
+      'security-review primary skill gains its output bar',
+    );
+
+    // No enrichment fragment leaks as a standalone file.
+    const roleFiles = await readdir(join(companyDir, 'agents', 'security-engineer'));
+    assert.ok(!roleFiles.includes('LENSES.md'), 'LENSES.md must not leak as a file');
+    assert.ok(!roleFiles.includes('DONE.md'), 'DONE.md must not leak as a file');
+  });
+
+  it('keeps the lean baseline when enableEnrichedPersonas is off (default)', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'LeanReal',
+      userGoals: [{ title: 'Ship securely', description: '' }],
+      moduleNames: ['github-repo', 'security-audit'],
+      extraRoleNames: ['security-engineer'],
+      outputDir,
+      templatesDir: REAL_TEMPLATES_DIR,
+    });
+
+    const soul = await readFile(
+      join(companyDir, 'agents', 'security-engineer', 'SOUL.md'),
+      'utf-8',
+    );
+    assert.ok(!soul.includes('## Domain Lenses'), 'no lenses injected when flag is off');
+    const heartbeat = await readFile(
+      join(companyDir, 'agents', 'security-engineer', 'HEARTBEAT.md'),
+      'utf-8',
+    );
+    assert.ok(
+      !heartbeat.includes('## Done criteria'),
+      'no done-criteria injected when flag is off',
+    );
+  });
 });

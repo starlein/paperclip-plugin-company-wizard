@@ -71,6 +71,7 @@
 - "Update templates" button — re-downloads templates from GitHub without restarting the plugin
 - AI wizard hardening — `claude-opus-4-8` with `max_tokens: 32768`, background-job polling to beat the 30 s RPC timeout, domain-specific initial issues, defensive preset-role merging
 - Removed optional provisioning telemetry (was added then withdrawn)
+- Opt-in agent persona enrichment (`enableEnrichedPersonas`, default off) — domain lenses in `SOUL.md` for expert roles (security-engineer, ux-researcher, ui-designer, product-owner, code-reviewer, devops), output/review bars on module primary skills, and done-criteria in `HEARTBEAT.md`. Injected from `LENSES.md`/`DONE.md`/`<skill>.bar.md` fragments at assembly time; lean baseline unchanged when off.
 
 ## In Progress
 
@@ -82,6 +83,9 @@ _(nothing currently in progress)_
 
 - [ ] Per-role adapter model tuning — let presets/roles opt into cheaper models for low-stakes roles to reduce token spend
 - [ ] Routine pattern library — ship suggested routine sets per role beyond the current stall-detection/auto-assign/backlog trio
+- [ ] Contributor role-authoring guide — codify the lenses → output-bar → done structure for adding new roles (deferred from the persona-enrichment work)
+- [ ] Roll done-criteria out to all 17 roles — currently the 8 enriched roles only
+- [ ] Output/review bars for non-capability skills — e.g. `pr-review`'s role-specific review skills, which the current bar engine (capability-primary only) does not cover
 
 ### Platform
 

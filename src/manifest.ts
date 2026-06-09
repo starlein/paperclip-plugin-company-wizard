@@ -3,7 +3,7 @@ import type { PaperclipPluginManifestV1 } from '@paperclipai/plugin-sdk';
 const manifest: PaperclipPluginManifestV1 = {
   id: 'starlein.paperclip-plugin-company-wizard',
   apiVersion: 1,
-  version: '0.3.19',
+  version: '0.3.20',
   displayName: 'Company Wizard',
   description: 'AI-powered wizard to bootstrap agent companies from composable templates',
   author: 'Sascha Pietrowski <sp@speednetwork.de>',
@@ -66,6 +66,12 @@ const manifest: PaperclipPluginManifestV1 = {
         default: false,
         description:
           'Optional. If true, the wizard will PATCH new companies to set requireBoardApprovalForNewAgents=false during provisioning. Leave false to preserve approval-gated hiring policies.',
+      },
+      enableEnrichedPersonas: {
+        type: 'boolean',
+        default: false,
+        description:
+          'Optional. If true, expert roles are enriched with domain lenses (named mental models), module skills gain concrete output/review bars with negative examples, and HEARTBEAT.md gains explicit done-criteria. Leave false (default) for the lean baseline personas.',
       },
     },
   },

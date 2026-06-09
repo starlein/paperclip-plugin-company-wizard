@@ -47,6 +47,13 @@ async function appendToFile(filePath, content) {
   }
 }
 
+// Enrichment fragments are opt-in persona additions (domain lenses, done-criteria,
+// output bars). They are never emitted as standalone files — assembly appends them
+// into SOUL.md / HEARTBEAT.md / skill files only when enableEnrichedPersonas is on.
+function isEnrichmentFragment(name) {
+  return name === 'LENSES.md' || name === 'DONE.md' || name.endsWith('.bar.md');
+}
+
 async function readJson(p) {
   if (!(await exists(p))) return null;
   return JSON.parse(await readFile(p, 'utf-8'));
@@ -92,6 +99,7 @@ function normalizeExecutionBaseRef(ref, fallbackRef) {
  * @param {Array} [opts.presetRoutines] - Initial routines from the selected preset
  * @param {Array} [opts.presetLabels] - Explicit labels from the selected preset
  * @param {boolean} [opts.enableIsolatedWorktrees] - Admin setting: when true, external-repo projects keep their isolated git_worktree executionWorkspacePolicy; when false (default), agents share the project workspace. Fresh local repos never use isolated worktrees regardless.
+ * @param {boolean} [opts.enableEnrichedPersonas] - Opt-in: when true, append role LENSES.md to SOUL.md, role DONE.md to HEARTBEAT.md, and primary-skill <skill>.bar.md output bars. Default false keeps the lean baseline.
  * @param {string} opts.outputDir
  * @param {string} opts.templatesDir
  * @param {(line: string) => void} opts.onProgress
@@ -110,6 +118,7 @@ export async function assembleCompany({
   presetRoutines = [],
   presetLabels = [],
   enableIsolatedWorktrees = false,
+  enableEnrichedPersonas = false,
   outputDir,
   templatesDir,
   onProgress = () => {},
@@ -211,10 +220,12 @@ export async function assembleCompany({
     const entries = await readdir(roleSrc, { withFileTypes: true });
     for (const entry of entries) {
       if (entry.isDirectory()) {
+        // Role roots are flat — enrichment fragments (LENSES.md/DONE.md/*.bar.md)
+        // live at the role root, not in subdirs, so copyDir need only skip metadata.
         await copyDir(join(roleSrc, entry.name), join(roleDest, entry.name), {
           skipExt: '.meta.json',
         });
-      } else if (!entry.name.endsWith('.meta.json')) {
+      } else if (!entry.name.endsWith('.meta.json') && !isEnrichmentFragment(entry.name)) {
         await copyFile(join(roleSrc, entry.name), join(roleDest, entry.name));
       }
     }
@@ -233,6 +244,7 @@ export async function assembleCompany({
     const entries = await readdir(roleDir, { withFileTypes: true });
     for (const entry of entries) {
       if (entry.isDirectory() || !entry.name.endsWith('.md')) continue;
+      if (isEnrichmentFragment(entry.name)) continue;
       await copyFile(join(roleDir, entry.name), join(destDir, entry.name));
     }
     onProgress(`+ agents/${roleName}/ (role)`);
@@ -492,13 +504,28 @@ export async function assembleCompany({
       if (!resolved) return false;
       const destSkillsDir = join(companyDir, 'agents', roleName, 'skills');
       await mkdir(destSkillsDir, { recursive: true });
-      await copyFile(resolved.path, join(destSkillsDir, fileName));
+      const destFile = join(destSkillsDir, fileName);
+      await copyFile(resolved.path, destFile);
+      // Opt-in: append a primary skill's output/review bar when present.
+      let barApplied = false;
+      if (enableEnrichedPersonas && label === 'primary') {
+        const barFileName = fileName.replace(/\.md$/, '.bar.md');
+        const bar = await resolveSkillFile(roleName, barFileName);
+        if (bar) {
+          const barContent = await readFile(bar.path, 'utf-8');
+          await appendToFile(destFile, '\n' + barContent.trim() + '\n');
+          barApplied = true;
+        }
+      }
       await appendToFile(
         join(companyDir, 'agents', roleName, 'AGENTS.md'),
         `\nRead and follow: \`$AGENT_HOME/skills/${fileName}\`\n`,
       );
       const sourceTag = resolved.source === 'shared' ? ', shared' : '';
-      onProgress(`+ agents/${roleName}/skills/${fileName} (${moduleName}, ${label}${sourceTag})`);
+      const barTag = barApplied ? ', output bar' : '';
+      onProgress(
+        `+ agents/${roleName}/skills/${fileName} (${moduleName}, ${label}${sourceTag}${barTag})`,
+      );
       return true;
     }
 
@@ -529,6 +556,7 @@ export async function assembleCompany({
 
         const skills = await readdir(skillsDir);
         for (const skillFile of skills) {
+          if (skillFile.endsWith('.bar.md')) continue;
           const skillName = skillFile.replace(/\.md$/, '');
           const skillBaseName = skillName.replace(/\.fallback$/, '');
 
@@ -591,6 +619,30 @@ export async function assembleCompany({
 
       await writeFile(heartbeatPath, updated);
       onProgress(`+ agents/${modRole.name}/HEARTBEAT.md (${moduleName}, heartbeat section)`);
+    }
+  }
+
+  // 4b. Inject opt-in persona enrichments. Domain lenses → SOUL.md, done-criteria →
+  // HEARTBEAT.md. Fragments live at roles/<role>/LENSES.md and roles/<role>/DONE.md
+  // and apply only when enableEnrichedPersonas is on. Same gracefully-optimistic
+  // pattern as skills: a missing fragment simply means no enrichment for that role.
+  if (enableEnrichedPersonas) {
+    for (const roleName of allRoles) {
+      const lensesSrc = join(rolesDir, roleName, 'LENSES.md');
+      const soulPath = join(companyDir, 'agents', roleName, 'SOUL.md');
+      if ((await exists(lensesSrc)) && (await exists(soulPath))) {
+        const lenses = await readFile(lensesSrc, 'utf-8');
+        await appendToFile(soulPath, '\n' + lenses.trim() + '\n');
+        onProgress(`+ agents/${roleName}/SOUL.md (domain lenses)`);
+      }
+
+      const doneSrc = join(rolesDir, roleName, 'DONE.md');
+      const heartbeatPath = join(companyDir, 'agents', roleName, 'HEARTBEAT.md');
+      if ((await exists(doneSrc)) && (await exists(heartbeatPath))) {
+        const done = await readFile(doneSrc, 'utf-8');
+        await appendToFile(heartbeatPath, '\n' + done.trim() + '\n');
+        onProgress(`+ agents/${roleName}/HEARTBEAT.md (done criteria)`);
+      }
     }
   }
 
