@@ -116,6 +116,13 @@ describe("company-wizard", () => {
     expect(second.status).toBe("error");
   });
 
+  it("declares the enableEnrichedPersonas setting (default false)", () => {
+    const props = (manifest.instanceConfigSchema as any).properties;
+    expect(props.enableEnrichedPersonas).toBeDefined();
+    expect(props.enableEnrichedPersonas.type).toBe("boolean");
+    expect(props.enableEnrichedPersonas.default).toBe(false);
+  });
+
   it("reports healthy", async () => {
     const health = await plugin.definition.onHealth!();
     expect(health.status).toBe("ok");

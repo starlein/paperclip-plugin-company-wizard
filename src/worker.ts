@@ -489,6 +489,7 @@ const plugin = definePlugin({
           presetRoutines: presetBootstrapData.routines,
           presetLabels: presetBootstrapData.labels,
           enableIsolatedWorktrees: await resolveEnableIsolatedWorkspacesFromInstance(cfg),
+          enableEnrichedPersonas: cfgBool(cfg, 'enableEnrichedPersonas'),
           outputDir: tmpDir,
           templatesDir,
         });
@@ -647,6 +648,7 @@ const plugin = definePlugin({
           'disableBoardApprovalOnNewCompanies',
         );
         const enableIsolatedWorktrees = await resolveEnableIsolatedWorkspacesFromInstance(cfg, log);
+        const enableEnrichedPersonas = cfgBool(cfg, 'enableEnrichedPersonas');
 
         const companyName = typeof params.companyName === 'string' ? params.companyName.trim() : '';
         const existingCompanyId =
@@ -710,6 +712,7 @@ const plugin = definePlugin({
           presetRoutines: presetBootstrapData.routines,
           presetLabels: presetBootstrapData.labels,
           enableIsolatedWorktrees,
+          enableEnrichedPersonas,
           outputDir,
           templatesDir,
           onProgress: log,
