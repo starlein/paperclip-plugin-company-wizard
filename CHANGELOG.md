@@ -5,6 +5,16 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.20] - 2026-06-09
+
+### Added
+
+- **Opt-in agent persona enrichment** (`enableEnrichedPersonas` plugin setting, default `false`). When enabled, assembly appends enrichment fragments into generated agent files; the lean baseline is unchanged when off.
+  - **Domain lenses** (`roles/<role>/LENSES.md` → `SOUL.md`) — named mental models an agent cites in comments. Lens-heavy: `security-engineer` (STRIDE, OWASP Web/API/LLM, least privilege, blast radius…), `ux-researcher` (Nielsen's 10, Jakob's/Hick's/Fitts's Law, Kano, JTBD…), `ui-designer` (Gestalt, visual hierarchy, design tokens…). Focused: `product-owner` (RICE/ICE, MoSCoW, WSJF…), `code-reviewer` (correctness-first, blast radius, smallest-diff…), `devops` (error budgets, MTTR, rollback-first…). Operational roles (`engineer`, `qa`) intentionally have none.
+  - **Output/review bars** (`modules/<module>/skills/<skill>.bar.md` → primary skill) — concrete "what good/finished work looks like" with negative examples, across 14 module skills (tech-stack, architecture-plan, design-system, api-design, codebase-audit, user-testing, accessibility-audit, threat-model, security-review, market-analysis, brand-identity, backlog-health, ci-cd, monitoring).
+  - **Done-criteria** (`roles/<role>/DONE.md` → `HEARTBEAT.md`) — explicit "verify before done" + "always comment before exiting a heartbeat" rule, for all 8 enriched roles.
+- Enrichment fragments are filtered from every copy path (`isEnrichmentFragment`) so they never ship as standalone files; injection mirrors the existing module heartbeat-section pattern and is threaded `manifest.ts → worker.ts → assembleCompany`.
+
 ## [0.3.19] - 2026-06-09
 
 ### Changed
