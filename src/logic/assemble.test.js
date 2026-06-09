@@ -1204,6 +1204,61 @@ describe('assembleCompany', () => {
     );
   });
 
+  it('appends a primary skill output bar when enabled, and never emits .bar.md standalone', async () => {
+    const modDir = join(templatesDir, 'modules', 'demo');
+    await mkdir(join(modDir, 'skills'), { recursive: true });
+    await writeJson(join(modDir, 'module.meta.json'), {
+      name: 'demo',
+      capabilities: [{ skill: 'demo-skill', owners: ['engineer', 'ceo'] }],
+    });
+    await writeFile(join(modDir, 'skills', 'demo-skill.md'), '# Demo skill\n\nDo the thing.\n');
+    await writeFile(
+      join(modDir, 'skills', 'demo-skill.bar.md'),
+      '## Output bar\n\nA result without tests is not done.\n',
+    );
+
+    const { companyDir } = await assembleCompany({
+      companyName: 'BarCo',
+      moduleNames: ['demo'],
+      extraRoleNames: [],
+      enableEnrichedPersonas: true,
+      outputDir,
+      templatesDir,
+    });
+
+    const skillPath = join(companyDir, 'agents', 'engineer', 'skills', 'demo-skill.md');
+    const skill = await readFile(skillPath, 'utf-8');
+    assert.ok(skill.includes('Do the thing.'), 'primary skill body present');
+    assert.ok(skill.includes('## Output bar'), 'output bar appended to primary skill');
+    const skillFiles = await readdir(join(companyDir, 'agents', 'engineer', 'skills'));
+    assert.ok(!skillFiles.includes('demo-skill.bar.md'), '.bar.md must not be a standalone file');
+  });
+
+  it('does not append output bars or lenses when flag is off (baseline unchanged)', async () => {
+    const modDir = join(templatesDir, 'modules', 'demo2');
+    await mkdir(join(modDir, 'skills'), { recursive: true });
+    await writeJson(join(modDir, 'module.meta.json'), {
+      name: 'demo2',
+      capabilities: [{ skill: 'demo2-skill', owners: ['engineer', 'ceo'] }],
+    });
+    await writeFile(join(modDir, 'skills', 'demo2-skill.md'), '# Demo2\n\nWork.\n');
+    await writeFile(join(modDir, 'skills', 'demo2-skill.bar.md'), '## Output bar\n\nbar text\n');
+
+    const { companyDir } = await assembleCompany({
+      companyName: 'BaselineCo',
+      moduleNames: ['demo2'],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+    });
+
+    const skill = await readFile(
+      join(companyDir, 'agents', 'engineer', 'skills', 'demo2-skill.md'),
+      'utf-8',
+    );
+    assert.ok(!skill.includes('Output bar'), 'no bar appended when flag off');
+  });
+
   it('resolves capability:* task assignments to the primary owner role', async () => {
     // Add a task with capability: reference
     const aaModuleMeta = join(templatesDir, 'modules', 'auto-assign', 'module.meta.json');

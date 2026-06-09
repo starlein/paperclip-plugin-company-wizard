@@ -502,7 +502,18 @@ export async function assembleCompany({
       if (!resolved) return false;
       const destSkillsDir = join(companyDir, 'agents', roleName, 'skills');
       await mkdir(destSkillsDir, { recursive: true });
-      await copyFile(resolved.path, join(destSkillsDir, fileName));
+      const destFile = join(destSkillsDir, fileName);
+      await copyFile(resolved.path, destFile);
+      // Opt-in: append a primary skill's output/review bar when present.
+      if (enableEnrichedPersonas && label === 'primary') {
+        const barFileName = fileName.replace(/\.md$/, '.bar.md');
+        const bar = await resolveSkillFile(roleName, barFileName);
+        if (bar) {
+          const barContent = await readFile(bar.path, 'utf-8');
+          await appendFile(destFile, '\n' + barContent.trim() + '\n');
+          onProgress(`+ agents/${roleName}/skills/${fileName} (${moduleName}, output bar)`);
+        }
+      }
       await appendToFile(
         join(companyDir, 'agents', roleName, 'AGENTS.md'),
         `\nRead and follow: \`$AGENT_HOME/skills/${fileName}\`\n`,
@@ -539,6 +550,7 @@ export async function assembleCompany({
 
         const skills = await readdir(skillsDir);
         for (const skillFile of skills) {
+          if (skillFile.endsWith('.bar.md')) continue;
           const skillName = skillFile.replace(/\.md$/, '');
           const skillBaseName = skillName.replace(/\.fallback$/, '');
 
