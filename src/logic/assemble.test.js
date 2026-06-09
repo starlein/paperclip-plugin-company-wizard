@@ -1170,6 +1170,40 @@ describe('assembleCompany', () => {
     assert.ok(!soul.includes('Domain Lenses'), 'SOUL.md must stay lean when flag off');
   });
 
+  it('injects lenses into SOUL.md and done-criteria into HEARTBEAT.md when enabled', async () => {
+    const engDir = join(templatesDir, 'roles', 'engineer');
+    await writeFile(
+      join(engDir, 'LENSES.md'),
+      '## Domain Lenses\n\n- **Test Lens** — explanation\n',
+    );
+    await writeFile(
+      join(engDir, 'DONE.md'),
+      '## Done criteria\n\nAlways update your task with a comment before exiting a heartbeat.\n',
+    );
+
+    const { companyDir } = await assembleCompany({
+      companyName: 'EnrichCo',
+      moduleNames: [],
+      extraRoleNames: [],
+      enableEnrichedPersonas: true,
+      outputDir,
+      templatesDir,
+    });
+
+    const soul = await readFile(join(companyDir, 'agents', 'engineer', 'SOUL.md'), 'utf-8');
+    const heartbeat = await readFile(
+      join(companyDir, 'agents', 'engineer', 'HEARTBEAT.md'),
+      'utf-8',
+    );
+    assert.ok(soul.includes('## Domain Lenses'), 'SOUL.md should contain injected lenses');
+    assert.ok(soul.includes('Test Lens'), 'SOUL.md should contain the lens body');
+    assert.ok(heartbeat.includes('## Done criteria'), 'HEARTBEAT.md should contain done-criteria');
+    assert.ok(
+      heartbeat.includes('comment before exiting a heartbeat'),
+      'HEARTBEAT.md should contain the heartbeat-exit rule',
+    );
+  });
+
   it('resolves capability:* task assignments to the primary owner role', async () => {
     // Add a task with capability: reference
     const aaModuleMeta = join(templatesDir, 'modules', 'auto-assign', 'module.meta.json');

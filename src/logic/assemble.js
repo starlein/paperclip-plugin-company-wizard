@@ -99,6 +99,7 @@ function normalizeExecutionBaseRef(ref, fallbackRef) {
  * @param {Array} [opts.presetRoutines] - Initial routines from the selected preset
  * @param {Array} [opts.presetLabels] - Explicit labels from the selected preset
  * @param {boolean} [opts.enableIsolatedWorktrees] - Admin setting: when true, external-repo projects keep their isolated git_worktree executionWorkspacePolicy; when false (default), agents share the project workspace. Fresh local repos never use isolated worktrees regardless.
+ * @param {boolean} [opts.enableEnrichedPersonas] - Opt-in: when true, append role LENSES.md to SOUL.md, role DONE.md to HEARTBEAT.md, and primary-skill <skill>.bar.md output bars. Default false keeps the lean baseline.
  * @param {string} opts.outputDir
  * @param {string} opts.templatesDir
  * @param {(line: string) => void} opts.onProgress
@@ -117,6 +118,7 @@ export async function assembleCompany({
   presetRoutines = [],
   presetLabels = [],
   enableIsolatedWorktrees = false,
+  enableEnrichedPersonas = false,
   outputDir,
   templatesDir,
   onProgress = () => {},
@@ -599,6 +601,30 @@ export async function assembleCompany({
 
       await writeFile(heartbeatPath, updated);
       onProgress(`+ agents/${modRole.name}/HEARTBEAT.md (${moduleName}, heartbeat section)`);
+    }
+  }
+
+  // 4b. Inject opt-in persona enrichments. Domain lenses → SOUL.md, done-criteria →
+  // HEARTBEAT.md. Fragments live at roles/<role>/LENSES.md and roles/<role>/DONE.md
+  // and apply only when enableEnrichedPersonas is on. Same gracefully-optimistic
+  // pattern as skills: a missing fragment simply means no enrichment for that role.
+  if (enableEnrichedPersonas) {
+    for (const roleName of allRoles) {
+      const lensesSrc = join(rolesDir, roleName, 'LENSES.md');
+      const soulPath = join(companyDir, 'agents', roleName, 'SOUL.md');
+      if ((await exists(lensesSrc)) && (await exists(soulPath))) {
+        const lenses = await readFile(lensesSrc, 'utf-8');
+        await appendFile(soulPath, '\n' + lenses.trim() + '\n');
+        onProgress(`+ agents/${roleName}/SOUL.md (domain lenses)`);
+      }
+
+      const doneSrc = join(rolesDir, roleName, 'DONE.md');
+      const heartbeatPath = join(companyDir, 'agents', roleName, 'HEARTBEAT.md');
+      if ((await exists(doneSrc)) && (await exists(heartbeatPath))) {
+        const done = await readFile(doneSrc, 'utf-8');
+        await appendFile(heartbeatPath, '\n' + done.trim() + '\n');
+        onProgress(`+ agents/${roleName}/HEARTBEAT.md (done criteria)`);
+      }
     }
   }
 
