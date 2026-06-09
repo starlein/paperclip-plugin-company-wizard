@@ -1,6 +1,6 @@
 {
   "name": "@starlein/paperclip-plugin-company-wizard",
-  "version": "0.3.18",
+  "version": "0.3.19",
   "type": "module",
   "description": "AI-powered wizard to bootstrap paperclip agent companies from composable templates (for latest paperclip version)",
   "repository": "https://github.com/starlein/paperclip-plugin-company-wizard",
@@ -40,7 +40,10 @@
     "plugin",
     "workspace"
   ],
-  "author": "@lx-0 <https://github.com/lx-0>",
+  "author": "Sascha Pietrowski <sp@speednetwork.de>",
+  "contributors": [
+    "Yesterday AI (original @yesterday-ai/paperclip-plugin-company-wizard — template system, assembly logic, API client)"
+  ],
   "license": "MIT",
   "dependencies": {
     "class-variance-authority": "^0.7.1",

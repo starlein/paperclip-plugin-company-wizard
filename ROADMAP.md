@@ -57,6 +57,21 @@
 - Approval-aware agent hiring — `createAgent()` falls back to `POST /agent-hires` when direct creation requires board approval, then auto-approves via `/approvals/{id}/approve`. Pending approval IDs surfaced in logs on auto-approve failure.
 - `disableBoardApprovalOnNewCompanies` plugin setting — optional compatibility mode that PATCHes new companies to disable mandatory board approval for new agents (default `false`, preserves approval-gated policies).
 
+### Plugin migration (post-fork, v0.3.x)
+
+- Paperclip API compatibility — bootstrap metadata fields renamed to match the API exactly (`parentId`, `assigneeAgentId`, `projectId`, `goalIds`); `@paperclipai/plugin-sdk` and `@paperclipai/shared` declared as `peerDependencies` (`>=2026.529.0`); `security-engineer` mapped to the dedicated `security` enum
+- Agents provisioned with complete instructions — every non-CEO agent is created directly with its full `instructionsBundle` instead of a bare `instructionsFilePath`
+- Routines created with board authority at provisioning time (the CEO cannot create routines owned by other agents)
+- Only the CEO keeps an always-on heartbeat — worker agents are woken on assignment, preventing concurrent-run bursts that crashed the dev server
+- Fresh local repos no longer bootstrap with isolated git worktrees — the `isolated_workspace` / `git_worktree` policy is suppressed until the repo and base ref exist
+- Workspace isolation follows Paperclip instance settings — the wizard reads `enableIsolatedWorkspaces` from the instance experimental settings; no plugin setting
+- Assembly fixes — `$AGENT_HOME` rewritten to absolute paths, shared docs scoped per role, relative doc paths, duplicate bootstrap issues deduplicated, orphaned CFO role removed
+- Inline file editing — preview and edit any assembled file in the ConfigReview step before provisioning (`fileOverrides`)
+- Repository workspace setup — choose a fresh local or existing external Git repo via the manual step or inline on the review screen (both manual and AI paths)
+- "Update templates" button — re-downloads templates from GitHub without restarting the plugin
+- AI wizard hardening — `claude-opus-4-8` with `max_tokens: 32768`, background-job polling to beat the 30 s RPC timeout, domain-specific initial issues, defensive preset-role merging
+- Removed optional provisioning telemetry (was added then withdrawn)
+
 ## In Progress
 
 _(nothing currently in progress)_
@@ -65,6 +80,11 @@ _(nothing currently in progress)_
 
 ### Template System
 
+- [ ] Per-role adapter model tuning — let presets/roles opt into cheaper models for low-stakes roles to reduce token spend
+- [ ] Routine pattern library — ship suggested routine sets per role beyond the current stall-detection/auto-assign/backlog trio
+
 ### Platform
 
 - [ ] Paperclip workspace resolution fix — `resolveWorkspaceForRun()` returns null when manually triggering heartbeat (no issue/project context). Needs server-side fix.
+- [ ] Re-provision / update flow — apply template or role changes to an already-provisioned company without a full re-bootstrap
+- [ ] Dry-run provisioning preview — surface the full BOOTSTRAP.md + API call plan in the UI before committing to the Paperclip API

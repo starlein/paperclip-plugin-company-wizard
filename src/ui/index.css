@@ -32,7 +32,7 @@
  * In plugin mode the Paperclip host provides --background, --foreground, etc.
  * These fallbacks only apply if the host doesn't define them.
  */
-:host, .clipper-plugin-root {
+:host, .company-wizard-plugin-root {
   --radius: 0.625rem;
 }
 

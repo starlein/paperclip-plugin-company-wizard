@@ -3,7 +3,7 @@
 # Run after `pnpm build` to make the new version visible to the container.
 set -euo pipefail
 
-CLIPPER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOTPAPERCLIP="${PAPERCLIP_DOTPAPERCLIP_HOST:-/root/paperclip/data/docker3/}"
 PLUGIN_DIR="$DOTPAPERCLIP/plugins/@starlein/paperclip-plugin-company-wizard"
 RUNTIME_PLUGIN_DIR="$DOTPAPERCLIP/plugins/node_modules/@starlein/paperclip-plugin-company-wizard"
@@ -11,9 +11,9 @@ RUNTIME_PLUGIN_DIR="$DOTPAPERCLIP/plugins/node_modules/@starlein/paperclip-plugi
 sync_plugin_dir() {
   local target="$1"
   mkdir -p "$target"
-  rsync -a --delete "$CLIPPER_DIR/dist/"      "$target/dist/"
-  rsync -a --delete "$CLIPPER_DIR/templates/" "$target/templates/"
-  cp "$CLIPPER_DIR/package.json"              "$target/package.json"
+  rsync -a --delete "$REPO_DIR/dist/"      "$target/dist/"
+  rsync -a --delete "$REPO_DIR/templates/" "$target/templates/"
+  cp "$REPO_DIR/package.json"              "$target/package.json"
 }
 
 sync_plugin_dir "$PLUGIN_DIR"
@@ -25,7 +25,7 @@ sync_plugin_dir "$PLUGIN_DIR"
 # otherwise the running worker keeps generating bootstraps from old templates.
 TEMPLATE_CACHE_DIR="${PAPERCLIP_PLUGIN_TEMPLATES_CACHE:-$HOME/.paperclip/plugin-templates}"
 if [ -d "$TEMPLATE_CACHE_DIR" ]; then
-  rsync -a --delete "$CLIPPER_DIR/templates/" "$TEMPLATE_CACHE_DIR/"
+  rsync -a --delete "$REPO_DIR/templates/" "$TEMPLATE_CACHE_DIR/"
   echo "Synced template cache to $TEMPLATE_CACHE_DIR"
 fi
 
@@ -42,7 +42,7 @@ echo "Synced to $PLUGIN_DIR"
 
 # Update manifest_json and reset status in DB so the server picks up schema changes on next restart
 MANIFEST_JSON=$(node --input-type=module -e "
-import manifest from '$CLIPPER_DIR/dist/manifest.js';
+import manifest from '$PLUGIN_DIR/dist/manifest.js';
 process.stdout.write(JSON.stringify(manifest));
 " 2>/dev/null || echo "")
 

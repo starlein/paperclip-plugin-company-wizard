@@ -7,7 +7,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("plugin-clipper", () => {
+describe("company-wizard", () => {
   it("registers templates data handler", async () => {
     const harness = createTestHarness({ manifest, capabilities: manifest.capabilities });
     await plugin.definition.setup(harness.ctx);

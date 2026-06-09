@@ -1,6 +1,6 @@
 # Template Gap Analysis for Use Case
 
-Analyze the Clipper template system against a provided use case to identify gaps, missing capabilities, and improvement opportunities.
+Analyze the Company Wizard template system against a provided use case to identify gaps, missing capabilities, and improvement opportunities.
 
 ## Input
 
@@ -10,7 +10,7 @@ If no use case is provided, ask the user to describe their use case.
 
 ## Instructions
 
-You are auditing Clipper's template system (presets, modules, roles, skills, inline goals) against the use case above. Follow the template philosophy: **gracefully optimistic, modular, markdown-first**.
+You are auditing the Company Wizard template system (presets, modules, roles, skills, inline goals) against the use case above. Follow the template philosophy: **gracefully optimistic, modular, markdown-first**.
 
 ### Step 1: Understand the use case
 

@@ -448,7 +448,7 @@ const plugin = definePlugin({
             : 'Preview';
 
         const templatesDir = await ensureTemplatesDir(cfg);
-        tmpDir = path.join(os.tmpdir(), `clipper-preview-${Date.now()}`);
+        tmpDir = path.join(os.tmpdir(), `company-wizard-preview-${Date.now()}`);
 
         // Resolve the companies dir so BOOTSTRAP.md shows correct paths in preview.
         const companiesDir = resolveCompaniesDir(cfg);
