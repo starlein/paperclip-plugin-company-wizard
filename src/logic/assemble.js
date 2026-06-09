@@ -47,6 +47,13 @@ async function appendToFile(filePath, content) {
   }
 }
 
+// Enrichment fragments are opt-in persona additions (domain lenses, done-criteria,
+// output bars). They are never emitted as standalone files — assembly appends them
+// into SOUL.md / HEARTBEAT.md / skill files only when enableEnrichedPersonas is on.
+function isEnrichmentFragment(name) {
+  return name === 'LENSES.md' || name === 'DONE.md' || name.endsWith('.bar.md');
+}
+
 async function readJson(p) {
   if (!(await exists(p))) return null;
   return JSON.parse(await readFile(p, 'utf-8'));
@@ -214,7 +221,7 @@ export async function assembleCompany({
         await copyDir(join(roleSrc, entry.name), join(roleDest, entry.name), {
           skipExt: '.meta.json',
         });
-      } else if (!entry.name.endsWith('.meta.json')) {
+      } else if (!entry.name.endsWith('.meta.json') && !isEnrichmentFragment(entry.name)) {
         await copyFile(join(roleSrc, entry.name), join(roleDest, entry.name));
       }
     }
@@ -233,6 +240,7 @@ export async function assembleCompany({
     const entries = await readdir(roleDir, { withFileTypes: true });
     for (const entry of entries) {
       if (entry.isDirectory() || !entry.name.endsWith('.md')) continue;
+      if (isEnrichmentFragment(entry.name)) continue;
       await copyFile(join(roleDir, entry.name), join(destDir, entry.name));
     }
     onProgress(`+ agents/${roleName}/ (role)`);

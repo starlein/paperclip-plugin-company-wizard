@@ -1150,6 +1150,26 @@ describe('assembleCompany', () => {
     assert.ok(companyDir.endsWith('NoDeps'));
   });
 
+  it('does not emit enrichment fragments as standalone files (flag off)', async () => {
+    const engDir = join(templatesDir, 'roles', 'engineer');
+    await writeFile(join(engDir, 'LENSES.md'), '## Domain Lenses\n\n- **Test Lens** — x\n');
+    await writeFile(join(engDir, 'DONE.md'), '## Done\n\nAlways comment.\n');
+
+    const { companyDir } = await assembleCompany({
+      companyName: 'FragCo',
+      moduleNames: [],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+    });
+
+    const files = await readdir(join(companyDir, 'agents', 'engineer'));
+    assert.ok(!files.includes('LENSES.md'), 'LENSES.md must not be copied verbatim');
+    assert.ok(!files.includes('DONE.md'), 'DONE.md must not be copied verbatim');
+    const soul = await readFile(join(companyDir, 'agents', 'engineer', 'SOUL.md'), 'utf-8');
+    assert.ok(!soul.includes('Domain Lenses'), 'SOUL.md must stay lean when flag off');
+  });
+
   it('resolves capability:* task assignments to the primary owner role', async () => {
     // Add a task with capability: reference
     const aaModuleMeta = join(templatesDir, 'modules', 'auto-assign', 'module.meta.json');
