@@ -220,6 +220,8 @@ export async function assembleCompany({
     const entries = await readdir(roleSrc, { withFileTypes: true });
     for (const entry of entries) {
       if (entry.isDirectory()) {
+        // Role roots are flat — enrichment fragments (LENSES.md/DONE.md/*.bar.md)
+        // live at the role root, not in subdirs, so copyDir need only skip metadata.
         await copyDir(join(roleSrc, entry.name), join(roleDest, entry.name), {
           skipExt: '.meta.json',
         });
@@ -505,13 +507,14 @@ export async function assembleCompany({
       const destFile = join(destSkillsDir, fileName);
       await copyFile(resolved.path, destFile);
       // Opt-in: append a primary skill's output/review bar when present.
+      let barApplied = false;
       if (enableEnrichedPersonas && label === 'primary') {
         const barFileName = fileName.replace(/\.md$/, '.bar.md');
         const bar = await resolveSkillFile(roleName, barFileName);
         if (bar) {
           const barContent = await readFile(bar.path, 'utf-8');
-          await appendFile(destFile, '\n' + barContent.trim() + '\n');
-          onProgress(`+ agents/${roleName}/skills/${fileName} (${moduleName}, output bar)`);
+          await appendToFile(destFile, '\n' + barContent.trim() + '\n');
+          barApplied = true;
         }
       }
       await appendToFile(
@@ -519,7 +522,10 @@ export async function assembleCompany({
         `\nRead and follow: \`$AGENT_HOME/skills/${fileName}\`\n`,
       );
       const sourceTag = resolved.source === 'shared' ? ', shared' : '';
-      onProgress(`+ agents/${roleName}/skills/${fileName} (${moduleName}, ${label}${sourceTag})`);
+      const barTag = barApplied ? ', output bar' : '';
+      onProgress(
+        `+ agents/${roleName}/skills/${fileName} (${moduleName}, ${label}${sourceTag}${barTag})`,
+      );
       return true;
     }
 
@@ -626,7 +632,7 @@ export async function assembleCompany({
       const soulPath = join(companyDir, 'agents', roleName, 'SOUL.md');
       if ((await exists(lensesSrc)) && (await exists(soulPath))) {
         const lenses = await readFile(lensesSrc, 'utf-8');
-        await appendFile(soulPath, '\n' + lenses.trim() + '\n');
+        await appendToFile(soulPath, '\n' + lenses.trim() + '\n');
         onProgress(`+ agents/${roleName}/SOUL.md (domain lenses)`);
       }
 
@@ -634,7 +640,7 @@ export async function assembleCompany({
       const heartbeatPath = join(companyDir, 'agents', roleName, 'HEARTBEAT.md');
       if ((await exists(doneSrc)) && (await exists(heartbeatPath))) {
         const done = await readFile(doneSrc, 'utf-8');
-        await appendFile(heartbeatPath, '\n' + done.trim() + '\n');
+        await appendToFile(heartbeatPath, '\n' + done.trim() + '\n');
         onProgress(`+ agents/${roleName}/HEARTBEAT.md (done criteria)`);
       }
     }
