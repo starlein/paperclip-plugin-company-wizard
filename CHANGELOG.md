@@ -5,6 +5,14 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.18] - 2026-06-09
+
+### Fixed
+
+- **Removed optional provisioning telemetry support.**
+- **Repository bootstrap wording for existing repos is now accurate** — the github-repo foundation task is now `Prepare GitHub repository` and explicitly distinguishes fresh-repository setup from verification of an existing repository state.
+- **Isolated-worktree execution policy now normalizes `baseRef` consistently** (`main` → `origin/main`) and keeps local fresh repository setups on shared workspaces until the repo exists.
+
 ## [0.3.15] - 2026-06-08
 
 ### Fixed
