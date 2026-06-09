@@ -139,6 +139,8 @@ Every company starts with just the **CEO** — and that's already a functional t
 
 No role is ever truly missing. When a specialist isn't present, the next best available person steps in. The CEO is always the final fallback.
 
+> **Enriched personas (opt-in):** set `enableEnrichedPersonas` to give expert roles named **domain lenses** (e.g. STRIDE, Nielsen's 10, RICE) in their `SOUL.md`, add **output/review bars** to module skills, and append **done-criteria** to `HEARTBEAT.md`. Off by default — the baseline personas stay lean.
+
 <details>
 <summary><strong>Full capability ownership table</strong></summary>
 
@@ -587,6 +589,7 @@ Configure the plugin via **Settings → Plugins → Company Wizard** in the Pape
 | `paperclipPassword` | No | Board login password. Stored as a secret ref. |
 | `anthropicApiKey` | No | Anthropic API key for AI wizard mode. Stored as a secret ref. Required to use the AI-powered setup path. |
 | `disableBoardApprovalOnNewCompanies` | No | If `true`, the wizard PATCHes new companies to set `requireBoardApprovalForNewAgents=false` during provisioning. Leave `false` to preserve approval-gated hiring. Defaults to `false`. |
+| `enableEnrichedPersonas` | No | If `true`, expert roles get domain lenses (named mental models) in `SOUL.md`, module skills get concrete output/review bars, and `HEARTBEAT.md` gets explicit done-criteria. Leave `false` (default) for the lean baseline personas. |
 For isolated worktrees: there is no plugin setting. The policy is controlled by Paperclip instance settings under **Settings → Instance → Experimental → enableIsolatedWorkspaces** and is consumed by the plugin during provisioning.
 
 <br>

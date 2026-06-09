@@ -94,6 +94,14 @@ Convention-based: if a module provides `agents/<role>/heartbeat-section.md`, ass
 
 Currently 3 modules have heartbeat sections: `stall-detection` (CEO), `auto-assign` (CEO fallback + PO primary), `backlog` (CEO fallback + PO primary).
 
+### Persona Enrichment (opt-in)
+
+Gated by the `enableEnrichedPersonas` plugin setting (default `false`; threaded `manifest.ts → worker.ts cfgBool → assembleCompany({ enableEnrichedPersonas })`, mirroring `enableIsolatedWorktrees`). When on, assembly appends fragment files into the generated agent files; when off, the baseline is unchanged. Fragments are never emitted as standalone files — `isEnrichmentFragment()` filters `LENSES.md`, `DONE.md`, and `*.bar.md` from every copy path.
+
+- `roles/<role>/LENSES.md` → appended to that role's `SOUL.md` (domain lenses). Lens-heavy: `security-engineer`, `ux-researcher`, `ui-designer`; focused: `product-owner`, `code-reviewer`, `devops`. Operational roles (`engineer`, `qa`) intentionally have none.
+- `roles/<role>/DONE.md` → appended to that role's `HEARTBEAT.md` (done-criteria + heartbeat-exit rule); present for all 8 enriched roles.
+- `modules/<module>/skills/<skill>.bar.md` → appended to the installed **primary** skill `<skill>.md` (output/review bar). Resolved via `resolveSkillFile` (role-specific override first, then shared), so role-specific-primary capabilities (e.g. `design-system`) carry a role-specific bar. Fallback skills stay lean. Non-capability skills (e.g. `pr-review`) do not receive bars in this iteration.
+
 ### Key Concepts
 
 - **Goals and projects** — `WizardState.goals: Goal[]` holds user-specified goals (from manual step or AI wizard). `WizardState.projects: WizardProject[]` holds user-specified projects. Each `Goal` has `title`, `description`, and optional `parentGoal` for sub-goal hierarchy. Each `WizardProject` has `name`, `description`, and `goals[]` (goal titles it's linked to, matching Paperclip API `goalIds`).
