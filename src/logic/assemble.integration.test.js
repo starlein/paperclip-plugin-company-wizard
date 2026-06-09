@@ -134,14 +134,14 @@ describe('assembleCompany integration (real templates)', () => {
     const taskTitles = initialIssues.map((t) => t.title);
     assert.equal(
       initialIssues[0].title,
-      'Initialize GitHub repository',
+      'Prepare GitHub repository',
       'github repository foundation task should lead the initial backlog',
     );
     assert.equal(initialIssues[0].priority, 'critical');
     assert.equal(initialIssues[0].bootstrapPhase, 'foundation');
-    assert.ok(taskTitles.includes('Initialize GitHub repository'), 'should have github-repo task');
+    assert.ok(taskTitles.includes('Prepare GitHub repository'), 'should have github-repo task');
     const prReviewIndex = taskTitles.indexOf('Set up Paperclip PR review workflow');
-    const githubIndex = taskTitles.indexOf('Initialize GitHub repository');
+    const githubIndex = taskTitles.indexOf('Prepare GitHub repository');
     const roadmapIndex = taskTitles.indexOf('Create roadmap and generate initial backlog');
     assert.ok(prReviewIndex > -1, 'should have PR review setup task');
     assert.equal(

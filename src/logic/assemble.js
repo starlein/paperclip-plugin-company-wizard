@@ -65,6 +65,18 @@ export function toPascalCase(name) {
     .join('');
 }
 
+function normalizeExecutionBaseRef(ref, fallbackRef) {
+  const candidates = [ref, fallbackRef].filter(
+    (value) => typeof value === 'string' && value.trim(),
+  );
+  const selected = candidates.length > 0 ? String(candidates[0]).trim() : '';
+  if (!selected) return 'origin/main';
+  if (selected.startsWith('origin/') || selected.startsWith('refs/')) {
+    return selected;
+  }
+  return `origin/${selected}`;
+}
+
 /**
  * Assemble a company workspace from templates.
  *
@@ -990,6 +1002,20 @@ export async function assembleCompany({
     if (!policy || typeof policy !== 'object') return null;
     if (policy.defaultMode === 'isolated_workspace') {
       if (!enableIsolatedWorktrees || isFreshLocalRepo(workspace)) return null;
+
+      const strategy = policy.workspaceStrategy;
+      if (!strategy || typeof strategy !== 'object') return policy;
+      if (strategy.type !== 'git_worktree') return policy;
+
+      const workspaceStrategy = { ...strategy };
+      const normalizedBaseRef = normalizeExecutionBaseRef(
+        workspaceStrategy.baseRef,
+        workspace?.repoRef || workspace?.defaultRef,
+      );
+      if (normalizedBaseRef) {
+        workspaceStrategy.baseRef = normalizedBaseRef;
+      }
+      return { ...policy, workspaceStrategy };
     }
     return policy;
   };

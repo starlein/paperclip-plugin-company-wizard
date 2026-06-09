@@ -47,6 +47,15 @@ export function getRepositoryRef(
   );
 }
 
+export function normalizeExternalRepoRef(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return 'origin/main';
+  if (trimmed.startsWith('origin/') || trimmed.startsWith('refs/')) {
+    return trimmed;
+  }
+  return `origin/${trimmed}`;
+}
+
 export function normalizeNewRepoBranch(value: string): string {
   const raw = value.trim().replace(/^origin\//, '') || 'main';
   return /^[A-Za-z0-9._/-]+$/.test(raw) ? raw : 'main';
@@ -75,7 +84,7 @@ export function repositoryProjectFields(
   | 'workspaceSourceType'
 > {
   if (mode === 'external') {
-    const ref = repoRef.trim() || 'origin/main';
+    const ref = normalizeExternalRepoRef(repoRef);
     const url = repoUrl.trim();
     return {
       workspaceSourceType: 'git_repo',
