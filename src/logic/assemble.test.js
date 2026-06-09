@@ -575,6 +575,46 @@ describe('assembleCompany', () => {
     );
   });
 
+  it('normalizes git workspace policy base ref to a remote reference for isolated worktrees', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'GitPolicyFix',
+      enableIsolatedWorktrees: true,
+      userProjects: [
+        {
+          name: 'app',
+          description: '',
+          goals: [],
+          repoUrl: 'https://github.com/example/app',
+          repoRef: 'main',
+          executionWorkspacePolicy: {
+            defaultMode: 'isolated_workspace',
+            workspaceStrategy: { type: 'git_worktree', baseRef: 'main' },
+          },
+        },
+      ],
+      moduleNames: [],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    const projectBlock = bootstrap.split('### app')[1] || '';
+
+    assert.ok(
+      projectBlock.includes('**workspace.repoRef**: main'),
+      'workspace repoRef should keep the provided raw default ref when given',
+    );
+    assert.ok(
+      !projectBlock.includes('**executionWorkspacePolicy.workspaceStrategy.baseRef**: main'),
+      'raw base ref should be normalized to a remote ref',
+    );
+    assert.ok(
+      projectBlock.includes('**executionWorkspacePolicy.workspaceStrategy.baseRef**: origin/main'),
+      'base ref should become origin/main for isolated worktree policy',
+    );
+  });
+
   it('suppresses isolated worktree policy for a fresh local git repository', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'NewRepoCo',

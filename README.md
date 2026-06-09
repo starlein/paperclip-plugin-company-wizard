@@ -14,7 +14,7 @@
 
 ---
 
-> **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for the current Paperclip API (`>=2026.529.0`) with substantial bug fixes. End-to-end company setup is largely functional as of v0.3.15.
+> **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for the current Paperclip API (`>=2026.529.0`) with substantial bug fixes. End-to-end company setup is largely functional as of v0.3.18.
 
 <details>
 <summary><strong>What changed vs. upstream</strong></summary>
@@ -575,7 +575,6 @@ Configure the plugin via **Settings → Plugins → Company Wizard** in the Pape
 | `paperclipPassword` | No | Board login password. Stored as a secret ref. |
 | `anthropicApiKey` | No | Anthropic API key for AI wizard mode. Stored as a secret ref. Required to use the AI-powered setup path. |
 | `disableBoardApprovalOnNewCompanies` | No | If `true`, the wizard PATCHes new companies to set `requireBoardApprovalForNewAgents=false` during provisioning. Leave `false` to preserve approval-gated hiring. Defaults to `false`. |
-
 For isolated worktrees: there is no plugin setting. The policy is controlled by Paperclip instance settings under **Settings → Instance → Experimental → enableIsolatedWorkspaces** and is consumed by the plugin during provisioning.
 
 <br>

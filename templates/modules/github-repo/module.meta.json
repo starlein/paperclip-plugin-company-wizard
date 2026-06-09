@@ -4,12 +4,12 @@
   "capabilities": [],
   "issues": [
     {
-      "title": "Initialize GitHub repository",
+      "title": "Prepare GitHub repository",
       "assignTo": "engineer",
       "priority": "critical",
       "bootstrapPhase": "foundation",
       "labels": ["chore"],
-      "description": "Foundation setup: handle this before normal implementation issues. If the project workspace already has a valid git repository, an initial main commit, and origin/main configured, verify those facts and mark this issue done. Otherwise create the GitHub repository, initialize the local workspace with a README or bootstrap commit, add origin, push main, and record the repository URL. Branch protection is tracked separately by the pr-review module when that workflow is enabled."
+      "description": "Foundation setup: handle this before normal implementation issues. For a fresh repository, create the GitHub repository, initialize local workspace with a README or bootstrap commit, add origin, push main, and record the repository URL. For an existing repository, verify the workspace has a reachable remote, current default branch, and starter commit state; escalate to CEO if repo setup is missing instead of silently closing the issue. Branch protection is tracked separately by the pr-review module when that workflow is enabled."
     }
   ]
 }
