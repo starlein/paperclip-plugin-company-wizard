@@ -72,6 +72,17 @@
 
 <br>
 
+## Why Company Wizard?
+
+- 🗣️ **Describe it, don't configure it.** AI mode reads a plain-language brief and picks the right preset, modules, and roles for you. Manual mode is there for the steps you want to control yourself.
+- 🧩 **Composable, not monolithic.** 15 curated presets layered from 26 modules and 17 roles. Mix and match freely — modules add skills, tasks, and heartbeat logic to the roles that are present, and degrade gracefully when they're not.
+- 🤝 **Works from day one with a single CEO.** Every capability has an owner chain. Add a specialist and responsibilities shift to them automatically; leave one out and the next-best person — ultimately the CEO — steps in. No setup ever leaves a gap.
+- ✏️ **Review and edit before anything ships.** Preview every generated file, tweak a persona, workflow, or the repository setup inline on the review screen, then provision.
+- 🚀 **Real end-to-end provisioning.** Not just scaffolded files — it creates the company, CEO, goals, projects, and backlog in Paperclip via the API. Target a brand-new or existing company, with a fresh local or existing external Git repo.
+- 💸 **Token-aware by default.** Worker agents are woken on assignment and driven by scheduled routines instead of always-on heartbeats, so the team doesn't burn tokens idling.
+
+<br>
+
 **npm package installation (Paperclip > Settings > Plugins > Install Plugin):**
 
 ```bash
@@ -474,6 +485,7 @@ Every company starts with just the **CEO** (the only base role). All other roles
 
 | Role | Paperclip role | Reports to | Enhances |
 | :--- | :------------- | :--------- | :------- |
+| **Software Engineer** | `engineer` | CEO | Takes over implementation, git workflow, and technical decisions from CEO |
 | **Product Owner** | `pm` | CEO | Takes over roadmap, auto-assign, hiring-review from CEO |
 | **Code Reviewer** | `general` | CEO | Enables pr-review activation |
 | **UI & Brand Designer** | `designer` | CEO | Takes over design-system and brand-identity |
@@ -492,6 +504,10 @@ Every company starts with just the **CEO** (the only base role). All other roles
 
 <details>
 <summary><strong>Role details</strong></summary>
+
+#### Software Engineer
+
+Builds the product: implements features, fixes bugs, writes tests, and manages the git workflow. The default owner of technical execution — without an Engineer present, the CEO carries implementation.
 
 #### Product Owner
 
@@ -516,10 +532,6 @@ Technical leadership and architecture oversight. Guides technology decisions, re
 #### CMO
 
 Owns marketing strategy, brand positioning, go-to-market planning, and growth metrics. Data-driven, measures everything.
-
-#### CFO
-
-Owns financial planning, budget tracking, cost analysis, and resource allocation. Monitors agent cost events and budget utilization.
 
 #### DevOps Engineer
 
@@ -774,7 +786,7 @@ Create `templates/presets/<name>/preset.meta.json`:
 
 **Assembly** (always runs):
 
-1. Copies base role files (CEO, Engineer) into `agents/`
+1. Copies base role files (CEO — the only base role) into `agents/`
 2. Copies selected extra roles into `agents/`
 3. For each module: resolves capability ownership, installs skills, copies docs
 4. Injects module heartbeat sections into each role's `HEARTBEAT.md`

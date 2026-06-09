@@ -6,7 +6,7 @@ Thanks for your interest in contributing! Company Wizard is a [Paperclip](https:
 
 ```sh
 git clone <repo-url>
-cd clipper
+cd paperclip-plugin-company-wizard
 pnpm install
 pnpm build
 ```

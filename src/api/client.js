@@ -425,12 +425,12 @@ export class PaperclipClient {
   }
 
   /**
-   * Resolve a clipper role name to a Paperclip API role enum.
+   * Resolve a role name to a Paperclip API role enum.
    * Uses role.json's paperclipRole field, falls back to 'general'.
    */
-  static resolveRole(clipperRole, roleData) {
+  static resolveRole(roleName, roleData) {
     // Check base roles first
-    if (BASE_ROLE_MAP[clipperRole]) return BASE_ROLE_MAP[clipperRole];
+    if (BASE_ROLE_MAP[roleName]) return BASE_ROLE_MAP[roleName];
     // Check role.json data
     if (roleData?.paperclipRole) return roleData.paperclipRole;
     return 'general';
