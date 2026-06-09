@@ -5,6 +5,23 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.17] - 2026-06-09
+
+### Added
+
+- **Provisioning telemetry can be sent on demand** — operators can opt in to anonymous usage events (`companiesCreated`, `rolesInScope`, `modulesInScope`, etc.) after successful provisioning.
+
+### Fixed
+
+- **Repository bootstrap wording for existing repos is now accurate** — the github-repo foundation task is now `Prepare GitHub repository` and explicitly distinguishes fresh-repository setup from verification of an existing repository state.
+- **Isolated-worktree execution policy now normalizes `baseRef` consistently** (`main` → `origin/main`) and keeps local fresh repository setups on shared workspaces until the repo exists.
+
+## [0.3.16] - 2026-06-08
+
+### Added
+
+- **Optional provisioning telemetry hook** — a new opt-in telemetry config lets operators collect anonymous usage metrics (companies/agents created, module and role counts, and instance fingerprint) after successful provision runs.
+
 ## [0.3.15] - 2026-06-08
 
 ### Fixed

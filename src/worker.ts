@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 // @ts-ignore — plain JS modules, bundled by esbuild
 import { assembleCompany, toPascalCase } from './logic/assemble.js';
@@ -24,6 +25,8 @@ import {
   loadRoles,
   resolveEffectiveModules,
 } from './logic/load-templates.js';
+// @ts-ignore
+import manifest from './manifest.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -283,6 +286,127 @@ function loadTemplates(templatesDir: string) {
 function cfgBool(cfg: Record<string, unknown>, key: string): boolean {
   const raw = cfg[key];
   return raw === true || (typeof raw === 'string' && raw.toLowerCase() === 'true');
+}
+
+function cfgString(cfg: Record<string, unknown>, key: string): string {
+  const raw = cfg[key];
+  return typeof raw === 'string' ? raw.trim() : '';
+}
+
+function cfgTelemetryEnabled(cfg: Record<string, unknown>): boolean {
+  const raw = cfg.telemetryEnabled;
+  return raw === true || (typeof raw === 'string' && raw.toLowerCase() === 'true');
+}
+
+function cfgTelemetryEndpoint(cfg: Record<string, unknown>): string {
+  return cfgString(cfg, 'telemetryEndpoint');
+}
+
+function cfgTelemetryAuthToken(cfg: Record<string, unknown>): string {
+  return cfgString(cfg, 'telemetryAuthToken');
+}
+
+type ProvisionTelemetryPayload = {
+  event: 'company_wizard_provision';
+  timestamp: string;
+  plugin: {
+    id: string;
+    version: string;
+  };
+  instance: {
+    host: string;
+    fingerprint: string;
+  };
+  counts: {
+    companiesCreated: number;
+    companiesTargeted: number;
+    agentsCreated: number;
+    rolesInScope: number;
+    modulesInScope: number;
+  };
+  metadata: {
+    hasExistingCompanyTarget: boolean;
+    moduleCount: number;
+    hadOverrides: boolean;
+  };
+};
+
+function buildInstanceFingerprint(input: string): string {
+  const normalized = input.trim().replace(/\/$/, '');
+  return createHash('sha256').update(normalized).digest('hex');
+}
+
+type TelemetryEvent = {
+  cfg: Record<string, string>;
+  paperclipUrl: string;
+  counts: ProvisionTelemetryPayload['counts'];
+  existingCompanyId: string | null;
+  fileOverrideCount: number;
+  log?: (msg: string) => void;
+};
+
+async function sendProvisionTelemetry({
+  cfg,
+  paperclipUrl,
+  counts,
+  existingCompanyId,
+  fileOverrideCount,
+  log,
+}: TelemetryEvent): Promise<void> {
+  if (!cfgTelemetryEnabled(cfg)) return;
+  const endpoint = cfgTelemetryEndpoint(cfg);
+  if (!endpoint) return;
+
+  let endpointUrl: URL;
+  try {
+    endpointUrl = new URL(endpoint);
+  } catch {
+    if (log) log(`⚠ Telemetry endpoint is invalid: ${endpoint}`);
+    return;
+  }
+
+  const token = cfgTelemetryAuthToken(cfg);
+  const body: ProvisionTelemetryPayload = {
+    event: 'company_wizard_provision',
+    timestamp: new Date().toISOString(),
+    plugin: {
+      id: manifest.id,
+      version: manifest.version,
+    },
+    instance: {
+      host: paperclipUrl,
+      fingerprint: buildInstanceFingerprint(paperclipUrl),
+    },
+    counts,
+    metadata: {
+      hasExistingCompanyTarget: Boolean(existingCompanyId),
+      moduleCount: counts.modulesInScope,
+      hadOverrides: fileOverrideCount > 0,
+    },
+  };
+
+  try {
+    const res = await fetch(endpointUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      if (log) {
+        const errText = await res.text().catch(() => '');
+        log(
+          `⚠ Telemetry request failed (${res.status}): ${errText || res.statusText || 'empty response'}`,
+        );
+      }
+    }
+  } catch (err) {
+    if (log) {
+      log(`⚠ Telemetry request failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 }
 
 type InstanceExperimentalSettings = {
@@ -757,6 +881,12 @@ const plugin = definePlugin({
         let company: any;
         let companyId: string;
         let createdCompany = false;
+        let createdAgentCount = 0;
+        const fileOverrideCount = Object.keys(
+          (params.fileOverrides as Record<string, string>) ?? {},
+        ).length;
+        const effectiveModuleCount = effectiveModules.length;
+        const rolesInScope = (assembleResult.allRoles?.size ?? 0) || 0;
 
         if (existingCompanyId) {
           log(`Using existing company: ${existingCompanyId}`);
@@ -897,6 +1027,7 @@ const plugin = definePlugin({
               });
               ceoAgentId = ceoAgent.id;
               log(`✓ CEO agent created (${ceoAgentId})`);
+              createdAgentCount += 1;
               logPendingApproval(ceoAgent);
             }
           } else {
@@ -916,6 +1047,7 @@ const plugin = definePlugin({
             });
             ceoAgentId = ceoAgent.id;
             log(`✓ CEO agent created (${ceoAgentId})`);
+            createdAgentCount += 1;
             logPendingApproval(ceoAgent);
           }
 
@@ -1026,6 +1158,7 @@ const plugin = definePlugin({
             });
             teamAgentIds[roleName] = roleAgent.id;
             log(`✓ ${roleTitle} created (${roleAgent.id})`);
+            createdAgentCount += 1;
             if (roleAgent?._pendingApprovalId) {
               log(
                 `⚠ ${roleTitle} hire pending approval: ${roleAgent._pendingApprovalId}. Approve it in the board.`,
@@ -1130,6 +1263,21 @@ const plugin = definePlugin({
             : 'The CEO agent is ready. Trigger its first heartbeat to hire the rest of the team and create the initial backlog.',
         );
 
+        void sendProvisionTelemetry({
+          cfg,
+          paperclipUrl,
+          counts: {
+            companiesCreated: createdCompany ? 1 : 0,
+            companiesTargeted: 1,
+            agentsCreated: createdAgentCount,
+            rolesInScope,
+            modulesInScope: effectiveModuleCount,
+          },
+          existingCompanyId: existingCompanyId || null,
+          fileOverrideCount,
+          log,
+        });
+
         return {
           companyId,
           issuePrefix: company.issuePrefix,
@@ -1177,3 +1325,6 @@ const plugin = definePlugin({
 
 export default plugin;
 runWorker(plugin, import.meta.url);
+
+export { sendProvisionTelemetry, buildInstanceFingerprint };
+export type { ProvisionTelemetryPayload };

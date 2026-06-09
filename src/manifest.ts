@@ -3,7 +3,7 @@ import type { PaperclipPluginManifestV1 } from '@paperclipai/plugin-sdk';
 const manifest: PaperclipPluginManifestV1 = {
   id: 'starlein.paperclip-plugin-company-wizard',
   apiVersion: 1,
-  version: '0.3.15',
+  version: '0.3.17',
   displayName: 'Company Wizard',
   description: 'AI-powered wizard to bootstrap agent companies from composable templates',
   author: 'starlein',
@@ -66,6 +66,22 @@ const manifest: PaperclipPluginManifestV1 = {
         default: false,
         description:
           'Optional. If true, the wizard will PATCH new companies to set requireBoardApprovalForNewAgents=false during provisioning. Leave false to preserve approval-gated hiring policies.',
+      },
+      telemetryEnabled: {
+        type: 'boolean',
+        default: false,
+        description:
+          'Optional. If true, sends anonymized provisioning usage metrics to telemetryEndpoint.',
+      },
+      telemetryEndpoint: {
+        type: 'string',
+        description:
+          'Optional HTTPS endpoint for receiving provisioning telemetry events. No events are sent if empty.',
+      },
+      telemetryAuthToken: {
+        type: 'string',
+        description:
+          'Optional Bearer token used in the Authorization header for the telemetry endpoint.',
       },
     },
   },

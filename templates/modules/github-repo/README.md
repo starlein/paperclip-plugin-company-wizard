@@ -6,7 +6,7 @@ Enables the Engineer to work in a GitHub repository.
 
 - **Shared docs**: `docs/git-workflow.md` — commit conventions, branch rules
 - **Engineer skill**: Git workflow instructions for working in a repo
-- **Foundation issue**: `Initialize GitHub repository` is marked critical and ordered before normal implementation work. The assignee verifies an already-provisioned git workspace/remote or creates and pushes the repository before closing it.
+- **Foundation issue**: `Prepare GitHub repository` is marked critical and ordered before normal implementation work. The assignee verifies an already-provisioned git workspace/remote or creates and pushes the repository before closing it.
 
 ## Variants
 

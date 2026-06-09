@@ -14,7 +14,7 @@
 
 ---
 
-> **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for the current Paperclip API (`>=2026.529.0`) with substantial bug fixes. End-to-end company setup is largely functional as of v0.3.15.
+> **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for the current Paperclip API (`>=2026.529.0`) with substantial bug fixes. End-to-end company setup is largely functional as of v0.3.17.
 
 <details>
 <summary><strong>What changed vs. upstream</strong></summary>
@@ -575,8 +575,24 @@ Configure the plugin via **Settings → Plugins → Company Wizard** in the Pape
 | `paperclipPassword` | No | Board login password. Stored as a secret ref. |
 | `anthropicApiKey` | No | Anthropic API key for AI wizard mode. Stored as a secret ref. Required to use the AI-powered setup path. |
 | `disableBoardApprovalOnNewCompanies` | No | If `true`, the wizard PATCHes new companies to set `requireBoardApprovalForNewAgents=false` during provisioning. Leave `false` to preserve approval-gated hiring. Defaults to `false`. |
+| `telemetryEnabled` | No | If `true`, sends anonymized provisioning usage metrics. Defaults to `false`. |
+| `telemetryEndpoint` | No | HTTPS URL to receive telemetry events (optional). If empty, telemetry is not sent. |
+| `telemetryAuthToken` | No | Optional token sent as `Authorization: Bearer ...` to your telemetry endpoint. |
 
 For isolated worktrees: there is no plugin setting. The policy is controlled by Paperclip instance settings under **Settings → Instance → Experimental → enableIsolatedWorkspaces** and is consumed by the plugin during provisioning.
+
+### Provisioning Telemetry
+
+When enabled, provisioning sends a single event after successful completion:
+
+- `companiesCreated` — number of companies created in that run (`0` or `1`)
+- `companiesTargeted` — number of companies targeted (`1`)
+- `agentsCreated` — number of agents newly created in that run
+- `rolesInScope` — how many roles were part of the assembled company
+- `modulesInScope` — how many modules were active
+- `hadOverrides` — whether any file overrides were applied before provisioning
+
+No user prompts, goals, names, or descriptions are sent. The payload contains only operational counts and an anonymous instance fingerprint derived from the configured Paperclip URL.
 
 <br>
 

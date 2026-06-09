@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTestHarness } from "@paperclipai/plugin-sdk/testing";
 import manifest from "../src/manifest.js";
-import plugin from "../src/worker.js";
+import plugin, { buildInstanceFingerprint, sendProvisionTelemetry } from "../src/worker.js";
+import type { ProvisionTelemetryPayload } from "../src/worker.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -114,6 +115,77 @@ describe("plugin-clipper", () => {
       jobId: start.jobId,
     })) as { status?: string };
     expect(second.status).toBe("error");
+  });
+
+  it("does not send provisioning telemetry when disabled", async () => {
+    const fetchMock = vi.fn(async () => {
+      return new Response("ok", { status: 200, headers: { "content-type": "text/plain" } });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await sendProvisionTelemetry({
+      cfg: {},
+      paperclipUrl: "http://paperclip.local",
+      counts: {
+        companiesCreated: 1,
+        companiesTargeted: 1,
+        agentsCreated: 2,
+        rolesInScope: 3,
+        modulesInScope: 2,
+      },
+      existingCompanyId: null,
+      fileOverrideCount: 0,
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("sends anonymized provisioning telemetry when enabled", async () => {
+    const fetchMock = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({ ok: true }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await sendProvisionTelemetry({
+      cfg: {
+        telemetryEnabled: "true",
+        telemetryEndpoint: "https://telemetry.example.test/v1/provisioning",
+        telemetryAuthToken: "secret-token",
+      },
+      paperclipUrl: "http://paperclip.local",
+      counts: {
+        companiesCreated: 1,
+        companiesTargeted: 1,
+        agentsCreated: 2,
+        rolesInScope: 3,
+        modulesInScope: 2,
+      },
+      existingCompanyId: null,
+      fileOverrideCount: 1,
+    });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const calls = fetchMock.mock.calls as unknown as Array<[RequestInfo | URL, RequestInit]>;
+    expect(calls.length).toBe(1);
+    const [url, init] = calls[0];
+    expect(String(url)).toBe("https://telemetry.example.test/v1/provisioning");
+    const headers = init?.headers as Record<string, string>;
+    expect(headers["Content-Type"]).toBe("application/json");
+    expect(headers.Authorization).toBe("Bearer secret-token");
+
+    const payload = JSON.parse((init?.body as string) || "{}") as ProvisionTelemetryPayload;
+    expect(payload.event).toBe("company_wizard_provision");
+    expect(payload.counts).toMatchObject({
+      companiesCreated: 1,
+      agentsCreated: 2,
+      modulesInScope: 2,
+      rolesInScope: 3,
+    });
+    expect(payload.metadata.hadOverrides).toBe(true);
+    expect(payload.instance.fingerprint).toBe(buildInstanceFingerprint("http://paperclip.local"));
   });
 
   it("reports healthy", async () => {
