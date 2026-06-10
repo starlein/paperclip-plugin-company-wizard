@@ -5,6 +5,12 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.23] - 2026-06-10
+
+### Changed
+
+- **`CHANGELOG.md` and `CONTRIBUTING.md` are now included in the published npm package** (added to the `files` allowlist). Previously only `dist/`, `templates/`, plus the npm defaults (`README.md`, `LICENSE`, `package.json`) shipped, so the changelog and contributor guide were missing from the tarball.
+
 ## [0.3.22] - 2026-06-10
 
 ### Fixed

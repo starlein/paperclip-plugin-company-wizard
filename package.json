@@ -1,6 +1,6 @@
 {
   "name": "@starlein/paperclip-plugin-company-wizard",
-  "version": "0.3.22",
+  "version": "0.3.23",
   "type": "module",
   "description": "AI-powered wizard to bootstrap paperclip agent companies from composable templates (for latest paperclip version)",
   "repository": "https://github.com/starlein/paperclip-plugin-company-wizard",
@@ -28,7 +28,9 @@
   },
   "files": [
     "dist/",
-    "templates/"
+    "templates/",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md"
   ],
   "paperclipPlugin": {
     "manifest": "./dist/manifest.js",
