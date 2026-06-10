@@ -103,7 +103,7 @@ function normalizeExecutionBaseRef(ref, fallbackRef) {
  * @param {string} opts.outputDir
  * @param {string} opts.templatesDir
  * @param {(line: string) => void} opts.onProgress
- * @returns {Promise<{companyDir: string, allRoles: Set<string>, initialIssues: Array, initialRoutines: Array, roleAdapterOverrides: Map<string, object>}>}
+ * @returns {Promise<{companyDir: string, allRoles: Set<string>, initialIssues: Array, initialRoutines: Array, roleAdapterOverrides: Map<string, object>, mainProject: {name: string, description: string, workspace: object}|null}>}
  */
 export async function assembleCompany({
   companyName,
@@ -1125,8 +1125,29 @@ export async function assembleCompany({
   const mainProject = resolvedProjects[0];
   const mainProjectName = mainProject?.name || companyName;
 
+  // When there are scheduled routines, the worker pre-creates the main project
+  // (with board authority) so every routine — including those owned by non-CEO
+  // agents — can be linked to it at creation time. The CEO, which otherwise
+  // creates projects during bootstrap, can only edit routines assigned to
+  // itself, so routines owned by other agents would stay project-less. Expose
+  // the resolved main project (with its normalized workspace) so the worker can
+  // create it.
+  const mainProjectInfo = mainProject
+    ? {
+        name: mainProjectName,
+        description: mainProject.description || '',
+        workspace: normalizeProjectWorkspace(mainProject),
+      }
+    : null;
+  // Mirror the worker's gate: the main project is only pre-created when there
+  // are routines to attach. Otherwise the CEO still creates it during bootstrap.
+  const mainProjectPreCreated = initialRoutines.length > 0 && mainProjectInfo !== null;
+
   if (resolvedProjects.length > 0) {
     bootstrap += `## Projects\n\n`;
+    if (mainProjectPreCreated) {
+      bootstrap += `> **The Company Wizard has already created the main project "${mainProjectName}"** (with board authority) so the scheduled routines could be linked to it. Do NOT recreate it — create issues against it, and link the goals above to it.\n\n`;
+    }
     for (const proj of resolvedProjects) {
       const workspace = normalizeProjectWorkspace(proj);
       bootstrap += `### ${proj.name}\n\n`;
@@ -1301,7 +1322,7 @@ export async function assembleCompany({
     const level = g.level || 'company';
     bootstrap += `${stepN++}. **Create goal** "${g.title}" (level: ${level}${parentNote})\n`;
   }
-  for (const proj of resolvedProjects) {
+  resolvedProjects.forEach((proj, idx) => {
     const workspace = normalizeProjectWorkspace(proj);
     const goalLinks =
       proj.goals?.length > 0 ? `, goalIds → [${proj.goals.map((g) => `"${g}"`).join(', ')}]` : '';
@@ -1309,8 +1330,15 @@ export async function assembleCompany({
     const policy = activePolicy?.defaultMode
       ? `, executionWorkspacePolicy.defaultMode: "${activePolicy.defaultMode}"`
       : '';
-    bootstrap += `${stepN++}. **Create project** "${proj.name}" (workspace: ${formatWorkspaceObject(workspace)}${policy}${goalLinks})\n`;
-  }
+    if (idx === 0 && mainProjectPreCreated) {
+      const goalLinkInstruction = goalLinks
+        ? ` After creating the goals above, link them to it (${goalLinks.replace(/^, /, '')}).`
+        : '';
+      bootstrap += `${stepN++}. **Main project already created** — the Company Wizard provisioned project "${proj.name}" (with board authority) so the scheduled routines could be linked to it. Do NOT recreate it.${goalLinkInstruction}\n`;
+    } else {
+      bootstrap += `${stepN++}. **Create project** "${proj.name}" (workspace: ${formatWorkspaceObject(workspace)}${policy}${goalLinks})\n`;
+    }
+  });
   if (bootstrapLabels.length > 0) {
     bootstrap += `${stepN++}. **Create labels** — create each label exactly as listed in the Labels section before creating issues\n`;
   }
@@ -1326,5 +1354,12 @@ export async function assembleCompany({
   await writeFile(join(companyDir, 'BOOTSTRAP.md'), bootstrap);
   onProgress('+ BOOTSTRAP.md');
 
-  return { companyDir, allRoles, initialIssues, initialRoutines, roleAdapterOverrides };
+  return {
+    companyDir,
+    allRoles,
+    initialIssues,
+    initialRoutines,
+    roleAdapterOverrides,
+    mainProject: mainProjectInfo,
+  };
 }
