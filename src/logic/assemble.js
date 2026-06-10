@@ -1101,6 +1101,27 @@ export async function assembleCompany({
     return rows;
   };
 
+  // When the instance has isolated worktrees enabled but this project starts as
+  // a fresh local repo, the isolated policy is intentionally deferred (worktrees
+  // need an existing base ref and would fail on the first run). Without a hint,
+  // the operator is left thinking the setting did nothing and flips it by hand
+  // mid-run — which strands early work in the shared workspace. Emit a note so
+  // the repo-setup owner enables isolation as soon as the first commit lands.
+  const renderDeferredIsolationNote = (workspace) => {
+    if (!enableIsolatedWorktrees || !isFreshLocalRepo(workspace)) return '';
+    return (
+      `> **Enable isolated worktrees once the repo exists.** This instance has isolated ` +
+      `worktrees enabled, but this project starts as a fresh local repository, so the ` +
+      `\`executionWorkspacePolicy\` is intentionally omitted now — worktrees need an existing ` +
+      `base ref and would fail on the first run. As the final step of **"Prepare GitHub ` +
+      `repository"**, after the initial commit is pushed to \`main\`, switch this project to ` +
+      `isolated worktrees (Project settings → isolated workspaces, or set ` +
+      `\`executionWorkspacePolicy: { defaultMode: "isolated_workspace", workspaceStrategy: ` +
+      `{ type: "git_worktree", baseRef: "main" } }\` on the project). Until then agents share ` +
+      `the project workspace; do not flip it before the repo has its first commit.\n\n`
+    );
+  };
+
   const mainProject = resolvedProjects[0];
   const mainProjectName = mainProject?.name || companyName;
 
@@ -1120,6 +1141,7 @@ export async function assembleCompany({
       if (proj.description) {
         bootstrap += `${escapeBody(proj.description)}\n\n`;
       }
+      bootstrap += renderDeferredIsolationNote(workspace);
     }
   }
 

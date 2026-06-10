@@ -536,6 +536,43 @@ describe('assembleCompany', () => {
     );
   });
 
+  it('emits a deferred-isolation note for a fresh local repo when isolated worktrees are enabled', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'DeferredIso',
+      enableIsolatedWorktrees: true,
+      userProjects: [{ name: 'app', description: 'desc', goals: [] }],
+      moduleNames: [],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    const projectBlock = bootstrap.split('### app')[1] || '';
+    assert.ok(
+      projectBlock.includes('Enable isolated worktrees once the repo exists'),
+      'fresh local repo + isolated setting should emit the deferred-isolation note',
+    );
+  });
+
+  it('omits the deferred-isolation note when isolated worktrees are disabled', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'NoIso',
+      enableIsolatedWorktrees: false,
+      userProjects: [{ name: 'app', description: 'desc', goals: [] }],
+      moduleNames: [],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(
+      !bootstrap.includes('Enable isolated worktrees once the repo exists'),
+      'note must not appear when isolated worktrees are off',
+    );
+  });
+
   it('renders git_repo workspace and execution workspace policy from project config', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'GitWorkspaceCo',
@@ -576,6 +613,10 @@ describe('assembleCompany', () => {
       projectBlock.includes('**executionWorkspacePolicy.workspaceStrategy.baseRef**: origin/main'),
     );
     assert.ok(!projectBlock.includes('**workspace.cwd**:'));
+    assert.ok(
+      !projectBlock.includes('Enable isolated worktrees once the repo exists'),
+      'an external repo already gets isolated worktrees, so no deferral note',
+    );
     assert.ok(
       bootstrap.includes(
         'workspace: { sourceType: "git_repo", repoUrl: "https://github.com/example/app", repoRef: "origin/main", defaultRef: "origin/main", isPrimary: true }',
