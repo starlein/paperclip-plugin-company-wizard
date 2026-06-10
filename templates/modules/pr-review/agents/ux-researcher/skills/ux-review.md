@@ -19,7 +19,7 @@ You review PRs for usability, user flow integrity, and alignment with user needs
 3. Record your verdict on your review stage:
    - **approved** if usability is sound
    - **changes_requested** with specific, actionable feedback if not
-4. Optionally mirror the same verdict as a GitHub PR comment for visibility.
+4. Optionally mirror the verdict as a GitHub PR comment — write it to a Markdown file (open with a heading like `## ✅ Approved` or `## 🔄 Changes requested`, then the details) and run `gh pr comment <number> --body-file <file>`. Never use inline `--body "..."`: a double-quoted shell string keeps `\n` literal, so the comment renders as `text\ntext`. See `docs/pr-conventions.md` → *Posting PR Bodies & Comments*.
 
 ## Rules
 

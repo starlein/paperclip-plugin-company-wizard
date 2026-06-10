@@ -83,6 +83,22 @@ async function setupFixtures() {
     ],
   });
 
+  // Module: ops-routines (provides a scheduled routine owned by a non-CEO role)
+  const opsDir = join(templatesDir, 'modules', 'ops-routines');
+  await mkdir(opsDir, { recursive: true });
+  await writeJson(join(opsDir, 'module.meta.json'), {
+    name: 'ops-routines',
+    capabilities: [],
+    routines: [
+      {
+        title: 'Backlog grooming',
+        description: 'Keep the backlog healthy.',
+        assignTo: 'product-owner',
+        schedule: '0 */4 * * *',
+      },
+    ],
+  });
+
   // Module: gated-mod (has activatesWithRoles)
   const gatedDir = join(templatesDir, 'modules', 'gated-mod');
   await mkdir(gatedDir, { recursive: true });
@@ -297,6 +313,60 @@ describe('assembleCompany', () => {
     assert.ok(labelsStep > -1, 'manual setup order should include a labels step');
     assert.ok(agentsStep > labelsStep, 'agents step should follow labels');
     assert.ok(issuesStep > agentsStep, 'issues should be created after the agents step');
+  });
+
+  it('pre-creates the main project for routines and marks it already-created in BOOTSTRAP.md', async () => {
+    const { companyDir, initialRoutines, mainProject } = await assembleCompany({
+      companyName: 'RoutineCo',
+      moduleNames: ['ops-routines'],
+      extraRoleNames: ['product-owner'],
+      outputDir,
+      templatesDir,
+    });
+
+    // The routine is owned by a non-CEO role; the worker links it to the main
+    // project, which it can only do if the wizard pre-creates that project.
+    assert.equal(initialRoutines.length, 1);
+    assert.equal(initialRoutines[0].assignTo, 'product-owner');
+
+    // The resolved main project is exposed so the worker can create it up front.
+    assert.ok(mainProject, 'mainProject should be returned');
+    assert.equal(mainProject.name, 'RoutineCo');
+    assert.ok(mainProject.workspace && typeof mainProject.workspace === 'object');
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    // BOOTSTRAP must tell the CEO the main project already exists so it does not
+    // recreate it as a duplicate.
+    assert.ok(
+      bootstrap.includes('**Main project already created**'),
+      'manual setup order should mark the main project as already created',
+    );
+    assert.ok(
+      !bootstrap.includes('**Create project** "RoutineCo"'),
+      'CEO should not be instructed to (re)create the pre-created main project',
+    );
+  });
+
+  it('keeps the CEO creating the main project when there are no routines', async () => {
+    const { companyDir, initialRoutines } = await assembleCompany({
+      companyName: 'NoRoutineCo',
+      moduleNames: ['github-repo'],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+    });
+
+    assert.equal(initialRoutines.length, 0);
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(
+      bootstrap.includes('**Create project** "NoRoutineCo"'),
+      'without routines the CEO still creates the main project during bootstrap',
+    );
+    assert.ok(
+      !bootstrap.includes('**Main project already created**'),
+      'no pre-created project note when there are no routines to link',
+    );
   });
 
   it('renders a reviewGate as an ordered executionPolicy in BOOTSTRAP.md', async () => {

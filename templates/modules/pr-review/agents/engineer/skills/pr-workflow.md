@@ -8,7 +8,7 @@ When this skill is active, you work in feature branches and open PRs instead of 
 2. Create branch: `git checkout -b <prefix>-<N>/<short-description>`
 3. Make your changes, commit with Conventional Commits format
 4. Push branch: `git push -u origin <branch-name>`
-5. Open PR: `gh pr create --title "<type>: <description>" --body "<template>"`
+5. Open PR: write the body (PR Body Template in `docs/pr-conventions.md`) to a file, then `gh pr create --title "<type>: <description>" --body-file <file>`. Never inline `--body "..."` — a double-quoted shell string keeps `\n` literal and the PR renders as `text\ntext` (see *Posting PR Bodies & Comments*).
 6. Set the originating issue's `executionPolicy` to gate the merge on review, ending with your own merge gate:
    - One `review` stage with the **Code Reviewer** as participant (always).
    - Additional `review` stages for any relevant domain reviewer that exists in the team (UI Designer for UI diffs, UX Researcher for flow changes, QA for logic/test-sensitive changes, DevOps for infra/deploy/dependency changes).

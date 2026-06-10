@@ -5,6 +5,19 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.23] - 2026-06-10
+
+### Changed
+
+- **`CHANGELOG.md` and `CONTRIBUTING.md` are now included in the published npm package** (added to the `files` allowlist). Previously only `dist/`, `templates/`, plus the npm defaults (`README.md`, `LICENSE`, `package.json`) shipped, so the changelog and contributor guide were missing from the tarball.
+
+## [0.3.22] - 2026-06-10
+
+### Fixed
+
+- **Wizard-created routines are now linked to the main project.** The wizard creates routines with board authority at provisioning time, but it created them without a `projectId`. Projects are created later by the CEO during bootstrap, and the CEO can only edit routines assigned to itself — so routines owned by other agents (e.g. the Product Owner) stayed project-less forever. The worker now pre-creates the main project before the routines and passes its id to every `createRoutine`; `BOOTSTRAP.md` marks the main project as already created (gated on there being routines) so the CEO links goals/issues to it instead of recreating it. Best-effort — if project creation fails, routines are still created (project-less) rather than blocking provisioning. (`worker.ts`, `assemble.js`.)
+- **PR bodies and review comments now render as Markdown.** Agents posted GitHub PR bodies and review comments with inline `gh pr … --body "<inline>"`. A double-quoted shell argument does not turn `\n` into a real newline, so multi-line Markdown rendered on GitHub as literal `text\ntext\ntext`. All PR-review guidance (engineer `pr-workflow`, the six reviewer skills, the `code-reviewer` role, and `pr-conventions.md`) now writes the Markdown to a file and uses `--body-file`, with a verdict-heading comment template (`## ✅ Approved` / `## 🔄 Changes requested`).
+
 ## [0.3.21] - 2026-06-10
 
 ### Added

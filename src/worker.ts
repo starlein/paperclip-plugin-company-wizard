@@ -1049,6 +1049,34 @@ const plugin = definePlugin({
             const routines = Array.isArray(assembleResult.initialRoutines)
               ? assembleResult.initialRoutines
               : [];
+
+            // Pre-create the main project so every routine can be linked to it.
+            // The CEO creates projects during bootstrap, but it can only edit
+            // routines assigned to ITSELF — routines owned by other agents (PM,
+            // etc.) would otherwise stay project-less forever. The wizard runs
+            // with board authority, so it can create the project up front and
+            // attach all routines to it. Best-effort: if it fails, routines are
+            // still created (project-less) rather than blocking provisioning.
+            let mainProjectId: string | undefined;
+            const mainProject = assembleResult.mainProject;
+            if (routines.length > 0 && mainProject?.name) {
+              try {
+                const createdProject = await client.createProject(companyId, {
+                  name: mainProject.name,
+                  description: mainProject.description,
+                  workspace: mainProject.workspace,
+                });
+                mainProjectId = createdProject?.id;
+                log(
+                  `✓ Main project "${mainProject.name}" created${mainProjectId ? ` (${mainProjectId})` : ' (no id returned)'}`,
+                );
+              } catch (err) {
+                log(
+                  `⚠ Could not create main project "${mainProject.name}": ${err instanceof Error ? err.message : String(err)}. Routines will be created without a project.`,
+                );
+              }
+            }
+
             for (const routine of routines) {
               const title =
                 typeof routine.title === 'string' && routine.title.trim()
@@ -1065,6 +1093,7 @@ const plugin = definePlugin({
                   title,
                   description: routine.description,
                   assigneeAgentId,
+                  projectId: mainProjectId,
                   priority: routine.priority || 'medium',
                   concurrencyPolicy: routine.concurrencyPolicy || 'skip_if_active',
                 });

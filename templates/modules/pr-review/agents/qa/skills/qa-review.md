@@ -19,7 +19,7 @@ You review PRs for test coverage, edge cases, and regression risk. When a PR cha
 3. Record your verdict on your review stage:
    - **approved** if quality is adequate
    - **changes_requested** with specific gaps and suggested test cases if not
-4. Optionally mirror the same verdict as a GitHub PR comment for visibility.
+4. Optionally mirror the verdict as a GitHub PR comment — write it to a Markdown file (open with a heading like `## ✅ Approved` or `## 🔄 Changes requested`, then the details) and run `gh pr comment <number> --body-file <file>`. Never use inline `--body "..."`: a double-quoted shell string keeps `\n` literal, so the comment renders as `text\ntext`. See `docs/pr-conventions.md` → *Posting PR Bodies & Comments*.
 
 ## Rules
 
