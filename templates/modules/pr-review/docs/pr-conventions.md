@@ -38,6 +38,24 @@ Rules: lowercase after colon, no period, under 72 chars.
 Closes [PREFIX-N]
 ```
 
+## Posting PR Bodies & Comments
+
+Always pass Markdown through a **file** (`--body-file`), never an inline `--body "..."`. A double-quoted shell argument does **not** turn `\n` into a real newline, so an inline body renders on GitHub as literal `text\ntext\ntext` instead of formatted Markdown. Write the body to a file first:
+
+```bash
+# Real newlines + full Markdown (headings, lists, code blocks) preserved.
+cat > /tmp/pr-body.md <<'EOF'
+## What changed
+...
+EOF
+
+gh pr create  --title "<type>: <description>" --body-file /tmp/pr-body.md
+gh pr comment <number> --body-file /tmp/pr-body.md
+gh pr review  <number> --request-changes --body-file /tmp/pr-body.md
+```
+
+Every PR comment opens with a Markdown heading stating the verdict (`## ✅ Approved`, `## 🔄 Changes requested`, or `## 💬 Review notes`), followed by a short summary and bullet points or code blocks.
+
 ## Labels
 
 Apply one primary label: `feature`, `bug`, `docs`, `chore`, `infra`, `agent`.
@@ -52,7 +70,7 @@ Review runs through the issue's native `executionPolicy` (stages), not separate 
 4. **Code Reviewer** reviews for correctness, security, code style, simplicity and records `approved` / `changes_requested` on the review stage.
 5. **Domain reviewers** (when present as stages) review their concern and record their verdict.
 6. **Product Owner** reviews for intent match, scope discipline, acceptance criteria, and records the final `approval` verdict.
-7. Verdicts are recorded on the stages and may be mirrored as PR comments.
+7. Verdicts are recorded on the stages and may be mirrored as PR comments (always via `--body-file`; see *Posting PR Bodies & Comments*).
 8. **Engineer** owns the final `approval` stage (merge gate): once every reviewer and the Product Owner has approved, the engineer is woken last, merges the PR, confirms the merge landed, and only then records `approved` — which closes the originating issue to `done`. The merge must happen before the issue is `done`.
 
 ## Review Roles
