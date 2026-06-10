@@ -5,6 +5,13 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.21] - 2026-06-10
+
+### Fixed
+
+- **PR merge gate — approved PRs now actually get merged.** The `pr-review` execution-policy chain previously ended with the **Product Owner**'s `approval` stage. Because clearing the final stage auto-closes the issue to `done`, the Product Owner (not the engineer) was the last actor, so the engineer was never woken to merge — approved, mergeable PRs stayed open on GitHub while their issues showed `done`. The chain now ends with a final `approval` stage owned by the **Engineer** (the merge gate): the engineer is woken last, merges the PR, then records the verdict that closes the issue. Adds a `mergeGate` field to the `pr-review` `reviewGate`, renders the merge-gate stage in the BOOTSTRAP `executionPolicy` sketch (`resolveReviewGate`/`renderReviewGate` in `assemble.js`), and updates the engineer `pr-workflow` skill, `pr-conventions.md`, and the bootstrap PR-review guardrail.
+- **Repository setup now ignores `.paperclip/`.** The `Prepare GitHub repository` foundation issue and `docs/git-workflow.md` now instruct adding a `.paperclip/` entry to `.gitignore` before the first commit (creating `.gitignore` if missing). Paperclip keeps per-issue git worktrees and workspace metadata under `.paperclip/` inside the repo; without the ignore, that transient state can be committed and isolated worktrees can nest inside the repo, producing confusing git state for every agent.
+
 ## [0.3.20] - 2026-06-09
 
 ### Added

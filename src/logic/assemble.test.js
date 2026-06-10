@@ -301,7 +301,7 @@ describe('assembleCompany', () => {
 
   it('renders a reviewGate as an ordered executionPolicy in BOOTSTRAP.md', async () => {
     // Reviewer/approver role templates must exist or they are skipped.
-    for (const role of ['code-reviewer', 'qa', 'product-owner']) {
+    for (const role of ['code-reviewer', 'qa', 'product-owner', 'engineer']) {
       const roleDir = join(templatesDir, 'roles', role);
       await mkdir(roleDir, { recursive: true });
       await writeJson(join(roleDir, 'role.meta.json'), { name: role });
@@ -322,6 +322,7 @@ describe('assembleCompany', () => {
           reviewGate: {
             reviewers: ['code-reviewer', 'qa', 'missing-role'],
             approver: 'product-owner',
+            mergeGate: 'engineer',
           },
         },
       ],
@@ -330,7 +331,7 @@ describe('assembleCompany', () => {
     const { companyDir } = await assembleCompany({
       companyName: 'GateCo',
       moduleNames: ['gated-work'],
-      extraRoleNames: ['code-reviewer', 'qa', 'product-owner'],
+      extraRoleNames: ['code-reviewer', 'qa', 'product-owner', 'engineer'],
       outputDir,
       templatesDir,
     });
@@ -340,11 +341,18 @@ describe('assembleCompany', () => {
     assert.ok(bootstrap.includes('(review) → assign "code-reviewer"'));
     assert.ok(bootstrap.includes('(review) → assign "qa"'));
     assert.ok(bootstrap.includes('(approval) → assign "product-owner"'));
+    assert.ok(bootstrap.includes('merge gate'), 'merge gate stage present');
+    assert.ok(
+      bootstrap.includes('(approval) → assign "engineer"'),
+      'merge gate assigns the engineer',
+    );
     assert.ok(!bootstrap.includes('missing-role'), 'role absent from team is dropped');
 
     const crIdx = bootstrap.indexOf('"code-reviewer"');
-    const poIdx = bootstrap.indexOf('"product-owner"');
-    assert.ok(crIdx > -1 && poIdx > crIdx, 'approver renders after reviewers');
+    const poStageIdx = bootstrap.indexOf('(approval) → assign "product-owner"');
+    const mergeStageIdx = bootstrap.indexOf('merge gate');
+    assert.ok(crIdx > -1 && poStageIdx > crIdx, 'approver renders after reviewers');
+    assert.ok(mergeStageIdx > poStageIdx, 'merge gate renders after the approver');
   });
 
   it('seeds user/AI domain issues at the front of the backlog, ahead of generic module issues', async () => {

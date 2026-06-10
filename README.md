@@ -336,6 +336,8 @@ Git workflow and commit conventions.
 
 PR-based review workflow. Requires `github-repo`. Activates with `code-reviewer`, `product-owner`, `ui-designer`, `ux-researcher`, `qa`, or `devops`.
 
+Reviews run through the issue's native `executionPolicy` (stages), not child issues: a `review` stage for the Code Reviewer (plus relevant domain reviewers), an `approval` stage for the Product Owner, then a final `approval` **merge gate** owned by the Engineer — who is woken last to merge the PR before recording the verdict that closes the issue. The merge gate is deliberately the last stage so the Product Owner's approval does not auto-close the issue with the PR still open.
+
 - **Task:** Engineer sets up branch protection
 - **Doc:** `docs/pr-conventions.md`
 

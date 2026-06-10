@@ -21,6 +21,18 @@ Rules:
 - Under 72 characters
 - Reference issue ID in commit body when applicable
 
+## Repository Hygiene: ignore `.paperclip/`
+
+Paperclip stores per-issue git worktrees and workspace metadata under a `.paperclip/`
+directory inside the repository. This must never be committed.
+
+- When preparing the repository (fresh or existing), make sure `.gitignore` contains a
+  `.paperclip/` line. Add it before the first commit; create `.gitignore` if missing.
+- If `.paperclip/` was already committed, remove it from tracking with
+  `git rm -r --cached .paperclip` and commit the removal.
+- Committing `.paperclip/` pollutes history and can nest isolated worktrees inside the
+  repo, which causes confusing git state for every agent.
+
 ## Direct-to-Main Workflow
 
 1. Pull latest from main
