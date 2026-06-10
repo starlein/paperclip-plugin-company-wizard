@@ -51,7 +51,6 @@ EOF
 
 gh pr create  --title "<type>: <description>" --body-file /tmp/pr-body.md
 gh pr comment <number> --body-file /tmp/pr-body.md
-gh pr review  <number> --request-changes --body-file /tmp/pr-body.md
 ```
 
 Every PR comment opens with a Markdown heading stating the verdict (`## ✅ Approved`, `## 🔄 Changes requested`, or `## 💬 Review notes`), followed by a short summary and bullet points or code blocks.
