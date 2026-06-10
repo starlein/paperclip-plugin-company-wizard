@@ -316,14 +316,23 @@ export async function assembleCompany({
         ? reviewGate.approver
         : undefined;
 
+    // The merge gate is the issue's merge owner (the engineer). It renders as a
+    // final `approval` stage so the merge owner is woken *last* — after the
+    // approver — to perform the merge. Without it, the approver's verdict
+    // auto-closes the issue and the PR is never merged.
+    const mergeGate =
+      typeof reviewGate.mergeGate === 'string' && allRoles.has(reviewGate.mergeGate)
+        ? reviewGate.mergeGate
+        : undefined;
+
     // Avoid accidentally requiring the same role twice (e.g. reviewer + approver).
     if (approver) {
       const idx = reviewers.indexOf(approver);
       if (idx !== -1) reviewers.splice(idx, 1);
     }
 
-    if (reviewers.length === 0 && !approver) return null;
-    return { reviewers, approver };
+    if (reviewers.length === 0 && !approver && !mergeGate) return null;
+    return { reviewers, approver, mergeGate };
   };
 
   // Render a resolved reviewGate as an executionPolicy sketch for BOOTSTRAP.md.
@@ -337,6 +346,11 @@ export async function assembleCompany({
     if (gate.approver) {
       stages.push(
         `  - stage ${stages.length + 1} (approval) → assign ${JSON.stringify(gate.approver)}`,
+      );
+    }
+    if (gate.mergeGate) {
+      stages.push(
+        `  - stage ${stages.length + 1} (approval) → assign ${JSON.stringify(gate.mergeGate)}  — merge gate: merge the PR, then record approved to close`,
       );
     }
     return (
@@ -1087,6 +1101,27 @@ export async function assembleCompany({
     return rows;
   };
 
+  // When the instance has isolated worktrees enabled but this project starts as
+  // a fresh local repo, the isolated policy is intentionally deferred (worktrees
+  // need an existing base ref and would fail on the first run). Without a hint,
+  // the operator is left thinking the setting did nothing and flips it by hand
+  // mid-run — which strands early work in the shared workspace. Emit a note so
+  // the repo-setup owner enables isolation as soon as the first commit lands.
+  const renderDeferredIsolationNote = (workspace) => {
+    if (!enableIsolatedWorktrees || !isFreshLocalRepo(workspace)) return '';
+    return (
+      `> **Enable isolated worktrees once the repo exists.** This instance has isolated ` +
+      `worktrees enabled, but this project starts as a fresh local repository, so the ` +
+      `\`executionWorkspacePolicy\` is intentionally omitted now — worktrees need an existing ` +
+      `base ref and would fail on the first run. As the final step of **"Prepare GitHub ` +
+      `repository"**, after the initial commit is pushed to \`main\`, switch this project to ` +
+      `isolated worktrees (Project settings → isolated workspaces, or set ` +
+      `\`executionWorkspacePolicy: { defaultMode: "isolated_workspace", workspaceStrategy: ` +
+      `{ type: "git_worktree", baseRef: "main" } }\` on the project). Until then agents share ` +
+      `the project workspace; do not flip it before the repo has its first commit.\n\n`
+    );
+  };
+
   const mainProject = resolvedProjects[0];
   const mainProjectName = mainProject?.name || companyName;
 
@@ -1106,6 +1141,7 @@ export async function assembleCompany({
       if (proj.description) {
         bootstrap += `${escapeBody(proj.description)}\n\n`;
       }
+      bootstrap += renderDeferredIsolationNote(workspace);
     }
   }
 
@@ -1230,7 +1266,7 @@ export async function assembleCompany({
     bootstrap += `- Do not reopen \`done\` parent/subissues without an explicit reason in a comment.\n`;
     bootstrap += `- Do not reuse parent workspaces for subissues unless explicitly requested.\n`;
     if (moduleNames.includes('pr-review')) {
-      bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`: a \`review\` stage for the Code Reviewer (plus any relevant domain reviewer — QA/UI/UX/DevOps), then a final \`approval\` stage for the Product Owner. Resolve each reviewer/approver role to its agentId. Do not create separate child review issues and do not use @-mentions.\n`;
+      bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`: a \`review\` stage for the Code Reviewer (plus any relevant domain reviewer — QA/UI/UX/DevOps), an \`approval\` stage for the Product Owner, then a final \`approval\` merge-gate stage for the Engineer (who merges the PR before recording approval, which closes the issue). The merge gate must be last so the Product Owner's approval does not auto-close the issue with the PR still open. Resolve each role to its agentId. Do not create separate child review issues and do not use @-mentions.\n`;
     }
     bootstrap += `\n`;
   }

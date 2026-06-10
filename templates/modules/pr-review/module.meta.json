@@ -21,9 +21,10 @@
       "assignTo": "engineer",
       "reviewGate": {
         "reviewers": ["code-reviewer"],
-        "approver": "product-owner"
+        "approver": "product-owner",
+        "mergeGate": "engineer"
       },
-      "description": "Document and verify the PR workflow: feature branches, PR links, and review via the issue's executionPolicy — a review stage for the Code Reviewer (plus relevant domain reviewers) and a final approval stage for the Product Owner, with engineer-owned merges once all stages clear. Optional branch protection may disable direct pushes or require CI, but do not require GitHub-native approving reviews unless the project has distinct non-author GitHub reviewer credentials."
+      "description": "Document and verify the PR workflow: feature branches, PR links, and review via the issue's executionPolicy — a review stage for the Code Reviewer (plus relevant domain reviewers), an approval stage for the Product Owner, and a final approval stage for the Engineer as the merge gate (the engineer is woken last to merge the PR before recording approval, which closes the issue). The merge gate must be the last stage so the Product Owner's approval does not auto-close the issue with the PR still open. Optional branch protection may disable direct pushes or require CI, but do not require GitHub-native approving reviews unless the project has distinct non-author GitHub reviewer credentials."
     }
   ]
 }

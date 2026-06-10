@@ -301,7 +301,7 @@ describe('assembleCompany', () => {
 
   it('renders a reviewGate as an ordered executionPolicy in BOOTSTRAP.md', async () => {
     // Reviewer/approver role templates must exist or they are skipped.
-    for (const role of ['code-reviewer', 'qa', 'product-owner']) {
+    for (const role of ['code-reviewer', 'qa', 'product-owner', 'engineer']) {
       const roleDir = join(templatesDir, 'roles', role);
       await mkdir(roleDir, { recursive: true });
       await writeJson(join(roleDir, 'role.meta.json'), { name: role });
@@ -322,6 +322,7 @@ describe('assembleCompany', () => {
           reviewGate: {
             reviewers: ['code-reviewer', 'qa', 'missing-role'],
             approver: 'product-owner',
+            mergeGate: 'engineer',
           },
         },
       ],
@@ -330,7 +331,7 @@ describe('assembleCompany', () => {
     const { companyDir } = await assembleCompany({
       companyName: 'GateCo',
       moduleNames: ['gated-work'],
-      extraRoleNames: ['code-reviewer', 'qa', 'product-owner'],
+      extraRoleNames: ['code-reviewer', 'qa', 'product-owner', 'engineer'],
       outputDir,
       templatesDir,
     });
@@ -340,11 +341,18 @@ describe('assembleCompany', () => {
     assert.ok(bootstrap.includes('(review) → assign "code-reviewer"'));
     assert.ok(bootstrap.includes('(review) → assign "qa"'));
     assert.ok(bootstrap.includes('(approval) → assign "product-owner"'));
+    assert.ok(bootstrap.includes('merge gate'), 'merge gate stage present');
+    assert.ok(
+      bootstrap.includes('(approval) → assign "engineer"'),
+      'merge gate assigns the engineer',
+    );
     assert.ok(!bootstrap.includes('missing-role'), 'role absent from team is dropped');
 
     const crIdx = bootstrap.indexOf('"code-reviewer"');
-    const poIdx = bootstrap.indexOf('"product-owner"');
-    assert.ok(crIdx > -1 && poIdx > crIdx, 'approver renders after reviewers');
+    const poStageIdx = bootstrap.indexOf('(approval) → assign "product-owner"');
+    const mergeStageIdx = bootstrap.indexOf('merge gate');
+    assert.ok(crIdx > -1 && poStageIdx > crIdx, 'approver renders after reviewers');
+    assert.ok(mergeStageIdx > poStageIdx, 'merge gate renders after the approver');
   });
 
   it('seeds user/AI domain issues at the front of the backlog, ahead of generic module issues', async () => {
@@ -528,6 +536,43 @@ describe('assembleCompany', () => {
     );
   });
 
+  it('emits a deferred-isolation note for a fresh local repo when isolated worktrees are enabled', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'DeferredIso',
+      enableIsolatedWorktrees: true,
+      userProjects: [{ name: 'app', description: 'desc', goals: [] }],
+      moduleNames: [],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    const projectBlock = bootstrap.split('### app')[1] || '';
+    assert.ok(
+      projectBlock.includes('Enable isolated worktrees once the repo exists'),
+      'fresh local repo + isolated setting should emit the deferred-isolation note',
+    );
+  });
+
+  it('omits the deferred-isolation note when isolated worktrees are disabled', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'NoIso',
+      enableIsolatedWorktrees: false,
+      userProjects: [{ name: 'app', description: 'desc', goals: [] }],
+      moduleNames: [],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(
+      !bootstrap.includes('Enable isolated worktrees once the repo exists'),
+      'note must not appear when isolated worktrees are off',
+    );
+  });
+
   it('renders git_repo workspace and execution workspace policy from project config', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'GitWorkspaceCo',
@@ -568,6 +613,10 @@ describe('assembleCompany', () => {
       projectBlock.includes('**executionWorkspacePolicy.workspaceStrategy.baseRef**: origin/main'),
     );
     assert.ok(!projectBlock.includes('**workspace.cwd**:'));
+    assert.ok(
+      !projectBlock.includes('Enable isolated worktrees once the repo exists'),
+      'an external repo already gets isolated worktrees, so no deferral note',
+    );
     assert.ok(
       bootstrap.includes(
         'workspace: { sourceType: "git_repo", repoUrl: "https://github.com/example/app", repoRef: "origin/main", defaultRef: "origin/main", isPrimary: true }',
