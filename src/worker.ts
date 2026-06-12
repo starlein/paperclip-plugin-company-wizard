@@ -322,6 +322,58 @@ function resolveCompaniesDir(cfg: Record<string, string>): string {
   return path.join(os.homedir(), '.paperclip', 'instances', 'default', 'companies');
 }
 
+function mkdirErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
+function ensureWritableDir(dir: string): void {
+  fs.mkdirSync(dir, { recursive: true });
+  fs.accessSync(dir, fs.constants.W_OK);
+}
+
+export function resolveWritableCompaniesDir(
+  cfg: Record<string, string>,
+  log?: (msg: string) => void,
+): string {
+  const configuredDir = typeof cfg.companiesDir === 'string' ? cfg.companiesDir.trim() : '';
+  if (configuredDir) {
+    try {
+      ensureWritableDir(configuredDir);
+      return configuredDir;
+    } catch (err) {
+      throw new Error(
+        `Configured companiesDir is not writable (${configuredDir}): ${mkdirErrorMessage(err)}`,
+      );
+    }
+  }
+
+  const candidates = [
+    resolveCompaniesDir(cfg),
+    path.join('/paperclip', 'instances', 'default', 'companies'),
+    path.join(os.tmpdir(), 'paperclip-companies'),
+  ];
+  const attempted = new Set<string>();
+  let lastError = '';
+
+  for (const candidate of candidates) {
+    if (attempted.has(candidate)) continue;
+    attempted.add(candidate);
+    try {
+      ensureWritableDir(candidate);
+      return candidate;
+    } catch (err) {
+      const message = mkdirErrorMessage(err);
+      lastError = `${candidate}: ${message}`;
+      if (log) log(`⚠ Companies dir unavailable: ${candidate} (${message})`);
+    }
+  }
+
+  throw new Error(
+    `Unable to prepare a writable companies directory. Last attempt failed at ${lastError}`,
+  );
+}
+
 function formatRoleName(role: string): string {
   return role
     .split('-')
@@ -451,7 +503,7 @@ const plugin = definePlugin({
         tmpDir = path.join(os.tmpdir(), `company-wizard-preview-${Date.now()}`);
 
         // Resolve the companies dir so BOOTSTRAP.md shows correct paths in preview.
-        const companiesDir = resolveCompaniesDir(cfg);
+        const companiesDir = resolveWritableCompaniesDir(cfg);
 
         const [presets, allModules] = await Promise.all([
           loadPresets(templatesDir),
@@ -680,9 +732,7 @@ const plugin = definePlugin({
         const presetBootstrapData = collectPresetBootstrapData(selectedPreset);
 
         // Step 2: Assemble files on disk
-        const outputDir = resolveCompaniesDir(cfg);
-
-        fs.mkdirSync(outputDir, { recursive: true });
+        const outputDir = resolveWritableCompaniesDir(cfg, log);
         log('Assembling company workspace...');
 
         const companyDescription =
