@@ -16,7 +16,7 @@
 - Read issue comments for PR link.
 - Fetch diff: `gh pr diff <number>`.
 - Review for correctness, security, style, simplicity.
-- Post review via `gh pr review`.
+- Post review comments via `gh pr comment <number> --body-file <file>`.
 - Comment verdict on the originating issue.
 - Mark issue done.
 
