@@ -278,8 +278,9 @@ describe('assembleCompany integration (real templates)', () => {
     );
   });
 
-  it('pr-review templates use Paperclip-governed verdicts instead of GitHub self-approval', async () => {
+  it('review templates use Paperclip-governed verdicts instead of GitHub self-approval', async () => {
     const prReviewDir = join(REAL_TEMPLATES_DIR, 'modules', 'pr-review');
+    const codeReviewerRoleDir = join(REAL_TEMPLATES_DIR, 'roles', 'code-reviewer');
     const moduleMeta = JSON.parse(await readFile(join(prReviewDir, 'module.meta.json'), 'utf-8'));
     assert.ok(
       !moduleMeta.description.toLowerCase().includes('branch protection'),
@@ -301,20 +302,24 @@ describe('assembleCompany integration (real templates)', () => {
       return files;
     }
 
-    const markdownFiles = await readMarkdownFiles(prReviewDir);
+    const markdownFiles = [
+      ...(await readMarkdownFiles(prReviewDir)),
+      ...(await readMarkdownFiles(codeReviewerRoleDir)),
+    ];
     assert.ok(markdownFiles.length > 0, 'expected pr-review markdown templates');
     for (const file of markdownFiles) {
       const content = await readFile(file, 'utf-8');
+      const lowered = content.toLowerCase();
       assert.ok(
-        !content.includes('gh pr review'),
+        !lowered.includes('gh pr review'),
         `${file} should not instruct agents to submit formal GitHub reviews`,
       );
       assert.ok(
-        !content.includes('--approve'),
+        !lowered.includes('--approve'),
         `${file} should not instruct agents to approve with the shared GitHub credential`,
       );
       assert.ok(
-        !content.includes('--request-changes'),
+        !lowered.includes('--request-changes'),
         `${file} should not instruct agents to request changes with the shared GitHub credential`,
       );
     }

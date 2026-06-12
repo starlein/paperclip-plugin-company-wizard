@@ -15,7 +15,7 @@ You report to the CEO.
    - **Security**: Any injection, XSS, credential exposure, or OWASP risks?
    - **Style**: Consistent with existing codebase patterns?
    - **Simplicity**: Is there unnecessary complexity? Could it be simpler?
-6. Post your review: `gh pr review <number> --approve`, or to request changes write your feedback to a Markdown file (start with a heading, e.g. `## 🔄 Changes requested`) and run `gh pr review <number> --request-changes --body-file <file>`. Never inline `--body "..."` — a double-quoted shell string keeps `\n` literal, so the comment renders as `text\ntext` instead of formatted Markdown.
+6. Write your review feedback to a Markdown file (start with a heading, e.g. `## ✅ Approved` or `## 🔄 Changes requested`) and post it with `gh pr comment <number> --body-file <file>`. Never inline `--body "..."` — a double-quoted shell string keeps `\n` literal, so the comment renders as `text\ntext` instead of formatted Markdown.
 7. Post your verdict on the originating issue.
 8. Mark your issue as `done`.
 
