@@ -5,14 +5,6 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
-## [0.4.2] - 2026-06-15
-
-### Fixed
-
-- **Plugin settings no longer try to resolve Paperclip secret refs.** Current Paperclip hosts intentionally reject plugin secret references until company-scoped plugin config lands, which surfaced as `Plugin secret references are disabled until company-scoped plugin config lands` when using a secret UUID in settings. `anthropicApiKey` and `paperclipPassword` now support environment variable references (`env:ANTHROPIC_API_KEY`, `env:PAPERCLIP_PASSWORD`) and return a direct, actionable error for Paperclip secret UUIDs instead of attempting `ctx.secrets.resolve()`.
-- Removed the unused `secrets.read-ref` capability from the plugin manifest while plugin secret refs remain disabled by the host.
-
----
 ## [0.4.1] - 2026-06-15
 
 ### Changed
@@ -181,7 +173,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- **`anthropicApiKey` and `paperclipPassword` plugin settings are now plain string fields** instead of `secret-ref`. The Paperclip host rejects saving any `secret-ref` field until company-scoped plugin config ships (error: "Plugin secret references are disabled until company-scoped plugin config lands"), which blocked saving the plugin settings entirely. `resolveAnthropicApiKey` now uses a directly entered key (`sk-ant-...`) as-is. Trade-off: the Anthropic key is stored in plain plugin config unless an environment variable reference is used (added in v0.4.2).
+- **`anthropicApiKey` and `paperclipPassword` plugin settings are now plain string fields** instead of `secret-ref`. The Paperclip host rejects saving any `secret-ref` field until company-scoped plugin config ships (error: "Plugin secret references are disabled until company-scoped plugin config lands"), which blocked saving the plugin settings entirely. `resolveAnthropicApiKey` now uses a directly entered key (`sk-ant-...`) as-is and only falls back to host secret resolution for legacy installs that still store a secret reference. Trade-off: the Anthropic key is now stored in plain plugin config until the host secret store is available.
 
 ---
 ## [0.3.7] - 2026-06-08
