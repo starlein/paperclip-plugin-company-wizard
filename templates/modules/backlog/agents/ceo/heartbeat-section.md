@@ -1,10 +1,3 @@
-## Backlog Health Check (Fallback)
+## Backlog Health Routine Fallback
 
-Only if the Product Owner is absent or stalled:
-
-1. Query unassigned issues: `GET /api/companies/{companyId}/issues?status=todo&unassigned=true`
-2. If fewer than 1 unassigned issue AND PO hasn't acted recently:
-   - Create 1-2 high-priority issues from the roadmap to keep engineers unblocked.
-   - Attach `labelIds` — fetch via `GET /api/companies/{companyId}/labels`. If none exist, create defaults first (see `backlog-health` skill).
-   - Tag the PO to take over backlog grooming.
-3. If the PO is active and backlog has 1+ issues, skip this step.
+Do not groom the backlog during a normal heartbeat unless that is your assigned issue. If you are assigned a routine-run issue titled like "Backlog grooming" and no Product Owner is available, use `skills/backlog-health.md`, then summarize generated/updated issues on the routine issue and exit.

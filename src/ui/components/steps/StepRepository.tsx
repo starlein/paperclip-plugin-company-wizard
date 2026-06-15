@@ -108,9 +108,6 @@ export function StepRepository() {
 
   const chooseMode = (nextMode: RepositoryMode) => {
     setMode(nextMode);
-    if (nextMode === 'external' && (!repoRef.trim() || repoRef.trim() === 'main')) {
-      setRepoRef('origin/main');
-    }
     if (nextMode === 'new' && (!repoRef.trim() || repoRef.trim().startsWith('origin/'))) {
       setRepoRef('main');
     }
@@ -189,7 +186,7 @@ export function StepRepository() {
               Default ref <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
             <Input
-              placeholder="origin/main"
+              placeholder="Leave blank to use Paperclip/project default, or enter an explicit ref"
               value={repoRef}
               onChange={(e) => setRepoRef(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleNext()}

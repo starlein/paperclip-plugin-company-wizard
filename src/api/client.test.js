@@ -16,11 +16,11 @@ function jsonResponse(body, status = 200) {
 }
 
 describe('PaperclipClient.createAgent', () => {
-  it('forwards CEO metadata fields accepted by Paperclip instead of dropping them', async () => {
+  it('forwards CEO metadata fields accepted by Paperclip through the governance hire endpoint', async () => {
     const requests = [];
     globalThis.fetch = async (url, opts = {}) => {
       requests.push({ url, opts, body: JSON.parse(opts.body) });
-      return jsonResponse({ id: 'agent-1' });
+      return jsonResponse({ agent: { id: 'agent-1' } });
     };
 
     const client = new PaperclipClient('http://paperclip.test');
@@ -37,6 +37,7 @@ describe('PaperclipClient.createAgent', () => {
       runtimeConfig: { heartbeat: { enabled: true, intervalSec: 3600, maxConcurrentRuns: 1 } },
       budgetMonthlyCents: 0,
       permissions: { canCreateAgents: true },
+      sourceIssueId: 'issue-board-ops',
       instructionsBundle: {
         entryFile: 'AGENTS.md',
         files: { 'AGENTS.md': 'Use managed AGENTS.md.' },
@@ -44,7 +45,7 @@ describe('PaperclipClient.createAgent', () => {
     });
 
     assert.equal(requests.length, 1);
-    assert.equal(requests[0].url, 'http://paperclip.test/api/companies/company-1/agents');
+    assert.equal(requests[0].url, 'http://paperclip.test/api/companies/company-1/agent-hires');
     assert.deepEqual(requests[0].body, {
       name: 'CEO',
       role: 'ceo',
@@ -58,6 +59,7 @@ describe('PaperclipClient.createAgent', () => {
       runtimeConfig: { heartbeat: { enabled: true, intervalSec: 3600, maxConcurrentRuns: 1 } },
       budgetMonthlyCents: 0,
       permissions: { canCreateAgents: true },
+      sourceIssueId: 'issue-board-ops',
       instructionsBundle: {
         entryFile: 'AGENTS.md',
         files: { 'AGENTS.md': 'Use managed AGENTS.md.' },
@@ -65,31 +67,22 @@ describe('PaperclipClient.createAgent', () => {
     });
   });
 
-  it('uses the same full payload when falling back to the board-approval hire endpoint', async () => {
+  it('submits new agents through the governance hire endpoint without auto-approving', async () => {
     const requests = [];
     globalThis.fetch = async (url, opts = {}) => {
       const body = opts.body ? JSON.parse(opts.body) : undefined;
       requests.push({ url, opts, body });
-      if (url.endsWith('/agents')) {
-        return new Response('Direct agent creation requires board approval', { status: 409 });
-      }
       if (url.endsWith('/agent-hires')) {
         return jsonResponse({
           agent: { id: 'agent-1' },
           approval: { id: 'approval-1' },
         });
       }
-      if (url.endsWith('/api/approvals/approval-1/approve')) {
-        return jsonResponse({ ok: true });
-      }
-      if (url.endsWith('/api/agents/agent-1')) {
-        return jsonResponse({ id: 'agent-1', status: 'idle' });
-      }
       throw new Error(`Unexpected URL ${url}`);
     };
 
     const client = new PaperclipClient('http://paperclip.test');
-    await client.createAgent('company-1', {
+    const agent = await client.createAgent('company-1', {
       name: 'CEO',
       role: 'ceo',
       capabilities: 'Owns company strategy.',
@@ -98,12 +91,14 @@ describe('PaperclipClient.createAgent', () => {
       adapterConfig: { model: 'gpt-5.5', modelReasoningEffort: 'high' },
       runtimeConfig: { heartbeat: { enabled: true, intervalSec: 3600, maxConcurrentRuns: 1 } },
       permissions: { canCreateAgents: true },
+      sourceIssueId: 'issue-hiring-plan',
       instructionsBundle: {
         entryFile: 'AGENTS.md',
         files: { 'AGENTS.md': 'Use managed AGENTS.md.' },
       },
     });
 
+    assert.equal(requests.length, 1);
     const hireRequest = requests.find((request) => request.url.endsWith('/agent-hires'));
     assert.ok(hireRequest);
     assert.equal(hireRequest.body.capabilities, 'Owns company strategy.');
@@ -111,17 +106,20 @@ describe('PaperclipClient.createAgent', () => {
     assert.equal(hireRequest.body.adapterConfig.model, 'gpt-5.5');
     assert.equal(hireRequest.body.adapterConfig.modelReasoningEffort, 'high');
     assert.equal(hireRequest.body.runtimeConfig.heartbeat.maxConcurrentRuns, 1);
+    assert.equal(hireRequest.body.sourceIssueId, 'issue-hiring-plan');
     assert.deepEqual(hireRequest.body.instructionsBundle, {
       entryFile: 'AGENTS.md',
       files: { 'AGENTS.md': 'Use managed AGENTS.md.' },
     });
+    assert.equal(agent._pendingApprovalId, 'approval-1');
+    assert.ok(!requests.some((request) => request.url.endsWith('/approve')));
   });
 
-  it('defaults direct agent creation to codex_local instead of a Claude adapter', async () => {
+  it('defaults governed agent hire requests to codex_local instead of a Claude adapter', async () => {
     const requests = [];
     globalThis.fetch = async (url, opts = {}) => {
       requests.push({ url, body: JSON.parse(opts.body) });
-      return jsonResponse({ id: 'agent-1' });
+      return jsonResponse({ agent: { id: 'agent-1' } });
     };
 
     const client = new PaperclipClient('http://paperclip.test');
@@ -130,6 +128,7 @@ describe('PaperclipClient.createAgent', () => {
       role: 'engineer',
     });
 
+    assert.equal(requests[0].url, 'http://paperclip.test/api/companies/company-1/agent-hires');
     assert.equal(requests[0].body.adapterType, 'codex_local');
   });
 });
@@ -148,12 +147,20 @@ describe('PaperclipClient provisioning helpers', () => {
       description: 'Dialer project',
       goalIds: ['goal-1'],
       workspace: '/paperclip/instances/default/companies/Dialer/projects/Dialer',
+      executionWorkspacePolicy: {
+        defaultMode: 'isolated_workspace',
+        workspaceStrategy: { type: 'git_worktree', baseRef: 'release/2026-q2' },
+      },
     });
 
     assert.deepEqual(requests[0].body.workspace, {
       sourceType: 'local_path',
       cwd: '/paperclip/instances/default/companies/Dialer/projects/Dialer',
       isPrimary: true,
+    });
+    assert.deepEqual(requests[0].body.executionWorkspacePolicy, {
+      defaultMode: 'isolated_workspace',
+      workspaceStrategy: { type: 'git_worktree', baseRef: 'release/2026-q2' },
     });
   });
 
@@ -194,6 +201,49 @@ describe('PaperclipClient provisioning helpers', () => {
     assert.equal(requests[0].url, 'http://paperclip.test/api/issues/issue-1');
     assert.equal(requests[0].method, 'PATCH');
     assert.deepEqual(requests[0].body, { status: 'todo' });
+  });
+
+  it('patches projects through the top-level project update route', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({ url, method: opts.method, body: JSON.parse(opts.body) });
+      return jsonResponse({ id: 'project-1', goalIds: ['goal-1'] }, 200);
+    };
+
+    const client = new PaperclipClient('http://paperclip.test');
+    await client.updateProject('project-1', { goalIds: ['goal-1'] });
+
+    assert.equal(requests[0].url, 'http://paperclip.test/api/projects/project-1');
+    assert.equal(requests[0].method, 'PATCH');
+    assert.deepEqual(requests[0].body, { goalIds: ['goal-1'] });
+  });
+
+  it('creates issue documents with optional revision freshness', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({ url, method: opts.method, body: JSON.parse(opts.body) });
+      return jsonResponse({ key: 'decision-log', latestRevision: { id: 'rev-2' } }, 200);
+    };
+
+    const client = new PaperclipClient('http://paperclip.test');
+    await client.putIssueDocument('issue-1', 'decision-log', {
+      title: 'Decision Log',
+      format: 'markdown',
+      body: '# Decision Log',
+      baseRevisionId: 'rev-1',
+    });
+
+    assert.equal(
+      requests[0].url,
+      'http://paperclip.test/api/issues/issue-1/documents/decision-log',
+    );
+    assert.equal(requests[0].method, 'PUT');
+    assert.deepEqual(requests[0].body, {
+      title: 'Decision Log',
+      format: 'markdown',
+      body: '# Decision Log',
+      baseRevisionId: 'rev-1',
+    });
   });
 });
 

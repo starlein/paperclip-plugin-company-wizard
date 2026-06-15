@@ -38,22 +38,19 @@ export function getRepositoryRef(
   project: WizardProject | null | undefined,
   mode: RepositoryMode,
 ): string {
-  return (
+  const configured =
     project?.workspace?.defaultRef ||
     project?.workspace?.repoRef ||
     project?.defaultRef ||
     project?.repoRef ||
-    (mode === 'external' ? 'origin/main' : 'main')
-  );
+    '';
+  return configured || (mode === 'new' ? 'main' : '');
 }
 
 export function normalizeExternalRepoRef(value: string): string {
   const trimmed = value.trim();
-  if (!trimmed) return 'origin/main';
-  if (trimmed.startsWith('origin/') || trimmed.startsWith('refs/')) {
-    return trimmed;
-  }
-  return `origin/${trimmed}`;
+  if (!trimmed) return '';
+  return /^[A-Za-z0-9._:/-]+$/.test(trimmed) ? trimmed : '';
 }
 
 export function normalizeNewRepoBranch(value: string): string {
@@ -64,11 +61,9 @@ export function normalizeNewRepoBranch(value: string): string {
 /**
  * Builds the repository-related fields of a project from the chosen mode.
  *
- * A fresh local repository deliberately carries NO `executionWorkspacePolicy`:
- * the repo and its base ref do not exist yet when the first agents wake, so
- * isolated git worktrees would fail on the first run. Agents work in the shared
- * project workspace until the repo is established. External repos keep the
- * isolated git_worktree policy, since they have a real base ref to branch from.
+ * Repository selection deliberately carries NO `executionWorkspacePolicy`.
+ * Isolated worktrees are an instance/project policy and are applied by the
+ * assembler only when Paperclip's isolated-workspace experiment is enabled.
  */
 export function repositoryProjectFields(
   mode: RepositoryMode,
@@ -89,19 +84,14 @@ export function repositoryProjectFields(
     return {
       workspaceSourceType: 'git_repo',
       repoUrl: url,
-      repoRef: ref,
-      defaultRef: ref,
+      ...(ref ? { repoRef: ref, defaultRef: ref } : { repoRef: undefined, defaultRef: undefined }),
       workspace: {
         sourceType: 'git_repo',
         repoUrl: url,
-        repoRef: ref,
-        defaultRef: ref,
+        ...(ref ? { repoRef: ref, defaultRef: ref } : {}),
         isPrimary: true,
       },
-      executionWorkspacePolicy: {
-        defaultMode: 'isolated_workspace',
-        workspaceStrategy: { type: 'git_worktree', baseRef: ref },
-      },
+      executionWorkspacePolicy: undefined,
     };
   }
 

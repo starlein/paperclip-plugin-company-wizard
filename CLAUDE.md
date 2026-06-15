@@ -30,18 +30,18 @@ After `pnpm build`, reload the plugin in the Paperclip UI. No reinstall required
 
 All worker actions return errors as `{ error }` instead of throwing, so the plugin host never swallows messages in generic 502 responses.
 
-**Plugin UI** (`src/ui/`) — React state machine (WizardContext + reducer). Manual path: ONBOARDING → NAME → GOAL → PRESET → MODULES → ROLES → SUMMARY → PROVISION → DONE. AI path: ONBOARDING → AI_WIZARD → PROVISION → DONE.
+**Plugin UI** (`src/ui/`) — React state machine (WizardContext + reducer). Manual path: ONBOARDING → NAME → GOAL → REPOSITORY → PRESET → MODULES → ROLES → SUMMARY → PROVISION → DONE. AI path: ONBOARDING → AI_WIZARD → PROVISION → DONE.
 
 **Build** — esbuild bundles `src/worker.ts`, `src/manifest.ts`, and `src/ui/main.tsx` into `dist/`. CSS via PostCSS/Tailwind 4.
 
 ### Source Layout
 
 - `src/worker.ts` — Worker entry point; registers actions with `ctx.actions.register`
-- `src/manifest.ts` — Plugin manifest: `id: "yesterday-ai.paperclip-plugin-company-wizard"`, `displayName: "Company Wizard"`
+- `src/manifest.ts` — Plugin manifest: `id: "starlein.paperclip-plugin-company-wizard"`, `displayName: "Company Wizard"`
 - `src/logic/assemble.js` — File assembly: copies templates, resolves capabilities, generates BOOTSTRAP.md
 - `src/logic/resolve.js` — Capability resolution, role formatting, module dependency expansion
 - `src/logic/load-templates.js` — Loads presets, modules, roles. Exports `collectGoals()`, `validateGoal()`
-- `src/api/client.js` — Paperclip REST API client (auto-detects auth: no-op for local_trusted, Better Auth sign-in for authenticated). Network errors wrapped with actionable messages. Methods: `createCompany`, `getCompany`, `updateCompany`, `deleteCompany`, `listAgents`, `getAgent`, `createAgent` (approval-aware: falls back to `/agent-hires` + auto-approve when board approval is required), `createGoal`, `createProject`, `createIssue`, `createRoutine`, `createRoutineTrigger`, `triggerHeartbeat`
+- `src/api/client.js` — Paperclip REST API client (auto-detects auth: no-op for local_trusted, Better Auth sign-in for authenticated). Network errors wrapped with actionable messages. Methods: `createCompany`, `getCompany`, `updateCompany`, `deleteCompany`, `listAgents`, `getAgent`, `createAgent` (governed `/agent-hires`, returns pending approval ids without auto-approving), `createGoal`, `createProject`, `updateProject`, `createIssue`, `putIssueDocument`, `createRoutine`, `createRoutineTrigger`, `triggerHeartbeat`
 - `src/ui/context/WizardContext.tsx` — State machine + reducer. Key state: `goals: Goal[]`, `projects: WizardProject[]`, `fileOverrides: Record<string,string>`, `existingCompanyId: string` (when set, provisioning targets this company instead of creating a new one)
 - `src/ui/components/ConfigReview.tsx` — Review step: calls `preview-files`, shows collapsible `FileEntry` components with inline edit. Overrides dispatched via `SET_FILE_OVERRIDE`/`DELETE_FILE_OVERRIDE`
 - `src/ui/components/steps/StepProvision.tsx` — Passes `fileOverrides` to `start-provision`
@@ -94,9 +94,9 @@ Convention-based: if a module provides `agents/<role>/heartbeat-section.md`, ass
 
 Currently 3 modules have heartbeat sections: `stall-detection` (CEO), `auto-assign` (CEO fallback + PO primary), `backlog` (CEO fallback + PO primary).
 
-### Persona Enrichment (opt-in)
+### Persona Enrichment
 
-Gated by the `enableEnrichedPersonas` plugin setting (default `false`; threaded `manifest.ts → worker.ts cfgBool → assembleCompany({ enableEnrichedPersonas })`, mirroring `enableIsolatedWorktrees`). When on, assembly appends fragment files into the generated agent files; when off, the baseline is unchanged. Fragments are never emitted as standalone files — `isEnrichmentFragment()` filters `LENSES.md`, `DONE.md`, and `*.bar.md` from every copy path.
+Enabled by default when templates provide fragments. The plugin no longer exposes an `enableEnrichedPersonas` setting; assembly appends fragment files into the generated agent files and never emits the fragments as standalone files — `isEnrichmentFragment()` filters `LENSES.md`, `DONE.md`, and `*.bar.md` from every copy path.
 
 - `roles/<role>/LENSES.md` → appended to that role's `SOUL.md` (domain lenses). Lens-heavy: `security-engineer`, `ux-researcher`, `ui-designer`; focused: `product-owner`, `code-reviewer`, `devops`. Operational roles (`engineer`, `qa`) intentionally have none.
 - `roles/<role>/DONE.md` → appended to that role's `HEARTBEAT.md` (done-criteria + heartbeat-exit rule); present for all 8 enriched roles.
@@ -119,7 +119,7 @@ Gated by the `enableEnrichedPersonas` plugin setting (default `false`; threaded 
 
 ### Paperclip API Flow (start-provision)
 
-Connects to Paperclip API (auto-detects auth mode). Resolves the target company: creates a new one (with `companyDescription`) or, when `existingCompanyId` is passed, loads it via `getCompany` (existing-company runs skip company creation and skip cleanup on error). Resolves the CEO: reuses an active CEO on existing companies, otherwise creates one (with `instructionsFilePath`, adapter config). If direct agent creation is rejected because board approval is required, `createAgent` hires via `/agent-hires` and auto-approves. Finally creates a Bootstrap Issue (assigned to CEO, description = BOOTSTRAP.md content, title uses the resolved company name). The CEO then reads the bootstrap issue and creates goals, projects, agents, and issues as described in BOOTSTRAP.md.
+Connects to Paperclip API (auto-detects auth mode). Resolves the target company: creates a new one (with `companyDescription`) or, when `existingCompanyId` is passed, loads it via `getCompany` (existing-company runs skip company creation and skip cleanup on error). Creates Board Operations and Hiring Plan issues, writes `decision-log` and `hiring-plan` documents, then provisions CEO/team agents via governed `/agent-hires` requests with full managed `instructionsBundle` payloads and `sourceIssueId` provenance. Pending approval ids are logged for board action and are not auto-approved. Scheduled routines are created with board authority, then a Bootstrap Issue is created for the CEO (description = BOOTSTRAP.md content, title uses the resolved company name). The CEO then reads the bootstrap issue and creates remaining goals/issues and links pre-created projects as described in BOOTSTRAP.md.
 
 Optional setting `disableBoardApprovalOnNewCompanies` (default `false`): when `true`, new companies are PATCHed to `requireBoardApprovalForNewAgents=false` right after creation for legacy fully-autonomous bootstrap behavior. Ignored for existing-company runs.
 

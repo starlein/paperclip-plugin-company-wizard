@@ -265,6 +265,8 @@ describe('assembleCompany', () => {
 
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
     assert.ok(bootstrap.includes('## Goals'));
+    assert.ok(bootstrap.includes('Goal focus'));
+    assert.ok(bootstrap.includes('Secondary constraints'));
     assert.ok(bootstrap.includes('### Ship MVP'));
     assert.ok(bootstrap.includes('Build and launch the MVP'));
   });
@@ -345,6 +347,38 @@ describe('assembleCompany', () => {
       !bootstrap.includes('**Create project** "RoutineCo"'),
       'CEO should not be instructed to (re)create the pre-created main project',
     );
+  });
+
+  it('returns the resolved execution workspace policy when routines require project pre-creation', async () => {
+    const { initialRoutines, mainProject } = await assembleCompany({
+      companyName: 'RoutineIsoCo',
+      moduleNames: ['ops-routines'],
+      extraRoleNames: ['product-owner'],
+      enableIsolatedWorktrees: true,
+      userProjects: [
+        {
+          name: 'RoutineIsoCo',
+          description: 'desc',
+          goals: [],
+          workspace: {
+            sourceType: 'git_repo',
+            repoUrl: 'https://github.com/example/app.git',
+            repoRef: 'release/2026-q2',
+            defaultRef: 'release/2026-q2',
+            isPrimary: true,
+          },
+        },
+      ],
+      outputDir,
+      templatesDir,
+    });
+
+    assert.equal(initialRoutines.length, 1);
+    assert.equal(mainProject?.executionWorkspacePolicy?.defaultMode, 'isolated_workspace');
+    assert.deepEqual(mainProject?.executionWorkspacePolicy?.workspaceStrategy, {
+      type: 'git_worktree',
+      baseRef: 'release/2026-q2',
+    });
   });
 
   it('keeps the CEO creating the main project when there are no routines', async () => {
@@ -694,7 +728,7 @@ describe('assembleCompany', () => {
     );
   });
 
-  it('normalizes git workspace policy base ref to a remote reference for isolated worktrees', async () => {
+  it('preserves configured git workspace policy base ref for isolated worktrees', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'GitPolicyFix',
       enableIsolatedWorktrees: true,
@@ -704,10 +738,10 @@ describe('assembleCompany', () => {
           description: '',
           goals: [],
           repoUrl: 'https://github.com/example/app',
-          repoRef: 'main',
+          repoRef: 'release/2026-q2',
           executionWorkspacePolicy: {
             defaultMode: 'isolated_workspace',
-            workspaceStrategy: { type: 'git_worktree', baseRef: 'main' },
+            workspaceStrategy: { type: 'git_worktree', baseRef: 'release/2026-q2' },
           },
         },
       ],
@@ -721,16 +755,84 @@ describe('assembleCompany', () => {
     const projectBlock = bootstrap.split('### app')[1] || '';
 
     assert.ok(
-      projectBlock.includes('**workspace.repoRef**: main'),
-      'workspace repoRef should keep the provided raw default ref when given',
+      projectBlock.includes('**workspace.repoRef**: release/2026-q2'),
+      'workspace repoRef should keep the configured project ref verbatim',
     );
     assert.ok(
-      !projectBlock.includes('**executionWorkspacePolicy.workspaceStrategy.baseRef**: main'),
-      'raw base ref should be normalized to a remote ref',
+      projectBlock.includes(
+        '**executionWorkspacePolicy.workspaceStrategy.baseRef**: release/2026-q2',
+      ),
+      'base ref should use the project/worktree setting verbatim',
+    );
+  });
+
+  it('does not render external-repo isolated workspace policy when the instance setting is off', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'ExternalSharedCo',
+      userGoals: [{ title: 'Ship product', description: 'Build the app' }],
+      userProjects: [
+        {
+          name: 'app',
+          description: 'Existing repo app',
+          goals: ['Ship product'],
+          workspace: {
+            sourceType: 'git_repo',
+            repoUrl: 'https://github.com/example/app',
+            repoRef: 'release/2026-q2',
+          },
+          executionWorkspacePolicy: {
+            defaultMode: 'isolated_workspace',
+            workspaceStrategy: { type: 'git_worktree', baseRef: 'release/2026-q2' },
+          },
+        },
+      ],
+      moduleNames: [],
+      extraRoleNames: [],
+      enableIsolatedWorktrees: false,
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    const projectBlock = bootstrap.split('### app')[1].split('## Agents')[0];
+    assert.ok(!projectBlock.includes('executionWorkspacePolicy.defaultMode'));
+  });
+
+  it('synthesizes isolated worktree policy from project ref only when the instance setting is on', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'ExternalIsolatedCo',
+      userGoals: [{ title: 'Ship product', description: 'Build the app' }],
+      userProjects: [
+        {
+          name: 'app',
+          description: 'Existing repo app',
+          goals: ['Ship product'],
+          workspace: {
+            sourceType: 'git_repo',
+            repoUrl: 'https://github.com/example/app',
+            defaultRef: 'release/2026-q2',
+          },
+        },
+      ],
+      moduleNames: [],
+      extraRoleNames: [],
+      enableIsolatedWorktrees: true,
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    const projectBlock = bootstrap.split('### app')[1].split('## Agents')[0];
+    assert.ok(
+      projectBlock.includes('**executionWorkspacePolicy.defaultMode**: isolated_workspace'),
     );
     assert.ok(
-      projectBlock.includes('**executionWorkspacePolicy.workspaceStrategy.baseRef**: origin/main'),
-      'base ref should become origin/main for isolated worktree policy',
+      projectBlock.includes('**executionWorkspacePolicy.workspaceStrategy.type**: git_worktree'),
+    );
+    assert.ok(
+      projectBlock.includes(
+        '**executionWorkspacePolicy.workspaceStrategy.baseRef**: release/2026-q2',
+      ),
     );
   });
 
@@ -1269,7 +1371,7 @@ describe('assembleCompany', () => {
     assert.ok(companyDir.endsWith('NoDeps'));
   });
 
-  it('does not emit enrichment fragments as standalone files (flag off)', async () => {
+  it('injects enrichment fragments by default without emitting standalone files', async () => {
     const engDir = join(templatesDir, 'roles', 'engineer');
     await writeFile(join(engDir, 'LENSES.md'), '## Domain Lenses\n\n- **Test Lens** — x\n');
     await writeFile(join(engDir, 'DONE.md'), '## Done\n\nAlways comment.\n');
@@ -1286,7 +1388,12 @@ describe('assembleCompany', () => {
     assert.ok(!files.includes('LENSES.md'), 'LENSES.md must not be copied verbatim');
     assert.ok(!files.includes('DONE.md'), 'DONE.md must not be copied verbatim');
     const soul = await readFile(join(companyDir, 'agents', 'engineer', 'SOUL.md'), 'utf-8');
-    assert.ok(!soul.includes('Domain Lenses'), 'SOUL.md must stay lean when flag off');
+    const heartbeat = await readFile(
+      join(companyDir, 'agents', 'engineer', 'HEARTBEAT.md'),
+      'utf-8',
+    );
+    assert.ok(soul.includes('Domain Lenses'), 'SOUL.md should contain injected lenses by default');
+    assert.ok(heartbeat.includes('## Done'), 'HEARTBEAT.md should contain injected done criteria');
   });
 
   it('injects lenses into SOUL.md and done-criteria into HEARTBEAT.md when enabled', async () => {
@@ -1323,7 +1430,7 @@ describe('assembleCompany', () => {
     );
   });
 
-  it('appends a primary skill output bar when enabled, and never emits .bar.md standalone', async () => {
+  it('appends a primary skill output bar by default, and never emits .bar.md standalone', async () => {
     const modDir = join(templatesDir, 'modules', 'demo');
     await mkdir(join(modDir, 'skills'), { recursive: true });
     await writeJson(join(modDir, 'module.meta.json'), {
@@ -1340,7 +1447,6 @@ describe('assembleCompany', () => {
       companyName: 'BarCo',
       moduleNames: ['demo'],
       extraRoleNames: [],
-      enableEnrichedPersonas: true,
       outputDir,
       templatesDir,
     });
@@ -1353,7 +1459,7 @@ describe('assembleCompany', () => {
     assert.ok(!skillFiles.includes('demo-skill.bar.md'), '.bar.md must not be a standalone file');
   });
 
-  it('does not append output bars or lenses when flag is off (baseline unchanged)', async () => {
+  it('can internally suppress output bars for baseline regression fixtures', async () => {
     const modDir = join(templatesDir, 'modules', 'demo2');
     await mkdir(join(modDir, 'skills'), { recursive: true });
     await writeJson(join(modDir, 'module.meta.json'), {
@@ -1367,6 +1473,7 @@ describe('assembleCompany', () => {
       companyName: 'BaselineCo',
       moduleNames: ['demo2'],
       extraRoleNames: [],
+      enableEnrichedPersonas: false,
       outputDir,
       templatesDir,
     });

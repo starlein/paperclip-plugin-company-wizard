@@ -15,7 +15,7 @@
 
 ---
 
-> **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for the current Paperclip API (`>=2026.529.0`) with substantial bug fixes. End-to-end company setup is largely functional as of v0.3.18.
+> **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for the current Paperclip API (`>=2026.529.0`) with substantial bug fixes. End-to-end company setup is governed through current Paperclip workflows as of v0.4.1.
 
 <details>
 <summary><strong>What changed vs. upstream</strong></summary>
@@ -32,8 +32,8 @@
 - **Agents provisioned with complete instructions** — every non-CEO agent is now created by the plugin directly with its full `instructionsBundle` (AGENTS.md + HEARTBEAT/SOUL/TOOLS + skills). Previously the CEO created these agents during bootstrap with only an `instructionsFilePath`, leaving each agent with a bare AGENTS.md and fragile external path references
 - **Routines created directly during provisioning** — Paperclip only allows an agent to create routines assigned to itself, so the CEO could not create routines owned by the Product Owner. The plugin now creates all routines with board authority at provisioning time and pre-creates the main project so every routine — including those owned by non-CEO agents — is linked to it; BOOTSTRAP.md tells the CEO they already exist
 - **Worker agents no longer run always-on heartbeats** — enabling heartbeats on every provisioned agent caused bursts of concurrent runs that crashed the dev server. Only the CEO keeps an always-on heartbeat; all other agents are woken on assignment
-- **Fresh local repos no longer bootstrap with isolated git worktrees** — provisioning a brand-new `local_path` project with an `isolated_workspace` / `git_worktree` policy made worker agents try to branch off `main` before the repo existed, so early runs failed and agents flipped to `error`. The isolated policy is now suppressed for fresh local repos (agents work in the shared project workspace during bootstrap); existing external repos keep it. Guarded in `assemble.js` and removed at the source in `StepRepository` and the AI wizard prompts
-- **Workspace isolation follows Paperclip instance settings** — `enableIsolatedWorktrees` is no longer a plugin setting. The wizard reads `enableIsolatedWorkspaces` from the Paperclip instance experimental settings and only applies `isolated_workspace` / `git_worktree` for external repositories when that setting is enabled.
+- **Fresh local repos no longer bootstrap with isolated git worktrees** — provisioning a brand-new `local_path` project with an `isolated_workspace` / `git_worktree` policy made worker agents try to branch before the repo existed, so early runs failed and agents flipped to `error`. The isolated policy is now suppressed for fresh local repos (agents work in the shared project workspace during bootstrap). Guarded in `assemble.js` and removed at the source in `StepRepository` and the AI wizard prompts
+- **Workspace isolation follows Paperclip instance settings** — `enableIsolatedWorktrees` is no longer a plugin setting. The wizard reads `enableIsolatedWorkspaces` from the Paperclip instance experimental settings and only applies `isolated_workspace` / `git_worktree` for external repositories when that setting is enabled. Base refs are preserved from project/worktree settings and are no longer rewritten to `main`, `master`, or `origin/*`.
 - Bootstrap ordering hardened; agent filter bug fixed (v0.3.7)
 
 #### Assembly and template fixes
@@ -60,7 +60,7 @@
 #### New features (not in upstream)
 
 - **Existing-company provisioning** — target an existing Paperclip company instead of creating a new one (`existingCompanyId`); partial-failure cleanup never deletes existing companies
-- **Approval-aware agent hiring** — detects board-approval requirements, falls back to `/agent-hires` + auto-approve; surfaces pending approval ID if auto-approve fails
+- **Governed agent hiring** — submits agent creation through `/agent-hires`, preserves pending approval IDs, and does not auto-approve board-gated hires
 - **`disableBoardApprovalOnNewCompanies` setting** — optionally patches new companies to skip board approval for fully-autonomous bootstrap
 - **Repository workspace setup** — choose between a fresh local Git repo or an existing external repository (GitHub, GitLab, etc.) via the manual wizard step or inline on the review/summary screen (available in both the manual and AI paths; the external option opens a repo-URL field)
 - **Routine schedules** tightened to run every few hours around the clock (auto-assign every 2 h, stall-detection every 3 h, backlog grooming every 4 h) with `skip_if_active` concurrency policy
@@ -70,7 +70,9 @@
 
 ---
 
-**Company Wizard** is a [Paperclip](https://github.com/paperclipai/paperclip) plugin that bootstraps an AI agent company for your project — roles, workflows, skills, and tasks — in a few clicks. Open it from the sidebar, answer a few questions (or just describe your project), and it assembles the workspace files and creates the company + CEO in Paperclip. The CEO then hires the team and sets up the backlog on its first heartbeat.
+**Company Wizard** is a [Paperclip](https://github.com/paperclipai/paperclip) plugin that bootstraps an AI agent company for your project — roles, workflows, skills, and tasks — in a few clicks. Open it from the sidebar, answer a few questions (or just describe your project), and it assembles the workspace files, creates the company, records Board Operations / Hiring Plan issues, submits governed agent-hire requests, creates routines, and adds the bootstrap task in Paperclip.
+
+> **Major v0.4.1 workflow update:** generated companies now use Paperclip's governed agent-hire flow, decision-log/hiring-plan work products, current heartbeat task-management contract, native `executionPolicy` review/approval stages, and always-on persona enrichment where templates provide `LENSES.md`, `DONE.md`, or skill output bars. Isolated execution workspaces are only applied when Paperclip's experimental instance setting is enabled, and configured project/worktree refs are preserved verbatim.
 
 <br>
 
@@ -141,7 +143,7 @@ Every company starts with just the **CEO** — and that's already a functional t
 
 No role is ever truly missing. When a specialist isn't present, the next best available person steps in. The CEO is always the final fallback.
 
-> **Enriched personas (opt-in):** set `enableEnrichedPersonas` to give expert roles named **domain lenses** (e.g. STRIDE, Nielsen's 10, RICE) in their `SOUL.md`, add **output/review bars** to module skills, and append **done-criteria** to `HEARTBEAT.md`. Off by default — the baseline personas stay lean.
+> **Enriched personas:** roles/modules that ship `LENSES.md`, `DONE.md`, or `<skill>.bar.md` are enriched automatically. Domain lenses are appended into `SOUL.md`, done criteria into `HEARTBEAT.md`, and output/review bars into the primary skill. Fragment files never ship as standalone files.
 
 <details>
 <summary><strong>Full capability ownership table</strong></summary>
@@ -593,9 +595,9 @@ Configure the plugin via **Settings → Plugins → Company Wizard** in the Pape
 | `paperclipPassword` | No | Board login password. Stored as a secret ref. |
 | `anthropicApiKey` | No | Anthropic API key for AI wizard mode. Stored as a secret ref. Required to use the AI-powered setup path. |
 | `disableBoardApprovalOnNewCompanies` | No | If `true`, the wizard PATCHes new companies to set `requireBoardApprovalForNewAgents=false` during provisioning. Leave `false` to preserve approval-gated hiring. Defaults to `false`. |
-| `enableEnrichedPersonas` | No | If `true`, expert roles get domain lenses (named mental models) in `SOUL.md`, module skills get concrete output/review bars, and `HEARTBEAT.md` gets explicit done-criteria. Leave `false` (default) for the lean baseline personas. |
+For enriched personas: there is no plugin setting. Template fragments are applied automatically when present.
 
-For isolated worktrees: there is no plugin setting. The policy is controlled by Paperclip instance settings under **Settings → Instance → Experimental → enableIsolatedWorkspaces** and is consumed by the plugin during provisioning.
+For isolated worktrees: there is no plugin setting. The policy is controlled by Paperclip instance settings under **Settings → Instance → Experimental → enableIsolatedWorkspaces** and is consumed by the plugin during provisioning. External repository base refs are taken from project/worktree settings; leaving the ref blank lets Paperclip resolve its default instead of the wizard inventing `main`, `master`, or `origin/*`.
 
 <br>
 
@@ -804,10 +806,12 @@ Create `templates/presets/<name>/preset.meta.json`:
 
 1. Connects to Paperclip API (auto-detects `local_trusted` vs authenticated)
 2. Creates a new **company** in Paperclip — or targets an existing one if `existingCompanyId` is set in the review step
-3. Creates the **CEO agent** with adapter config (cwd, instructionsFilePath, model), or reuses the existing active CEO when targeting an existing company. If board approval is required, the wizard hires via `/agent-hires` and auto-approves
-4. Creates a **Bootstrap task** assigned to the CEO
+3. Creates **Board Operations** and **Hiring Plan** issues with `decision-log` and `hiring-plan` documents
+4. Submits the **CEO and team agents** through `/agent-hires` with full managed `instructionsBundle` payloads and `sourceIssueId` provenance; pending approvals are logged for board action instead of auto-approved
+5. Creates scheduled routines with board authority and links them to the pre-created main project when needed
+6. Creates a **Bootstrap task** assigned to the CEO
 
-The CEO then sets up the rest of the team on its first heartbeat: hiring the other roles from disk, creating the goal, project, and initial backlog issues. If provisioning fails after a **new** company is created, the partial company is automatically deleted — existing target companies are never deleted on error.
+The CEO then continues setup on its first heartbeat: approve/confirm any pending hire gates, create goals and initial backlog issues, link pre-created projects to goals when needed, and start normal assigned-work workflows. If provisioning fails after a **new** company is created, the partial company is automatically deleted — existing target companies are never deleted on error.
 
 <br>
 

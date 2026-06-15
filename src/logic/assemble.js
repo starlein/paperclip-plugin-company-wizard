@@ -47,9 +47,9 @@ async function appendToFile(filePath, content) {
   }
 }
 
-// Enrichment fragments are opt-in persona additions (domain lenses, done-criteria,
+// Enrichment fragments are persona additions (domain lenses, done-criteria,
 // output bars). They are never emitted as standalone files — assembly appends them
-// into SOUL.md / HEARTBEAT.md / skill files only when enableEnrichedPersonas is on.
+// into SOUL.md / HEARTBEAT.md / skill files for roles/modules that provide them.
 function isEnrichmentFragment(name) {
   return name === 'LENSES.md' || name === 'DONE.md' || name.endsWith('.bar.md');
 }
@@ -77,11 +77,7 @@ function normalizeExecutionBaseRef(ref, fallbackRef) {
     (value) => typeof value === 'string' && value.trim(),
   );
   const selected = candidates.length > 0 ? String(candidates[0]).trim() : '';
-  if (!selected) return 'origin/main';
-  if (selected.startsWith('origin/') || selected.startsWith('refs/')) {
-    return selected;
-  }
-  return `origin/${selected}`;
+  return selected || null;
 }
 
 /**
@@ -99,7 +95,7 @@ function normalizeExecutionBaseRef(ref, fallbackRef) {
  * @param {Array} [opts.presetRoutines] - Initial routines from the selected preset
  * @param {Array} [opts.presetLabels] - Explicit labels from the selected preset
  * @param {boolean} [opts.enableIsolatedWorktrees] - Admin setting: when true, external-repo projects keep their isolated git_worktree executionWorkspacePolicy; when false (default), agents share the project workspace. Fresh local repos never use isolated worktrees regardless.
- * @param {boolean} [opts.enableEnrichedPersonas] - Opt-in: when true, append role LENSES.md to SOUL.md, role DONE.md to HEARTBEAT.md, and primary-skill <skill>.bar.md output bars. Default false keeps the lean baseline.
+ * @param {boolean} [opts.enableEnrichedPersonas] - Internal escape hatch. Defaults true: append role LENSES.md to SOUL.md, role DONE.md to HEARTBEAT.md, and primary-skill <skill>.bar.md output bars when fragments exist.
  * @param {string} opts.outputDir
  * @param {string} opts.templatesDir
  * @param {(line: string) => void} opts.onProgress
@@ -118,7 +114,7 @@ export async function assembleCompany({
   presetRoutines = [],
   presetLabels = [],
   enableIsolatedWorktrees = false,
-  enableEnrichedPersonas = false,
+  enableEnrichedPersonas = true,
   outputDir,
   templatesDir,
   onProgress = () => {},
@@ -527,7 +523,7 @@ export async function assembleCompany({
       await mkdir(destSkillsDir, { recursive: true });
       const destFile = join(destSkillsDir, fileName);
       await copyFile(resolved.path, destFile);
-      // Opt-in: append a primary skill's output/review bar when present.
+      // Append a primary skill's output/review bar when present.
       let barApplied = false;
       if (enableEnrichedPersonas && label === 'primary') {
         const barFileName = fileName.replace(/\.md$/, '.bar.md');
@@ -643,9 +639,9 @@ export async function assembleCompany({
     }
   }
 
-  // 4b. Inject opt-in persona enrichments. Domain lenses → SOUL.md, done-criteria →
+  // 4b. Inject persona enrichments. Domain lenses → SOUL.md, done-criteria →
   // HEARTBEAT.md. Fragments live at roles/<role>/LENSES.md and roles/<role>/DONE.md
-  // and apply only when enableEnrichedPersonas is on. Same gracefully-optimistic
+  // and apply when enableEnrichedPersonas is on. Same gracefully-optimistic
   // pattern as skills: a missing fragment simply means no enrichment for that role.
   if (enableEnrichedPersonas) {
     for (const roleName of allRoles) {
@@ -974,6 +970,7 @@ export async function assembleCompany({
   // All goals (user goals + inline goals + expanded subgoals) rendered uniformly.
   if (allGoals.length > 0) {
     bootstrap += `## Goals\n\n`;
+    bootstrap += `> **Goal focus:** keep the top-level goal outcome-first and product-first. Secondary constraints (compliance, security, accessibility, performance, tech stack) are quality bars unless the user explicitly made one of them the primary project. Seed issues should lead with core product capabilities and include constraints as acceptance criteria/risk notes, not let one side constraint dominate the backlog.\n\n`;
     for (const g of allGoals) {
       bootstrap += `### ${g.title}\n\n`;
       bootstrap += renderMeta([
@@ -1059,11 +1056,12 @@ export async function assembleCompany({
     return `{ ${fields.join(', ')} }`;
   };
 
-  // Isolated git worktrees are gated by two conditions:
+  // Isolated git worktrees are gated by the Paperclip instance experimental
+  // setting. Repository selection alone must not enable isolation. When the
+  // setting is on, project/worktree settings supply the base ref; we preserve it
+  // verbatim instead of forcing main/master or origin/*.
   //
-  // 1. The `enableIsolatedWorktrees` admin setting must be on. When it is
-  //    off (the default), agents always share the project workspace.
-  // 2. Even when enabled, a freshly-created local repository must NOT use them:
+  // Freshly-created local repositories still never use them during bootstrap:
   //    the repo and its base ref do not exist yet when the first agents wake, so
   //    worktree creation fails and every early run errors out. Isolated worktrees
   //    only make sense for existing external repos (sourceType "git_repo"), where
@@ -1072,23 +1070,36 @@ export async function assembleCompany({
 
   const effectiveExecutionPolicy = (proj, workspace) => {
     const policy = proj?.executionWorkspacePolicy;
-    if (!policy || typeof policy !== 'object') return null;
+    const canUseIsolatedWorktrees = enableIsolatedWorktrees && !isFreshLocalRepo(workspace);
+    if (!policy || typeof policy !== 'object') {
+      if (!canUseIsolatedWorktrees) return null;
+      const baseRef = normalizeExecutionBaseRef(null, workspace?.defaultRef || workspace?.repoRef);
+      return {
+        enabled: true,
+        defaultMode: 'isolated_workspace',
+        workspaceStrategy: {
+          type: 'git_worktree',
+          ...(baseRef ? { baseRef } : {}),
+        },
+      };
+    }
     if (policy.defaultMode === 'isolated_workspace') {
-      if (!enableIsolatedWorktrees || isFreshLocalRepo(workspace)) return null;
+      if (!canUseIsolatedWorktrees) return null;
 
       const strategy = policy.workspaceStrategy;
-      if (!strategy || typeof strategy !== 'object') return policy;
-      if (strategy.type !== 'git_worktree') return policy;
+      if (!strategy || typeof strategy !== 'object')
+        return { ...policy, enabled: policy.enabled ?? true };
+      if (strategy.type !== 'git_worktree') return { ...policy, enabled: policy.enabled ?? true };
 
       const workspaceStrategy = { ...strategy };
-      const normalizedBaseRef = normalizeExecutionBaseRef(
+      const resolvedBaseRef = normalizeExecutionBaseRef(
         workspaceStrategy.baseRef,
-        workspace?.repoRef || workspace?.defaultRef,
+        workspace?.defaultRef || workspace?.repoRef,
       );
-      if (normalizedBaseRef) {
-        workspaceStrategy.baseRef = normalizedBaseRef;
+      if (resolvedBaseRef) {
+        workspaceStrategy.baseRef = resolvedBaseRef;
       }
-      return { ...policy, workspaceStrategy };
+      return { ...policy, enabled: policy.enabled ?? true, workspaceStrategy };
     }
     return policy;
   };
@@ -1116,16 +1127,20 @@ export async function assembleCompany({
   // the repo-setup owner enables isolation as soon as the first commit lands.
   const renderDeferredIsolationNote = (workspace) => {
     if (!enableIsolatedWorktrees || !isFreshLocalRepo(workspace)) return '';
+    const configuredRef = normalizeExecutionBaseRef(
+      null,
+      workspace?.defaultRef || workspace?.repoRef,
+    );
+    const refHint = configuredRef
+      ? `When you later enable the project policy, use that configured ref (currently \`${configuredRef}\`) as the worktree \`baseRef\`.`
+      : `When you later enable the project policy, first set the project/worktree base ref to the branch Paperclip should branch from.`;
     return (
       `> **Enable isolated worktrees once the repo exists.** This instance has isolated ` +
       `worktrees enabled, but this project starts as a fresh local repository, so the ` +
       `\`executionWorkspacePolicy\` is intentionally omitted now — worktrees need an existing ` +
-      `base ref and would fail on the first run. As the final step of **"Prepare GitHub ` +
-      `repository"**, after the initial commit is pushed to \`main\`, switch this project to ` +
-      `isolated worktrees (Project settings → isolated workspaces, or set ` +
-      `\`executionWorkspacePolicy: { defaultMode: "isolated_workspace", workspaceStrategy: ` +
-      `{ type: "git_worktree", baseRef: "main" } }\` on the project). Until then agents share ` +
-      `the project workspace; do not flip it before the repo has its first commit.\n\n`
+      `base ref and would fail on the first run. After the initial commit exists on the configured ` +
+      `base branch, switch this project to isolated worktrees in Project settings. ${refHint} ` +
+      `Until then agents share the project workspace; do not flip it before the repo has its first commit.\n\n`
     );
   };
 
@@ -1140,11 +1155,16 @@ export async function assembleCompany({
   // the resolved main project (with its normalized workspace) so the worker can
   // create it.
   const mainProjectInfo = mainProject
-    ? {
-        name: mainProjectName,
-        description: mainProject.description || '',
-        workspace: normalizeProjectWorkspace(mainProject),
-      }
+    ? (() => {
+        const workspace = normalizeProjectWorkspace(mainProject);
+        const executionWorkspacePolicy = effectiveExecutionPolicy(mainProject, workspace);
+        return {
+          name: mainProjectName,
+          description: mainProject.description || '',
+          workspace,
+          ...(executionWorkspacePolicy ? { executionWorkspacePolicy } : {}),
+        };
+      })()
     : null;
   // Mirror the worker's gate: the main project is only pre-created when there
   // are routines to attach. Otherwise the CEO still creates it during bootstrap.
@@ -1153,7 +1173,7 @@ export async function assembleCompany({
   if (resolvedProjects.length > 0) {
     bootstrap += `## Projects\n\n`;
     if (mainProjectPreCreated) {
-      bootstrap += `> **The Company Wizard has already created the main project "${mainProjectName}"** (with board authority) so the scheduled routines could be linked to it. Do NOT recreate it — create issues against it, and link the goals above to it.\n\n`;
+      bootstrap += `> **The Company Wizard has already created the main project "${mainProjectName}"** (with board authority) so the scheduled routines could be linked to it. Do NOT recreate it — create issues against it. After creating the goals above, resolve their real ids and link them with \`PATCH /api/projects/{projectId}\` using \`{ "goalIds": [...] }\`.\n\n`;
     }
     for (const proj of resolvedProjects) {
       const workspace = normalizeProjectWorkspace(proj);
@@ -1297,7 +1317,7 @@ export async function assembleCompany({
       const ciClause = hasCi
         ? 'CI (lint/test/build) must be green before the Engineer merges — this is the hard gate and cannot be skipped'
         : 'no CI is configured, so the Engineer must run the test suite/build and paste the real output into the merge-gate verdict before merging — this is the hard gate';
-      bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`. The substantive gate is execution, not opinion: ${ciClause}. Stages, in order: a \`review\` stage for QA when present (test adequacy / running the tests), a \`review\` stage for the Security Engineer **only when the change is security-relevant** (auth, secrets, input boundaries, crypto, dependencies, infra exposure), an \`approval\` stage for the Product Owner (intent/scope), then a final \`approval\` merge-gate stage for the Engineer (who satisfies the hard gate above, merges the PR, then records approval to close the issue). The merge gate must be last so the Product Owner's approval does not auto-close the issue with the PR still open. The Code Reviewer and other domain reviewers may add advisory, non-blocking comments but do not gate the merge. Every verdict must cite executed verification. Resolve each role to its agentId. Do not create separate child review issues and do not use @-mentions.\n`;
+      bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`. The substantive gate is execution, not opinion: ${ciClause}. Stages, in order: a \`review\` stage for QA when present (test adequacy / running the tests), a \`review\` stage for the Security Engineer **only when the change is security-relevant** (auth, secrets, input boundaries, crypto, dependencies, infra exposure), an \`approval\` stage for the Product Owner (intent/scope), then a final \`approval\` merge-gate stage for the Engineer (who satisfies the hard gate above, merges the PR, then records approval to close the issue). The merge gate must be last so the Product Owner's approval does not auto-close the issue with the PR still open. The Code Reviewer and other domain reviewers may add advisory, non-blocking comments but do not gate the merge. Every verdict must cite executed verification. Resolve each role to its agentId. Model review stages in executionPolicy rather than child issues or @-mentions.\n`;
     }
     bootstrap += `\n`;
   }
@@ -1323,7 +1343,7 @@ export async function assembleCompany({
 
   // --- Provisioning steps ---
   bootstrap += `## Provisioning Steps\n\n`;
-  bootstrap += `The Company Wizard "Provision" step creates the company, the CEO, and this bootstrap issue. The CEO heartbeat creates the remaining Paperclip objects below by following this task.\n\n`;
+  bootstrap += `The Company Wizard "Provision" step creates the company, board-operations issue, hiring-plan issue, agent hire requests, routines, and this bootstrap issue. Approve any pending hires before running dependent team workflows. The CEO heartbeat completes the remaining setup below by following this task.\n\n`;
   bootstrap += `Manual setup order (respects Paperclip object dependencies):\n\n`;
   let stepN = 1;
   bootstrap += `${stepN++}. **Create company** "${companyName}"${companyDescription ? ' (with description above)' : ''}\n`;
@@ -1342,7 +1362,7 @@ export async function assembleCompany({
       : '';
     if (idx === 0 && mainProjectPreCreated) {
       const goalLinkInstruction = goalLinks
-        ? ` After creating the goals above, link them to it (${goalLinks.replace(/^, /, '')}).`
+        ? ` After creating the goals above, resolve their real ids and link them with PATCH /api/projects/{projectId} (${goalLinks.replace(/^, /, '')}).`
         : '';
       bootstrap += `${stepN++}. **Main project already created** — the Company Wizard provisioned project "${proj.name}" (with board authority) so the scheduled routines could be linked to it. Do NOT recreate it.${goalLinkInstruction}\n`;
     } else {

@@ -1,75 +1,53 @@
-# HEARTBEAT.md -- CEO Heartbeat Checklist
+# HEARTBEAT.md -- Ceo Heartbeat Checklist
 
-Run this checklist on every heartbeat. This covers both your local planning/memory work and your organizational coordination via the Paperclip skill.
+Run this checklist on every heartbeat. The Paperclip skill is the source of truth for board coordination; this file records the current expected flow and role-local reminders.
 
-## 1. Identity and Context
+## 1. Identity and Wake Context
 
-- `GET /api/agents/me` -- confirm your id, role, budget, chainOfCommand.
-- Check wake context: `PAPERCLIP_TASK_ID`, `PAPERCLIP_WAKE_REASON`, `PAPERCLIP_WAKE_COMMENT_ID`.
+- `GET /api/agents/me` -- confirm your id, role, companyId, budget, and chain of command.
+- Check wake context: `PAPERCLIP_TASK_ID`, `PAPERCLIP_WAKE_REASON`, `PAPERCLIP_WAKE_COMMENT_ID`, `PAPERCLIP_APPROVAL_ID`.
+- If the wake reason is approval/review/routine, treat that object as the active assignment.
 
-## 2. Local Planning Check
+## 2. Get Assigned Work
 
-1. Read today's plan from `$AGENT_HOME/memory/YYYY-MM-DD.md` under "## Today's Plan".
-2. Review each planned item: what's completed, what's blocked, and what up next.
-3. For any blockers, resolve them yourself or escalate to the board.
-4. If you're ahead, start on the next highest priority.
-5. **Record progress updates** in the daily notes.
+- Prefer `GET /api/agents/me/inbox-lite` for your actionable inbox.
+- If `PAPERCLIP_TASK_ID` is set and belongs to you, prioritize it.
+- Otherwise work assigned issues only. Never look for random unassigned work during a normal heartbeat.
+- Include `todo`, `in_progress`, `in_review`, and review/approval tasks surfaced by the inbox. Skip blocked work unless you can unblock it.
 
-## 3. Approval Follow-Up
+## 3. Load Execution Context
 
-If `PAPERCLIP_APPROVAL_ID` is set:
+- For the chosen issue, call `GET /api/issues/{id}/heartbeat-context` before changing state.
+- Inspect status, parent/children, project/goal, labels, comments, documents, work products, `blockedByIssueIds`, `executionPolicy`, and current execution state.
+- Respect pause/cancel, budget, sandbox, and approval gates. Do not bypass executionPolicy review or approval stages.
 
-- Review the approval and its linked issues.
-- Close resolved issues or comment on what remains open.
+## 4. Checkout and Work
 
-## 4. Get Assignments
+- Checkout before mutating work: `POST /api/issues/{id}/checkout` with the expected current status when the API supports `expectedStatuses`.
+- Never retry a 409; that issue belongs to another active run.
+- Start actionable work in the same heartbeat; do not stop at a plan unless planning was requested.
+- Leave durable progress with a clear next action. Use child issues for long or parallel delegated work instead of polling.
+- Mark true dependencies with `blockedByIssueIds` instead of free-text blockers.
 
-- `GET /api/companies/{companyId}/issues?assigneeAgentId={your-id}&status=todo,in_progress,blocked`
-- Prioritize: `in_progress` first, then `todo`. Skip `blocked` unless you can unblock it.
-- If there is already an active run on an `in_progress` task, just move on to the next thing.
-- If `PAPERCLIP_TASK_ID` is set and assigned to you, prioritize that task.
+## 5. Evidence, Work Products, and Handover
 
-## 5. Checkout and Work
+- Record real verification: commands, test results, screenshots, reviewed artifacts, or explicit "not run" rationale.
+- Upload or attach user-inspectable outputs as work products/artifacts/documents; local filesystem paths alone are not enough.
+- Use issue documents for long plans, specs, QA reports, security reviews, or hiring drafts; comments should summarize and link.
+- Handoffs should use assignment/status/executionPolicy and a concrete next action. Do not rely on generic @-mentions.
+- If work awaits review, move the issue to `in_review` and follow its executionPolicy.
 
-- Always checkout before working: `POST /api/issues/{id}/checkout`.
-- Never retry a 409 -- that task belongs to someone else.
-- Do the work. Update status and comment when done.
+## 6. Exit
 
-## 6. Delegation
-
-- Create subtasks with `POST /api/companies/{companyId}/issues`. Always set `parentId`, `projectId`, and `goalId`. For top-level follow-ons, include the active project's `projectId` explicitly.
-- Create subissues only for independent work slices; avoid splitting tightly coupled implementation across sibling subissues.
-- Use `paperclip-create-agent` skill when hiring new agents.
-- Assign work to the right agent for the job.
-
-## 7. Fact Extraction
-
-1. Check for new conversations since last extraction.
-2. Extract durable facts to the relevant entity in `$AGENT_HOME/life/` (PARA).
-3. Update `$AGENT_HOME/memory/YYYY-MM-DD.md` with timeline entries.
-4. Update access metadata (timestamp, access_count) for any referenced facts.
-
-## 8. Exit
-
-- Comment on any in_progress work before exiting.
-- If no assignments and no valid mention-handoff, exit cleanly.
-
----
-
-## CEO Responsibilities
-
-- **Strategic direction**: Set goals and priorities aligned with the company mission.
-- **Hiring**: Spin up new agents when capacity is needed.
-- **Unblocking**: Escalate or resolve blockers for reports.
-- **Budget awareness**: Above 80% spend, focus only on critical tasks.
-- **Never look for unassigned work** -- only work on what is assigned to you.
-- **Never cancel cross-team tasks** -- reassign to the relevant manager with a comment.
+- Always comment before exiting any issue you touched: status, evidence, blockers, work products, and next action.
+- If the issue used an isolated execution workspace/worktree, close it before final disposition: read `currentExecutionWorkspace.id` from `heartbeat-context`, check `GET /api/execution-workspaces/{id}/close-readiness`, then archive with `PATCH /api/execution-workspaces/{id}` `{ "status": "archived" }` after commits/PRs are merged and the tree is clean. If close-readiness or cleanup is blocked, do not mark `done`; leave the issue `blocked`/`in_review` with the exact cleanup blocker and next owner.
+- If no assigned work, valid approval/review, or routine-run exists, exit cleanly without scanning unrelated unassigned work.
 
 ## Rules
 
 - Always use the Paperclip skill for coordination.
-- Always include `X-Paperclip-Run-Id` header on mutating API calls.
-- Comment in concise markdown: status line + bullets + links.
-- Self-assign via checkout only when explicitly @-mentioned.
+- Always include `X-Paperclip-Run-Id` on mutating API calls when available.
+- Keep comments concise markdown: status line + bullets + links.
+- Never expose secrets, credentials, private customer data, or hidden chain-of-thought in comments or artifacts.
 
 <!-- Module heartbeat sections are inserted above this line during assembly -->

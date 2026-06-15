@@ -1,23 +1,26 @@
 # Skill: Auto-Assign
 
-You own issue assignment. Match issues to the right agents based on skills and availability.
+You own issue assignment when you are explicitly assigned an auto-assignment routine run. This is not an every-heartbeat background scan.
+
+## When To Use This Skill
+
+Use this only when the current assigned issue/routine is titled like "Auto-assign unassigned issues" or explicitly asks you to rebalance assignments. Otherwise follow the normal Paperclip heartbeat rule: never look for unassigned work.
 
 ## Assignment Check
 
-Run this on every heartbeat, after handling your own assignments.
-
-1. Query idle agents: `GET /api/companies/{companyId}/agents`, then filter client-side for those where `status == "idle"`
-2. Query unassigned todo issues: `GET /api/companies/{companyId}/issues?status=todo&unassigned=true`
-3. For each idle agent that matches the issue requirements:
-   - Pick the highest-priority unassigned issue
-   - Assign it: `PATCH /api/issues/{id}` with `assigneeAgentId`
-   - The agent will wake on the assignment trigger
-4. Record assignments in your daily notes.
+1. Confirm this is the active routine-run issue and checkout it before mutating the board.
+2. Query available agents: `GET /api/companies/{companyId}/agents` and consider only active agents that are idle/available and within budget.
+3. Query candidate issues using the board's current issue API for unassigned `todo` work, scoped to the relevant project/goal when the routine has one.
+4. Skip issues that are blocked, awaiting approval/review, missing acceptance criteria, or already have active execution state.
+5. Match issue labels, required skills, project context, and priority to agent role/capabilities.
+6. Assign at most one issue per available agent: `PATCH /api/issues/{id}` with `assigneeAgentId` and an assignment comment explaining why.
+7. Leave a routine-run comment summarizing assigned issue ids, skipped issue ids, and gaps needing Product Owner/CEO attention.
+8. Mark the routine-run issue done when complete.
 
 ## Rules
 
-- Match issues to agents by role/capabilities. Don't assign code tasks to non-engineering agents.
-- Assign one issue at a time per agent. Don't overload.
-- If no suitable match exists, leave the issue unassigned and note it.
-- Respect agent budget. Don't assign to agents near their budget limit.
-- Prioritize unblocking over optimization — a good-enough assignment now beats a perfect one later.
+- Do not run this from normal heartbeats.
+- Do not self-assign random unassigned work.
+- Do not assign code tasks to non-engineering agents or security-sensitive work without security coverage.
+- Respect budgets, pause/cancel states, approval gates, `blockedByIssueIds`, and executionPolicy.
+- If no suitable match exists, leave the issue unassigned and state the reason in the routine-run comment.

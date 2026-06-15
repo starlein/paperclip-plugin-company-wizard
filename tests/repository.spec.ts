@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   getRepositoryMode,
   isExternalRepository,
+  normalizeExternalRepoRef,
+  normalizeNewRepoBranch,
   repositoryProjectFields,
 } from '../src/ui/lib/repository';
 import type { WizardProject } from '../src/ui/context/WizardContext';
@@ -80,5 +82,34 @@ describe('repository helpers', () => {
     expect(localProject.workspace?.sourceType).toBe('local_path');
     expect(localProject.executionWorkspacePolicy).toBeUndefined();
     expect(localProject.repoUrl).toBeUndefined();
+  });
+
+  it('preserves explicit external refs and local refs from project settings', () => {
+    expect(normalizeExternalRepoRef('main')).toBe('main');
+    expect(normalizeExternalRepoRef('release/2026-q2')).toBe('release/2026-q2');
+    expect(normalizeExternalRepoRef('origin/master')).toBe('origin/master');
+    expect(normalizeExternalRepoRef('')).toBe('');
+    expect(normalizeNewRepoBranch('origin/master')).toBe('master');
+  });
+
+  it('does not invent an external base ref when none is configured', () => {
+    const repo = repositoryProjectFields('external', 'https://github.com/example/project.git', '');
+
+    expect(repo.repoRef).toBeUndefined();
+    expect(repo.defaultRef).toBeUndefined();
+    expect(repo.workspace?.repoRef).toBeUndefined();
+    expect(repo.workspace?.defaultRef).toBeUndefined();
+  });
+
+  it('does not force isolated worktree policy from repository UI fields', () => {
+    const repo = repositoryProjectFields(
+      'external',
+      'https://github.com/example/project.git',
+      'release/2026-q2',
+    );
+
+    expect(repo.workspace?.repoRef).toBe('release/2026-q2');
+    expect(repo.workspace?.defaultRef).toBe('release/2026-q2');
+    expect(repo.executionWorkspacePolicy).toBeUndefined();
   });
 });

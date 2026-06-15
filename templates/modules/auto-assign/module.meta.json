@@ -17,7 +17,7 @@
   "routines": [
     {
       "title": "Auto-assign unassigned issues",
-      "description": "Find unassigned todo issues and assign to the best available agent based on role and workload.",
+      "description": "Routine-run checklist: review unassigned todo issues, assign each actionable item to the best available agent based on role/workload, record evidence and next actions on the routine issue, then exit.",
       "assignTo": "capability:auto-assign",
       "schedule": "0 */2 * * *",
       "priority": "medium",

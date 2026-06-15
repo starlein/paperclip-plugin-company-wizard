@@ -22,7 +22,7 @@
   "routines": [
     {
       "title": "Backlog grooming",
-      "description": "Ensure the backlog keeps at least 8 actionable unassigned issues ready. If running low, generate new issues from the roadmap so agents never idle waiting for work.",
+      "description": "Routine-run checklist: inspect roadmap/backlog health, ensure at least 8 actionable ready issues exist, create scoped issues only when capacity is low, link artifacts/goals/projects, summarize changes on the routine issue, then exit.",
       "assignTo": "capability:backlog-health",
       "schedule": "0 */4 * * *",
       "priority": "medium",

@@ -5,6 +5,30 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.4.1] - 2026-06-15
+
+### Changed
+
+- **Hiring now uses Paperclip governance by default.** `PaperclipClient.createAgent()` submits directly through `POST /api/companies/{id}/agent-hires`, preserves `sourceIssueId` / `sourceIssueIds`, returns pending approval ids, and no longer auto-approves board-gated hires.
+- **Provisioning now creates Board Operations and Hiring Plan records.** `start-provision` creates standing issues with `decision-log` and `hiring-plan` documents before submitting agent hires, then links CEO/team hire requests to those provenance issues.
+- **Agent and routine templates now follow the current Paperclip workflow.** Role heartbeats use `inbox-lite`, `heartbeat-context`, `in_review`, `executionPolicy`, `blockedByIssueIds`, evidence, and work products. Auto-assign, backlog-health, triage, codebase-audit, and stall-detection skills are scoped to assigned routine/task issues instead of every-heartbeat scans.
+- **PR review bootstrap guidance now uses native issue execution stages.** The bootstrap instructions no longer direct agents to create child review issues or generic mention handoffs. Review/approval participants record their decisions through the normal issue update route so Paperclip keeps the issue-level review/approval audit trail.
+- **Goal prompts are now outcome-first.** AI and manual goal guidance tells the wizard to keep the main goal focused on the product/outcome and treat secondary constraints as quality bars or acceptance criteria unless the user explicitly made one of them the primary project.
+- **Git/PR workflow guidance now preserves configured base refs and workspace cleanup.** External repository refs are taken from project/worktree settings and are no longer rewritten to `main`, `master`, or `origin/*`. Merge-gate guidance now requires merging before final approval and closing/archiving isolated worktrees before marking work done.
+- **Persona enrichment is now always applied when templates provide fragments.** The plugin no longer exposes `enableEnrichedPersonas`; `LENSES.md`, `DONE.md`, and skill `.bar.md` fragments are injected automatically and never emitted as standalone files.
+
+### Fixed
+
+- **Routine project pre-creation now preserves execution workspace policy.** When routines force the worker to pre-create the main project, the project receives the same resolved `executionWorkspacePolicy` that BOOTSTRAP.md shows, including the configured base ref when isolated workspaces are enabled.
+- **External repository setup no longer invents a default ref.** The optional ref field can stay blank so Paperclip/project settings resolve the default branch instead of the wizard silently writing `main`.
+
+### Added
+
+- `putIssueDocument()` API helper for `PUT /api/issues/{issueId}/documents/{key}`.
+- Plugin update check action and UI notice when npm has a newer Company Wizard version.
+- Regression coverage for governed `/agent-hires`, issue documents, current heartbeat templates, hiring-review guardrails, executionPolicy PR review bootstrap output, persona enrichment defaults, and configured base-ref preservation.
+
+---
 ## [0.3.24] - 2026-06-15
 
 ### Changed

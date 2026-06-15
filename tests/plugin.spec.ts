@@ -41,6 +41,33 @@ describe("company-wizard", () => {
     expect(result.error).toBe("companyName is required");
   });
 
+  it("reports available plugin updates", async () => {
+    const fetchMock = vi.fn(async () => {
+      return new Response(JSON.stringify({ version: "0.4.2" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const harness = createTestHarness({ manifest, capabilities: manifest.capabilities });
+    await plugin.definition.setup(harness.ctx);
+
+    const result = (await harness.performAction("check-update", {})) as {
+      ok?: boolean;
+      currentVersion?: string;
+      latestVersion?: string;
+      updateAvailable?: boolean;
+      url?: string;
+    };
+
+    expect(result.ok).toBe(true);
+    expect(result.currentVersion).toBe("0.4.1");
+    expect(result.latestVersion).toBe("0.4.2");
+    expect(result.updateAvailable).toBe(true);
+    expect(result.url).toContain("npmjs.com/package/@starlein/paperclip-plugin-company-wizard");
+  });
+
   it("resolves the configured Anthropic secret ref before calling Anthropic", async () => {
     const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
       return new Response(JSON.stringify({ content: [{ text: "ok" }] }), {
@@ -116,11 +143,9 @@ describe("company-wizard", () => {
     expect(second.status).toBe("error");
   });
 
-  it("declares the enableEnrichedPersonas setting (default false)", () => {
+  it("does not expose an enriched-personas toggle", () => {
     const props = (manifest.instanceConfigSchema as any).properties;
-    expect(props.enableEnrichedPersonas).toBeDefined();
-    expect(props.enableEnrichedPersonas.type).toBe("boolean");
-    expect(props.enableEnrichedPersonas.default).toBe(false);
+    expect(props.enableEnrichedPersonas).toBeUndefined();
   });
 
   it("reports healthy", async () => {

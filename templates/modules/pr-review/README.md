@@ -4,8 +4,8 @@ Adds a PR-based review workflow with dedicated reviewer roles.
 
 ## What it adds
 
-- **Core roles**: Code Reviewer, Product Owner (required reviewers)
-- **Extended roles** *(when present)*: UI Designer (design review), UX Researcher (UX review), QA (quality review), DevOps (infra review)
+- **Core roles**: Product Owner (approval) and Engineer (final merge gate)
+- **Extended roles** *(when present)*: QA (substantive review), Security Engineer (security-relevant review), Code Reviewer/UI/UX/DevOps advisory or domain review when explicitly configured
 - **Shared docs**: `docs/pr-conventions.md` — PR format, review workflow, merge rules
 - **Engineer skill**: Feature-branch + PR workflow (overrides direct-to-main from `github-repo`)
 - **Reviewer skills**: Review checklists for each reviewer role
@@ -16,20 +16,20 @@ Adds a PR-based review workflow with dedicated reviewer roles.
 
 ## How it works
 
-1. Engineer creates a feature branch (`<prefix>-<N>/<short-description>`)
-2. Engineer opens a PR with Conventional Commits title and issue reference
-3. Engineer sets the originating issue's `executionPolicy`: a `review` stage for the Code Reviewer, optional `review` stages for relevant domain reviewers, and a final `approval` stage for the Product Owner (roles resolved to agentIds); the PR link is added as an issue comment
-4. Code Reviewer reviews for correctness, security, style, simplicity
-5. Product Owner reviews for intent alignment, scope discipline, acceptance criteria
-6. UI Designer reviews for visual consistency, brand compliance *(when present)*
-7. UX Researcher reviews for usability and user flow integrity *(when present)*
-8. QA reviews for test coverage, edge cases, regression risk *(when present)*
-9. DevOps reviews for infrastructure impact, security, performance *(when present)*
-10. Engineer merges when all stages are approved (no `changes_requested` outstanding)
+1. Engineer resolves the project/worktree base ref first from `heartbeat-context` / project workspace metadata and uses it exactly as configured
+2. Engineer creates a feature branch (`<prefix>-<N>/<short-description>`) from that base
+3. Engineer opens a PR with Conventional Commits title, issue reference, and the matching base branch
+4. Engineer sets the originating issue's `executionPolicy`: review stages for QA/domain reviewers as needed, an approval stage for the Product Owner, and a final Engineer merge-gate approval stage (roles resolved to agentIds); the PR link is added as an issue comment
+5. QA reviews with executed evidence when present
+6. Security Engineer reviews security-relevant changes when present
+7. Product Owner reviews for intent alignment, scope discipline, acceptance criteria
+8. Code Reviewer and domain reviewers may add advisory PR comments unless explicitly added as executionPolicy participants
+9. DevOps reviews infrastructure impact when explicitly added as a stage
+10. Engineer merges when all stages are approved (no `changes_requested` outstanding), confirms the PR landed on the correct base, closes/archives any isolated worktree that Paperclip created, and only then records the final approval / closes the issue
 
 ## Handover mechanism
 
-The issue's native `executionPolicy` (`review`/`approval` stages). Each reviewer is the active participant of a stage and records an `approved` / `changes_requested` verdict, optionally mirrored as a GitHub PR comment. If a reviewer doesn't wake, the CEO's stall-detection (if enabled) will catch it.
+The issue's native `executionPolicy` (`review`/`approval` stages). Each reviewer is the active participant of a stage and records an `approved` / `changes_requested` decision through the normal issue update route; Paperclip stores the reviewer/approver audit trail on the issue (`reviewed_by` / `approved_by` metadata where exposed). The decision may be mirrored as a GitHub PR comment. Do not create separate review subissues. If a reviewer doesn't wake, the CEO's stall-detection (if enabled) will catch it.
 
 ## Best for
 

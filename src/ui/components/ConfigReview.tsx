@@ -157,9 +157,6 @@ function RepositoryEdit({
 
   const chooseMode = (next: RepositoryMode) => {
     setMode(next);
-    if (next === 'external' && (!repoRef.trim() || repoRef.trim() === 'main')) {
-      setRepoRef('origin/main');
-    }
     if (next === 'new' && (!repoRef.trim() || repoRef.trim().startsWith('origin/'))) {
       setRepoRef('main');
     }
@@ -215,7 +212,7 @@ function RepositoryEdit({
             className={inputClass}
             value={repoRef}
             onChange={(e) => setRepoRef(e.target.value)}
-            placeholder="Default ref (e.g. origin/main)"
+            placeholder="Leave blank to use Paperclip/project default, or enter an explicit ref"
             onKeyDown={(e) => {
               if (e.key === 'Enter') save();
               if (e.key === 'Escape') onCancel();

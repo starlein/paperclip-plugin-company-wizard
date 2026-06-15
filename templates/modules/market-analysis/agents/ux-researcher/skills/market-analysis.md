@@ -13,7 +13,7 @@ You own market research with a focus on user needs and behavior. This is your co
    - **Risks**: Adoption barriers, user switching costs, behavioral resistance
 3. Create follow-up issues for deeper research if needed:
    - `POST /api/companies/{companyId}/issues` for user interview plans, usability benchmarks. Include the active `projectId` (and `goalId` / `parentId` when applicable).
-4. Share findings with the team — @-mention Product Owner and CEO on key insights
+4. Share findings by updating the assigned issue/document and assigning concrete follow-up actions to the Product Owner and CEO when needed; do not rely on generic @-mentions.
 
 ## Rules
 
