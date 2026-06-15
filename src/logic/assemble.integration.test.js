@@ -614,6 +614,32 @@ describe('assembleCompany integration (real templates)', () => {
     assert.ok(!crSkill.includes('gh pr review'), 'no formal GitHub review with shared credential');
   });
 
+  it('installs the PR-scoped security review skill when a security engineer is present', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'SecReviewCo',
+      moduleNames: ['github-repo', 'pr-review'],
+      extraRoleNames: ['engineer', 'security-engineer'],
+      outputDir,
+      templatesDir: REAL_TEMPLATES_DIR,
+    });
+    const skillPath = join(
+      companyDir,
+      'agents',
+      'security-engineer',
+      'skills',
+      'pr-security-review.md',
+    );
+    assert.ok(
+      await exists(skillPath),
+      'pr-security-review.md should be installed for security-engineer',
+    );
+    const content = await readFile(skillPath, 'utf-8');
+    assert.ok(
+      content.toLowerCase().includes('security-relevant'),
+      'pr-security-review scopes itself to security-relevant changes',
+    );
+  });
+
   it('keeps the lean baseline when enableEnrichedPersonas is off (default)', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'LeanReal',
