@@ -35,7 +35,7 @@ const DEFAULT_TEMPLATES_REPO_URL =
   'https://github.com/starlein/paperclip-plugin-company-wizard/tree/main/templates';
 const BUNDLED_TEMPLATES_DIR = path.resolve(__dirname, '..', 'templates');
 const PLUGIN_PACKAGE_NAME = '@starlein/paperclip-plugin-company-wizard';
-const CURRENT_PLUGIN_VERSION = '0.4.1';
+const CURRENT_PLUGIN_VERSION = '0.4.2';
 const NPM_LATEST_URL =
   'https://registry.npmjs.org/@starlein%2Fpaperclip-plugin-company-wizard/latest';
 
@@ -127,38 +127,53 @@ async function ensureTemplatesDir(cfg: Record<string, string>): Promise<string> 
   }
 }
 
-type SecretResolverContext = {
-  secrets: {
-    resolve(secretRef: string): Promise<string>;
-  };
-};
+const UUID_SECRET_REF_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ENV_REF_RE = /^(?:env:|\$\{?)([A-Za-z_][A-Za-z0-9_]*)\}?$/;
 
 function isLikelyAnthropicApiKey(value: string): boolean {
   return value.startsWith('sk-ant-');
 }
 
-async function resolveAnthropicApiKey(
-  ctx: SecretResolverContext,
-  configuredValue: unknown,
-): Promise<string> {
+function resolveConfigSecretLikeString(configKey: string, configuredValue: unknown): string {
   if (typeof configuredValue !== 'string') return '';
   const value = configuredValue.trim();
   if (!value) return '';
 
-  // The setting now stores the raw Anthropic key directly (plain string field).
-  if (isLikelyAnthropicApiKey(value)) return value;
+  const envMatch = value.match(ENV_REF_RE);
+  if (envMatch) {
+    const envName = envMatch[1]!;
+    const envValue = process.env[envName]?.trim() || '';
+    if (!envValue) {
+      throw new Error(
+        `${configKey} references environment variable ${envName}, but it is not set for the Paperclip plugin worker process.`,
+      );
+    }
+    return envValue;
+  }
 
-  try {
-    // Backward compatibility: older installs may still have a Paperclip secret
-    // reference stored in config instead of the raw key.
-    const resolved = await ctx.secrets.resolve(value);
-    return resolved.trim();
-  } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err);
+  if (UUID_SECRET_REF_RE.test(value)) {
+    const envHint = configKey === 'anthropicApiKey' ? 'ANTHROPIC_API_KEY' : 'PAPERCLIP_PASSWORD';
     throw new Error(
-      `Anthropic API key could not be resolved. Re-save the plugin setting with a valid Anthropic API key (sk-ant-...). ${detail}`,
+      `${configKey} cannot use a Paperclip secret UUID in plugin settings yet. ` +
+        'Paperclip disables plugin secret references until company-scoped plugin config lands. ' +
+        `Use an environment variable reference such as env:${envHint} instead, or enter a plain value.`,
     );
   }
+
+  return value;
+}
+
+function resolveAnthropicApiKey(configuredValue: unknown): string {
+  const value = resolveConfigSecretLikeString('anthropicApiKey', configuredValue);
+  if (!value) return '';
+  if (isLikelyAnthropicApiKey(value)) return value;
+  throw new Error(
+    'Anthropic API key must be a valid key (sk-ant-...) or an environment variable reference such as env:ANTHROPIC_API_KEY.',
+  );
+}
+
+function resolvePaperclipPassword(configuredValue: unknown): string {
+  return resolveConfigSecretLikeString('paperclipPassword', configuredValue);
 }
 
 /**
@@ -302,7 +317,7 @@ async function resolveEnableIsolatedWorkspacesFromInstance(
   const paperclipUrl =
     cfg.paperclipUrl || process.env.PAPERCLIP_PUBLIC_URL || 'http://localhost:3100';
   const paperclipEmail = cfg.paperclipEmail || '';
-  const paperclipPassword = cfg.paperclipPassword || '';
+  const paperclipPassword = resolvePaperclipPassword(cfg.paperclipPassword);
   const instanceClient = new PaperclipClient(paperclipUrl, {
     email: paperclipEmail,
     password: paperclipPassword,
@@ -706,7 +721,7 @@ const plugin = definePlugin({
       try {
         const client = new PaperclipClient(paperclipUrl, {
           email: cfg.paperclipEmail || '',
-          password: cfg.paperclipPassword || '',
+          password: resolvePaperclipPassword(cfg.paperclipPassword),
         });
         await client.connect();
         return { ok: true };
@@ -740,7 +755,7 @@ const plugin = definePlugin({
         }
 
         const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
-        const apiKey = await resolveAnthropicApiKey(ctx, cfg.anthropicApiKey);
+        const apiKey = resolveAnthropicApiKey(cfg.anthropicApiKey);
         if (!apiKey) {
           return {
             text: '',
@@ -778,7 +793,7 @@ const plugin = definePlugin({
     ctx.actions.register('check-ai-config', async () => {
       try {
         const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
-        const apiKey = await resolveAnthropicApiKey(ctx, cfg.anthropicApiKey);
+        const apiKey = resolveAnthropicApiKey(cfg.anthropicApiKey);
         if (!apiKey) {
           return {
             ok: false,
@@ -808,7 +823,7 @@ const plugin = definePlugin({
         const paperclipUrl =
           cfg.paperclipUrl || process.env.PAPERCLIP_PUBLIC_URL || 'http://localhost:3100';
         const paperclipEmail = cfg.paperclipEmail || '';
-        const paperclipPassword = cfg.paperclipPassword || '';
+        const paperclipPassword = resolvePaperclipPassword(cfg.paperclipPassword);
         const disableBoardApprovalOnNewCompanies = cfgBool(
           cfg,
           'disableBoardApprovalOnNewCompanies',
@@ -1417,7 +1432,7 @@ const plugin = definePlugin({
     try {
       const client = new PaperclipClient(paperclipUrl, {
         email: (config.paperclipEmail as string) || '',
-        password: (config.paperclipPassword as string) || '',
+        password: resolvePaperclipPassword(config.paperclipPassword),
       });
       await client.connect();
       return { ok: true };

@@ -3,7 +3,7 @@ import type { PaperclipPluginManifestV1 } from '@paperclipai/plugin-sdk';
 const manifest: PaperclipPluginManifestV1 = {
   id: 'starlein.paperclip-plugin-company-wizard',
   apiVersion: 1,
-  version: '0.4.1',
+  version: '0.4.2',
   displayName: 'Company Wizard',
   description: 'AI-powered wizard to bootstrap agent companies from composable templates',
   author: 'Sascha Pietrowski <sp@speednetwork.de>',
@@ -19,7 +19,6 @@ const manifest: PaperclipPluginManifestV1 = {
     'projects.read',
     'plugin.state.read',
     'plugin.state.write',
-    'secrets.read-ref',
     'events.subscribe',
     'ui.page.register',
     'ui.sidebar.register',
@@ -46,7 +45,7 @@ const manifest: PaperclipPluginManifestV1 = {
       anthropicApiKey: {
         type: 'string',
         description:
-          'Anthropic API key for the AI wizard (e.g. sk-ant-...). Required to use the AI-powered company setup path.',
+          'Anthropic API key for the AI wizard (e.g. sk-ant-...) or env:ANTHROPIC_API_KEY. Paperclip secret refs are not supported in plugin settings yet.',
       },
       paperclipUrl: {
         type: 'string',
@@ -59,7 +58,8 @@ const manifest: PaperclipPluginManifestV1 = {
       },
       paperclipPassword: {
         type: 'string',
-        description: 'Board login password (for authenticated instances).',
+        description:
+          'Board login password (for authenticated instances) or env:PAPERCLIP_PASSWORD. Paperclip secret refs are not supported in plugin settings yet.',
       },
       disableBoardApprovalOnNewCompanies: {
         type: 'boolean',

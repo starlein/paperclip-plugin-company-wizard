@@ -15,7 +15,7 @@
 
 ---
 
-> **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for the current Paperclip API (`>=2026.529.0`) with substantial bug fixes. End-to-end company setup is governed through current Paperclip workflows as of v0.4.1.
+> **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for the current Paperclip API (`>=2026.529.0`) with substantial bug fixes. End-to-end company setup is governed through current Paperclip workflows as of v0.4.2.
 
 <details>
 <summary><strong>What changed vs. upstream</strong></summary>
@@ -592,8 +592,8 @@ Configure the plugin via **Settings → Plugins → Company Wizard** in the Pape
 | `templatesRepoUrl` | No | GitHub tree URL to pull templates from when the templates directory does not exist. Defaults to the official @starlein/paperclip-plugin-company-wizard templates. |
 | `paperclipUrl` | No | Paperclip instance URL. Defaults to `http://localhost:3100` or `PAPERCLIP_PUBLIC_URL` env var. |
 | `paperclipEmail` | No | Board login email. Required for authenticated (non-`local_trusted`) instances. |
-| `paperclipPassword` | No | Board login password. Stored as a secret ref. |
-| `anthropicApiKey` | No | Anthropic API key for AI wizard mode. Stored as a secret ref. Required to use the AI-powered setup path. |
+| `paperclipPassword` | No | Board login password, or `env:PAPERCLIP_PASSWORD` to read it from the plugin worker environment. Paperclip secret UUID refs are not supported in plugin settings yet. |
+| `anthropicApiKey` | No | Anthropic API key for AI wizard mode, or `env:ANTHROPIC_API_KEY` to read it from the plugin worker environment. Required to use the AI-powered setup path. Paperclip secret UUID refs are not supported in plugin settings yet. |
 | `disableBoardApprovalOnNewCompanies` | No | If `true`, the wizard PATCHes new companies to set `requireBoardApprovalForNewAgents=false` during provisioning. Leave `false` to preserve approval-gated hiring. Defaults to `false`. |
 For enriched personas: there is no plugin setting. Template fragments are applied automatically when present.
 
