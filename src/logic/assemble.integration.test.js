@@ -320,6 +320,24 @@ describe('assembleCompany integration (real templates)', () => {
     }
   });
 
+  it('pr-review gates on QA + executed verification, not a reading-only code reviewer', async () => {
+    const meta = JSON.parse(
+      await readFile(join(REAL_TEMPLATES_DIR, 'modules', 'pr-review', 'module.meta.json'), 'utf-8'),
+    );
+    const gate = meta.issues[0].reviewGate;
+    assert.deepEqual(gate.reviewers, ['qa'], 'QA is the substantive review stage');
+    assert.equal(gate.approver, 'product-owner');
+    assert.equal(gate.mergeGate, 'engineer');
+    assert.ok(
+      !gate.reviewers.includes('code-reviewer'),
+      'code-reviewer is no longer a blocking reviewer',
+    );
+    assert.ok(
+      meta.activatesWithRoles.includes('security-engineer'),
+      'security-engineer can activate pr-review for the conditional security stage',
+    );
+  });
+
   it('injects skill references into AGENTS.md with correct paths', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'SkillRefCo',
