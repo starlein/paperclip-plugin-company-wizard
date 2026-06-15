@@ -553,6 +553,30 @@ describe('assembleCompany integration (real templates)', () => {
     );
   });
 
+  it('BOOTSTRAP guardrail describes the substantive gate and advisory code reviewer', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'GuardrailCo',
+      userGoals: [{ title: 'Ship it', description: 'Build and launch' }],
+      moduleNames: ['github-repo', 'pr-review'],
+      extraRoleNames: ['engineer', 'product-owner', 'qa'],
+      outputDir,
+      templatesDir: REAL_TEMPLATES_DIR,
+    });
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(
+      bootstrap.includes("Required PR reviews use the issue's `executionPolicy`"),
+      'guardrail keeps its opening phrase',
+    );
+    assert.ok(
+      bootstrap.includes('advisory'),
+      'guardrail marks the Code Reviewer / domain reviewers advisory',
+    );
+    assert.ok(
+      bootstrap.includes('only when the change is security-relevant'),
+      'guardrail makes the security stage conditional',
+    );
+  });
+
   it('keeps the lean baseline when enableEnrichedPersonas is off (default)', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'LeanReal',

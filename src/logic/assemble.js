@@ -1294,7 +1294,10 @@ export async function assembleCompany({
     bootstrap += `- Do not reopen \`done\` parent/subissues without an explicit reason in a comment.\n`;
     bootstrap += `- Do not reuse parent workspaces for subissues unless explicitly requested.\n`;
     if (moduleNames.includes('pr-review')) {
-      bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`: a \`review\` stage for the Code Reviewer (plus any relevant domain reviewer — QA/UI/UX/DevOps), an \`approval\` stage for the Product Owner, then a final \`approval\` merge-gate stage for the Engineer (who merges the PR before recording approval, which closes the issue). The merge gate must be last so the Product Owner's approval does not auto-close the issue with the PR still open. Resolve each role to its agentId. Do not create separate child review issues and do not use @-mentions.\n`;
+      const ciClause = moduleNames.includes('ci-cd')
+        ? 'CI (lint/test/build) must be green before the Engineer merges — this is the hard gate and cannot be skipped'
+        : 'no CI is configured, so the Engineer must run the test suite/build and paste the real output into the merge-gate verdict before merging — this is the hard gate';
+      bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`. The substantive gate is execution, not opinion: ${ciClause}. Stages, in order: a \`review\` stage for QA when present (test adequacy / running the tests), a \`review\` stage for the Security Engineer **only when the change is security-relevant** (auth, secrets, input boundaries, crypto, dependencies, infra exposure), an \`approval\` stage for the Product Owner (intent/scope), then a final \`approval\` merge-gate stage for the Engineer (who satisfies the hard gate above, merges the PR, then records approval to close the issue). The merge gate must be last so the Product Owner's approval does not auto-close the issue with the PR still open. The Code Reviewer and other domain reviewers may add advisory, non-blocking comments but do not gate the merge. Every verdict must cite executed verification. Resolve each role to its agentId. Do not create separate child review issues and do not use @-mentions.\n`;
     }
     bootstrap += `\n`;
   }
