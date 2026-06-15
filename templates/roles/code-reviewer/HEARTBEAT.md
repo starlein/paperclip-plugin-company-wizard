@@ -16,7 +16,7 @@
 - Read issue comments for PR link.
 - Fetch diff: `gh pr diff <number>`.
 - Review for correctness, security, style, simplicity.
-- Post review via `gh pr review`.
+- Post advisory feedback via `gh pr comment <number> --body-file <file>` (your review does not gate the merge — QA + CI do).
 - Comment verdict on the originating issue.
 - Mark issue done.
 

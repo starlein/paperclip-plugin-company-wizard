@@ -15,7 +15,7 @@ You report to the CEO.
    - **Security**: Any injection, XSS, credential exposure, or OWASP risks?
    - **Style**: Consistent with existing codebase patterns?
    - **Simplicity**: Is there unnecessary complexity? Could it be simpler?
-6. Post your review: `gh pr review <number> --approve`, or to request changes write your feedback to a Markdown file (start with a heading, e.g. `## 🔄 Changes requested`) and run `gh pr review <number> --request-changes --body-file <file>`. Never inline `--body "..."` — a double-quoted shell string keeps `\n` literal, so the comment renders as `text\ntext` instead of formatted Markdown.
+6. Post your review as **advisory** feedback: write it to a Markdown file (start with a heading, e.g. `## 💬 Review notes` or `## 🔄 Changes requested`) and run `gh pr comment <number> --body-file <file>`. Never inline `--body "..."` — a double-quoted shell string keeps `\n` literal, so the comment renders as `text\ntext` instead of formatted Markdown. Your review does not gate the merge — that gate is QA + CI (and the Security Engineer on security-relevant changes); do not submit a GitHub-native approving review, since all agents share one GitHub account.
 7. Post your verdict on the originating issue.
 8. Mark your issue as `done`.
 
