@@ -127,53 +127,38 @@ async function ensureTemplatesDir(cfg: Record<string, string>): Promise<string> 
   }
 }
 
-const UUID_SECRET_REF_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const ENV_REF_RE = /^(?:env:|\$\{?)([A-Za-z_][A-Za-z0-9_]*)\}?$/;
+type SecretResolverContext = {
+  secrets: {
+    resolve(secretRef: string): Promise<string>;
+  };
+};
 
 function isLikelyAnthropicApiKey(value: string): boolean {
   return value.startsWith('sk-ant-');
 }
 
-function resolveConfigSecretLikeString(configKey: string, configuredValue: unknown): string {
+async function resolveAnthropicApiKey(
+  ctx: SecretResolverContext,
+  configuredValue: unknown,
+): Promise<string> {
   if (typeof configuredValue !== 'string') return '';
   const value = configuredValue.trim();
   if (!value) return '';
 
-  const envMatch = value.match(ENV_REF_RE);
-  if (envMatch) {
-    const envName = envMatch[1]!;
-    const envValue = process.env[envName]?.trim() || '';
-    if (!envValue) {
-      throw new Error(
-        `${configKey} references environment variable ${envName}, but it is not set for the Paperclip plugin worker process.`,
-      );
-    }
-    return envValue;
-  }
+  // The setting now stores the raw Anthropic key directly (plain string field).
+  if (isLikelyAnthropicApiKey(value)) return value;
 
-  if (UUID_SECRET_REF_RE.test(value)) {
-    const envHint = configKey === 'anthropicApiKey' ? 'ANTHROPIC_API_KEY' : 'PAPERCLIP_PASSWORD';
+  try {
+    // Backward compatibility: older installs may still have a Paperclip secret
+    // reference stored in config instead of the raw key.
+    const resolved = await ctx.secrets.resolve(value);
+    return resolved.trim();
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
     throw new Error(
-      `${configKey} cannot use a Paperclip secret UUID in plugin settings yet. ` +
-        'Paperclip disables plugin secret references until company-scoped plugin config lands. ' +
-        `Use an environment variable reference such as env:${envHint} instead, or enter a plain value.`,
+      `Anthropic API key could not be resolved. Re-save the plugin setting with a valid Anthropic API key (sk-ant-...). ${detail}`,
     );
   }
-
-  return value;
-}
-
-function resolveAnthropicApiKey(configuredValue: unknown): string {
-  const value = resolveConfigSecretLikeString('anthropicApiKey', configuredValue);
-  if (!value) return '';
-  if (isLikelyAnthropicApiKey(value)) return value;
-  throw new Error(
-    'Anthropic API key must be a valid key (sk-ant-...) or an environment variable reference such as env:ANTHROPIC_API_KEY.',
-  );
-}
-
-function resolvePaperclipPassword(configuredValue: unknown): string {
-  return resolveConfigSecretLikeString('paperclipPassword', configuredValue);
 }
 
 /**
@@ -317,7 +302,7 @@ async function resolveEnableIsolatedWorkspacesFromInstance(
   const paperclipUrl =
     cfg.paperclipUrl || process.env.PAPERCLIP_PUBLIC_URL || 'http://localhost:3100';
   const paperclipEmail = cfg.paperclipEmail || '';
-  const paperclipPassword = resolvePaperclipPassword(cfg.paperclipPassword);
+  const paperclipPassword = cfg.paperclipPassword || '';
   const instanceClient = new PaperclipClient(paperclipUrl, {
     email: paperclipEmail,
     password: paperclipPassword,
@@ -721,7 +706,7 @@ const plugin = definePlugin({
       try {
         const client = new PaperclipClient(paperclipUrl, {
           email: cfg.paperclipEmail || '',
-          password: resolvePaperclipPassword(cfg.paperclipPassword),
+          password: cfg.paperclipPassword || '',
         });
         await client.connect();
         return { ok: true };
@@ -755,7 +740,7 @@ const plugin = definePlugin({
         }
 
         const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
-        const apiKey = resolveAnthropicApiKey(cfg.anthropicApiKey);
+        const apiKey = await resolveAnthropicApiKey(ctx, cfg.anthropicApiKey);
         if (!apiKey) {
           return {
             text: '',
@@ -793,7 +778,7 @@ const plugin = definePlugin({
     ctx.actions.register('check-ai-config', async () => {
       try {
         const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
-        const apiKey = resolveAnthropicApiKey(cfg.anthropicApiKey);
+        const apiKey = await resolveAnthropicApiKey(ctx, cfg.anthropicApiKey);
         if (!apiKey) {
           return {
             ok: false,
@@ -823,7 +808,7 @@ const plugin = definePlugin({
         const paperclipUrl =
           cfg.paperclipUrl || process.env.PAPERCLIP_PUBLIC_URL || 'http://localhost:3100';
         const paperclipEmail = cfg.paperclipEmail || '';
-        const paperclipPassword = resolvePaperclipPassword(cfg.paperclipPassword);
+        const paperclipPassword = cfg.paperclipPassword || '';
         const disableBoardApprovalOnNewCompanies = cfgBool(
           cfg,
           'disableBoardApprovalOnNewCompanies',
@@ -994,7 +979,10 @@ const plugin = definePlugin({
           const createdBoardOperationsIssue = await client.createIssue(companyId, {
             title: 'Board Operations',
             description: 'Standing issue for board decision log and operations tracking.',
-            status: 'in_progress',
+            // These governance records are created before the CEO is guaranteed to exist.
+            // Paperclip requires an assignee for in_progress issues, so keep them unassigned
+            // and actionable later rather than failing existing-company provisioning.
+            status: 'todo',
             priority: 'medium',
           });
           boardOperationsIssue = createdBoardOperationsIssue;
@@ -1018,7 +1006,7 @@ const plugin = definePlugin({
           const createdHiringPlanIssue = await client.createIssue(companyId, {
             title: 'Hiring Plan',
             description: 'Develop and execute the governed team hiring plan.',
-            status: 'in_progress',
+            status: 'todo',
             priority: 'high',
           });
           hiringPlanIssue = createdHiringPlanIssue;
@@ -1432,7 +1420,7 @@ const plugin = definePlugin({
     try {
       const client = new PaperclipClient(paperclipUrl, {
         email: (config.paperclipEmail as string) || '',
-        password: resolvePaperclipPassword(config.paperclipPassword),
+        password: (config.paperclipPassword as string) || '',
       });
       await client.connect();
       return { ok: true };

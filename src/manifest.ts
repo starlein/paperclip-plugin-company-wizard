@@ -19,6 +19,7 @@ const manifest: PaperclipPluginManifestV1 = {
     'projects.read',
     'plugin.state.read',
     'plugin.state.write',
+    'secrets.read-ref',
     'events.subscribe',
     'ui.page.register',
     'ui.sidebar.register',
@@ -45,7 +46,7 @@ const manifest: PaperclipPluginManifestV1 = {
       anthropicApiKey: {
         type: 'string',
         description:
-          'Anthropic API key for the AI wizard (e.g. sk-ant-...) or env:ANTHROPIC_API_KEY. Paperclip secret refs are not supported in plugin settings yet.',
+          'Anthropic API key for the AI wizard (e.g. sk-ant-...). Required to use the AI-powered company setup path.',
       },
       paperclipUrl: {
         type: 'string',
@@ -58,8 +59,7 @@ const manifest: PaperclipPluginManifestV1 = {
       },
       paperclipPassword: {
         type: 'string',
-        description:
-          'Board login password (for authenticated instances) or env:PAPERCLIP_PASSWORD. Paperclip secret refs are not supported in plugin settings yet.',
+        description: 'Board login password (for authenticated instances).',
       },
       disableBoardApprovalOnNewCompanies: {
         type: 'boolean',
