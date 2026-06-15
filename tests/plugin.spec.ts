@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createTestHarness } from "@paperclipai/plugin-sdk/testing";
 import manifest from "../src/manifest.js";
 import plugin from "../src/worker.js";
@@ -146,6 +149,84 @@ describe("company-wizard", () => {
   it("does not expose an enriched-personas toggle", () => {
     const props = (manifest.instanceConfigSchema as any).properties;
     expect(props.enableEnrichedPersonas).toBeUndefined();
+  });
+
+  it("creates governance records as unassigned todo issues for existing-company provisioning", async () => {
+    const tmp = await mkdtemp(join(tmpdir(), "company-wizard-existing-"));
+    const issueBodies: any[] = [];
+
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method || "GET";
+
+      if (url.endsWith("/api/companies") && method === "GET") {
+        return new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      if (url.endsWith("/api/instance/settings/experimental") && method === "GET") {
+        return new Response(JSON.stringify({ enableIsolatedWorkspaces: false }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      if (url.endsWith("/api/companies/company-existing") && method === "GET") {
+        return new Response(JSON.stringify({ id: "company-existing", name: "Onboarding" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      if (url.endsWith("/api/companies/company-existing/issues") && method === "POST") {
+        const body = JSON.parse(String(init?.body || "{}"));
+        issueBodies.push(body);
+        return new Response(
+          JSON.stringify({
+            id: body.title === "Board Operations" ? "issue-board" : "issue-hiring",
+            identifier: body.title === "Board Operations" ? "ONB-1" : "ONB-2",
+          }),
+          { status: 201, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (url.includes("/api/issues/") && url.includes("/documents/") && method === "PUT") {
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ error: "stop after governance records" }), {
+        status: 500,
+        headers: { "content-type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const harness = createTestHarness({
+        manifest,
+        capabilities: manifest.capabilities,
+        config: { companiesDir: tmp, paperclipUrl: "http://paperclip.test" },
+      });
+      await plugin.definition.setup(harness.ctx);
+
+      await harness.performAction("start-provision", {
+        companyName: "Onboarding",
+        existingCompanyId: "company-existing",
+        selectedModules: [],
+        selectedRoles: [],
+      });
+
+      expect(issueBodies).toHaveLength(2);
+      expect(issueBodies.map((body) => body.title)).toEqual(["Board Operations", "Hiring Plan"]);
+      for (const body of issueBodies) {
+        expect(body.status).toBe("todo");
+        expect(body.assigneeAgentId).toBeUndefined();
+        expect(body.assigneeUserId).toBeUndefined();
+      }
+    } finally {
+      await rm(tmp, { recursive: true, force: true });
+    }
   });
 
   it("reports healthy", async () => {

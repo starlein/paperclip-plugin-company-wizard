@@ -979,7 +979,10 @@ const plugin = definePlugin({
           const createdBoardOperationsIssue = await client.createIssue(companyId, {
             title: 'Board Operations',
             description: 'Standing issue for board decision log and operations tracking.',
-            status: 'in_progress',
+            // These governance records are created before the CEO is guaranteed to exist.
+            // Paperclip requires an assignee for in_progress issues, so keep them unassigned
+            // and actionable later rather than failing existing-company provisioning.
+            status: 'todo',
             priority: 'medium',
           });
           boardOperationsIssue = createdBoardOperationsIssue;
@@ -1003,7 +1006,7 @@ const plugin = definePlugin({
           const createdHiringPlanIssue = await client.createIssue(companyId, {
             title: 'Hiring Plan',
             description: 'Develop and execute the governed team hiring plan.',
-            status: 'in_progress',
+            status: 'todo',
             priority: 'high',
           });
           hiringPlanIssue = createdHiringPlanIssue;
