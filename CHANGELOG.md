@@ -5,6 +5,13 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.4.2] - 2026-06-15
+
+### Fixed
+
+- **Existing-company provisioning no longer fails while creating governance records.** Board Operations and Hiring Plan are now created as unassigned `todo` issues because Paperclip rejects unassigned `in_progress` issues.
+
+---
 ## [0.4.1] - 2026-06-15
 
 ### Changed

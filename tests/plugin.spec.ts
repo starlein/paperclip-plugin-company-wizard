@@ -46,7 +46,7 @@ describe("company-wizard", () => {
 
   it("reports available plugin updates", async () => {
     const fetchMock = vi.fn(async () => {
-      return new Response(JSON.stringify({ version: "0.4.2" }), {
+      return new Response(JSON.stringify({ version: "0.4.3" }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
@@ -65,8 +65,8 @@ describe("company-wizard", () => {
     };
 
     expect(result.ok).toBe(true);
-    expect(result.currentVersion).toBe("0.4.1");
-    expect(result.latestVersion).toBe("0.4.2");
+    expect(result.currentVersion).toBe("0.4.2");
+    expect(result.latestVersion).toBe("0.4.3");
     expect(result.updateAvailable).toBe(true);
     expect(result.url).toContain("npmjs.com/package/@starlein/paperclip-plugin-company-wizard");
   });
