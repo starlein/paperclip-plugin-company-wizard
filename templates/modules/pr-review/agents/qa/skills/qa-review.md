@@ -9,10 +9,13 @@ Your job is to ensure the tests *mean something*. Green CI on a change with no r
 - New code paths and edge cases are covered by tests that CI runs.
 - Tests assert behavior, not implementation.
 - Regression risk is covered.
+- The CI build job is green, not only the test job.
 Record `approved` only when CI is green AND coverage is adequate. If coverage is inadequate, record `changes_requested` with the specific missing test cases — even if CI is green.
 
 **No CI configured (you are the gate):**
-There is no machine arbiter, so you run it. Check out the branch, run the full test suite and the build locally, and paste the **real command output** into your verdict. A verdict without execution output is invalid.
+There is no machine arbiter, so you run it. Check out the branch, run the full test suite and the build locally, and paste the **real command output** into your stage-record verdict. A verdict without execution output is invalid.
+
+Replace `<branch>` with the PR branch name and substitute your project's actual test and build commands:
 
 ```bash
 git fetch origin && git checkout <branch>
