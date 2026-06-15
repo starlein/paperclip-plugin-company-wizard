@@ -1,5 +1,4 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/starlein/paperclip-plugin-company-wizard/main/public/favicon.svg" alt="Company Wizard" width="48" height="48">
   <h1 align="center">Company Wizard</h1>
   <p align="center">
     <strong>Bootstrap AI agent teams from modular templates.</strong>
@@ -10,6 +9,8 @@
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License"></a>
     <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen" alt="Node.js"></a>
   </p>
+<hr>
+  <img src="https://raw.githubusercontent.com/starlein/paperclip-plugin-company-wizard/main/docs/GIF-Screencast-Paperclip-Plugin-Company-Wizard.gif" alt="Screencast Paperclip Plugin Company Wizard" height="240">
 </p>
 
 ---
