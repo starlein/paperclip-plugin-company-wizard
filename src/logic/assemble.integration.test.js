@@ -577,6 +577,20 @@ describe('assembleCompany integration (real templates)', () => {
     );
   });
 
+  it('QA review skill is the substantive gate with an evidence requirement', async () => {
+    const qaSkill = await readFile(
+      join(REAL_TEMPLATES_DIR, 'modules', 'pr-review', 'agents', 'qa', 'skills', 'qa-review.md'),
+      'utf-8',
+    );
+    assert.ok(qaSkill.includes('substantive review gate'), 'QA framed as the gate');
+    assert.ok(
+      qaSkill.toLowerCase().includes('without execution output is invalid') ||
+        qaSkill.toLowerCase().includes('without executed verification'),
+      'a verdict without executed evidence must be invalid',
+    );
+    assert.ok(!qaSkill.includes('gh pr review'), 'no formal GitHub review with shared credential');
+  });
+
   it('keeps the lean baseline when enableEnrichedPersonas is off (default)', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'LeanReal',
