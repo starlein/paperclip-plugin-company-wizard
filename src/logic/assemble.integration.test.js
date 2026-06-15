@@ -591,6 +591,29 @@ describe('assembleCompany integration (real templates)', () => {
     assert.ok(!qaSkill.includes('gh pr review'), 'no formal GitHub review with shared credential');
   });
 
+  it('code review skill is advisory and does not gate the merge', async () => {
+    const crSkill = await readFile(
+      join(
+        REAL_TEMPLATES_DIR,
+        'modules',
+        'pr-review',
+        'agents',
+        'code-reviewer',
+        'skills',
+        'code-review.md',
+      ),
+      'utf-8',
+    );
+    assert.ok(crSkill.toLowerCase().includes('advisory'), 'framed as advisory');
+    assert.ok(
+      crSkill.toLowerCase().includes('do not gate the merge') ||
+        crSkill.toLowerCase().includes('does not block the merge') ||
+        crSkill.toLowerCase().includes('not a merge gate'),
+      'explicitly non-blocking',
+    );
+    assert.ok(!crSkill.includes('gh pr review'), 'no formal GitHub review with shared credential');
+  });
+
   it('keeps the lean baseline when enableEnrichedPersonas is off (default)', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'LeanReal',
