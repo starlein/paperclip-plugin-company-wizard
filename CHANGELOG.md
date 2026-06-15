@@ -5,6 +5,18 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.3.24] - 2026-06-15
+
+### Changed
+
+- **PR review is now substantive instead of ceremonial.** The `pr-review` module previously gated merges on a `code-reviewer` reading a diff and recording a verdict — effectively self-approval, since all agents share one model and one GitHub account. The merge gate is now **executed verification**: when the `ci-cd` module is active, CI (lint/test/build) must be green before the Engineer merges; otherwise the Engineer must run the test suite/build and paste the real output into the merge-gate verdict. The hard gate sits on the Engineer's final merge-gate stage and holds regardless of which reviewers are present.
+- **QA is the substantive review stage; the Code Reviewer is advisory.** The `pr-review` `reviewGate` reviewers changed from `["code-reviewer"]` to `["qa"]`. QA's skill (`qa-review.md`) was rewritten with two explicit modes (CI present vs. no CI) and a hard evidence requirement — a verdict that does not cite executed verification is invalid. The Code Reviewer's skill (`code-review.md`) and base role files (`roles/code-reviewer/AGENTS.md`, `HEARTBEAT.md`) were reframed as advisory, non-blocking; they no longer instruct GitHub-native `gh pr review --approve`/`--request-changes` (which cannot work with a shared GitHub account) and now post advisory feedback via `gh pr comment --body-file`.
+- **`renderReviewGate` / BOOTSTRAP guardrail are CI-aware.** The generated `executionPolicy` sketch and the BOOTSTRAP PR-review guardrail now render the CI-green precondition (or the run-the-tests-and-paste-output fallback) on the merge-gate stage, plus an evidence-required note that rejects "looks good" verdicts (`assemble.js`).
+
+### Added
+
+- **PR-scoped security review.** `security-engineer` is now in `pr-review`'s `activatesWithRoles`, and a new skill `templates/modules/pr-review/agents/security-engineer/skills/pr-security-review.md` reviews a specific PR's diff for security-relevant changes (auth, secrets, input boundaries, crypto, dependencies, infra exposure). The stage is conditional — the Engineer adds it only when the change is security-relevant. Named `pr-security-review.md` (not `security-review.md`) to avoid clobbering the `security-audit` module's capability skill of the same name. `pr-conventions.md` (Review Workflow, Review Roles, Merge Rules) was rewritten to match the new model.
+
 ## [0.3.23] - 2026-06-10
 
 ### Changed
