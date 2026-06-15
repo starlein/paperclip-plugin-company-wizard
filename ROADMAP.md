@@ -72,6 +72,7 @@
 - AI wizard hardening — `claude-opus-4-8` with `max_tokens: 32768`, background-job polling to beat the 30 s RPC timeout, domain-specific initial issues, defensive preset-role merging
 - Removed optional provisioning telemetry (was added then withdrawn)
 - Opt-in agent persona enrichment (`enableEnrichedPersonas`, default off) — domain lenses in `SOUL.md` for expert roles (security-engineer, ux-researcher, ui-designer, product-owner, code-reviewer, devops), output/review bars on module primary skills, and done-criteria in `HEARTBEAT.md`. Injected from `LENSES.md`/`DONE.md`/`<skill>.bar.md` fragments at assembly time; lean baseline unchanged when off.
+- Substantive PR review (new default, v0.3.24) — the `pr-review` merge gate is now executed verification instead of a reading-only `code-reviewer` verdict: CI-green when `ci-cd` is active, otherwise the Engineer runs the tests/build and pastes the output on the merge-gate stage. QA is the substantive blocking reviewer (`reviewGate.reviewers: ["qa"]`, two-mode `qa-review.md` with an evidence requirement); the Code Reviewer is advisory/non-blocking (`code-review.md` + base role files reframed, no GitHub-native `gh pr review`); the Security Engineer is wired into `activatesWithRoles` with a new conditional `pr-security-review.md`. `renderReviewGate` and the BOOTSTRAP guardrail render the CI/no-CI precondition and an evidence-required note.
 
 ## In Progress
 

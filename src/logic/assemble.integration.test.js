@@ -325,6 +325,24 @@ describe('assembleCompany integration (real templates)', () => {
     }
   });
 
+  it('pr-review gates on QA + executed verification, not a reading-only code reviewer', async () => {
+    const meta = JSON.parse(
+      await readFile(join(REAL_TEMPLATES_DIR, 'modules', 'pr-review', 'module.meta.json'), 'utf-8'),
+    );
+    const gate = meta.issues[0].reviewGate;
+    assert.deepEqual(gate.reviewers, ['qa'], 'QA is the substantive review stage');
+    assert.equal(gate.approver, 'product-owner');
+    assert.equal(gate.mergeGate, 'engineer');
+    assert.ok(
+      !gate.reviewers.includes('code-reviewer'),
+      'code-reviewer is no longer a blocking reviewer',
+    );
+    assert.ok(
+      meta.activatesWithRoles.includes('security-engineer'),
+      'security-engineer can activate pr-review for the conditional security stage',
+    );
+  });
+
   it('injects skill references into AGENTS.md with correct paths', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'SkillRefCo',
@@ -502,6 +520,129 @@ describe('assembleCompany integration (real templates)', () => {
     const roleFiles = await readdir(join(companyDir, 'agents', 'security-engineer'));
     assert.ok(!roleFiles.includes('LENSES.md'), 'LENSES.md must not leak as a file');
     assert.ok(!roleFiles.includes('DONE.md'), 'DONE.md must not leak as a file');
+  });
+
+  it('renders a CI-green hard gate in BOOTSTRAP when ci-cd is active', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'CiGateCo',
+      userGoals: [{ title: 'Ship it', description: 'Build and launch' }],
+      moduleNames: ['github-repo', 'ci-cd', 'pr-review'],
+      extraRoleNames: ['engineer', 'product-owner', 'qa'],
+      outputDir,
+      templatesDir: REAL_TEMPLATES_DIR,
+    });
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(
+      bootstrap.includes('CI must be green before merge'),
+      'CI mode should state CI-green as the hard merge-gate precondition',
+    );
+    assert.ok(
+      bootstrap.includes('"looks good" without evidence is not a valid verdict'),
+      'evidence note should reject "looks good" verdicts in a negative context',
+    );
+  });
+
+  it('renders a run-the-tests fallback gate in BOOTSTRAP when no CI is configured', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'NoCiGateCo',
+      userGoals: [{ title: 'Ship it', description: 'Build and launch' }],
+      moduleNames: ['github-repo', 'pr-review'],
+      extraRoleNames: ['engineer', 'product-owner', 'qa'],
+      outputDir,
+      templatesDir: REAL_TEMPLATES_DIR,
+    });
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(
+      bootstrap.includes('no CI configured'),
+      'no-CI mode should fall back to running tests + pasting output before merge',
+    );
+  });
+
+  it('BOOTSTRAP guardrail describes the substantive gate and advisory code reviewer', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'GuardrailCo',
+      userGoals: [{ title: 'Ship it', description: 'Build and launch' }],
+      moduleNames: ['github-repo', 'pr-review'],
+      extraRoleNames: ['engineer', 'product-owner', 'qa'],
+      outputDir,
+      templatesDir: REAL_TEMPLATES_DIR,
+    });
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(
+      bootstrap.includes("Required PR reviews use the issue's `executionPolicy`"),
+      'guardrail keeps its opening phrase',
+    );
+    assert.ok(
+      bootstrap.includes('advisory'),
+      'guardrail marks the Code Reviewer / domain reviewers advisory',
+    );
+    assert.ok(
+      bootstrap.includes('only when the change is security-relevant'),
+      'guardrail makes the security stage conditional',
+    );
+  });
+
+  it('QA review skill is the substantive gate with an evidence requirement', async () => {
+    const qaSkill = await readFile(
+      join(REAL_TEMPLATES_DIR, 'modules', 'pr-review', 'agents', 'qa', 'skills', 'qa-review.md'),
+      'utf-8',
+    );
+    assert.ok(qaSkill.includes('substantive review gate'), 'QA framed as the gate');
+    assert.ok(
+      qaSkill.toLowerCase().includes('without execution output is invalid') ||
+        qaSkill.toLowerCase().includes('without executed verification'),
+      'a verdict without executed evidence must be invalid',
+    );
+    assert.ok(!qaSkill.includes('gh pr review'), 'no formal GitHub review with shared credential');
+  });
+
+  it('code review skill is advisory and does not gate the merge', async () => {
+    const crSkill = await readFile(
+      join(
+        REAL_TEMPLATES_DIR,
+        'modules',
+        'pr-review',
+        'agents',
+        'code-reviewer',
+        'skills',
+        'code-review.md',
+      ),
+      'utf-8',
+    );
+    assert.ok(crSkill.toLowerCase().includes('advisory'), 'framed as advisory');
+    assert.ok(
+      crSkill.toLowerCase().includes('do not gate the merge') ||
+        crSkill.toLowerCase().includes('does not block the merge') ||
+        crSkill.toLowerCase().includes('not a merge gate'),
+      'explicitly non-blocking',
+    );
+    assert.ok(!crSkill.includes('gh pr review'), 'no formal GitHub review with shared credential');
+  });
+
+  it('installs the PR-scoped security review skill when a security engineer is present', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'SecReviewCo',
+      moduleNames: ['github-repo', 'pr-review'],
+      extraRoleNames: ['engineer', 'security-engineer'],
+      outputDir,
+      templatesDir: REAL_TEMPLATES_DIR,
+    });
+    const skillPath = join(
+      companyDir,
+      'agents',
+      'security-engineer',
+      'skills',
+      'pr-security-review.md',
+    );
+    assert.ok(
+      await exists(skillPath),
+      'pr-security-review.md should be installed for security-engineer',
+    );
+    const content = await readFile(skillPath, 'utf-8');
+    assert.ok(
+      content.toLowerCase().includes('security-relevant'),
+      'pr-security-review scopes itself to security-relevant changes',
+    );
   });
 
   it('keeps the lean baseline when enableEnrichedPersonas is off (default)', async () => {

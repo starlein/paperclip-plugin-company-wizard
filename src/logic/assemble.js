@@ -338,6 +338,9 @@ export async function assembleCompany({
   // Render a resolved reviewGate as an executionPolicy sketch for BOOTSTRAP.md.
   // The CEO/Engineer resolves each role name to its agentId when setting the
   // policy on the issue (same role→agentId resolution as `assigneeAgentId`).
+  // The merge-gate stage carries the hard precondition: CI-green when the ci-cd
+  // module is selected, otherwise running the tests/build and pasting the output.
+  const hasCi = moduleNames.includes('ci-cd');
   const renderReviewGate = (gate) => {
     const stages = [];
     for (const role of gate.reviewers) {
@@ -349,13 +352,17 @@ export async function assembleCompany({
       );
     }
     if (gate.mergeGate) {
+      const gatePrecondition = hasCi
+        ? 'CI must be green before merge'
+        : 'no CI configured — run the test suite/build and paste the output before merge';
       stages.push(
-        `  - stage ${stages.length + 1} (approval) → assign ${JSON.stringify(gate.mergeGate)}  — merge gate: merge the PR, then record approved to close`,
+        `  - stage ${stages.length + 1} (approval) → assign ${JSON.stringify(gate.mergeGate)}  — merge gate: ${gatePrecondition}; merge the PR, then record approved to close`,
       );
     }
     return (
       `- **executionPolicy** (set when creating this issue; resolve each role to its agentId):\n` +
-      `${stages.join('\n')}\n\n`
+      `${stages.join('\n')}\n` +
+      `  - every verdict must cite executed verification (commands + results); "looks good" without evidence is not a valid verdict\n\n`
     );
   };
 
@@ -1287,7 +1294,10 @@ export async function assembleCompany({
     bootstrap += `- Do not reopen \`done\` parent/subissues without an explicit reason in a comment.\n`;
     bootstrap += `- Do not reuse parent workspaces for subissues unless explicitly requested.\n`;
     if (moduleNames.includes('pr-review')) {
-      bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`: a \`review\` stage for the Code Reviewer (plus any relevant domain reviewer — QA/UI/UX/DevOps), an \`approval\` stage for the Product Owner, then a final \`approval\` merge-gate stage for the Engineer (who merges the PR before recording approval, which closes the issue). The merge gate must be last so the Product Owner's approval does not auto-close the issue with the PR still open. Resolve each role to its agentId. Do not create separate child review issues and do not use @-mentions.\n`;
+      const ciClause = hasCi
+        ? 'CI (lint/test/build) must be green before the Engineer merges — this is the hard gate and cannot be skipped'
+        : 'no CI is configured, so the Engineer must run the test suite/build and paste the real output into the merge-gate verdict before merging — this is the hard gate';
+      bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`. The substantive gate is execution, not opinion: ${ciClause}. Stages, in order: a \`review\` stage for QA when present (test adequacy / running the tests), a \`review\` stage for the Security Engineer **only when the change is security-relevant** (auth, secrets, input boundaries, crypto, dependencies, infra exposure), an \`approval\` stage for the Product Owner (intent/scope), then a final \`approval\` merge-gate stage for the Engineer (who satisfies the hard gate above, merges the PR, then records approval to close the issue). The merge gate must be last so the Product Owner's approval does not auto-close the issue with the PR still open. The Code Reviewer and other domain reviewers may add advisory, non-blocking comments but do not gate the merge. Every verdict must cite executed verification. Resolve each role to its agentId. Do not create separate child review issues and do not use @-mentions.\n`;
     }
     bootstrap += `\n`;
   }

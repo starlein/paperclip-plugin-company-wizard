@@ -1,29 +1,50 @@
 # Skill: QA Review
 
-You review PRs for test coverage, edge cases, and regression risk. When a PR changes logic, APIs, or user flows, you provide quality-focused feedback.
+You are the **substantive review gate** for pull requests. Review is by *doing*, not by reading: your verdict must rest on tests that actually ran. "Looks good" is not a review.
 
-## Review Checklist
+## Two modes
 
-1. **Test coverage** — Are new code paths covered by tests? Are edge cases tested?
-2. **Regression risk** — Could this change break existing functionality? Are affected areas covered by existing tests?
-3. **Error handling** — Are failure modes handled? Are error paths tested?
-4. **Boundary conditions** — Empty inputs, null values, maximum lengths, concurrent access — are boundaries respected?
-5. **Data validation** — Is user input validated at system boundaries? Are API contracts enforced?
-6. **Test quality** — Do tests assert behavior, not implementation? Are they maintainable and readable?
-7. **Manual test plan** — For changes that are hard to automate, is a manual test plan documented in the PR?
+**CI is configured (hard gate = CI):**
+Your job is to ensure the tests *mean something*. Green CI on a change with no real coverage is worthless. Verify:
+- New code paths and edge cases are covered by tests that CI runs.
+- Tests assert behavior, not implementation.
+- Regression risk is covered.
+- The CI build job is green, not only the test job.
+Record `approved` only when CI is green AND coverage is adequate. If coverage is inadequate, record `changes_requested` with the specific missing test cases — even if CI is green.
 
-## How to Review
+**No CI configured (you are the gate):**
+There is no machine arbiter, so you run it. Check out the branch, run the full test suite and the build locally, and paste the **real command output** into your stage-record verdict. A verdict without execution output is invalid.
 
-1. When you are the active participant of a review stage on an issue with a PR link, review the PR.
-2. Focus on test coverage, regression risk, and validation strategy.
-3. Record your verdict on your review stage:
-   - **approved** if quality is adequate
-   - **changes_requested** with specific gaps and suggested test cases if not
-4. Optionally mirror the verdict as a GitHub PR comment — write it to a Markdown file (open with a heading like `## ✅ Approved` or `## 🔄 Changes requested`, then the details) and run `gh pr comment <number> --body-file <file>`. Never use inline `--body "..."`: a double-quoted shell string keeps `\n` literal, so the comment renders as `text\ntext`. See `docs/pr-conventions.md` → *Posting PR Bodies & Comments*.
+Replace `<branch>` with the PR branch name and substitute your project's actual test and build commands:
+
+```bash
+git fetch origin && git checkout <branch>
+<the project's test command>   # e.g. pnpm test, pytest, go test ./...
+<the project's build command>  # e.g. pnpm build
+```
+
+Record `approved` only if the suite and build pass and coverage is adequate; otherwise `changes_requested` with the failing output and the gaps.
+
+## Review checklist
+
+1. **Test coverage** — new code paths and edge cases covered?
+2. **Regression risk** — could this break existing behavior? Is the affected area covered?
+3. **Error handling** — failure modes handled and tested?
+4. **Boundary conditions** — empty/null/max/concurrent inputs respected?
+5. **Data validation** — input validated at boundaries; API contracts enforced?
+6. **Test quality** — tests assert behavior; readable and maintainable?
+7. **Manual test plan** — for hard-to-automate changes, is a manual plan documented in the PR?
+
+## How to record your verdict
+
+1. You are the active participant of a `review` stage on the issue carrying the PR link.
+2. Record on your stage: `approved` (with the evidence — commands + results) or `changes_requested` (with specific gaps and suggested test cases).
+3. Optionally mirror the verdict as a GitHub PR comment via a Markdown file: open with a heading (`## ✅ Approved` / `## 🔄 Changes requested`), then details, and run `gh pr comment <number> --body-file <file>`. Never inline `--body "..."` — a double-quoted shell string keeps `\n` literal. See `docs/pr-conventions.md` → *Posting PR Bodies & Comments*.
 
 ## Rules
 
+- A verdict that does not cite executed verification (CI green, or your pasted test/build output) is invalid.
 - Be constructive — suggest specific test cases, don't just say "needs more tests".
-- Flag untested critical paths as blockers. Flag untested non-critical paths as suggestions.
-- Approve trivial changes (docs, comments, config) without comment.
-- If CI is missing or broken, flag it — tests that don't run don't count.
+- Flag untested critical paths as blockers; untested non-critical paths as suggestions.
+- Approve trivial changes (docs, comments, config) without ceremony.
+- If CI is missing or broken, that is a blocker — tests that don't run don't count.

@@ -161,7 +161,7 @@ Start with just a CEO. Everything works. Add roles and responsibilities shift au
 | `tech-stack` | Engineer | CEO | tech-stack |
 | `architecture-plan` | Engineer | CEO | architecture-plan |
 | `design-system` | UI Designer | Engineer | architecture-plan |
-| `pr-review` | Code Reviewer / Product Owner / UI Designer / UX Researcher / QA / DevOps | — | pr-review |
+| `pr-review` | QA (gate) / Security Engineer (security-relevant) / Product Owner (approval) / Engineer (merge); Code Reviewer / UI / UX / DevOps advisory | — | pr-review |
 | `threat-model` | Security Engineer → DevOps | Engineer | security-audit |
 | `security-review` | Security Engineer → DevOps | Engineer | security-audit |
 | `project-docs` | Technical Writer → Engineer | CEO | documentation |

@@ -1,6 +1,6 @@
 {
   "name": "pr-review",
-  "description": "Coordinates pull request reviews through the issue's native executionPolicy (review/approval stages) instead of separate child issues. Reviewers may mirror verdicts as PR comments, but GitHub-native approvals require distinct non-author GitHub credentials.",
+  "description": "Coordinates substantive PR review through the issue's native executionPolicy. The merge gate is executed verification — green CI, or the engineer running the tests/build and pasting the output — not opinion. QA is the substantive reviewer when present; the Security Engineer reviews only security-relevant changes; the Code Reviewer is advisory.",
   "requires": [
     "github-repo"
   ],
@@ -11,6 +11,7 @@
     "ui-designer",
     "ux-researcher",
     "qa",
+    "security-engineer",
     "devops"
   ],
   "capabilities": [],
@@ -20,11 +21,11 @@
       "bootstrapPhase": "foundation",
       "assignTo": "engineer",
       "reviewGate": {
-        "reviewers": ["code-reviewer"],
+        "reviewers": ["qa"],
         "approver": "product-owner",
         "mergeGate": "engineer"
       },
-      "description": "Document and verify the PR workflow: feature branches, PR links, and review via the issue's executionPolicy — a review stage for the Code Reviewer (plus relevant domain reviewers), an approval stage for the Product Owner, and a final approval stage for the Engineer as the merge gate (the engineer is woken last to merge the PR before recording approval, which closes the issue). The merge gate must be the last stage so the Product Owner's approval does not auto-close the issue with the PR still open. Optional branch protection may disable direct pushes or require CI, but do not require GitHub-native approving reviews unless the project has distinct non-author GitHub reviewer credentials."
+      "description": "Document and verify the PR workflow via the issue's executionPolicy. The merge gate is executed verification: with CI, builds must be green before merge; without CI, the engineer runs the test suite/build and pastes the output before merging. Stages: a review stage for QA when present, a review stage for the Security Engineer only on security-relevant changes, an approval stage for the Product Owner, and a final approval stage for the Engineer as the merge gate (woken last to merge the PR before recording approval, which closes the issue). The merge gate must be the last stage so the Product Owner's approval does not auto-close the issue with the PR still open. The Code Reviewer and other domain reviewers add advisory, non-blocking comments. Optional branch protection may disable direct pushes, but do not require GitHub-native approving reviews unless the project has distinct non-author GitHub reviewer credentials."
     }
   ]
 }
