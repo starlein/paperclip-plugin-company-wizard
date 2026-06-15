@@ -517,6 +517,42 @@ describe('assembleCompany integration (real templates)', () => {
     assert.ok(!roleFiles.includes('DONE.md'), 'DONE.md must not leak as a file');
   });
 
+  it('renders a CI-green hard gate in BOOTSTRAP when ci-cd is active', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'CiGateCo',
+      userGoals: [{ title: 'Ship it', description: 'Build and launch' }],
+      moduleNames: ['github-repo', 'ci-cd', 'pr-review'],
+      extraRoleNames: ['engineer', 'product-owner', 'qa'],
+      outputDir,
+      templatesDir: REAL_TEMPLATES_DIR,
+    });
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(
+      bootstrap.includes('CI must be green before merge'),
+      'CI mode should state CI-green as the hard merge-gate precondition',
+    );
+    assert.ok(
+      bootstrap.toLowerCase().includes('looks good'),
+      'evidence note should reject "looks good" verdicts',
+    );
+  });
+
+  it('renders a run-the-tests fallback gate in BOOTSTRAP when no CI is configured', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'NoCiGateCo',
+      userGoals: [{ title: 'Ship it', description: 'Build and launch' }],
+      moduleNames: ['github-repo', 'pr-review'],
+      extraRoleNames: ['engineer', 'product-owner', 'qa'],
+      outputDir,
+      templatesDir: REAL_TEMPLATES_DIR,
+    });
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(
+      bootstrap.includes('no CI configured'),
+      'no-CI mode should fall back to running tests + pasting output before merge',
+    );
+  });
+
   it('keeps the lean baseline when enableEnrichedPersonas is off (default)', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'LeanReal',

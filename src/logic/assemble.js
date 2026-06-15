@@ -338,6 +338,9 @@ export async function assembleCompany({
   // Render a resolved reviewGate as an executionPolicy sketch for BOOTSTRAP.md.
   // The CEO/Engineer resolves each role name to its agentId when setting the
   // policy on the issue (same role→agentId resolution as `assigneeAgentId`).
+  // The merge-gate stage carries the hard precondition: CI-green when the ci-cd
+  // module is selected, otherwise running the tests/build and pasting the output.
+  const hasCi = moduleNames.includes('ci-cd');
   const renderReviewGate = (gate) => {
     const stages = [];
     for (const role of gate.reviewers) {
@@ -349,13 +352,17 @@ export async function assembleCompany({
       );
     }
     if (gate.mergeGate) {
+      const gatePrecondition = hasCi
+        ? 'CI must be green before merge'
+        : 'no CI configured — run the test suite/build and paste the output before merge';
       stages.push(
-        `  - stage ${stages.length + 1} (approval) → assign ${JSON.stringify(gate.mergeGate)}  — merge gate: merge the PR, then record approved to close`,
+        `  - stage ${stages.length + 1} (approval) → assign ${JSON.stringify(gate.mergeGate)}  — merge gate: ${gatePrecondition}; merge the PR, then record approved to close`,
       );
     }
     return (
       `- **executionPolicy** (set when creating this issue; resolve each role to its agentId):\n` +
-      `${stages.join('\n')}\n\n`
+      `${stages.join('\n')}\n` +
+      `  - every verdict must cite executed verification (commands + results); "looks good" without evidence is not a valid verdict\n\n`
     );
   };
 
