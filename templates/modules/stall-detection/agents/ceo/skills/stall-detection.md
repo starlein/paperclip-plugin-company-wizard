@@ -1,21 +1,30 @@
 # Skill: Stall Detection
 
-Add this check to your heartbeat, after handling assignments and before exit.
+You own stall detection when you are explicitly assigned a stall-detection routine run. This is not an every-heartbeat background scan.
+
+## When To Use This Skill
+
+Use this only when the current assigned issue/routine is titled like "Stall detection" or explicitly asks you to inspect stalled work. Otherwise follow the normal Paperclip heartbeat rule: only work assigned issues and do not scan the whole board.
 
 ## Stall Check
 
-1. Query active issues: `GET /api/companies/{companyId}/issues?status=in_progress,in_review`
-2. For each issue, check the latest comment/activity timestamp.
-3. If an issue has had no activity for more than 2 heartbeat cycles:
-   - Check the assigned agent's status via `GET /api/agents/{agentId}`
-   - If agent is `idle`: @-mention them on the issue with a nudge: "This issue appears stalled. Please check and continue or report blockers."
-   - If agent is `running`: skip — they may be working on it now.
-   - If agent is `error` or `paused`: escalate to the board with a comment.
-4. If you've already nudged an agent on the same issue in a previous heartbeat and there's still no progress: escalate to the board.
-5. Record stall findings in your daily notes.
+1. Checkout the assigned routine-run issue.
+2. Query active issues for the relevant company/project: `todo`, `in_progress`, `in_review`, and blocked work where applicable.
+3. For each candidate, inspect latest comments/activity, execution state, blockers, approval/review state, and assigned agent status.
+4. Skip issues with an active run, recent activity, valid `blockedByIssueIds`, or pending executionPolicy approval/review.
+5. For a likely stall, leave a structured comment on the issue with:
+   - issue id/title
+   - assigned agent
+   - last activity timestamp/context
+   - why it appears stalled
+   - exact next action requested
+6. Prefer reassignment, blocker linkage, or escalation to CEO/Product Owner over informal nudges.
+7. If an agent is `error`, paused, or repeatedly non-responsive, escalate with an issue comment and assign the manager/CEO as appropriate.
+8. Summarize findings on the routine-run issue and mark it done.
 
 ## Rules
 
-- Don't nudge agents that are currently running — they may be mid-work.
-- Only escalate after one failed nudge attempt.
-- When escalating, be specific: which issue, which agent, how long stalled, what was the last activity.
+- Do not @-mention as a generic nudge; use assignment, status, blockers, and explicit next-action comments.
+- Do not interrupt running agents.
+- Do not close or cancel another agent's work unless the issue explicitly grants that authority.
+- Be specific: which issue, which agent, last activity, why stalled, and who owns the next action.

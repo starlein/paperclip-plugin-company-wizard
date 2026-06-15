@@ -16,7 +16,9 @@ export function StepGoal() {
       <div className="space-y-2">
         <h2 className="text-xl font-semibold tracking-tight">Company goal</h2>
         <p className="text-sm text-muted-foreground">
-          What's the top-level objective? This drives all agent work.
+          What's the top-level outcome? Lead with the primary deliverable or operating result; put
+          secondary constraints such as compliance, security, or accessibility in the description as
+          quality bars.
         </p>
       </div>
 
@@ -24,7 +26,7 @@ export function StepGoal() {
         <div className="space-y-2">
           <label className="text-sm font-medium">Goal title</label>
           <Input
-            placeholder="e.g. Ship MVP by end of month"
+            placeholder="e.g. Build and launch the core product"
             value={state.goals[0]?.title || ''}
             onChange={(e) =>
               dispatch({
@@ -42,7 +44,7 @@ export function StepGoal() {
           </label>
           <textarea
             className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-            placeholder="More context about what success looks like..."
+            placeholder="Primary outcome and scope first. Then add constraints / quality bars such as compliance, security, accessibility, or performance."
             value={state.goals[0]?.description || ''}
             onChange={(e) =>
               dispatch({

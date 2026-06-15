@@ -54,7 +54,8 @@
 - `createRoutine()` + `createRoutineTrigger()` API client methods
 - Graceful error handling — all worker actions return `{ error }` instead of throwing, preventing generic 502s. `PaperclipClient` wraps network errors with actionable messages (wrong port, connection refused). AI wizard shows API key warning on mount.
 - Existing-company provisioning — wizard can target an existing Paperclip company via `existingCompanyId` (paste in ConfigReview). Reuses an active CEO if present, otherwise hires one. Partial-failure cleanup no longer deletes existing companies.
-- Approval-aware agent hiring — `createAgent()` falls back to `POST /agent-hires` when direct creation requires board approval, then auto-approves via `/approvals/{id}/approve`. Pending approval IDs surfaced in logs on auto-approve failure.
+- Governed agent hiring — `createAgent()` submits through `POST /agent-hires`, carries `sourceIssueId` provenance, and surfaces pending approval IDs without auto-approving.
+- Board Operations / Hiring Plan bootstrap records — provisioning creates standing issues with `decision-log` and `hiring-plan` documents before submitting agent hires.
 - `disableBoardApprovalOnNewCompanies` plugin setting — optional compatibility mode that PATCHes new companies to disable mandatory board approval for new agents (default `false`, preserves approval-gated policies).
 
 ### Plugin migration (post-fork, v0.3.x)
@@ -71,7 +72,7 @@
 - "Update templates" button — re-downloads templates from GitHub without restarting the plugin
 - AI wizard hardening — `claude-opus-4-8` with `max_tokens: 32768`, background-job polling to beat the 30 s RPC timeout, domain-specific initial issues, defensive preset-role merging
 - Removed optional provisioning telemetry (was added then withdrawn)
-- Opt-in agent persona enrichment (`enableEnrichedPersonas`, default off) — domain lenses in `SOUL.md` for expert roles (security-engineer, ux-researcher, ui-designer, product-owner, code-reviewer, devops), output/review bars on module primary skills, and done-criteria in `HEARTBEAT.md`. Injected from `LENSES.md`/`DONE.md`/`<skill>.bar.md` fragments at assembly time; lean baseline unchanged when off.
+- Agent persona enrichment (default on when fragments exist) — domain lenses in `SOUL.md` for expert roles, output/review bars on module primary skills, and done-criteria in `HEARTBEAT.md`. Injected from `LENSES.md`/`DONE.md`/`<skill>.bar.md` fragments at assembly time; fragments never ship as standalone files.
 - Substantive PR review (new default, v0.3.24) — the `pr-review` merge gate is now executed verification instead of a reading-only `code-reviewer` verdict: CI-green when `ci-cd` is active, otherwise the Engineer runs the tests/build and pastes the output on the merge-gate stage. QA is the substantive blocking reviewer (`reviewGate.reviewers: ["qa"]`, two-mode `qa-review.md` with an evidence requirement); the Code Reviewer is advisory/non-blocking (`code-review.md` + base role files reframed, no GitHub-native `gh pr review`); the Security Engineer is wired into `activatesWithRoles` with a new conditional `pr-security-review.md`. `renderReviewGate` and the BOOTSTRAP guardrail render the CI/no-CI precondition and an evidence-required note.
 
 ## In Progress
@@ -85,7 +86,7 @@ _(nothing currently in progress)_
 - [ ] Per-role adapter model tuning — let presets/roles opt into cheaper models for low-stakes roles to reduce token spend
 - [ ] Routine pattern library — ship suggested routine sets per role beyond the current stall-detection/auto-assign/backlog trio
 - [ ] Contributor role-authoring guide — codify the lenses → output-bar → done structure for adding new roles (deferred from the persona-enrichment work)
-- [ ] Roll done-criteria out to all 17 roles — currently the 8 enriched roles only
+- [ ] Continue expanding done-criteria/domain lenses where they add clear role-specific value
 - [ ] Output/review bars for non-capability skills — e.g. `pr-review`'s role-specific review skills, which the current bar engine (capability-primary only) does not cover
 
 ### Platform

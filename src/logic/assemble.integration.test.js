@@ -228,6 +228,71 @@ describe('assembleCompany integration (real templates)', () => {
     );
   });
 
+  it('ships current Paperclip heartbeat and hiring-governance instructions in real templates', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'GovernanceTemplateCo',
+      moduleNames: [
+        'github-repo',
+        'backlog',
+        'auto-assign',
+        'stall-detection',
+        'hiring-review',
+        'pr-review',
+      ],
+      extraRoleNames: ['engineer', 'product-owner', 'qa', 'security-engineer', 'ui-designer'],
+      outputDir,
+      templatesDir: REAL_TEMPLATES_DIR,
+    });
+
+    const executionContract =
+      'Start actionable work in the same heartbeat; do not stop at a plan unless planning was requested.';
+    for (const role of ['engineer', 'qa', 'security-engineer', 'ui-designer', 'product-owner']) {
+      const agentsMd = await readFile(join(companyDir, 'agents', role, 'AGENTS.md'), 'utf-8');
+      assert.ok(
+        agentsMd.includes('follow the Paperclip skill'),
+        `${role} should point at the Paperclip skill as heartbeat source of truth`,
+      );
+      assert.ok(agentsMd.includes(executionContract), `${role} should include execution contract`);
+      assert.ok(agentsMd.includes('clear next action'), `${role} should require clear next action`);
+    }
+
+    const hiringSkill = await readFile(
+      join(companyDir, 'agents', 'product-owner', 'skills', 'hiring-review.md'),
+      'utf-8',
+    );
+    assert.ok(hiringSkill.includes('/agent-hires'), 'hiring skill should use agent-hires');
+    assert.ok(hiringSkill.includes('draft-review checklist'));
+    assert.ok(hiringSkill.includes('sourceIssueId'));
+    assert.ok(!hiringSkill.includes('type: "hire"'), 'legacy approval type should be gone');
+
+    for (const rel of [
+      ['product-owner', 'skills', 'auto-assign.md'],
+      ['product-owner', 'skills', 'backlog-health.md'],
+      ['ceo', 'skills', 'stall-detection.md'],
+    ]) {
+      const skill = await readFile(join(companyDir, 'agents', ...rel), 'utf-8');
+      assert.ok(
+        !skill.includes('Run this on every heartbeat'),
+        `${rel.join('/')} should be routine-run scoped, not every-heartbeat scoped`,
+      );
+    }
+  });
+
+  it('real bootstrap instructions use executionPolicy review gates without child-review conflict', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'BootstrapGovernanceCo',
+      moduleNames: ['github-repo', 'pr-review'],
+      extraRoleNames: ['engineer', 'product-owner', 'qa'],
+      outputDir,
+      templatesDir: REAL_TEMPLATES_DIR,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(bootstrap.includes("Required PR reviews use the issue's `executionPolicy`"));
+    assert.ok(!bootstrap.includes('explicit assigned child issues'));
+    assert.ok(!bootstrap.includes('create separate child review issues'));
+  });
+
   it('falls back capability ownership to ceo when product-owner is absent', async () => {
     const { companyDir, initialIssues } = await assembleCompany({
       companyName: 'FallbackCo',
@@ -479,13 +544,12 @@ describe('assembleCompany integration (real templates)', () => {
     );
   });
 
-  it('enriches a real expert role when enableEnrichedPersonas is on', async () => {
+  it('enriches a real expert role by default', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'EnrichReal',
       userGoals: [{ title: 'Ship securely', description: '' }],
       moduleNames: ['github-repo', 'security-audit'],
       extraRoleNames: ['security-engineer'],
-      enableEnrichedPersonas: true,
       outputDir,
       templatesDir: REAL_TEMPLATES_DIR,
     });
@@ -645,12 +709,13 @@ describe('assembleCompany integration (real templates)', () => {
     );
   });
 
-  it('keeps the lean baseline when enableEnrichedPersonas is off (default)', async () => {
+  it('can internally keep the lean baseline when enrichment is explicitly disabled', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'LeanReal',
       userGoals: [{ title: 'Ship securely', description: '' }],
       moduleNames: ['github-repo', 'security-audit'],
       extraRoleNames: ['security-engineer'],
+      enableEnrichedPersonas: false,
       outputDir,
       templatesDir: REAL_TEMPLATES_DIR,
     });
@@ -659,14 +724,14 @@ describe('assembleCompany integration (real templates)', () => {
       join(companyDir, 'agents', 'security-engineer', 'SOUL.md'),
       'utf-8',
     );
-    assert.ok(!soul.includes('## Domain Lenses'), 'no lenses injected when flag is off');
+    assert.ok(!soul.includes('## Domain Lenses'), 'no lenses injected when internally disabled');
     const heartbeat = await readFile(
       join(companyDir, 'agents', 'security-engineer', 'HEARTBEAT.md'),
       'utf-8',
     );
     assert.ok(
       !heartbeat.includes('## Done criteria'),
-      'no done-criteria injected when flag is off',
+      'no done-criteria injected when internally disabled',
     );
   });
 });

@@ -67,7 +67,7 @@ Each module contains:
 - `agents/<role>/skills/` — Role-specific overrides and fallback variants
 - `docs/` — Shared documentation injected into all agents
 
-**Opt-in persona enrichment** (`enableEnrichedPersonas` setting, default off): `roles/<role>/LENSES.md` (domain lenses → `SOUL.md`), `roles/<role>/DONE.md` (done-criteria → `HEARTBEAT.md`), and `modules/<module>/skills/<skill>.bar.md` (output/review bar → the primary skill) are appended at assembly time. They never ship as standalone files.
+**Persona enrichment**: `roles/<role>/LENSES.md` (domain lenses → `SOUL.md`), `roles/<role>/DONE.md` (done-criteria → `HEARTBEAT.md`), and `modules/<module>/skills/<skill>.bar.md` (output/review bar → the primary skill) are appended automatically at assembly time when present. They never ship as standalone files.
 
 ## Where This Is Going
 

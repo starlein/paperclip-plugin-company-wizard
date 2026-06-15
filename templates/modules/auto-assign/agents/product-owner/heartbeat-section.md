@@ -1,10 +1,3 @@
-## Assignment Check
+## Auto-Assign Routine
 
-After handling your own assignments:
-
-1. Query idle agents: `GET /api/companies/{companyId}/agents`, then filter client-side for those where `status == "idle"`
-2. Query unassigned todo issues: `GET /api/companies/{companyId}/issues?status=todo&unassigned=true`
-3. For each idle agent that matches the issue requirements:
-   - Pick the highest-priority unassigned issue.
-   - Assign it: `PATCH /api/issues/{id}` with `assigneeAgentId`.
-4. Record assignments in daily notes.
+Do not scan for unassigned work during a normal heartbeat. When you are assigned a routine-run issue titled like "Auto-assign unassigned issues", use `skills/auto-assign.md`, then summarize assignments on the routine issue and exit.

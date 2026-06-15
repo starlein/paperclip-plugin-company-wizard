@@ -1,6 +1,10 @@
 # Skill: Backlog Health
 
-You own the product backlog pipeline.
+You own the product backlog pipeline when you are explicitly assigned a backlog-grooming routine run or backlog-planning issue. This is not an every-heartbeat background scan.
+
+## When To Use This Skill
+
+Use this only when the current assigned issue/routine is titled like "Backlog grooming", "Backlog health", "Create roadmap", or explicitly asks you to decompose product work. Otherwise follow your normal assigned work.
 
 ## Label Setup
 
@@ -21,27 +25,22 @@ Add additional labels if the roadmap calls for them (e.g., `docs`, `design`, `se
 
 ## Backlog Health Check
 
-Run this on every heartbeat, after handling your own assignments.
-
-1. Query unassigned issues: `GET /api/companies/{companyId}/issues?status=todo&unassigned=true`
-2. If fewer than 3 unassigned issues remain:
-   - Review the company goal and current progress
-   - Identify the next logical chunk of work from the roadmap
-   - Create 3-5 new issues via `POST /api/companies/{companyId}/issues`, making sure each payload includes the correct `projectId`
-   - Each issue must have: `title`, `description`, `priority`, `projectId`, `goalId`, `labelIds`
-   - Use the current roadmap project's `projectId`; never create top-level backlog issues with `projectId: null`
-   - Fetch label IDs once per session: `GET /api/companies/{companyId}/labels`
-   - Write clear acceptance criteria in the description
-   - Leave issues unassigned — assignment happens separately
-3. Record what you generated in your daily notes.
+1. Checkout the assigned backlog/routine issue before mutating the board.
+2. Read the current company goals, roadmap/project context, existing issue documents, and recent decision log entries.
+3. Query existing issues for the relevant project/goal and avoid duplicates.
+4. If the backlog is thin or unclear, create 3-5 small actionable issues via `POST /api/companies/{companyId}/issues`.
+5. Each issue must include: `title`, acceptance-oriented `description`, `priority`, `projectId`, `goalId` when known, and `labelIds`.
+6. Use `blockedByIssueIds` for real dependencies instead of free-text blockers.
+7. Leave issues unassigned unless the routine explicitly includes assignment. Assignment happens through the auto-assign routine or manager handoff.
+8. Record generated issue ids and rationale in the routine issue comment; use issue documents for long plans.
+9. Mark the routine-run issue done when complete.
 
 ## Rules
 
-- Don't create duplicate issues. Check existing issues before creating new ones.
-- Keep issues small and actionable. Each should be completable in a single agent session.
-- Split into subissues only when each child can be completed, tested, and merged independently in its own isolated workspace.
-- Do not split tightly coupled implementation work across sibling subissues (same core code path/file cluster changed together). Keep coupled work in one issue, or sequence it explicitly so later work starts only after the prerequisite issue is done.
-- Set priority based on roadmap order and dependencies.
+- Do not run this from normal heartbeats.
+- Do not create top-level backlog issues with `projectId: null` when a project exists.
+- Keep issues small and actionable. Each should be completable, tested, and reviewed independently.
+- Split into subissues only when each child can be completed independently; avoid splitting tightly coupled implementation across sibling subissues.
 - Always attach at least one label to every issue you create.
-- If the goal is fully decomposed into issues, don't create more. Report to the CEO instead.
-- Coordinate with the CEO on strategic priorities when unclear.
+- If the goal is fully decomposed into issues, do not create more. Report status and next review trigger to the CEO/Product Owner.
+- Work products such as roadmap drafts or decomposition tables belong in issue documents/artifacts, not only comments.

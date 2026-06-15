@@ -226,6 +226,8 @@ export class PaperclipClient {
       permissions,
       metadata,
       instructionsBundle,
+      sourceIssueId,
+      sourceIssueIds,
     } = agent || {};
     const payload = {
       name,
@@ -243,57 +245,35 @@ export class PaperclipClient {
       ...(permissions ? { permissions } : {}),
       ...(metadata !== undefined ? { metadata } : {}),
       ...(instructionsBundle !== undefined ? { instructionsBundle } : {}),
+      ...(sourceIssueId !== undefined ? { sourceIssueId } : {}),
+      ...(sourceIssueIds !== undefined ? { sourceIssueIds } : {}),
     };
 
-    try {
-      return await this._fetch(`/api/companies/${companyId}/agents`, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      const requiresApproval =
-        message.includes('Direct agent creation requires board approval') ||
-        message.includes('/agent-hires');
-      if (!requiresApproval) throw err;
+    const hireResult = await this._fetch(`/api/companies/${companyId}/agent-hires`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
 
-      const hireResult = await this._fetch(`/api/companies/${companyId}/agent-hires`, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-
-      const hiredAgent = hireResult?.agent || null;
-      const approvalId = hireResult?.approval?.id || null;
-      if (!hiredAgent) {
-        throw new Error('Agent hire endpoint returned no agent.');
-      }
-
-      if (approvalId) {
-        try {
-          await this._fetch(`/api/approvals/${approvalId}/approve`, {
-            method: 'POST',
-            body: JSON.stringify({ decisionNote: 'Auto-approved by Company Wizard provisioning' }),
-          });
-          try {
-            return await this._fetch(`/api/agents/${hiredAgent.id}`, { method: 'GET' });
-          } catch {
-            return hiredAgent;
-          }
-        } catch (approveErr) {
-          return {
-            ...hiredAgent,
-            _pendingApprovalId: approvalId,
-            _approvalAutoApproveError:
-              approveErr instanceof Error ? approveErr.message : String(approveErr),
-          };
-        }
-      }
-
-      return hiredAgent;
+    const hiredAgent = hireResult?.agent || null;
+    const approvalId = hireResult?.approval?.id || null;
+    if (!hiredAgent) {
+      throw new Error('Agent hire endpoint returned no agent.');
     }
+
+    if (approvalId) {
+      return {
+        ...hiredAgent,
+        _pendingApprovalId: approvalId,
+      };
+    }
+
+    return hiredAgent;
   }
 
-  async createProject(companyId, { name, description, goalIds, workspace }) {
+  async createProject(
+    companyId,
+    { name, description, goalIds, workspace, executionWorkspacePolicy },
+  ) {
     const workspacePayload =
       typeof workspace === 'string'
         ? { sourceType: 'local_path', cwd: workspace, isPrimary: true }
@@ -305,7 +285,15 @@ export class PaperclipClient {
         description: description || null,
         ...(goalIds?.length ? { goalIds } : {}),
         workspace: workspacePayload,
+        ...(executionWorkspacePolicy ? { executionWorkspacePolicy } : {}),
       }),
+    });
+  }
+
+  async updateProject(projectId, updates = {}) {
+    return this._fetch(`/api/projects/${projectId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates || {}),
     });
   }
 
@@ -371,6 +359,18 @@ export class PaperclipClient {
     return this._fetch(`/api/issues/${issueId}`, {
       method: 'PATCH',
       body: JSON.stringify(updates || {}),
+    });
+  }
+
+  async putIssueDocument(issueId, key, { title, format, body, baseRevisionId }) {
+    return this._fetch(`/api/issues/${issueId}/documents/${encodeURIComponent(key)}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        title,
+        format: format || 'markdown',
+        body: body || '',
+        ...(baseRevisionId !== undefined ? { baseRevisionId } : {}),
+      }),
     });
   }
 

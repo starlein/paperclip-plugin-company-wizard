@@ -4,18 +4,22 @@ You work in a GitHub repository. Follow the conventions in `docs/git-workflow.md
 
 ## Direct-to-Main Flow
 
-1. Pull latest: `git pull origin main`
-2. Make your changes
-3. Run available checks (lint, typecheck, tests)
-4. Commit using Conventional Commits: `<type>: <description>`
-5. Push to main: `git push origin main`
-6. If CI fails, fix immediately
+1. Resolve the base ref from project workspace metadata or the issue's `heartbeat-context`. Use the configured `repoRef`, `defaultRef`, or `executionWorkspacePolicy.workspaceStrategy.baseRef` exactly as Paperclip provides it. Never guess from the current shell branch and never rewrite the configured ref to `main`, `master`, or `origin/*`.
+2. Pull/update latest from that base:
+   - external: `git fetch origin`, then integrate from the configured base ref
+   - local: update from the configured local branch
+3. Make your changes
+4. Run available checks (lint, typecheck, tests)
+5. Commit using Conventional Commits: `<type>: <description>`
+6. Push to the correct configured base branch
+7. If CI fails, fix immediately
 
 ## Rules
 
 - Always pull before starting work to avoid conflicts.
 - Keep commits focused — one concern per commit.
-- Never force push to main.
+- Never force push to the base branch.
+- Use the configured base ref. For external repos, branch and compare from the configured remote/ref and push/merge back to the matching remote branch.
 - If you encounter merge conflicts, resolve them carefully. When in doubt, escalate to the CEO.
 - Reference the issue ID in the commit body (e.g., `Closes YES-5`).
 - Never mark an issue as `done` unless at least one new commit was created for that issue's work and pushed.

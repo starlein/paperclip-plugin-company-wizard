@@ -5,7 +5,7 @@
   "routines": [
     {
       "title": "Stall detection",
-      "description": "Check all in_progress issues for signs of stalling. Nudge assigned agents, escalate if blocked for >24h.",
+      "description": "Routine-run checklist: inspect in_progress/in_review issues for stale activity, verify blockers and executionPolicy gates, record a concrete next action/reassignment/escalation on each stalled issue, summarize on the routine issue, then exit.",
       "assignTo": "ceo",
       "schedule": "0 */3 * * *",
       "priority": "medium",

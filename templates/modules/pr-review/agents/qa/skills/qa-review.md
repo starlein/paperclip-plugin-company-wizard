@@ -38,7 +38,7 @@ Record `approved` only if the suite and build pass and coverage is adequate; oth
 ## How to record your verdict
 
 1. You are the active participant of a `review` stage on the issue carrying the PR link.
-2. Record on your stage: `approved` (with the evidence — commands + results) or `changes_requested` (with specific gaps and suggested test cases).
+2. Record on your stage through the normal issue update route: `approved` (with the evidence — commands + results) by PATCHing toward `done`, or `changes_requested` (with specific gaps and suggested test cases) by PATCHing back to `in_progress`.
 3. Optionally mirror the verdict as a GitHub PR comment via a Markdown file: open with a heading (`## ✅ Approved` / `## 🔄 Changes requested`), then details, and run `gh pr comment <number> --body-file <file>`. Never inline `--body "..."` — a double-quoted shell string keeps `\n` literal. See `docs/pr-conventions.md` → *Posting PR Bodies & Comments*.
 
 ## Rules

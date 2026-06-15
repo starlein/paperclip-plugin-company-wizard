@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { usePluginAction } from '@paperclipai/plugin-sdk/ui';
 import {
   useWizard,
   useWizardDispatch,
@@ -18,6 +19,15 @@ import { StepAiWizard } from './steps/StepAiWizard';
 import { StepProvision } from './steps/StepProvision';
 import { StepDone } from './steps/StepDone';
 import { Button } from './ui/button';
+import { AlertTriangle, ExternalLink } from 'lucide-react';
+
+type UpdateInfo = {
+  ok?: boolean;
+  updateAvailable?: boolean;
+  currentVersion?: string;
+  latestVersion?: string;
+  url?: string;
+};
 
 const STEP_COMPONENTS = {
   onboarding: StepOnboarding,
@@ -66,6 +76,8 @@ function StepIndicator() {
 export function WizardShell() {
   const state = useWizard();
   const dispatch = useWizardDispatch();
+  const checkUpdate = usePluginAction('check-update');
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
 
   const StepComponent = STEP_COMPONENTS[state.step];
 
@@ -73,8 +85,51 @@ export function WizardShell() {
     window.scrollTo({ top: 0 });
   }, [state.step]);
 
+  useEffect(() => {
+    let cancelled = false;
+    checkUpdate({})
+      .then((result: unknown) => {
+        if (!cancelled) setUpdateInfo(result as UpdateInfo);
+      })
+      .catch(() => {
+        if (!cancelled) setUpdateInfo(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="flex flex-col">
+      {updateInfo?.ok && updateInfo.updateAvailable && (
+        <div className="mx-6 mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-200">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium">Company Wizard update available</p>
+                <p className="mt-0.5 text-amber-700 dark:text-amber-300">
+                  Installed {updateInfo.currentVersion}; latest {updateInfo.latestVersion}. Update
+                  the plugin package, then reload Paperclip.
+                </p>
+              </div>
+            </div>
+            {updateInfo.url && (
+              <a
+                href={updateInfo.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 whitespace-nowrap font-medium hover:underline"
+              >
+                npm
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Step indicator (compact, no standalone header) */}
       {getUserStepIndex(state) >= 1 && state.step !== 'provision' && state.step !== 'done' && (
         <div className="flex items-center justify-end px-6 py-3">

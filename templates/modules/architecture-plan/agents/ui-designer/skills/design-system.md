@@ -14,7 +14,7 @@ You own the visual design system. Establish the foundational patterns that ensur
    - **Responsive breakpoints**: Mobile, tablet, desktop sizing approach
 3. Create implementation issues for the engineer:
    - `POST /api/companies/{companyId}/issues` for CSS/design token setup, component library scaffolding. Include the active `projectId` (and `goalId` / `parentId` when applicable).
-4. @-mention the Engineer when the system is ready for implementation
+4. Assign or hand off implementation issues to the Engineer with a concrete next action; do not rely on generic @-mentions.
 
 ## Rules
 
