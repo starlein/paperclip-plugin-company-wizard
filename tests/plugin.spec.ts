@@ -5,6 +5,7 @@ import plugin from "../src/worker.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe("company-wizard", () => {
@@ -43,7 +44,7 @@ describe("company-wizard", () => {
 
   it("reports available plugin updates", async () => {
     const fetchMock = vi.fn(async () => {
-      return new Response(JSON.stringify({ version: "0.4.2" }), {
+      return new Response(JSON.stringify({ version: "0.4.3" }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
@@ -62,13 +63,13 @@ describe("company-wizard", () => {
     };
 
     expect(result.ok).toBe(true);
-    expect(result.currentVersion).toBe("0.4.1");
-    expect(result.latestVersion).toBe("0.4.2");
+    expect(result.currentVersion).toBe("0.4.2");
+    expect(result.latestVersion).toBe("0.4.3");
     expect(result.updateAvailable).toBe(true);
     expect(result.url).toContain("npmjs.com/package/@starlein/paperclip-plugin-company-wizard");
   });
 
-  it("resolves the configured Anthropic secret ref before calling Anthropic", async () => {
+  it("resolves an Anthropic API key from an environment variable reference", async () => {
     const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
       return new Response(JSON.stringify({ content: [{ text: "ok" }] }), {
         status: 200,
@@ -76,11 +77,12 @@ describe("company-wizard", () => {
       });
     });
     vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("ANTHROPIC_API_KEY", "sk-ant-test-env");
 
     const harness = createTestHarness({
       manifest,
       capabilities: manifest.capabilities,
-      config: { anthropicApiKey: "anthropic-secret-ref" },
+      config: { anthropicApiKey: "env:ANTHROPIC_API_KEY" },
     });
     await plugin.definition.setup(harness.ctx);
 
@@ -92,9 +94,28 @@ describe("company-wizard", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
 
     const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
-    expect((init.headers as Record<string, string>)["x-api-key"]).toBe(
-      "resolved:anthropic-secret-ref",
-    );
+    expect((init.headers as Record<string, string>)["x-api-key"]).toBe("sk-ant-test-env");
+  });
+
+  it("returns a clear error for Paperclip secret UUIDs in plugin settings", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const harness = createTestHarness({
+      manifest,
+      capabilities: manifest.capabilities,
+      config: { anthropicApiKey: "77777777-7777-4777-8777-777777777777" },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    const result = await harness.performAction("ai-chat", {
+      messages: [{ role: "user", content: "hello" }],
+    }) as { text?: string; error?: string };
+
+    expect(result.text).toBe("");
+    expect(result.error).toContain("cannot use a Paperclip secret UUID");
+    expect(result.error).toContain("env:ANTHROPIC_API_KEY");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("runs ai-chat as an async job (start → poll) for long generations", async () => {
@@ -109,7 +130,7 @@ describe("company-wizard", () => {
     const harness = createTestHarness({
       manifest,
       capabilities: manifest.capabilities,
-      config: { anthropicApiKey: "anthropic-secret-ref" },
+      config: { anthropicApiKey: "sk-ant-test-job" },
     });
     await plugin.definition.setup(harness.ctx);
 
