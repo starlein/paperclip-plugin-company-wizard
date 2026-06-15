@@ -532,8 +532,8 @@ describe('assembleCompany integration (real templates)', () => {
       'CI mode should state CI-green as the hard merge-gate precondition',
     );
     assert.ok(
-      bootstrap.toLowerCase().includes('looks good'),
-      'evidence note should reject "looks good" verdicts',
+      bootstrap.includes('"looks good" without evidence is not a valid verdict'),
+      'evidence note should reject "looks good" verdicts in a negative context',
     );
   });
 
