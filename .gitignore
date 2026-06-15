@@ -32,3 +32,4 @@ templates/presets/custom-*/
 templates/roles/custom-*/
 
 docs/superpowers
+.npmrc
