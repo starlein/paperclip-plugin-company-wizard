@@ -4,6 +4,16 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.5] - 2026-06-16
+
+### Fixed
+
+- **Fresh local project workspaces are initialized before provisioning.** Git-worktree companies now get an on-disk project repository during setup instead of letting Paperclip fall back to agent workspace directories when the project path does not exist yet.
+
+### Changed
+
+- **The plugin-update notice is compact and scoped to the onboarding page.** It was a large amber banner shown on every wizard step; it is now a small one-line notice (`current → latest`, npm link) rendered only on the onboarding (plugin entry) page next to the template update action, explicitly labeled "Company Wizard plugin". (`WizardShell.tsx`, `StepOnboarding.tsx`.)
+
 ---
 ## [0.4.4] - 2026-06-16
 
@@ -16,8 +26,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **The Code Reviewer is now the binding merge gate** (previously advisory/non-blocking). It satisfies the hard verification gate (green CI, or runs the tests/build and pastes the output), merges the PR into the correct base, cleans up any isolated worktree, and only then records the final approval that closes the issue. The engineer no longer adds themselves as a merge-gate stage.
 - **Default-branch resolution is name-agnostic.** When no base ref is configured for an existing repository, the worktree base ref is the repository's actual default branch — whatever `origin/HEAD` points at (`main`/`master`/`trunk`/…) — falling back to `main` then `master` only when the remote advertises no default HEAD. The detected branch is recorded on the project workspace so isolated worktrees branch from the correct base. (`github-repo` foundation issue, `docs/git-workflow.md`, engineer git/PR skills.)
 - **Terminology: "default branch" / "base ref" instead of hardcoded "main".** Reworded agent-facing instructions across the ci-cd skills, `github-repo`/`pr-review` docs and READMEs, `launch-mvp`, the `fast`/`repo-maintenance` presets, and the engineer SOUL so they no longer treat `main` as the universal default-branch name. Protective guards ("never rewrite the configured ref to `main`/`master`/`origin/*`") and the fresh-repo `git init -b main` default are unchanged.
-- **The plugin-update notice is compact and scoped to the onboarding page.** It was a large amber banner shown on every wizard step; it is now a small one-line notice (`current → latest`, npm link) rendered only on the onboarding (plugin entry) page, explicitly labeled "Company Wizard plugin". (`WizardShell.tsx`.)
-
 ### Removed
 
 - `scripts/patch-active-company.mjs` — the v0.4.3 one-off maintenance script is no longer tracked.

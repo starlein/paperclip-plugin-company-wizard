@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { execFileSync } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createTestHarness } from "@paperclipai/plugin-sdk/testing";
 import manifest from "../src/manifest.js";
-import plugin from "../src/worker.js";
+import plugin, { prepareLocalProjectWorkspace } from "../src/worker.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -46,7 +47,7 @@ describe("company-wizard", () => {
 
   it("reports available plugin updates", async () => {
     const fetchMock = vi.fn(async () => {
-      return new Response(JSON.stringify({ version: "0.4.3" }), {
+      return new Response(JSON.stringify({ version: "0.4.6" }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
@@ -65,10 +66,37 @@ describe("company-wizard", () => {
     };
 
     expect(result.ok).toBe(true);
-    expect(result.currentVersion).toBe("0.4.2");
-    expect(result.latestVersion).toBe("0.4.3");
+    expect(result.currentVersion).toBe("0.4.5");
+    expect(result.latestVersion).toBe("0.4.6");
     expect(result.updateAvailable).toBe(true);
     expect(result.url).toContain("npmjs.com/package/@starlein/paperclip-plugin-company-wizard");
+  });
+
+  it("prepares fresh local project workspaces before provisioning", async () => {
+    const root = await mkdtemp(join(tmpdir(), "company-wizard-workspace-"));
+    const companyDir = join(root, "FlowBoard");
+    const projectDir = join(companyDir, "projects", "FlowBoard");
+
+    try {
+      prepareLocalProjectWorkspace(
+        {
+          name: "FlowBoard",
+          workspace: {
+            sourceType: "local_path",
+            cwd: projectDir,
+            defaultRef: "main",
+          },
+        },
+        companyDir,
+      );
+
+      const head = execFileSync("git", ["-C", projectDir, "rev-parse", "--verify", "main"], {
+        encoding: "utf-8",
+      }).trim();
+      expect(head).toMatch(/^[a-f0-9]{40}$/);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it("resolves the configured Anthropic secret ref before calling Anthropic", async () => {
