@@ -52,7 +52,7 @@
     },
     {
       "title": "Set up deployment automation",
-      "description": "Configure automated deployment to at least one environment (staging or production). Use the CI pipeline to trigger deploys on successful builds from the main branch. Include a rollback strategy.",
+      "description": "Configure automated deployment to at least one environment (staging or production). Use the CI pipeline to trigger deploys on successful builds from the default branch. Include a rollback strategy.",
       "priority": "medium",
       "assignTo": "engineer"
     },
@@ -65,7 +65,7 @@
   ],
   "goal": {
     "title": "Set up CI/CD pipeline",
-    "description": "Establish a complete CI/CD pipeline: automated linting, testing, building, and deployment. Every push to main should be verified automatically, and deployments should be reproducible and low-risk.",
+    "description": "Establish a complete CI/CD pipeline: automated linting, testing, building, and deployment. Every push to the default branch should be verified automatically, and deployments should be reproducible and low-risk.",
     "project": false,
     "subgoals": [
       {
@@ -90,7 +90,7 @@
         "id": "deploy",
         "title": "Automated deployment",
         "level": "team",
-        "description": "Deploy to staging or production with minimal manual intervention. Pushes to main trigger automated deployment to at least one environment."
+        "description": "Deploy to staging or production with minimal manual intervention. Pushes to the default branch trigger automated deployment to at least one environment."
       }
     ]
   },

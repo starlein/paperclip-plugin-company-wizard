@@ -397,10 +397,15 @@ describe('assembleCompany integration (real templates)', () => {
     const gate = meta.issues[0].reviewGate;
     assert.deepEqual(gate.reviewers, ['qa'], 'QA is the substantive review stage');
     assert.equal(gate.approver, 'product-owner');
-    assert.equal(gate.mergeGate, 'engineer');
+    assert.equal(gate.mergeGate, 'code-reviewer', 'the non-author Code Reviewer is the merge gate');
     assert.ok(
       !gate.reviewers.includes('code-reviewer'),
-      'code-reviewer is no longer a blocking reviewer',
+      'code-reviewer is the merge gate, not a blocking review stage',
+    );
+    assert.notEqual(
+      gate.mergeGate,
+      'engineer',
+      'the engineer authors the work and is excluded from stages, so cannot be the merge gate',
     );
     assert.ok(
       meta.activatesWithRoles.includes('security-engineer'),
@@ -622,12 +627,12 @@ describe('assembleCompany integration (real templates)', () => {
     );
   });
 
-  it('BOOTSTRAP guardrail describes the substantive gate and advisory code reviewer', async () => {
+  it('BOOTSTRAP guardrail names the Code Reviewer merge gate and forbids self-stages', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'GuardrailCo',
       userGoals: [{ title: 'Ship it', description: 'Build and launch' }],
       moduleNames: ['github-repo', 'pr-review'],
-      extraRoleNames: ['engineer', 'product-owner', 'qa'],
+      extraRoleNames: ['engineer', 'product-owner', 'qa', 'code-reviewer'],
       outputDir,
       templatesDir: REAL_TEMPLATES_DIR,
     });
@@ -637,8 +642,13 @@ describe('assembleCompany integration (real templates)', () => {
       'guardrail keeps its opening phrase',
     );
     assert.ok(
-      bootstrap.includes('advisory'),
-      'guardrail marks the Code Reviewer / domain reviewers advisory',
+      bootstrap.includes('Code Reviewer'),
+      'guardrail names the Code Reviewer as the merge gate',
+    );
+    assert.ok(
+      /never list the issue's executor/i.test(bootstrap) ||
+        bootstrap.includes('No eligible approval participant'),
+      'guardrail forbids assigning the issue executor/author to a stage',
     );
     assert.ok(
       bootstrap.includes('only when the change is security-relevant'),
@@ -660,7 +670,7 @@ describe('assembleCompany integration (real templates)', () => {
     assert.ok(!qaSkill.includes('gh pr review'), 'no formal GitHub review with shared credential');
   });
 
-  it('code review skill is advisory and does not gate the merge', async () => {
+  it('code review skill is the non-author merge gate that lands the PR', async () => {
     const crSkill = await readFile(
       join(
         REAL_TEMPLATES_DIR,
@@ -673,12 +683,18 @@ describe('assembleCompany integration (real templates)', () => {
       ),
       'utf-8',
     );
-    assert.ok(crSkill.toLowerCase().includes('advisory'), 'framed as advisory');
+    assert.ok(crSkill.toLowerCase().includes('merge gate'), 'framed as the merge gate');
+    assert.ok(crSkill.includes('gh pr merge'), 'the merge gate actually merges the PR');
     assert.ok(
-      crSkill.toLowerCase().includes('do not gate the merge') ||
-        crSkill.toLowerCase().includes('does not block the merge') ||
-        crSkill.toLowerCase().includes('not a merge gate'),
-      'explicitly non-blocking',
+      crSkill.toLowerCase().includes('non-author') ||
+        crSkill.toLowerCase().includes('excludes the issue') ||
+        crSkill.toLowerCase().includes('original executor'),
+      'explains it is a non-author because Paperclip excludes the executor',
+    );
+    assert.ok(
+      crSkill.toLowerCase().includes('green') ||
+        crSkill.toLowerCase().includes('executed verification'),
+      'requires executed verification before merge',
     );
     assert.ok(!crSkill.includes('gh pr review'), 'no formal GitHub review with shared credential');
   });

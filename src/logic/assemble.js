@@ -312,14 +312,37 @@ export async function assembleCompany({
         ? reviewGate.approver
         : undefined;
 
-    // The merge gate is the issue's merge owner (the engineer). It renders as a
+    // The merge gate is the non-author agent who lands the PR. It renders as a
     // final `approval` stage so the merge owner is woken *last* — after the
     // approver — to perform the merge. Without it, the approver's verdict
     // auto-closes the issue and the PR is never merged.
-    const mergeGate =
+    //
+    // It must NOT be the issue's executor: Paperclip excludes the original executor
+    // from every review/approval stage to prevent self-review, so a stage whose only
+    // participant is the author has no eligible participant and the issue stalls in
+    // `in_review` (422 No eligible approval participant). The engineer therefore can
+    // never be their own merge gate. Prefer the configured role (the Code Reviewer);
+    // if it isn't on the team, fall back to another present non-author role that is
+    // not already a reviewer or the approver.
+    let mergeGate =
       typeof reviewGate.mergeGate === 'string' && allRoles.has(reviewGate.mergeGate)
         ? reviewGate.mergeGate
         : undefined;
+    if (!mergeGate) {
+      // Prefer a present non-author role that isn't already the approver. The list
+      // is ordered so a dedicated reviewing role wins before a substantive reviewer
+      // (QA) doubles as the merge gate — a non-author may serve in two stages, which
+      // is the only option in a minimal team (engineer + approver + QA).
+      const mergeGateFallbacks = [
+        'code-reviewer',
+        'devops',
+        'ui-designer',
+        'ux-researcher',
+        'security-engineer',
+        'qa',
+      ];
+      mergeGate = mergeGateFallbacks.find((role) => allRoles.has(role) && role !== approver);
+    }
 
     // Avoid accidentally requiring the same role twice (e.g. reviewer + approver).
     if (approver) {
@@ -352,12 +375,13 @@ export async function assembleCompany({
         ? 'CI must be green before merge'
         : 'no CI configured — run the test suite/build and paste the output before merge';
       stages.push(
-        `  - stage ${stages.length + 1} (approval) → assign ${JSON.stringify(gate.mergeGate)}  — merge gate: ${gatePrecondition}; merge the PR, then record approved to close`,
+        `  - stage ${stages.length + 1} (approval) → assign ${JSON.stringify(gate.mergeGate)}  — merge gate (non-author): ${gatePrecondition}; merge the PR, then record approved to close`,
       );
     }
     return (
       `- **executionPolicy** (set when creating this issue; resolve each role to its agentId):\n` +
       `${stages.join('\n')}\n` +
+      `  - never assign the issue's executor/author to any stage — Paperclip excludes the original executor, so a self-stage has no eligible participant and the issue stalls (422); the merge gate must be a non-author\n` +
       `  - every verdict must cite executed verification (commands + results); "looks good" without evidence is not a valid verdict\n\n`
     );
   };
@@ -1315,9 +1339,9 @@ export async function assembleCompany({
     bootstrap += `- Do not reuse parent workspaces for subissues unless explicitly requested.\n`;
     if (moduleNames.includes('pr-review')) {
       const ciClause = hasCi
-        ? 'CI (lint/test/build) must be green before the Engineer merges — this is the hard gate and cannot be skipped'
-        : 'no CI is configured, so the Engineer must run the test suite/build and paste the real output into the merge-gate verdict before merging — this is the hard gate';
-      bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`. The substantive gate is execution, not opinion: ${ciClause}. Stages, in order: a \`review\` stage for QA when present (test adequacy / running the tests), a \`review\` stage for the Security Engineer **only when the change is security-relevant** (auth, secrets, input boundaries, crypto, dependencies, infra exposure), an \`approval\` stage for the Product Owner (intent/scope), then a final \`approval\` merge-gate stage for the Engineer (who satisfies the hard gate above, merges the PR, then records approval to close the issue). The merge gate must be last so the Product Owner's approval does not auto-close the issue with the PR still open. The Code Reviewer and other domain reviewers may add advisory, non-blocking comments but do not gate the merge. Every verdict must cite executed verification. Resolve each role to its agentId. Model review stages in executionPolicy rather than child issues or @-mentions.\n`;
+        ? 'CI (lint/test/build) must be green before the merge gate merges — this is the hard gate and cannot be skipped'
+        : 'no CI is configured, so the merge-gate agent must run the test suite/build and paste the real output into the merge-gate verdict before merging — this is the hard gate';
+      bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`. The substantive gate is execution, not opinion: ${ciClause}. Stages, in order: a \`review\` stage for QA when present (test adequacy / running the tests), a \`review\` stage for the Security Engineer **only when the change is security-relevant** (auth, secrets, input boundaries, crypto, dependencies, infra exposure), an \`approval\` stage for the Product Owner (intent/scope), then a final \`approval\` merge-gate stage for the **Code Reviewer** (a non-author who satisfies the hard gate above, merges the PR, then records approval to close the issue). **Never list the issue's executor/author as a participant in any stage** — Paperclip excludes the original executor from review/approval, so a stage whose only participant is the author has no eligible participant and the issue stalls in \`in_review\` (422 No eligible approval participant); this is why the merge gate is the Code Reviewer (or another present non-author), not the engineer who wrote the code. The merge gate must be last so the Product Owner's approval does not auto-close the issue with the PR still open. Other domain reviewers may add advisory, non-blocking comments but do not gate the merge. Every verdict must cite executed verification. Resolve each role to its agentId. Model review stages in executionPolicy rather than child issues or @-mentions.\n`;
     }
     bootstrap += `\n`;
   }

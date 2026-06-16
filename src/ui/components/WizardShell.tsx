@@ -102,25 +102,22 @@ export function WizardShell() {
 
   return (
     <div className="flex flex-col">
-      {updateInfo?.ok && updateInfo.updateAvailable && (
-        <div className="mx-6 mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-200">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium">Company Wizard update available</p>
-                <p className="mt-0.5 text-amber-700 dark:text-amber-300">
-                  Installed {updateInfo.currentVersion}; latest {updateInfo.latestVersion}. Update
-                  the plugin package, then reload Paperclip.
-                </p>
-              </div>
-            </div>
+      {/* Plugin update notice — compact, and only on the onboarding (plugin entry) page. */}
+      {updateInfo?.ok && updateInfo.updateAvailable && state.step === 'onboarding' && (
+        <div className="px-6 pt-4">
+          <div className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground">
+            <AlertTriangle className="h-3 w-3 shrink-0 text-amber-500" />
+            <span>
+              <span className="font-medium text-foreground">Company Wizard plugin</span> update:{' '}
+              {updateInfo.currentVersion} → {updateInfo.latestVersion}
+            </span>
             {updateInfo.url && (
               <a
                 href={updateInfo.url}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 whitespace-nowrap font-medium hover:underline"
+                className="inline-flex items-center gap-0.5 font-medium text-foreground hover:underline"
+                title="Update the plugin package, then reload Paperclip"
               >
                 npm
                 <ExternalLink className="h-3 w-3" />

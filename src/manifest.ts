@@ -3,7 +3,7 @@ import type { PaperclipPluginManifestV1 } from '@paperclipai/plugin-sdk';
 const manifest: PaperclipPluginManifestV1 = {
   id: 'starlein.paperclip-plugin-company-wizard',
   apiVersion: 1,
-  version: '0.4.3',
+  version: '0.4.4',
   displayName: 'Company Wizard',
   description: 'AI-powered wizard to bootstrap agent companies from composable templates',
   author: 'Sascha Pietrowski <sp@speednetwork.de>',

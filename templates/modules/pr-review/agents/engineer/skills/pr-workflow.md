@@ -1,10 +1,10 @@
 # Skill: PR Workflow
 
-When this skill is active, you work in feature branches and open PRs instead of committing directly to main. Follow the conventions in `docs/pr-conventions.md` in the project root.
+When this skill is active, you work in feature branches and open PRs instead of committing directly to the base ref. Follow the conventions in `docs/pr-conventions.md` in the project root.
 
 ## Feature Branch Flow
 
-1. Resolve the project/worktree base ref from the issue's `heartbeat-context` / project workspace metadata before branching. Use the configured `repoRef`, `defaultRef`, or `executionWorkspacePolicy.workspaceStrategy.baseRef` exactly as Paperclip provides it. Never guess from your shell's current branch and never rewrite the configured ref to `main`, `master`, or `origin/*`.
+1. Resolve the project/worktree base ref from the issue's `heartbeat-context` / project workspace metadata before branching. Use the configured `repoRef`, `defaultRef`, or `executionWorkspacePolicy.workspaceStrategy.baseRef` exactly as Paperclip provides it. Never guess from your shell's current branch and never rewrite the configured ref to `main`, `master`, or `origin/*`. If no base ref is configured anywhere, use the repository's actual default branch — whatever `origin/HEAD` points at, regardless of name (`main`/`master`/`trunk`/…); fall back to `main` then `master` only if the remote advertises no default HEAD. See `docs/git-workflow.md` → *Resolving the default branch*. Never hard-code `main`.
 2. Fetch and update the base:
    - external: `git fetch origin`, then branch from the configured base ref
    - local: update from the configured local branch
@@ -12,26 +12,27 @@ When this skill is active, you work in feature branches and open PRs instead of 
 4. Make your changes, commit with Conventional Commits format
 5. Push branch: `git push -u origin <branch-name>`
 6. Open PR against the same resolved base: derive the GitHub base branch from the configured ref (for example, strip the remote prefix only when the ref is remote-tracking), write the body (PR Body Template in `docs/pr-conventions.md`) to a file, then `gh pr create --base <github-base-branch> --head <branch-name> --title "<type>: <description>" --body-file <file>`. Never inline `--body "..."` — a double-quoted shell string keeps `\n` literal and the PR renders as `text\ntext` (see *Posting PR Bodies & Comments*).
-7. Set the originating issue's `executionPolicy` to gate the merge on review, ending with your own merge gate:
+7. Set the originating issue's `executionPolicy` to gate the merge on review, ending with the Code Reviewer as the merge gate:
    - One `review` stage with **QA** when a QA agent exists (test adequacy / executed verification).
    - One `review` stage with the **Security Engineer** only when the change is security-relevant (auth, secrets, input boundaries, crypto, dependencies, infra exposure).
-   - Additional `review` stages only for domain reviewers that should block this specific change. Code Reviewer and other specialists are advisory by default unless explicitly configured as participants.
+   - Additional `review` stages only for domain reviewers that should block this specific change.
    - An `approval` stage with the **Product Owner** as participant (always) — the product sign-off.
-   - A final `approval` stage with **yourself (the Engineer)** as participant — the **merge gate**. This stage exists so you are woken *last*, after every reviewer and the Product Owner have cleared, to perform the merge.
+   - A final `approval` stage with the **Code Reviewer** as participant — the **merge gate**. The Code Reviewer is woken *last*, after every reviewer and the Product Owner have cleared, to satisfy the hard verification gate and merge the PR. If the team has no Code Reviewer, use another present non-author agent (e.g. DevOps, the Product Owner, or another engineer) — never yourself.
+   - **Never list yourself (the issue's executor) as a participant in any stage.** Paperclip excludes the original executor to prevent self-review; a stage whose only participant is you has no eligible participant and the issue stalls in `in_review` forever (`422 No eligible approval participant is configured for this issue`).
    - Resolve each role to its agentId first (look up active agents), then set the policy on the issue. Include the PR link in an issue comment so reviewers can find it.
 8. Move the originating issue to `in_review`.
 9. Wait for the issue to clear its review/approval stages. Each reviewer and the Product Owner records `approved` by PATCHing the issue toward `done`, or `changes_requested` by PATCHing it back to `in_progress`; Paperclip stores the reviewer/approver decision metadata on the issue. Verdicts may be mirrored as PR comments. A `changes_requested` routes the issue back to you — address it, push to the same branch, and that stage re-runs.
-10. When the issue reaches your final **merge gate** stage (you are the current participant and every prior stage is approved): run `gh pr merge <number> --merge`, confirm the merge landed into the configured project base, then close/archive the isolated execution workspace if one exists and close-readiness allows it. **Only after merge and workspace close/cleanup succeeds** record `approved` on your stage — that closes the issue to `done`. Never record `approved` before the merge has actually succeeded, and never set the issue to `done` with the PR still open or an execution workspace still active.
+10. You do not merge your own PR. The **Code Reviewer** (the non-author merge gate) lands it after every prior stage approves, satisfies the hard verification gate, and records the final `approved` that closes the issue to `done`. Your remaining job is to respond to `changes_requested`: when a stage routes the issue back to you (the `returnAssignee`), address the feedback, push to the same branch, and the routed stage re-runs.
 
 ## Rules
 
-- Never commit directly to main (except typos/comment-only/doc fixes with issue reference).
+- Never commit directly to the base ref (except typos/comment-only/doc fixes with issue reference).
 - One PR per issue. Keep changes focused.
 - Always include `Closes [PREFIX-N]` in the PR body.
 - If a reviewer requests changes, address them, push to the same branch, and re-request review (the stage re-runs).
-- You are the merge owner — never ask reviewers to merge.
-- Before creating a PR or merging, verify the PR base matches the configured project/worktree base. If the base is wrong, retarget the PR before review/merge.
-- **Your merge gate must be the last stage.** The Product Owner's `approval` is the product sign-off, not the final stage. If it were last, their verdict would auto-close the issue to `done` and you would never be woken to merge — leaving the PR open on GitHub. Always append your own merge-gate `approval` stage after the Product Owner's, and do the merge there before recording your verdict.
+- The Code Reviewer (the non-author merge gate) is the merge owner. You cannot merge your own PR — Paperclip excludes you (the executor) from every review/approval stage. Hand off cleanly by setting the policy correctly, not by merging yourself.
+- Before creating a PR, verify the PR base matches the configured project/worktree base. If the base is wrong, retarget the PR before review.
+- **The merge gate must be the last stage, and it must be a non-author.** The Product Owner's `approval` is the product sign-off, not the final stage: if it were last, their verdict would auto-close the issue to `done` with the PR still open on GitHub. Append a final merge-gate `approval` stage for the **Code Reviewer** (or another present non-author agent) after the Product Owner's. Never make yourself the merge gate — Paperclip excludes the executor, so that stage stalls with `422 No eligible approval participant`.
 - Do not create separate child review issues and do not use @-mentions to request review; the executionPolicy stages are the governance signal.
 - Do not wait for GitHub-native approving reviews when all agents share the same GitHub credential; GitHub rejects self-approval. The Paperclip executionPolicy stages are the required signal unless a separate non-author GitHub reviewer credential is explicitly available.
-- If Paperclip created an isolated execution workspace for this issue, do not leave it behind. Use the current execution workspace id from `heartbeat-context`, check close-readiness, and archive it after the PR is merged and the tree is clean. If archive/cleanup is blocked, leave the issue `blocked` or `in_review` with the exact cleanup blocker instead of marking `done`. If this issue runs in the shared project workspace, do not invent isolated-worktree cleanup.
+- Post-merge cleanup of any isolated execution workspace belongs to the merge-gate agent (they archive it from `heartbeat-context` when landing the PR). You only clean up your own worktree if you abandon a branch or the issue is cancelled before review. If this issue runs in the shared project workspace, do not invent isolated-worktree cleanup.

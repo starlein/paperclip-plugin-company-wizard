@@ -1,6 +1,6 @@
 {
   "name": "pr-review",
-  "description": "Coordinates substantive PR review through the issue's native executionPolicy. The merge gate is executed verification — green CI, or the engineer running the tests/build and pasting the output — not opinion. QA is the substantive reviewer when present; the Security Engineer reviews only security-relevant changes; the Code Reviewer is advisory.",
+  "description": "Coordinates substantive PR review through the issue's native executionPolicy. The merge gate is executed verification — green CI, or running the tests/build and pasting the output — not opinion. QA is the substantive reviewer when present; the Security Engineer reviews only security-relevant changes; the Code Reviewer is the non-author merge gate that verifies and lands the PR (Paperclip excludes the issue's author from every stage, so the engineer cannot merge their own work).",
   "requires": [
     "github-repo"
   ],
@@ -23,9 +23,9 @@
       "reviewGate": {
         "reviewers": ["qa"],
         "approver": "product-owner",
-        "mergeGate": "engineer"
+        "mergeGate": "code-reviewer"
       },
-      "description": "Document and verify the PR workflow via the issue's executionPolicy. The merge gate is executed verification: with CI, builds must be green before merge; without CI, the engineer runs the test suite/build and pastes the output before merging. Stages: a review stage for QA when present, a review stage for the Security Engineer only on security-relevant changes, an approval stage for the Product Owner, and a final approval stage for the Engineer as the merge gate (woken last to merge the PR before recording approval, which closes the issue). The merge gate must be the last stage so the Product Owner's approval does not auto-close the issue with the PR still open. The Code Reviewer and other domain reviewers add advisory, non-blocking comments. Optional branch protection may disable direct pushes, but do not require GitHub-native approving reviews unless the project has distinct non-author GitHub reviewer credentials."
+      "description": "Document and verify the PR workflow via the issue's executionPolicy. The merge gate is executed verification: with CI, builds must be green before merge; without CI, the merge-gate agent runs the test suite/build and pastes the output before merging. Stages: a review stage for QA when present, a review stage for the Security Engineer only on security-relevant changes, an approval stage for the Product Owner, and a final approval stage for the Code Reviewer as the merge gate (a non-author woken last to merge the PR before recording approval, which closes the issue). Never list the issue's executor/author as a participant in any stage — Paperclip excludes the original executor, so a stage whose only participant is the author has no eligible participant and the issue stalls (`422 No eligible approval participant is configured for this issue`); this is why the merge gate is the Code Reviewer (or another non-author), not the engineer. The merge gate must be the last stage so the Product Owner's approval does not auto-close the issue with the PR still open. Other domain reviewers add advisory, non-blocking comments. Optional branch protection may disable direct pushes, but do not require GitHub-native approving reviews unless the project has distinct non-author GitHub reviewer credentials."
     }
   ]
 }
