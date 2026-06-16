@@ -6,11 +6,11 @@ You manage continuous integration and deployment pipelines. Follow the conventio
 
 1. Review the tech stack to determine build, lint, and test tooling
 2. Create a CI workflow (GitHub Actions or equivalent):
-   - Lint on all PRs and pushes to main
-   - Run tests on all PRs and pushes to main
+   - Lint on all PRs and pushes to the default branch
+   - Run tests on all PRs and pushes to the default branch
    - Build/typecheck to verify compilation
 3. Create a CD workflow:
-   - Trigger on merge to main
+   - Trigger on merge to the default branch
    - Deploy to the target environment
    - Run smoke tests after deployment
 4. Add status badges to the project README
@@ -23,4 +23,4 @@ You manage continuous integration and deployment pipelines. Follow the conventio
 - Use dependency caching (e.g., `actions/cache`, `setup-node` cache) to speed up installs.
 - Pin action versions to full SHAs, not tags, for security.
 - Never store secrets in workflow files — use GitHub Secrets or equivalent.
-- If CI breaks main, fix it immediately — a red main blocks everyone.
+- If CI breaks the default branch, fix it immediately — a red default branch blocks everyone.

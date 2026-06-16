@@ -69,42 +69,42 @@ Review runs through the issue's native `executionPolicy` (stages), not separate 
    - a `review` stage for **QA** when a QA agent is on the team (test adequacy / running the tests),
    - a `review` stage for the **Security Engineer** *only when the change is security-relevant* (auth, secrets, input boundaries, crypto, dependencies, infra exposure),
    - an `approval` stage for the **Product Owner** (intent, scope, acceptance),
-   - a final `approval` stage for the **Engineer** as the merge gate.
-   Resolve each role to its agentId.
+   - a final `approval` stage for the **Code Reviewer** as the merge gate (a non-author — Paperclip excludes the issue's executor from every stage).
+   Resolve each role to its agentId. **Never list the issue's executor (the engineer who authored the work) as a participant in any stage** — the runtime excludes the original executor, so such a stage has no eligible participant and the issue stalls (`422 No eligible approval participant`).
 4. **Engineer** sets the issue to `in_review`.
 5. **QA** (when present) reviews and records `approved`/`changes_requested` through the normal issue update route with executed evidence (see *Merge Rules*), preserving the issue-level review audit trail.
 6. **Security Engineer** (when present as a stage) probes the security-relevant change and records a verdict stating what was checked.
-7. **Code Reviewer** and other domain reviewers may add **advisory, non-blocking** PR comments. They do not gate the merge.
+7. Other domain reviewers may add **advisory, non-blocking** PR comments. They do not gate the merge.
 8. **Product Owner** reviews for intent match, scope discipline, and acceptance criteria, and records the `approval` verdict through the normal issue update route, preserving the issue-level approval audit trail.
-9. **Engineer** owns the final `approval` stage (merge gate): once reviewers and the Product Owner have approved, the engineer satisfies the hard gate (CI green, or runs the tests/build and pastes the output), merges the PR into the correct configured base, confirms the merge landed, closes/archives the isolated execution workspace when one exists and close-readiness allows it, and only then records `approved` — which closes the issue to `done`. The merge and workspace cleanup must happen before the issue is `done`.
+9. **Code Reviewer** owns the final `approval` stage (merge gate): once reviewers and the Product Owner have approved, the Code Reviewer satisfies the hard gate (CI green, or runs the tests/build and pastes the output), merges the PR into the correct configured base, confirms the merge landed, closes/archives the isolated execution workspace when one exists and close-readiness allows it, and only then records `approved` — which closes the issue to `done`. The merge and workspace cleanup must happen before the issue is `done`. The merge owner must be a non-author: Paperclip excludes the issue's executor (the engineer) from every stage, so the engineer cannot be the merge gate.
 
 ## Review Roles
 
 - **QA** (`review` stage, when present): the substantive gate. Test coverage, regression risk, and validation — backed by tests that actually ran.
 - **Security Engineer** (`review` stage, only when the change is security-relevant): probes the diff for injection, auth, secrets, crypto, dependency, and exposure issues.
 - **Product Owner** (`approval` stage): intent alignment, scope discipline, acceptance criteria.
-- **Engineer** (`approval` stage, last): the merge gate and hard-gate backstop — see *Merge Rules*.
-- **Code Reviewer / domain reviewers** (advisory): optional, non-blocking comments on correctness, clarity, design, accessibility, UX. They never gate the merge.
+- **Code Reviewer** (`approval` stage, last): the merge gate and hard-gate backstop — a non-author who verifies and lands the PR. See *Merge Rules*.
+- **Domain reviewers** (advisory): optional, non-blocking comments on correctness, clarity, design, accessibility, UX. They never gate the merge.
 
 ## Merge Rules
 
-The hard gate is **executed verification**, enforced on the Engineer's merge-gate stage and independent of which reviewers are present:
+The hard gate is **executed verification**, enforced on the merge-gate stage (the Code Reviewer's) and independent of which reviewers are present:
 
-- **With CI:** CI (lint/test/build) must be **green** before the Engineer merges. This is machine-verified and cannot be skipped.
-- **Without CI:** the Engineer must run the full test suite and build locally and paste the real output into the merge-gate verdict before merging. (When QA is present, QA already produced this evidence; the Engineer confirms it.)
+- **With CI:** CI (lint/test/build) must be **green** before the merge gate merges. This is machine-verified and cannot be skipped.
+- **Without CI:** the merge-gate agent must run the full test suite and build locally and paste the real output into the merge-gate verdict before merging. (When QA is present, QA already produced this evidence; the merge gate confirms it.)
 - A verdict that does not cite executed verification — green CI, or pasted test/build output — is not valid.
 - The Product Owner's `approval` stage must be approved.
 - QA's `review` stage (when present) and the Security Engineer's `review` stage (when added) must be approved.
-- The Code Reviewer and other domain reviewers are advisory — blocking only when they escalate a concern that QA, the Security Engineer, or the Engineer then acts on.
+- Domain reviewers are advisory — blocking only when they escalate a concern that QA, the Security Engineer, or the merge gate then acts on.
 - No force pushes.
 - Merge using `gh pr merge <number> --merge`.
 - Before merge, verify the PR base matches the configured project/worktree base from `heartbeat-context`. Retarget before review/merge if needed.
-- The Engineer is the merge owner — reviewers never merge.
-- The engineer's merge gate must be the **last** `approval` stage. If the Product Owner's approval were last, it would auto-close the issue to `done` and the merge would be skipped, leaving the PR open on GitHub.
+- The Code Reviewer is the merge owner (a non-author); the engineer who wrote the PR cannot merge it.
+- The merge gate must be the **last** `approval` stage and must be a **non-author**. If the Product Owner's approval were last, it would auto-close the issue to `done` and the merge would be skipped, leaving the PR open on GitHub. The merge gate can never be the issue's executor — Paperclip excludes the original executor from every stage (`422 No eligible approval participant is configured for this issue`).
 - If Paperclip created an isolated execution workspace for the issue, read its id from `heartbeat-context`, call close-readiness, and archive it after the PR is merged and the tree is clean. If cleanup is blocked or fails, do not mark the issue `done`; record the exact blocker and leave a concrete cleanup next action. If the issue runs in the shared project workspace, do not invent isolated-worktree cleanup.
 - Do not configure GitHub branch protection to require approving reviews unless the project has distinct non-author GitHub reviewer credentials; all agents using one GitHub account cannot formally approve their own PRs.
 
 ## Dev Cycle Rules
 
 **Requires PR**: code logic, APIs, DB schema, agent configs, infrastructure
-**Direct-to-main OK**: typos, comment-only changes, minor doc fixes (must reference issue)
+**Direct-to-base-ref OK**: typos, comment-only changes, minor doc fixes (must reference issue)

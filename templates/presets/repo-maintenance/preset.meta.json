@@ -67,7 +67,7 @@
     },
     {
       "title": "Configure branch protection and PR workflow",
-      "description": "Set up branch protection on main, require PR reviews, configure review conventions. Document in docs/pr-conventions.md.",
+      "description": "Set up branch protection on the default branch, require PR reviews, configure review conventions. Document in docs/pr-conventions.md.",
       "priority": "high",
       "assignTo": "engineer"
     },

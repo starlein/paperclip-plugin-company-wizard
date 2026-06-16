@@ -36,7 +36,7 @@
   "issues": [
     {
       "title": "Create project repository and initial structure",
-      "description": "Initialize the repository with README, .gitignore, package.json (or equivalent), and a basic project structure. Push to main.",
+      "description": "Initialize the repository with README, .gitignore, package.json (or equivalent), and a basic project structure. Push to the default branch.",
       "priority": "high",
       "assignTo": "engineer"
     },

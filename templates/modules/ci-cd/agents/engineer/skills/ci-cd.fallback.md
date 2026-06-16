@@ -5,7 +5,7 @@ The DevOps engineer primarily owns CI/CD pipelines. You are the fallback — ste
 ## CI/CD (Fallback)
 
 1. If no CI workflow exists and DevOps hasn't started:
-   - Create a basic CI workflow: lint + test on PRs, build on push to main
+   - Create a basic CI workflow: lint + test on PRs, build on push to the default branch
    - Use standard caching and pinned action versions
    - Document the setup in `docs/CI-CD.md`
    - Mark the pipeline as **provisional** — it needs DevOps review for CD, caching optimization, and security hardening
