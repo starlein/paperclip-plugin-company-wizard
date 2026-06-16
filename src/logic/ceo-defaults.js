@@ -1,6 +1,10 @@
 export const DEFAULT_CEO_ADAPTER_TYPE = 'codex_local';
 export const DEFAULT_CEO_MODEL = 'gpt-5.5';
 export const DEFAULT_CEO_THINKING_LEVEL = 'high';
+// Worker (non-CEO) agents default to a more modest reasoning effort. High thinking
+// for the whole team is expensive and slow, and most worker tasks don't need it.
+// A role can still raise this via its role.meta.json adapter override.
+export const DEFAULT_WORKER_THINKING_LEVEL = 'medium';
 export const DEFAULT_CEO_MAX_CONCURRENT_RUNS = 1;
 export const DEFAULT_CEO_HEARTBEAT_INTERVAL_SEC = 3600;
 
@@ -14,10 +18,12 @@ export function normalizeCeoAdapterType(userCeoAdapter = {}) {
   return asTrimmedString(userCeoAdapter.type) || DEFAULT_CEO_ADAPTER_TYPE;
 }
 
-export function buildCeoAdapterConfig({
+function buildAdapterConfig({
   userCeoAdapter = {},
   companyDir,
   roleAdapterOverrides = {},
+  defaultThinkingLevel = DEFAULT_CEO_THINKING_LEVEL,
+  inheritUserThinking = true,
 } = {}) {
   const adapterType = normalizeCeoAdapterType(userCeoAdapter);
   const userCwd = asTrimmedString(userCeoAdapter.cwd);
@@ -26,14 +32,20 @@ export function buildCeoAdapterConfig({
   const defaultModel =
     adapterType === 'claude_local' ? DEFAULT_CLAUDE_CEO_MODEL : DEFAULT_CEO_MODEL;
   const model = userModel || overrideModel || defaultModel;
+  // The CEO inherits the user-configured thinking level; worker agents do NOT — a
+  // user picking xhigh for the CEO shouldn't silently turn the whole team xhigh. A
+  // role can still set its own level via role.meta.json (roleAdapterOverrides).
+  const userThinking = inheritUserThinking
+    ? asTrimmedString(userCeoAdapter.thinkingLevel) ||
+      asTrimmedString(userCeoAdapter.modelReasoningEffort) ||
+      asTrimmedString(userCeoAdapter.reasoningEffort)
+    : '';
   const thinkingLevel =
-    asTrimmedString(userCeoAdapter.thinkingLevel) ||
-    asTrimmedString(userCeoAdapter.modelReasoningEffort) ||
-    asTrimmedString(userCeoAdapter.reasoningEffort) ||
+    userThinking ||
     asTrimmedString(roleAdapterOverrides.thinkingLevel) ||
     asTrimmedString(roleAdapterOverrides.modelReasoningEffort) ||
     asTrimmedString(roleAdapterOverrides.reasoningEffort) ||
-    DEFAULT_CEO_THINKING_LEVEL;
+    defaultThinkingLevel;
 
   const adapterConfig = {
     ...roleAdapterOverrides,
@@ -52,6 +64,27 @@ export function buildCeoAdapterConfig({
   }
 
   return adapterConfig;
+}
+
+export function buildCeoAdapterConfig(opts = {}) {
+  return buildAdapterConfig({
+    ...opts,
+    defaultThinkingLevel: DEFAULT_CEO_THINKING_LEVEL,
+    inheritUserThinking: true,
+  });
+}
+
+/**
+ * Adapter config for non-CEO ("worker") agents. Same adapter type/model as the CEO
+ * (companies pick codex vs claude once), but defaults to a modest reasoning effort
+ * (DEFAULT_WORKER_THINKING_LEVEL) and does not inherit the CEO's thinking level.
+ */
+export function buildWorkerAdapterConfig(opts = {}) {
+  return buildAdapterConfig({
+    ...opts,
+    defaultThinkingLevel: DEFAULT_WORKER_THINKING_LEVEL,
+    inheritUserThinking: false,
+  });
 }
 
 export function buildCeoAgentRuntimeConfig() {

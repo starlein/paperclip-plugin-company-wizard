@@ -5,6 +5,22 @@ All notable changes to the Company Wizard plugin are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+## [0.4.3] - 2026-06-16
+
+### Fixed
+
+- **Worker agents are no longer provisioned with `high` thinking.** Non-CEO agents were built with `buildCeoAdapterConfig`, which defaulted `thinkingLevel`/`modelReasoningEffort` to the CEO default (`high`) for every role — expensive and unnecessary for routine work. A new `buildWorkerAdapterConfig` (with `DEFAULT_WORKER_THINKING_LEVEL = 'medium'`) builds worker adapter config: workers default to `medium`, do not inherit a user-configured CEO thinking level, and a role can still raise its level via its `role.meta.json` adapter override. The CEO is unchanged (`high`).
+- **Board Operations and Hiring Plan issues are no longer orphaned.** They are created before the CEO exists, so they could not be assigned at creation time. `start-provision` now assigns both governance issues to the CEO right after the CEO agent is available (best-effort), so they are actionable instead of unassigned.
+
+### Changed
+
+- **The Hiring Plan issue is now a review checkpoint, not a re-hiring task.** `buildHiringPlanBody` was rewritten to state explicitly that the initial team was already submitted as governed `/agent-hires` (pending approval where the board requires it, never auto-approved) and to give the CEO concrete tasks: review each provisioned agent against the `paperclip-create-agent` draft-review checklist, approve/reject the pending hires, and only hire for genuine remaining gaps. This makes the `disableBoardApprovalOnNewCompanies` setting meaningful: left `false`, the wizard's hires land as pending approvals the CEO works through this issue.
+
+### Added
+
+- `scripts/patch-active-company.mjs` — idempotent maintenance script that patches an already-provisioned company in place to the current defaults: sets worker agents to `medium` thinking and assigns the Board Operations / Hiring Plan issues to the CEO. Supports `--dry-run` and `--thinking=<level>`.
+
+---
 ## [0.4.2] - 2026-06-15
 
 ### Fixed
