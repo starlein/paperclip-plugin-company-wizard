@@ -1,9 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useWizardDispatch } from '../../context/WizardContext';
 import { usePluginAction } from '@paperclipai/plugin-sdk/ui';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/card';
-import { Building2, Sparkles, RefreshCw } from 'lucide-react';
+import { Building2, Sparkles, RefreshCw, ExternalLink } from 'lucide-react';
 import { cn } from '../../lib/utils';
+
+type UpdateInfo = {
+  ok?: boolean;
+  updateAvailable?: boolean;
+  currentVersion?: string;
+  latestVersion?: string;
+  url?: string;
+};
 
 function PathCard({
   icon: Icon,
@@ -55,8 +63,25 @@ function PathCard({
 export function StepOnboarding() {
   const dispatch = useWizardDispatch();
   const refreshTemplates = usePluginAction('refresh-templates');
+  const checkUpdate = usePluginAction('check-update');
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMsg, setRefreshMsg] = useState<string | null>(null);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    checkUpdate({})
+      .then((result: unknown) => {
+        if (!cancelled) setUpdateInfo(result as UpdateInfo);
+      })
+      .catch(() => {
+        if (!cancelled) setUpdateInfo(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -111,7 +136,7 @@ export function StepOnboarding() {
         />
       </div>
 
-      <div className="flex items-center justify-center gap-2 pt-2">
+      <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
         <button
           onClick={handleRefresh}
           disabled={refreshing}
@@ -120,6 +145,27 @@ export function StepOnboarding() {
           <RefreshCw className={cn('h-3 w-3', refreshing && 'animate-spin')} />
           {refreshing ? 'Updating templates…' : 'Update templates'}
         </button>
+        {updateInfo?.ok && updateInfo.updateAvailable && (
+          <>
+            <span className="text-xs text-muted-foreground/40">|</span>
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+              Company Wizard plugin update: {updateInfo.currentVersion} → {updateInfo.latestVersion}
+              {updateInfo.url && (
+                <a
+                  href={updateInfo.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-0.5 font-medium text-foreground hover:underline"
+                  title="Update the Company Wizard plugin package, then reload Paperclip"
+                >
+                  npm
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+            </span>
+          </>
+        )}
         {refreshMsg && <span className="text-xs text-muted-foreground">{refreshMsg}</span>}
       </div>
     </div>

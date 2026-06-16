@@ -36,7 +36,7 @@ const DEFAULT_TEMPLATES_REPO_URL =
   'https://github.com/starlein/paperclip-plugin-company-wizard/tree/main/templates';
 const BUNDLED_TEMPLATES_DIR = path.resolve(__dirname, '..', 'templates');
 const PLUGIN_PACKAGE_NAME = '@starlein/paperclip-plugin-company-wizard';
-const CURRENT_PLUGIN_VERSION = '0.4.2';
+const CURRENT_PLUGIN_VERSION = '0.4.5';
 const NPM_LATEST_URL =
   'https://registry.npmjs.org/@starlein%2Fpaperclip-plugin-company-wizard/latest';
 
@@ -379,6 +379,63 @@ export function resolveWritableCompaniesDir(
   throw new Error(
     `Unable to prepare a writable companies directory. Last attempt failed at ${lastError}`,
   );
+}
+
+function isPathInside(parent: string, child: string): boolean {
+  const relative = path.relative(parent, child);
+  return (
+    relative === '' || (!!relative && !relative.startsWith('..') && !path.isAbsolute(relative))
+  );
+}
+
+function normalizeGitBranch(value: unknown): string {
+  const branch = typeof value === 'string' && value.trim() ? value.trim() : 'main';
+  return /^[A-Za-z0-9._/-]+$/.test(branch) ? branch.replace(/^origin\//, '') : 'main';
+}
+
+export function prepareLocalProjectWorkspace(
+  mainProject: { name?: string; workspace?: Record<string, unknown> } | null | undefined,
+  companyDir: string,
+  log?: (msg: string) => void,
+): void {
+  const workspace = mainProject?.workspace;
+  if (!workspace || workspace.sourceType !== 'local_path') return;
+
+  const cwd = typeof workspace.cwd === 'string' ? workspace.cwd.trim() : '';
+  if (!cwd) return;
+
+  const resolvedCompanyDir = path.resolve(companyDir);
+  const resolvedCwd = path.resolve(cwd);
+  if (!isPathInside(resolvedCompanyDir, resolvedCwd)) {
+    log?.(`⚠ Skipped project workspace preparation outside company dir: ${resolvedCwd}`);
+    return;
+  }
+
+  fs.mkdirSync(resolvedCwd, { recursive: true });
+
+  const gitDir = path.join(resolvedCwd, '.git');
+  if (fs.existsSync(gitDir)) {
+    log?.(`✓ Project workspace ready: ${resolvedCwd}`);
+    return;
+  }
+
+  const branch = normalizeGitBranch(workspace.defaultRef);
+  execFileSync('git', ['init', '-b', branch], { cwd: resolvedCwd, stdio: 'pipe' });
+  execFileSync(
+    'git',
+    [
+      '-c',
+      'user.email=bootstrap@paperclip.local',
+      '-c',
+      'user.name=Paperclip Bootstrap',
+      'commit',
+      '--allow-empty',
+      '-m',
+      'chore: initialize repository',
+    ],
+    { cwd: resolvedCwd, stdio: 'pipe' },
+  );
+  log?.(`✓ Project workspace initialized: ${resolvedCwd}`);
 }
 
 function formatRoleName(role: string): string {
@@ -911,6 +968,8 @@ const plugin = definePlugin({
             log(`✎ Override: ${relPath}`);
           }
         }
+
+        prepareLocalProjectWorkspace(assembleResult.mainProject, companyDir, log);
 
         const ceoInstructionsDir = path.join(companyDir, 'agents', 'ceo');
         const ceoEntryFile = 'AGENTS.md';

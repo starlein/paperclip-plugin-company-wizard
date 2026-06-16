@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { usePluginAction } from '@paperclipai/plugin-sdk/ui';
+import { useEffect } from 'react';
 import {
   useWizard,
   useWizardDispatch,
@@ -19,15 +18,6 @@ import { StepAiWizard } from './steps/StepAiWizard';
 import { StepProvision } from './steps/StepProvision';
 import { StepDone } from './steps/StepDone';
 import { Button } from './ui/button';
-import { AlertTriangle, ExternalLink } from 'lucide-react';
-
-type UpdateInfo = {
-  ok?: boolean;
-  updateAvailable?: boolean;
-  currentVersion?: string;
-  latestVersion?: string;
-  url?: string;
-};
 
 const STEP_COMPONENTS = {
   onboarding: StepOnboarding,
@@ -76,8 +66,6 @@ function StepIndicator() {
 export function WizardShell() {
   const state = useWizard();
   const dispatch = useWizardDispatch();
-  const checkUpdate = usePluginAction('check-update');
-  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
 
   const StepComponent = STEP_COMPONENTS[state.step];
 
@@ -85,48 +73,8 @@ export function WizardShell() {
     window.scrollTo({ top: 0 });
   }, [state.step]);
 
-  useEffect(() => {
-    let cancelled = false;
-    checkUpdate({})
-      .then((result: unknown) => {
-        if (!cancelled) setUpdateInfo(result as UpdateInfo);
-      })
-      .catch(() => {
-        if (!cancelled) setUpdateInfo(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   return (
     <div className="flex flex-col">
-      {/* Plugin update notice — compact, and only on the onboarding (plugin entry) page. */}
-      {updateInfo?.ok && updateInfo.updateAvailable && state.step === 'onboarding' && (
-        <div className="px-6 pt-4">
-          <div className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground">
-            <AlertTriangle className="h-3 w-3 shrink-0 text-amber-500" />
-            <span>
-              <span className="font-medium text-foreground">Company Wizard plugin</span> update:{' '}
-              {updateInfo.currentVersion} → {updateInfo.latestVersion}
-            </span>
-            {updateInfo.url && (
-              <a
-                href={updateInfo.url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-0.5 font-medium text-foreground hover:underline"
-                title="Update the plugin package, then reload Paperclip"
-              >
-                npm
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Step indicator (compact, no standalone header) */}
       {getUserStepIndex(state) >= 1 && state.step !== 'provision' && state.step !== 'done' && (
         <div className="flex items-center justify-end px-6 py-3">
