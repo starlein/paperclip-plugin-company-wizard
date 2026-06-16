@@ -5,9 +5,11 @@ import {
   DEFAULT_CEO_MAX_CONCURRENT_RUNS,
   DEFAULT_CEO_MODEL,
   DEFAULT_CEO_THINKING_LEVEL,
+  DEFAULT_WORKER_THINKING_LEVEL,
   buildCeoAgentRuntimeConfig,
   buildWorkerAgentRuntimeConfig,
   buildCeoAdapterConfig,
+  buildWorkerAdapterConfig,
   normalizeCeoAdapterType,
 } from './ceo-defaults.js';
 
@@ -38,6 +40,42 @@ describe('CEO provisioning defaults', () => {
     assert.deepEqual(buildWorkerAgentRuntimeConfig(), {
       heartbeat: { enabled: false, intervalSec: 3600, maxConcurrentRuns: 1 },
     });
+  });
+
+  it('defaults worker agents to medium thinking and does not inherit the CEO thinking level', () => {
+    assert.equal(DEFAULT_WORKER_THINKING_LEVEL, 'medium');
+
+    // CEO configured xhigh — workers must NOT inherit it; they default to medium.
+    assert.deepEqual(
+      buildWorkerAdapterConfig({
+        userCeoAdapter: { thinkingLevel: 'xhigh' },
+        companyDir: '/paperclip/companies/Dialer',
+      }),
+      {
+        cwd: '/paperclip/companies/Dialer',
+        model: 'gpt-5.5',
+        modelReasoningEffort: 'medium',
+        thinkingLevel: 'medium',
+        dangerouslyBypassApprovalsAndSandbox: true,
+      },
+    );
+  });
+
+  it('lets a role override raise a worker thinking level above the medium default', () => {
+    assert.deepEqual(
+      buildWorkerAdapterConfig({
+        userCeoAdapter: { thinkingLevel: 'xhigh' },
+        companyDir: '/paperclip/companies/Dialer',
+        roleAdapterOverrides: { thinkingLevel: 'high' },
+      }),
+      {
+        cwd: '/paperclip/companies/Dialer',
+        model: 'gpt-5.5',
+        modelReasoningEffort: 'high',
+        thinkingLevel: 'high',
+        dangerouslyBypassApprovalsAndSandbox: true,
+      },
+    );
   });
 
   it('preserves explicit CEO adapter overrides while keeping Codex safety defaults', () => {
