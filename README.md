@@ -17,6 +17,8 @@
 
 > **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for the current Paperclip API (`>=2026.529.0`) with substantial bug fixes. End-to-end company setup is governed through current Paperclip workflows as of v0.4.6.
 
+**Update Company:** If you have provisioned your company before with some older version of this plugin or you have an existing company, since version 0.4.6 you can update your existing company by providing the company ID in the wizard summary page. It will make a soft update of agent instructions and workflow/instruction documents. 
+
 <details>
 <summary><strong>What changed vs. upstream</strong></summary>
 
