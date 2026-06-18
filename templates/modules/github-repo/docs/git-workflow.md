@@ -88,20 +88,22 @@ Use this workflow when the **pr-review module is not active** (no Code Reviewer 
    - Fresh/local repos: use the configured local branch.
    - Only if no base ref is configured anywhere, detect the repository's default branch — see *Resolving the default branch* below. Never hard-code `main`.
 2. Pull/fetch latest from that base before editing.
-3. Make changes
-4. Run tests/linting locally if available
-5. Commit with conventional commit message
-6. Push your feature branch: `git push -u origin <branch-name>`
-7. Merge to base and push:
+3. **Create a feature branch** from the base ref: `git checkout -b <branch-name> <base-ref>`. Never commit directly on the base branch. The branch name should reference the issue (e.g., `LEA-5-add-landing-hero`). If you are already on a correctly named feature branch, skip this step.
+4. **Verify you are on the feature branch** before making changes: `git branch --show-current` must print `<branch-name>`, not the base ref. If it prints the base ref name, you forgot step 3 — create the branch now.
+5. Make changes
+6. Run tests/linting locally if available
+7. Commit with conventional commit message
+8. **Verify the current branch one more time**, then push: `git push -u origin <branch-name>`. The branch name in the push command must match `git branch --show-current`. Never push the base ref as a feature branch — if `git branch --show-current` returns the base ref name, stop and create a feature branch first.
+9. Merge to base and push:
    ```
    git checkout <base-ref>
    git merge <branch-name> --no-edit
    git push origin <base-ref>
    ```
    Resolve any merge conflicts (favor your changes; if uncertain, escalate).
-8. Delete the feature branch: `git push origin --delete <branch-name>` and `git branch -d <branch-name>`
-9. If the issue uses an isolated execution workspace (worktree), archive it from `heartbeat-context`.
-10. Verify CI passes on the base branch (if configured). If CI fails, fix immediately.
+10. Delete the feature branch: `git push origin --delete <branch-name>` and `git branch -d <branch-name>`
+11. If the issue uses an isolated execution workspace (worktree), archive it from `heartbeat-context`.
+12. Verify CI passes on the base branch (if configured). If CI fails, fix immediately.
 
 ## Resolving the default branch
 
@@ -142,6 +144,11 @@ For a brand-new local repository there is no remote yet, so initialize on `main`
 - Before marking `done`, ensure the working tree is clean (`git status --short` shows no pending changes).
 - If Paperclip created an isolated execution workspace for this issue, close/archive it after the commit/PR has landed and before marking `done`. If cleanup is blocked or fails, leave the issue open with the exact cleanup blocker. If the issue is in the shared project workspace, do not invent isolated-worktree cleanup.
 - If no repository change is required, do not silently close as `done`: add an issue comment explaining why no code change was needed and escalate to the CEO for explicit decision.
+
+## Branch Safety
+
+- **Always work on a feature branch, never on the base branch.** Create the branch with `git checkout -b <branch-name> <base-ref>` before committing any changes. If you are resuming work on an existing issue, `git branch --show-current` should already show the feature branch name.
+- **Verify your branch before pushing.** Before running `git push -u origin <branch-name>`, confirm that `git branch --show-current` prints the feature branch name — not the base ref. If it prints the base ref, you are on the wrong branch: stop and create/switch to the feature branch first. Pushing the base ref as a feature branch corrupts upstream tracking and causes incorrect branch divergence reports.
 
 ## CI
 

@@ -11,18 +11,20 @@ Use this flow when the **pr-review module is not active** — i.e., there is no 
 3. Pull/update latest from that base:
    - external: `git fetch origin`, then integrate from the configured base ref
    - local: update from the configured local branch
-4. Make your changes
-5. Run available checks (lint, typecheck, tests)
-6. Commit using Conventional Commits: `<type>: <description>`
-7. Push your branch: `git push -u origin <branch-name>`
-8. Merge to base and push:
-   - `git checkout <base-ref>` (the same resolved base branch from step 2)
-   - `git merge <branch-name> --no-edit`
-   - Resolve any conflicts (favor your changes; if uncertain, escalate to the CEO)
-   - `git push origin <base-ref>`
-9. Clean up the feature branch: `git push origin --delete <branch-name>` (remote) and `git branch -d <branch-name>` (local)
-10. If the issue uses an isolated execution workspace (worktree), archive it from your `heartbeat-context` after the merge is pushed.
-11. If CI fails on the base branch after the merge, fix immediately.
+4. **Create a feature branch** from the base ref: `git checkout -b <branch-name> <base-ref>`. Never commit directly on the base branch. The branch name should reference the issue (e.g., `LEA-5-add-landing-hero`). If you are already on a correctly named feature branch, skip this step.
+5. Verify you are on the feature branch before making changes: `git branch --show-current` must print `<branch-name>`, not the base ref. If it prints the base ref name, you forgot step 4 — create the branch now.
+6. Make your changes
+7. Run available checks (lint, typecheck, tests)
+8. Commit using Conventional Commits: `<type>: <description>`
+9. Verify the current branch one more time, then push: `git push -u origin <branch-name>`. The branch name in the push command must match `git branch --show-current`. Never push the base ref as a feature branch — if `git branch --show-current` returns the base ref name, stop and create a feature branch first.
+10. Merge to base and push:
+    - `git checkout <base-ref>` (the same resolved base branch from step 2)
+    - `git merge <branch-name> --no-edit`
+    - Resolve any conflicts (favor your changes; if uncertain, escalate to the CEO)
+    - `git push origin <base-ref>`
+11. Clean up the feature branch: `git push origin --delete <branch-name>` (remote) and `git branch -d <branch-name>` (local)
+12. If the issue uses an isolated execution workspace (worktree), archive it from your `heartbeat-context` after the merge is pushed.
+13. If CI fails on the base branch after the merge, fix immediately.
 
 ## When PR Review IS Active
 
@@ -41,3 +43,5 @@ If the pr-review module is active and you have a Code Reviewer role on the team,
 - Before marking `done`, verify there is no uncommitted work (`git status --short` should be clean).
 - If no repository change is required, do not mark `done` silently: leave an issue comment explaining why no code change was needed and escalate to the CEO for decision.
 - When working without a PR review flow, you are the merge owner. Merge your branch to base promptly after pushing — do not leave branches dangling unmerged.
+- **Always work on a feature branch, never on the base branch.** Create the branch with `git checkout -b <branch-name> <base-ref>` before committing. Verify with `git branch --show-current` before every push.
+- **Never push the base ref as if it were a feature branch.** Before `git push -u origin <branch-name>`, confirm that `git branch --show-current` matches `<branch-name>`. If it prints the base ref name instead, you are on the wrong branch — create or switch to the feature branch first.
