@@ -36,7 +36,7 @@ const DEFAULT_TEMPLATES_REPO_URL =
   'https://github.com/starlein/paperclip-plugin-company-wizard/tree/main/templates';
 const BUNDLED_TEMPLATES_DIR = path.resolve(__dirname, '..', 'templates');
 const PLUGIN_PACKAGE_NAME = '@starlein/paperclip-plugin-company-wizard';
-const CURRENT_PLUGIN_VERSION = '0.4.5';
+const CURRENT_PLUGIN_VERSION = '0.4.6';
 const NPM_LATEST_URL =
   'https://registry.npmjs.org/@starlein%2Fpaperclip-plugin-company-wizard/latest';
 
@@ -397,6 +397,7 @@ export function prepareLocalProjectWorkspace(
   mainProject: { name?: string; workspace?: Record<string, unknown> } | null | undefined,
   companyDir: string,
   log?: (msg: string) => void,
+  gitIdentity?: { name?: string | null; email?: string | null } | null,
 ): void {
   const workspace = mainProject?.workspace;
   if (!workspace || workspace.sourceType !== 'local_path') return;
@@ -420,14 +421,16 @@ export function prepareLocalProjectWorkspace(
   }
 
   const branch = normalizeGitBranch(workspace.defaultRef);
+  const gitUserName = gitIdentity?.name || 'Paperclip Bootstrap';
+  const gitUserEmail = gitIdentity?.email || 'bootstrap@paperclip.local';
   execFileSync('git', ['init', '-b', branch], { cwd: resolvedCwd, stdio: 'pipe' });
   execFileSync(
     'git',
     [
       '-c',
-      'user.email=bootstrap@paperclip.local',
+      `user.email=${gitUserEmail}`,
       '-c',
-      'user.name=Paperclip Bootstrap',
+      `user.name=${gitUserName}`,
       'commit',
       '--allow-empty',
       '-m',
@@ -515,6 +518,133 @@ async function syncAgentInstructionsIntoManagedBundle({
     log(
       `⚠ Could not sync managed instructions bundle: ${err instanceof Error ? err.message : String(err)}`,
     );
+  }
+}
+
+function routineTemplateTitle(routine: any): string {
+  if (typeof routine?.title === 'string' && routine.title.trim()) return routine.title.trim();
+  if (typeof routine?.name === 'string' && routine.name.trim()) return routine.name.trim();
+  return '';
+}
+
+async function syncRoutineTrigger({
+  client,
+  routineId,
+  schedule,
+  log,
+}: {
+  client: any;
+  routineId: string;
+  schedule?: string;
+  log: (m: string) => void;
+}) {
+  if (!schedule) return;
+
+  try {
+    const detail = await client.getRoutine(routineId);
+    const triggers = Array.isArray(detail?.triggers) ? detail.triggers : [];
+    const scheduleTrigger = triggers.find((trigger: any) => trigger?.kind === 'schedule');
+    if (scheduleTrigger?.id) {
+      await client.updateRoutineTrigger(scheduleTrigger.id, {
+        enabled: true,
+        cronExpression: schedule,
+        timezone: scheduleTrigger.timezone || 'UTC',
+      });
+      return;
+    }
+
+    await client.createRoutineTrigger(routineId, {
+      kind: 'schedule',
+      cronExpression: schedule,
+      timezone: 'UTC',
+    });
+  } catch (err) {
+    log(
+      `⚠ Could not sync trigger for routine "${routineId}": ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+async function syncExistingCompanyRoutines({
+  client,
+  companyId,
+  routines,
+  ceoAgentId,
+  teamAgentIds,
+  log,
+}: {
+  client: any;
+  companyId: string;
+  routines: any[];
+  ceoAgentId: string;
+  teamAgentIds: Record<string, string>;
+  log: (m: string) => void;
+}) {
+  if (!Array.isArray(routines) || routines.length === 0) return;
+
+  let existingRoutines: any[] = [];
+  try {
+    existingRoutines = await client.listRoutines(companyId);
+  } catch (err) {
+    log(
+      `⚠ Could not list existing routines for template sync: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    return;
+  }
+
+  const byTitle = new Map<string, any>();
+  for (const existing of existingRoutines) {
+    if (typeof existing?.title === 'string' && existing.title.trim()) {
+      byTitle.set(existing.title.trim().toLowerCase(), existing);
+    }
+  }
+
+  for (const routine of routines) {
+    const title = routineTemplateTitle(routine);
+    if (!title) continue;
+
+    const role = routine.assignTo;
+    const assigneeAgentId =
+      !role || role === 'ceo' ? ceoAgentId : (teamAgentIds[role] ?? ceoAgentId);
+    const payload = {
+      title,
+      description: routine.description || null,
+      assigneeAgentId,
+      priority: routine.priority || 'medium',
+      status: routine.status || 'active',
+      concurrencyPolicy: routine.concurrencyPolicy || 'skip_if_active',
+      catchUpPolicy: routine.catchUpPolicy || 'skip_missed',
+    };
+
+    const existing = byTitle.get(title.toLowerCase());
+    try {
+      if (existing?.id) {
+        await client.updateRoutine(existing.id, payload);
+        await syncRoutineTrigger({
+          client,
+          routineId: existing.id,
+          schedule: routine.schedule,
+          log,
+        });
+        log(`✓ Synced existing routine "${title}"`);
+      } else {
+        const created = await client.createRoutine(companyId, payload);
+        if (routine.schedule && created?.id) {
+          await client.createRoutineTrigger(created.id, {
+            kind: 'schedule',
+            cronExpression: routine.schedule,
+            timezone: 'UTC',
+          });
+        }
+        log(
+          `✓ Created missing routine "${title}"${routine.schedule ? ` (${routine.schedule})` : ''}`,
+        );
+      }
+    } catch (err) {
+      log(
+        `⚠ Could not sync routine "${title}": ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 }
 
@@ -916,7 +1046,22 @@ const plugin = definePlugin({
         const goals = collectGoals(selectedPreset, allModules, new Set(effectiveModules));
         const presetBootstrapData = collectPresetBootstrapData(selectedPreset);
 
-        // Step 2: Assemble files on disk
+        // Step 2: Connect to Paperclip API early to resolve user identity for git commits
+        log('Connecting to Paperclip API...');
+        const client = new PaperclipClient(paperclipUrl, {
+          email: paperclipEmail,
+          password: paperclipPassword,
+        });
+        await client.connect();
+        log('Connected.');
+
+        // Resolve git identity from board session (fall back to Paperclip Bootstrap)
+        const gitIdentity = {
+          name: client.boardUserName || null,
+          email: client.boardUserEmail || paperclipEmail || null,
+        };
+
+        // Step 3: Assemble files on disk
         const outputDir = resolveWritableCompaniesDir(cfg, log);
         log('Assembling company workspace...');
 
@@ -948,6 +1093,8 @@ const plugin = definePlugin({
           presetLabels: presetBootstrapData.labels,
           enableIsolatedWorktrees,
           enableEnrichedPersonas,
+          gitUserName: gitIdentity.name || undefined,
+          gitUserEmail: gitIdentity.email || undefined,
           outputDir,
           templatesDir,
           onProgress: log,
@@ -969,7 +1116,7 @@ const plugin = definePlugin({
           }
         }
 
-        prepareLocalProjectWorkspace(assembleResult.mainProject, companyDir, log);
+        prepareLocalProjectWorkspace(assembleResult.mainProject, companyDir, log, gitIdentity);
 
         const ceoInstructionsDir = path.join(companyDir, 'agents', 'ceo');
         const ceoEntryFile = 'AGENTS.md';
@@ -981,19 +1128,7 @@ const plugin = definePlugin({
         log('');
         log(`✓ Generated files: ${companyDir}`);
 
-        // Step 3: Connect to Paperclip API
-        // The SDK doesn't support company/agent creation yet, so we use PaperclipClient
-        // for those. It auto-detects auth mode (no-op for local_trusted).
-        log('Connecting to Paperclip API...');
-        const client = new PaperclipClient(paperclipUrl, {
-          email: paperclipEmail,
-          password: paperclipPassword,
-        });
-        await client.connect();
-        log('Connected.');
-        log('');
-
-        // Step 5: Resolve target company (create new, or reuse existing)
+        // Step 4: Resolve target company (create new, or reuse existing)
         let company: any;
         let companyId: string;
         let createdCompany = false;
@@ -1328,6 +1463,14 @@ const plugin = definePlugin({
                 );
               }
               teamAgentIds[roleName] = existingAgent.id;
+              await syncAgentInstructionsIntoManagedBundle({
+                client,
+                agentId: existingAgent.id,
+                sourceDir: roleInstructionsDir,
+                entryFile: 'AGENTS.md',
+                log,
+              });
+              log(`✓ Synced ${roleTitle} instructions from latest templates`);
               continue;
             }
 
@@ -1353,17 +1496,18 @@ const plugin = definePlugin({
             }
           }
 
-          // Step 6c: Create the scheduled routines directly. Paperclip only lets an
+          // Step 6c: Create or sync the scheduled routines directly. Paperclip only lets an
           // agent create routines assigned to ITSELF, so a CEO following the bootstrap
           // cannot create routines owned by other agents (backlog grooming, auto-assign,
           // …) — that previously blocked the bootstrap issue. The wizard connects with
-          // board authority, so it can create routines for any agent. New companies only;
-          // existing-company runs leave routines untouched to avoid duplicates.
-          if (!existingCompanyId) {
-            const routines = Array.isArray(assembleResult.initialRoutines)
-              ? assembleResult.initialRoutines
-              : [];
+          // board authority, so it can create or update routines for any agent. Existing
+          // company runs match by title and patch routines/triggers instead of creating
+          // duplicates; this is the lightweight "apply latest templates" path.
+          const routines = Array.isArray(assembleResult.initialRoutines)
+            ? assembleResult.initialRoutines
+            : [];
 
+          if (!existingCompanyId) {
             // Pre-create the main project so every routine can be linked to it.
             // The CEO creates projects during bootstrap, but it can only edit
             // routines assigned to ITSELF — routines owned by other agents (PM,
@@ -1411,6 +1555,7 @@ const plugin = definePlugin({
                   projectId: mainProjectId,
                   priority: routine.priority || 'medium',
                   concurrencyPolicy: routine.concurrencyPolicy || 'skip_if_active',
+                  catchUpPolicy: routine.catchUpPolicy || 'skip_missed',
                 });
                 if (routine.schedule && createdRoutine?.id) {
                   await client.createRoutineTrigger(createdRoutine.id, {
@@ -1428,6 +1573,15 @@ const plugin = definePlugin({
                 );
               }
             }
+          } else {
+            await syncExistingCompanyRoutines({
+              client,
+              companyId,
+              routines,
+              ceoAgentId,
+              teamAgentIds,
+              log,
+            });
           }
 
           // Step 7: Create bootstrap issue.

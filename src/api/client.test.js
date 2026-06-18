@@ -218,6 +218,42 @@ describe('PaperclipClient provisioning helpers', () => {
     assert.deepEqual(requests[0].body, { goalIds: ['goal-1'] });
   });
 
+  it('updates routines and routine triggers through supported top-level routes', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({
+        url,
+        method: opts.method || 'GET',
+        body: opts.body ? JSON.parse(opts.body) : undefined,
+      });
+      return jsonResponse({ id: url.includes('routine-triggers') ? 'trigger-1' : 'routine-1' });
+    };
+
+    const client = new PaperclipClient('http://paperclip.test');
+    await client.listRoutines('company-1');
+    await client.getRoutine('routine-1');
+    await client.updateRoutine('routine-1', { description: 'Updated routine' });
+    await client.updateRoutineTrigger('trigger-1', { cronExpression: '0 */4 * * *' });
+
+    assert.deepEqual(
+      requests.map((request) => [request.method, request.url, request.body]),
+      [
+        ['GET', 'http://paperclip.test/api/companies/company-1/routines', undefined],
+        ['GET', 'http://paperclip.test/api/routines/routine-1', undefined],
+        [
+          'PATCH',
+          'http://paperclip.test/api/routines/routine-1',
+          { description: 'Updated routine' },
+        ],
+        [
+          'PATCH',
+          'http://paperclip.test/api/routine-triggers/trigger-1',
+          { cronExpression: '0 */4 * * *' },
+        ],
+      ],
+    );
+  });
+
   it('creates issue documents with optional revision freshness', async () => {
     const requests = [];
     globalThis.fetch = async (url, opts = {}) => {

@@ -33,7 +33,55 @@ directory inside the repository. This must never be committed.
 - Committing `.paperclip/` pollutes history and can nest isolated worktrees inside the
   repo, which causes confusing git state for every agent.
 
+## GitHub Push Authentication
+
+Paperclip injects the project secret `GH_TOKEN` into agent runs when the project env maps
+`GH_TOKEN` to the secret. Git does not use that variable automatically, and some sandboxed
+push subprocesses can drop environment variables exactly when Git asks its credential
+helper for credentials. Every GitHub-backed project must install a repository-local
+credential helper during foundation setup before the first push.
+
+Run this from the primary project workspace, never from inside an issue worktree:
+
+```bash
+git_common_dir="$(git rev-parse --git-common-dir)"
+helper="$git_common_dir/paperclip-gh-credential-helper.sh"
+cache="$git_common_dir/paperclip-gh-token-cache"
+
+cat > "$helper" <<'EOF'
+#!/bin/sh
+cache="$(dirname "$0")/paperclip-gh-token-cache"
+if [ -n "$GH_TOKEN" ]; then
+  ( umask 077; printf '%s' "$GH_TOKEN" > "$cache" ) 2>/dev/null
+fi
+if [ "$1" = "get" ]; then
+  token="$GH_TOKEN"
+  [ -z "$token" ] && [ -r "$cache" ] && token="$(cat "$cache" 2>/dev/null)"
+  [ -n "$token" ] && printf 'username=x-access-token\npassword=%s\n' "$token"
+fi
+exit 0
+EOF
+
+chmod 700 "$helper"
+[ -n "$GH_TOKEN" ] && ( umask 077; printf '%s' "$GH_TOKEN" > "$cache" )
+chmod 600 "$cache" 2>/dev/null || true
+git config --local credential.helper "$helper"
+```
+
+Rules:
+- Do not print, commit, or paste the token. The helper cache lives under Git's private
+  common directory, not in the worktree.
+- If `GH_TOKEN` is empty during setup, stop and ask the CEO/board to bind a writable
+  GitHub token as the project secret before continuing.
+- Re-run the setup after rotating the secret; the cache refreshes whenever `GH_TOKEN`
+  is present in a later agent run.
+- Verify the helper without exposing the token: `git config --local --get credential.helper`
+  should print the helper path, and `test -s "$(git rev-parse --git-common-dir)/paperclip-gh-token-cache"`
+  should succeed after a run where `GH_TOKEN` was injected.
+
 ## Direct-to-Base-Ref Workflow
+
+Use this workflow when the **pr-review module is not active** (no Code Reviewer role, no executionPolicy review stages). When PR review is active, use the PR workflow from `docs/pr-conventions.md` instead.
 
 1. Resolve the configured base ref from project workspace metadata or the issue's `heartbeat-context` before touching Git. Do not infer it from the current shell branch and do not rewrite it to `main`, `master`, or `origin/*`.
    - External repos: use the project/worktree `repoRef`, `defaultRef`, or `executionWorkspacePolicy.workspaceStrategy.baseRef` exactly as configured.
@@ -43,8 +91,17 @@ directory inside the repository. This must never be committed.
 3. Make changes
 4. Run tests/linting locally if available
 5. Commit with conventional commit message
-6. Push to the matching configured base branch
-7. Verify CI passes (if configured)
+6. Push your feature branch: `git push -u origin <branch-name>`
+7. Merge to base and push:
+   ```
+   git checkout <base-ref>
+   git merge <branch-name> --no-edit
+   git push origin <base-ref>
+   ```
+   Resolve any merge conflicts (favor your changes; if uncertain, escalate).
+8. Delete the feature branch: `git push origin --delete <branch-name>` and `git branch -d <branch-name>`
+9. If the issue uses an isolated execution workspace (worktree), archive it from `heartbeat-context`.
+10. Verify CI passes on the base branch (if configured). If CI fails, fix immediately.
 
 ## Resolving the default branch
 

@@ -96,6 +96,8 @@ function normalizeExecutionBaseRef(ref, fallbackRef) {
  * @param {Array} [opts.presetLabels] - Explicit labels from the selected preset
  * @param {boolean} [opts.enableIsolatedWorktrees] - Admin setting: when true, external-repo projects keep their isolated git_worktree executionWorkspacePolicy; when false (default), agents share the project workspace. Fresh local repos never use isolated worktrees regardless.
  * @param {boolean} [opts.enableEnrichedPersonas] - Internal escape hatch. Defaults true: append role LENSES.md to SOUL.md, role DONE.md to HEARTBEAT.md, and primary-skill <skill>.bar.md output bars when fragments exist.
+ * @param {string} [opts.gitUserName] - Git user name for initial commit (falls back to "Paperclip Bootstrap")
+ * @param {string} [opts.gitUserEmail] - Git user email for initial commit (falls back to "bootstrap@paperclip.local")
  * @param {string} opts.outputDir
  * @param {string} opts.templatesDir
  * @param {(line: string) => void} opts.onProgress
@@ -115,6 +117,8 @@ export async function assembleCompany({
   presetLabels = [],
   enableIsolatedWorktrees = false,
   enableEnrichedPersonas = true,
+  gitUserName,
+  gitUserEmail,
   outputDir,
   templatesDir,
   onProgress = () => {},
@@ -1046,8 +1050,9 @@ export async function assembleCompany({
       const trimmedSetup =
         typeof workspace.setupCommand === 'string' ? workspace.setupCommand.trim() : '';
       if (!trimmedSetup || trimmedSetup === 'git init -b main' || trimmedSetup === 'git init') {
-        workspace.setupCommand =
-          "git init -b main && git -c user.email=bootstrap@paperclip.local -c user.name='Paperclip Bootstrap' commit --allow-empty -m 'chore: initialize repository'";
+        const gitName = gitUserName || 'Paperclip Bootstrap';
+        const gitEmail = gitUserEmail || 'bootstrap@paperclip.local';
+        workspace.setupCommand = `git init -b main && git -c user.email=${gitEmail} -c user.name='${gitName.replace(/'/g, "'\\''")}' commit --allow-empty -m 'chore: initialize repository'`;
       }
     }
 

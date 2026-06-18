@@ -4,6 +4,23 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.6] - 2026-06-18
+
+### Changed
+
+- **Direct assignment flow — backlog grooming assigns issues at creation, not via routine sweep.** The backlog-health skill now instructs the PM to assign each issue to its best-fit agent as it is created. The auto-assign routine is reframed as a low-frequency safety net (every 4 hours) that catches stragglers, not the primary dispatch path. The auto-assign skill clears all suitable unassigned issues in one pass instead of drip-feeding one per run. The backlog quality bar targets a healthy queue of assigned work, not a pool of unassigned issues. (`backlog` module: skill, bar, module meta, docs; `auto-assign` module: skill, fallback skill, heartbeat sections, module meta, README.)
+- **Engineer hands off to Product Owner on completion (without pr-review).** When the PR-review module is not active and no `executionPolicy` is set, the engineer moves the issue to `in_review` and reassigns to the Product Owner in the same heartbeat, with a change summary. Never leaves finished work in `in_review` assigned to itself. (`engineer` role AGENTS.md.)
+- **Product Owner reviews `in_review` issues immediately.** When an issue is assigned to the PM in `in_review` and no formal executionPolicy participant is waiting, the PM reviews it against acceptance criteria and sets it `done` or sends it back to the engineer with required changes. (`product-owner` role AGENTS.md.)
+- **Engineer merges feature branches to base when no PR review is active.** The `github-repo` git-workflow skill now has an explicit direct-to-base-ref flow: push branch → checkout base → merge → push base → delete branch. This replaces the previous ambiguous "push to base branch" instruction that left branches dangling unmerged when there was no merge gate. (`github-repo` module: git-workflow skill, docs/git-workflow.md.)
+- **Git identity uses real user profile instead of "Paperclip Bootstrap".** The initial empty commit in fresh repositories now uses the board user's name and email (resolved from the Paperclip session) instead of the hardcoded "Paperclip Bootstrap / bootstrap@paperclip.local". Falls back to "Paperclip Bootstrap" when no session is available (local_trusted mode). (`src/api/client.js`, `src/worker.ts`, `src/logic/assemble.js`.)
+- **Engineer claims unassigned engineering work as a fallback.** When no actionable work is assigned and unassigned `todo` issues clearly match engineering, the engineer claims the highest-priority ready issue and starts immediately. This is a fallback behind PM push-assignment, not permission to reshuffle work owned by others. (`engineer` role AGENTS.md.)
+
+### Fixed
+
+- **Branches no longer dangle unmerged without a PR review module.** The git-workflow skill previously instructed engineers to "push to the correct configured base branch" but did not explain how to merge a feature branch back to base. Without a PR review module, branches were pushed but never merged, leaving `main` stale and the team stuck. The skill now includes explicit merge-and-push steps for the no-review case and clearly directs engineers to use the PR workflow skill when pr-review is active.
+
+---
+
 ## [0.4.5] - 2026-06-16
 
 ### Fixed

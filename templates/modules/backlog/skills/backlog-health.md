@@ -28,10 +28,10 @@ Add additional labels if the roadmap calls for them (e.g., `docs`, `design`, `se
 1. Checkout the assigned backlog/routine issue before mutating the board.
 2. Read the current company goals, roadmap/project context, existing issue documents, and recent decision log entries.
 3. Query existing issues for the relevant project/goal and avoid duplicates.
-4. If the backlog is thin or unclear, create 3-5 small actionable issues via `POST /api/companies/{companyId}/issues`.
+4. If the backlog is thin or unclear, create around 3-6 small actionable issues via `POST /api/companies/{companyId}/issues`.
 5. Each issue must include: `title`, acceptance-oriented `description`, `priority`, `projectId`, `goalId` when known, and `labelIds`.
 6. Use `blockedByIssueIds` for real dependencies instead of free-text blockers.
-7. Leave issues unassigned unless the routine explicitly includes assignment. Assignment happens through the auto-assign routine or manager handoff.
+7. Assign each issue to the best-fit available agent as you create it — engineer-actionable work with clear acceptance criteria goes to the Software Engineer (or the matching role). Direct push-assignment is the primary dispatch path; the assigned queue is the buffer, so do **not** stockpile a pool of unassigned ready work. Leave an issue unassigned only when no suitable owner exists — the low-frequency auto-assign safety net will catch those.
 8. Record generated issue ids and rationale in the routine issue comment; use issue documents for long plans.
 9. Mark the routine-run issue done when complete.
 

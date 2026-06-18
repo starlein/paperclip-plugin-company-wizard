@@ -1,6 +1,6 @@
 {
   "name": "auto-assign",
-  "description": "Automatically assigns unowned backlog items to available agents. Keeps work flowing without manual dispatch.",
+  "description": "Safety net that assigns any still-unowned backlog items to available agents. Primary dispatch happens at backlog grooming (issues are assigned at creation); this low-frequency routine only catches stragglers.",
   "permissions": [
     "tasks:assign"
   ],
@@ -17,9 +17,9 @@
   "routines": [
     {
       "title": "Auto-assign unassigned issues",
-      "description": "Routine-run checklist: review unassigned todo issues, assign each actionable item to the best available agent based on role/workload, record evidence and next actions on the routine issue, then exit.",
+      "description": "Safety-net routine-run checklist (primary assignment happens at backlog grooming, so this usually finds nothing): review any still-unassigned todo issues, assign each actionable item to its best-fit available agent based on role/workload — clear out all stragglers, not one at a time — record evidence and next actions on the routine issue, then exit.",
       "assignTo": "capability:auto-assign",
-      "schedule": "0 */2 * * *",
+      "schedule": "0 */4 * * *",
       "priority": "medium",
       "concurrencyPolicy": "skip_if_active"
     }

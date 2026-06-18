@@ -16,13 +16,13 @@
       "title": "Create roadmap and generate initial backlog",
       "assignTo": "capability:backlog-health",
       "priority": "high",
-      "description": "Review the company goal, create a ROADMAP.md with milestones, then generate an initial backlog of 15-20 actionable issues from it so the team has immediate, parallelizable work. Scope each issue to a single deliverable, set priorities, and link issues to the relevant goal and project. Don't wait for grooming cycles to fill the backlog — seed it now."
+      "description": "Review the company goal, create a ROADMAP.md with milestones, then generate an initial backlog of 15-20 actionable issues from it so the team has immediate, parallelizable work. Scope each issue to a single deliverable, set priorities, and link issues to the relevant goal and project. Assign each engineer-actionable issue to the best-fit agent (e.g., the Software Engineer) as you create it so work starts immediately — don't leave the seed backlog unassigned. Don't wait for grooming cycles to fill the backlog — seed it now."
     }
   ],
   "routines": [
     {
       "title": "Backlog grooming",
-      "description": "Routine-run checklist: inspect roadmap/backlog health, ensure at least 8 actionable ready issues exist, create scoped issues only when capacity is low, link artifacts/goals/projects, summarize changes on the routine issue, then exit.",
+      "description": "Routine-run checklist: inspect roadmap/backlog health, ensure at least 8 actionable ready issues exist, create scoped issues (around 3-6 per pass) and assign each to its best-fit agent when capacity is low, link artifacts/goals/projects, summarize changes on the routine issue, then exit.",
       "assignTo": "capability:backlog-health",
       "schedule": "0 */4 * * *",
       "priority": "medium",
