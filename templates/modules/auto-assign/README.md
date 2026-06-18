@@ -1,23 +1,25 @@
 # Module: auto-assign
 
-Adds automatic issue assignment to the CEO heartbeat.
+Adds a low-frequency safety net for issue assignment. Primary dispatch happens at backlog grooming — issues are assigned at creation. This module only catches stragglers.
 
 ## What it adds
 
-- **CEO skill**: Assignment check — when there are idle agents and unassigned issues, the CEO assigns the highest-priority issue to the right agent.
+- **Product Owner skill**: Safety-net assignment check — assigns any still-unassigned backlog items to the best-fit available agent.
+- **CEO fallback skill**: Steps in when the PO is absent or stalled.
 
 ## How it works
 
-On every heartbeat, the CEO checks:
+Primary assignment happens during backlog grooming: the Product Owner creates issues and assigns each to the best-fit agent immediately. The auto-assign routine is a **safety net** that runs every 4 hours to catch anything that slipped through:
+
 1. Are there unassigned issues in `todo` status?
-2. Are there agents in `idle` status who could handle them?
-3. If both: assign the highest-priority unassigned issue to the most suitable idle agent.
+2. Do those issues have enough acceptance criteria and no unresolved blockers?
+3. If yes: assign every suitable straggler to the best-fit available role in one pass — do not drip-feed one issue per routine run.
 
 ## Best for
 
-- Keeping engineers busy without manual assignment
+- Catching assignment misses without relying on manual cleanup
 - Any team size — works with one engineer or many
 
 ## Example
 
-An engineer finishes an issue and goes idle. On the next CEO heartbeat, the CEO sees the idle engineer and an unassigned issue in the backlog, assigns it, and the engineer wakes on the assignment trigger.
+The Product Owner normally assigns issues at creation during backlog grooming. If one slips through unassigned, the safety-net routine assigns it on the next pass and the assignee wakes on the assignment trigger.

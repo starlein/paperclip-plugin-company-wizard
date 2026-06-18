@@ -33,18 +33,77 @@ directory inside the repository. This must never be committed.
 - Committing `.paperclip/` pollutes history and can nest isolated worktrees inside the
   repo, which causes confusing git state for every agent.
 
+## GitHub Push Authentication
+
+Paperclip injects the project secret `GH_TOKEN` into agent runs when the project env maps
+`GH_TOKEN` to the secret. Git does not use that variable automatically, and some sandboxed
+push subprocesses can drop environment variables exactly when Git asks its credential
+helper for credentials. Every GitHub-backed project must install a repository-local
+credential helper during foundation setup before the first push.
+
+Run this from the primary project workspace, never from inside an issue worktree:
+
+```bash
+git_common_dir="$(git rev-parse --git-common-dir)"
+helper="$git_common_dir/paperclip-gh-credential-helper.sh"
+cache="$git_common_dir/paperclip-gh-token-cache"
+
+cat > "$helper" <<'EOF'
+#!/bin/sh
+cache="$(dirname "$0")/paperclip-gh-token-cache"
+if [ -n "$GH_TOKEN" ]; then
+  ( umask 077; printf '%s' "$GH_TOKEN" > "$cache" ) 2>/dev/null
+fi
+if [ "$1" = "get" ]; then
+  token="$GH_TOKEN"
+  [ -z "$token" ] && [ -r "$cache" ] && token="$(cat "$cache" 2>/dev/null)"
+  [ -n "$token" ] && printf 'username=x-access-token\npassword=%s\n' "$token"
+fi
+exit 0
+EOF
+
+chmod 700 "$helper"
+[ -n "$GH_TOKEN" ] && ( umask 077; printf '%s' "$GH_TOKEN" > "$cache" )
+chmod 600 "$cache" 2>/dev/null || true
+git config --local credential.helper "$helper"
+```
+
+Rules:
+- Do not print, commit, or paste the token. The helper cache lives under Git's private
+  common directory, not in the worktree.
+- If `GH_TOKEN` is empty during setup, stop and ask the CEO/board to bind a writable
+  GitHub token as the project secret before continuing.
+- Re-run the setup after rotating the secret; the cache refreshes whenever `GH_TOKEN`
+  is present in a later agent run.
+- Verify the helper without exposing the token: `git config --local --get credential.helper`
+  should print the helper path, and `test -s "$(git rev-parse --git-common-dir)/paperclip-gh-token-cache"`
+  should succeed after a run where `GH_TOKEN` was injected.
+
 ## Direct-to-Base-Ref Workflow
+
+Use this workflow when the **pr-review module is not active** (no Code Reviewer role, no executionPolicy review stages). When PR review is active, use the PR workflow from `docs/pr-conventions.md` instead.
 
 1. Resolve the configured base ref from project workspace metadata or the issue's `heartbeat-context` before touching Git. Do not infer it from the current shell branch and do not rewrite it to `main`, `master`, or `origin/*`.
    - External repos: use the project/worktree `repoRef`, `defaultRef`, or `executionWorkspacePolicy.workspaceStrategy.baseRef` exactly as configured.
    - Fresh/local repos: use the configured local branch.
    - Only if no base ref is configured anywhere, detect the repository's default branch — see *Resolving the default branch* below. Never hard-code `main`.
 2. Pull/fetch latest from that base before editing.
-3. Make changes
-4. Run tests/linting locally if available
-5. Commit with conventional commit message
-6. Push to the matching configured base branch
-7. Verify CI passes (if configured)
+3. **Create a feature branch** from the base ref: `git checkout -b <branch-name> <base-ref>`. Never commit directly on the base branch. The branch name should reference the issue (e.g., `LEA-5-add-landing-hero`). If you are already on a correctly named feature branch, skip this step.
+4. **Verify you are on the feature branch** before making changes: `git branch --show-current` must print `<branch-name>`, not the base ref. If it prints the base ref name, you forgot step 3 — create the branch now.
+5. Make changes
+6. Run tests/linting locally if available
+7. Commit with conventional commit message
+8. **Verify the current branch one more time**, then push: `git push -u origin <branch-name>`. The branch name in the push command must match `git branch --show-current`. Never push the base ref as a feature branch — if `git branch --show-current` returns the base ref name, stop and create a feature branch first.
+9. Merge to base and push:
+   ```
+   git checkout <base-ref>
+   git merge <branch-name> --no-edit
+   git push origin <base-ref>
+   ```
+   Resolve any merge conflicts (favor your changes; if uncertain, escalate).
+10. Delete the feature branch: `git push origin --delete <branch-name>` and `git branch -d <branch-name>`
+11. If the issue uses an isolated execution workspace (worktree), archive it from `heartbeat-context`.
+12. Verify CI passes on the base branch (if configured). If CI fails, fix immediately.
 
 ## Resolving the default branch
 
@@ -85,6 +144,11 @@ For a brand-new local repository there is no remote yet, so initialize on `main`
 - Before marking `done`, ensure the working tree is clean (`git status --short` shows no pending changes).
 - If Paperclip created an isolated execution workspace for this issue, close/archive it after the commit/PR has landed and before marking `done`. If cleanup is blocked or fails, leave the issue open with the exact cleanup blocker. If the issue is in the shared project workspace, do not invent isolated-worktree cleanup.
 - If no repository change is required, do not silently close as `done`: add an issue comment explaining why no code change was needed and escalate to the CEO for explicit decision.
+
+## Branch Safety
+
+- **Always work on a feature branch, never on the base branch.** Create the branch with `git checkout -b <branch-name> <base-ref>` before committing any changes. If you are resuming work on an existing issue, `git branch --show-current` should already show the feature branch name.
+- **Verify your branch before pushing.** Before running `git push -u origin <branch-name>`, confirm that `git branch --show-current` prints the feature branch name — not the base ref. If it prints the base ref, you are on the wrong branch: stop and create/switch to the feature branch first. Pushing the base ref as a feature branch corrupts upstream tracking and causes incorrect branch divergence reports.
 
 ## CI
 

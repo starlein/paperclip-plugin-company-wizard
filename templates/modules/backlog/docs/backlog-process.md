@@ -10,9 +10,9 @@ Goal → Roadmap → Issues → Assignment → Execution → Done
 
 1. **Goal decomposition** — The backlog owner breaks the company goal into milestones, then milestones into actionable issues.
 2. **Issue creation** — New issues enter the backlog via `POST /api/companies/{companyId}/issues` with `title`, `description`, `priority`, `projectId`, `goalId`, and `labelIds`. Top-level backlog issues must always include the active roadmap `projectId`.
-3. **Pipeline health** — The backlog owner monitors unassigned issue count. When fewer than 3 remain, the next batch is generated from the roadmap.
-4. **Assignment** — Issues are left unassigned at creation. Assignment happens separately (auto-assign module or manual).
-5. **Execution** — Agents check out assigned issues, work them, and mark done.
+3. **Pipeline health** — The backlog owner monitors the ready assigned queue. When fewer than about 8 actionable ready issues remain across the active delivery roles, the next small batch is generated from the roadmap.
+4. **Assignment** — Issues are assigned at creation to the best-fit owner. Engineering-ready issues go directly to the Software Engineer (or matching delivery role) so assignment wakeups start work immediately. Leave an issue unassigned only when no suitable owner exists.
+5. **Execution** — Agents check out assigned issues, work them, and hand off deliberately for review or completion.
 
 ## Issue Quality
 
@@ -50,10 +50,10 @@ Re-prioritize when milestones shift or new information arrives. Don't let low-pr
 
 ## Backlog Health Indicators
 
-- **Healthy**: 3+ unassigned issues in `todo`, covering the next logical chunk of work
-- **Thin**: 1-2 unassigned issues — generate more soon
-- **Empty**: 0 unassigned issues — engineers will idle. Generate immediately.
-- **Bloated**: 20+ unassigned issues — stop creating, focus on prioritization and cleanup
+- **Healthy**: about 8 ready assigned issues across active delivery roles, covering the next logical chunk of work
+- **Thin**: fewer than 4 ready assigned issues — generate and assign more soon
+- **Empty**: no ready assigned issues — engineers will idle. Generate and assign immediately.
+- **Bloated**: 20+ ready issues — stop creating, focus on prioritization and cleanup
 
 ## Coordination
 

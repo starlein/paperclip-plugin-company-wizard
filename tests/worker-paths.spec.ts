@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import os from 'node:os';
+import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resolveWritableCompaniesDir } from '../src/worker.js';
 
@@ -14,24 +15,39 @@ afterEach(() => {
 });
 
 describe('resolveWritableCompaniesDir', () => {
-  it('falls back to /paperclip when the home default dir is not writable', () => {
-    vi.spyOn(os, 'homedir').mockReturnValue('/home/unwritable');
+  it('prefers Docker layout (~/instances) when it exists', () => {
+    const homeDir = '/paperclip';
+    vi.spyOn(os, 'homedir').mockReturnValue(homeDir);
     vi.spyOn(os, 'tmpdir').mockReturnValue('/tmp/fallback');
-    vi.spyOn(fs, 'mkdirSync').mockImplementation((dirPath) => {
-      if (String(dirPath) === '/home/unwritable/.paperclip/instances/default/companies') {
-        throw eacces('permission denied');
-      }
-      return undefined;
+    // ~/instances exists → Docker layout detected
+    vi.spyOn(fs, 'existsSync').mockImplementation((p) => {
+      const str = String(p);
+      return str === path.join(homeDir, 'instances');
     });
-    vi.spyOn(fs, 'accessSync').mockImplementation((dirPath) => {
-      if (String(dirPath) === '/home/unwritable/.paperclip/instances/default/companies') {
-        throw eacces('permission denied');
-      }
-    });
+    vi.spyOn(fs, 'mkdirSync').mockReturnValue(undefined);
+    vi.spyOn(fs, 'accessSync').mockReturnValue(undefined);
 
     const dir = resolveWritableCompaniesDir({});
 
-    expect(dir).toBe('/paperclip/instances/default/companies');
+    expect(dir).toBe(path.join(homeDir, 'instances', 'default', 'companies'));
+  });
+
+  it('falls back to ~/.paperclip when not in Docker layout', () => {
+    const homeDir = '/home/user';
+    vi.spyOn(os, 'homedir').mockReturnValue(homeDir);
+    vi.spyOn(os, 'tmpdir').mockReturnValue('/tmp/fallback');
+    // No ~/instances → not Docker
+    vi.spyOn(fs, 'existsSync').mockImplementation((p) => {
+      const str = String(p);
+      // ~/instances does NOT exist, but ~/.paperclip/instances/default/companies does
+      return str !== path.join(homeDir, 'instances');
+    });
+    vi.spyOn(fs, 'mkdirSync').mockReturnValue(undefined);
+    vi.spyOn(fs, 'accessSync').mockReturnValue(undefined);
+
+    const dir = resolveWritableCompaniesDir({});
+
+    expect(dir).toBe(path.join(homeDir, '.paperclip', 'instances', 'default', 'companies'));
   });
 
   it('fails fast when configured companiesDir is not writable', () => {
@@ -45,24 +61,24 @@ describe('resolveWritableCompaniesDir', () => {
   });
 
   it('falls back to tmpdir if neither default location is writable', () => {
-    vi.spyOn(os, 'homedir').mockReturnValue('/home/unwritable');
+    const homeDir = '/home/unwritable';
+    vi.spyOn(os, 'homedir').mockReturnValue(homeDir);
     vi.spyOn(os, 'tmpdir').mockReturnValue('/tmp/fallback');
+    vi.spyOn(fs, 'existsSync').mockImplementation((p) => {
+      const str = String(p);
+      // No Docker layout
+      return str !== path.join(homeDir, 'instances');
+    });
     vi.spyOn(fs, 'mkdirSync').mockImplementation((dirPath) => {
       const dir = String(dirPath);
-      if (
-        dir === '/home/unwritable/.paperclip/instances/default/companies' ||
-        dir === '/paperclip/instances/default/companies'
-      ) {
+      if (dir === path.join(homeDir, '.paperclip', 'instances', 'default', 'companies')) {
         throw eacces('permission denied');
       }
       return undefined;
     });
     vi.spyOn(fs, 'accessSync').mockImplementation((dirPath) => {
       const dir = String(dirPath);
-      if (
-        dir === '/home/unwritable/.paperclip/instances/default/companies' ||
-        dir === '/paperclip/instances/default/companies'
-      ) {
+      if (dir === path.join(homeDir, '.paperclip', 'instances', 'default', 'companies')) {
         throw eacces('permission denied');
       }
     });

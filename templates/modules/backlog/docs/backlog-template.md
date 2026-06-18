@@ -36,7 +36,8 @@ Add more labels as the project evolves (e.g., `docs`, `design`, `security`). Pic
 
 _Summary of current backlog health. Update on each heartbeat cycle._
 
-- **Unassigned todo issues:** _(count)_
+- **Ready assigned issues:** _(count by owner)_
+- **Unassigned todo issues:** _(count; should normally be 0 except items without a suitable owner)_
 - **In-progress issues:** _(count)_
 - **Health:** _(healthy / thin / empty / bloated — see backlog-process.md)_
 

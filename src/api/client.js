@@ -18,6 +18,8 @@ export class PaperclipClient {
     this.credentials = credentials; // { email, password } — optional
     this.sessionCookie = null;
     this.boardUserId = null; // resolved during connect()
+    this.boardUserName = null; // resolved during connect()
+    this.boardUserEmail = null; // resolved during connect()
   }
 
   async _fetch(path, opts = {}) {
@@ -64,6 +66,8 @@ export class PaperclipClient {
     // local_trusted — no auth needed
     if (res.ok) {
       this.boardUserId = 'local-board';
+      this.boardUserName = null;
+      this.boardUserEmail = null;
       return;
     }
 
@@ -77,10 +81,12 @@ export class PaperclipClient {
         );
       }
       await this._signIn(email, password);
-      // Fetch the authenticated user's ID for assigneeUserId support
+      // Fetch the authenticated user's profile for assigneeUserId and git identity support
       try {
         const session = await this._fetch('/api/auth/get-session');
         this.boardUserId = session?.user?.id || null;
+        this.boardUserName = session?.user?.name || null;
+        this.boardUserEmail = session?.user?.email || null;
       } catch {
         // Non-critical — user assignment will fall back to unassigned
       }
@@ -402,6 +408,26 @@ export class PaperclipClient {
     });
   }
 
+  async listRoutines(companyId, filters = {}) {
+    const params = new URLSearchParams();
+    if (filters.projectId) params.set('projectId', filters.projectId);
+    const query = params.toString();
+    return this._fetch(`/api/companies/${companyId}/routines${query ? `?${query}` : ''}`, {
+      method: 'GET',
+    });
+  }
+
+  async getRoutine(routineId) {
+    return this._fetch(`/api/routines/${routineId}`, { method: 'GET' });
+  }
+
+  async updateRoutine(routineId, updates = {}) {
+    return this._fetch(`/api/routines/${routineId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates || {}),
+    });
+  }
+
   async createRoutineTrigger(routineId, { kind, cronExpression, timezone }) {
     return this._fetch(`/api/routines/${routineId}/triggers`, {
       method: 'POST',
@@ -410,6 +436,13 @@ export class PaperclipClient {
         ...(cronExpression ? { cronExpression } : {}),
         ...(timezone ? { timezone } : {}),
       }),
+    });
+  }
+
+  async updateRoutineTrigger(triggerId, updates = {}) {
+    return this._fetch(`/api/routine-triggers/${triggerId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates || {}),
     });
   }
 
