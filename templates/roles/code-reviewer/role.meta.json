@@ -8,5 +8,8 @@
   "reportsTo": "ceo",
   "enhances": [
     "Adds code-quality review pass when pr-review module is active"
-  ]
+  ],
+  "adapter": {
+    "thinkingLevel": "auto"
+  }
 }

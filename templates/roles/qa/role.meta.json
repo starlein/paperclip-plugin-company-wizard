@@ -12,6 +12,7 @@
     "Contributes test coverage requirements to architecture-plan"
   ],
   "adapter": {
-    "model": "claude-sonnet-4-6"
+    "model": "claude-sonnet-4-6",
+    "thinkingLevel": "auto"
   }
 }

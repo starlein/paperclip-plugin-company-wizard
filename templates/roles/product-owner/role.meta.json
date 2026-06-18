@@ -10,5 +10,8 @@
     "Takes over backlog health from CEO (CEO becomes fallback)",
     "Takes over auto-assign from CEO (CEO becomes fallback)",
     "Adds product-alignment review pass when pr-review module is active"
-  ]
+  ],
+  "adapter": {
+    "thinkingLevel": "auto"
+  }
 }

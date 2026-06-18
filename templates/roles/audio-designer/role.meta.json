@@ -7,8 +7,11 @@
   "description": "Owns audio production: sound effects, music, ambient soundscapes, and audio systems design. Creates audio using AI generation tools, code-based synthesis, and audio processing pipelines.",
   "reportsTo": "ceo",
   "enhances": [
-    "Takes over audio asset creation from Engineer (placeholder sounds → production audio)",
+    "Takes over audio asset creation from Engineer (placeholder sounds \u2192 production audio)",
     "Takes over audio direction definition from Game Designer",
     "Adds audio consistency review pass when pr-review module is active"
-  ]
+  ],
+  "adapter": {
+    "thinkingLevel": "auto"
+  }
 }
