@@ -10,8 +10,8 @@ Enables the Engineer to work in a GitHub repository.
 
 ## Variants
 
-- **direct-to-base-ref** (default): Engineer commits directly on the default branch. No branches, no PRs. Fast iteration for solo engineer setups.
-- When combined with `pr-review` module: switches to feature-branch workflow automatically.
+- **direct-to-base-ref** (default): Engineer works on a feature branch, then merges to the base branch and pushes. No PRs, no code review gate — the engineer merges their own work and hands off to the Product Owner for acceptance review via `in_review` status reassignment. Fast iteration for solo or small teams.
+- When combined with `pr-review` module: switches to feature-branch + PR workflow with executionPolicy review stages and a non-author merge gate.
 
 ## Best for
 
@@ -21,4 +21,4 @@ Enables the Engineer to work in a GitHub repository.
 
 ## Example
 
-A company building a web app with one engineer. The engineer picks up issues, implements them, commits to the default branch, and marks the issue done. CI runs on push.
+A company building a web app with one engineer. The engineer picks up issues, implements them on feature branches, merges to base, pushes, and reassigns to the Product Owner for acceptance review. CI runs on push.

@@ -35,7 +35,7 @@ Run this checklist on every heartbeat. The Paperclip skill is the source of trut
 - Upload or attach user-inspectable outputs as work products/artifacts/documents; local filesystem paths alone are not enough.
 - Use issue documents for long plans, specs, QA reports, security reviews, or hiring drafts; comments should summarize and link.
 - Handoffs should use assignment/status/executionPolicy and a concrete next action. Do not rely on generic @-mentions.
-- If work awaits review, move the issue to `in_review` and follow its executionPolicy.
+- If an issue is assigned to you in `in_review` and no formal executionPolicy participant is waiting, review it immediately against the acceptance criteria. If it passes, comment with the acceptance decision and set it `done`; if it does not pass, set it back to `in_progress`, assign it to the Engineer, and list the exact required changes.
 
 ## 6. Exit
 
