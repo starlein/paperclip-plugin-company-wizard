@@ -30,18 +30,18 @@ const manifest: PaperclipPluginManifestV1 = {
       companiesDir: {
         type: 'string',
         description:
-          'Directory where assembled company workspaces are written. Defaults to ~/.paperclip/instances/default/companies. Override for Docker setups (e.g. /paperclip/instances/default/companies).',
+          'Directory where assembled company workspaces are written. Auto-detected: ~/instances/default/companies in Docker setups, ~/.paperclip/instances/default/companies otherwise. Rarely needs manual override.',
       },
       templatesPath: {
         type: 'string',
         description:
-          'Path to the templates directory. Defaults to ~/.paperclip/plugin-templates (auto-downloaded from templatesRepoUrl if missing). Override for Docker setups (e.g. /paperclip/plugin-templates).',
+          'Path to the templates directory. Auto-detected: ~/plugin-templates in Docker setups, ~/.paperclip/plugin-templates otherwise. Rarely needs manual override.',
       },
       templatesRepoUrl: {
         type: 'string',
         default: 'https://github.com/starlein/paperclip-plugin-company-wizard/tree/main/templates',
         description:
-          'GitHub tree URL to pull templates from when the templates directory does not exist.',
+          'GitHub tree URL for template downloads. The default is correct for most setups — only change this if using a custom fork.',
       },
       anthropicApiKey: {
         type: 'string',
@@ -60,12 +60,6 @@ const manifest: PaperclipPluginManifestV1 = {
       paperclipPassword: {
         type: 'string',
         description: 'Board login password (for authenticated instances).',
-      },
-      disableBoardApprovalOnNewCompanies: {
-        type: 'boolean',
-        default: false,
-        description:
-          'Optional. If true, the wizard will PATCH new companies to set requireBoardApprovalForNewAgents=false during provisioning. Leave false to preserve approval-gated hiring policies.',
       },
     },
   },

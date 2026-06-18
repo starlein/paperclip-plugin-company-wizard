@@ -98,11 +98,23 @@ function downloadTemplatesFromGithub(destDir: string, githubUrl: string): void {
 }
 
 /**
+ * Detect whether the current environment is a Docker/Paperclip server setup.
+ * In Docker, the home directory is /paperclip and the instance layout uses
+ * ~/instances/default/companies and ~/plugin-templates directly (no .paperclip subdir).
+ * In NPX/local setups, the layout is ~/.paperclip/instances/default/companies
+ * and ~/.paperclip/plugin-templates.
+ */
+function isDockerLayout(): boolean {
+  return fs.existsSync(path.join(os.homedir(), 'instances'));
+}
+
+/**
  * Resolve (and if needed, create) the templates directory.
  * Resolution order:
  *  1. cfg.templatesPath if set → use it; auto-download if missing.
- *  2. Default: ~/.paperclip/plugin-templates → auto-download if missing.
- *  3. Bundled templates (dist/../templates) as last resort.
+ *  2. Docker detection: ~/plugin-templates when ~/instances exists.
+ *  3. Default: ~/.paperclip/plugin-templates → auto-download if missing.
+ *  4. Bundled templates (dist/../templates) as last resort.
  */
 async function ensureTemplatesDir(cfg: Record<string, string>): Promise<string> {
   const repoUrl = cfg.templatesRepoUrl || DEFAULT_TEMPLATES_REPO_URL;
@@ -111,6 +123,18 @@ async function ensureTemplatesDir(cfg: Record<string, string>): Promise<string> 
     if (fs.existsSync(cfg.templatesPath)) return cfg.templatesPath;
     downloadTemplatesFromGithub(cfg.templatesPath, repoUrl);
     return cfg.templatesPath;
+  }
+
+  // Docker detection: prefer ~/plugin-templates when ~/instances exists (Docker layout)
+  if (isDockerLayout()) {
+    const dockerTemplatesDir = path.join(os.homedir(), 'plugin-templates');
+    if (fs.existsSync(dockerTemplatesDir)) return dockerTemplatesDir;
+    try {
+      downloadTemplatesFromGithub(dockerTemplatesDir, repoUrl);
+      return dockerTemplatesDir;
+    } catch {
+      // Fall through to home-dir default
+    }
   }
 
   const defaultDir = path.join(os.homedir(), '.paperclip', 'plugin-templates');
@@ -286,12 +310,6 @@ function loadTemplates(templatesDir: string) {
 
 // --- Helpers ---
 
-/** Parse a boolean plugin-config value that may arrive as a real boolean or a string. */
-function cfgBool(cfg: Record<string, unknown>, key: string): boolean {
-  const raw = cfg[key];
-  return raw === true || (typeof raw === 'string' && raw.toLowerCase() === 'true');
-}
-
 type InstanceExperimentalSettings = {
   enableIsolatedWorkspaces?: boolean;
 };
@@ -355,11 +373,16 @@ export function resolveWritableCompaniesDir(
     }
   }
 
-  const candidates = [
-    resolveCompaniesDir(cfg),
-    path.join('/paperclip', 'instances', 'default', 'companies'),
-    path.join(os.tmpdir(), 'paperclip-companies'),
-  ];
+  // Auto-detect: Docker layout uses ~/instances, NPX layout uses ~/.paperclip/instances
+  const candidates: string[] = [];
+  if (isDockerLayout()) {
+    // Docker: home is /paperclip, layout is ~/instances/default/companies
+    candidates.push(path.join(os.homedir(), 'instances', 'default', 'companies'));
+  }
+  // NPX/local: ~/.paperclip/instances/default/companies
+  candidates.push(resolveCompaniesDir(cfg));
+  // Last resort: OS temp dir
+  candidates.push(path.join(os.tmpdir(), 'paperclip-companies'));
   const attempted = new Set<string>();
   let lastError = '';
 
@@ -1010,10 +1033,6 @@ const plugin = definePlugin({
           cfg.paperclipUrl || process.env.PAPERCLIP_PUBLIC_URL || 'http://localhost:3100';
         const paperclipEmail = cfg.paperclipEmail || '';
         const paperclipPassword = cfg.paperclipPassword || '';
-        const disableBoardApprovalOnNewCompanies = cfgBool(
-          cfg,
-          'disableBoardApprovalOnNewCompanies',
-        );
         const enableIsolatedWorktrees = await resolveEnableIsolatedWorkspacesFromInstance(cfg, log);
         const enableEnrichedPersonas = true;
 
@@ -1149,21 +1168,7 @@ const plugin = definePlugin({
           createdCompany = true;
           log(`✓ Company "${companyName}" created`);
 
-          if (disableBoardApprovalOnNewCompanies) {
-            // Optional compatibility mode: disable mandatory board-approval hiring on new companies.
-            // Useful when users want legacy fully-autonomous bootstrap behavior.
-            try {
-              await client.updateCompany(companyId, { requireBoardApprovalForNewAgents: false });
-              log('✓ Disabled board-approval hiring policy for this new company');
-            } catch (err) {
-              log(
-                `⚠ Could not disable board-approval hiring for new agents: ${err instanceof Error ? err.message : String(err)}`,
-              );
-              log('  Continuing — agent creation will use an approval-aware fallback if required.');
-            }
-          } else {
-            log('Keeping company hire policy as configured (board approvals may be required).');
-          }
+          log('Keeping company hire policy as configured (board approvals may be required).');
         }
 
         // Steps 6-7 are wrapped so we can delete only newly-created companies on partial failure.
@@ -1179,9 +1184,8 @@ const plugin = definePlugin({
           )
             ? 'existing git repository'
             : 'fresh local repository';
-          const approvalMode = disableBoardApprovalOnNewCompanies
-            ? 'board approval disabled for this new company by plugin setting'
-            : 'board approval preserved; /agent-hires may create pending approvals';
+          const approvalMode =
+            'board approval preserved; /agent-hires may create pending approvals';
 
           log('Creating board operations and hiring plan records...');
           const createdBoardOperationsIssue = await client.createIssue(companyId, {
