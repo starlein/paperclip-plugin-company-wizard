@@ -1551,6 +1551,27 @@ const plugin = definePlugin({
         let bootstrapIssue: { id: string; identifier?: string };
         try {
           const allRoleNames = [...(assembleResult.allRoles ?? [])].filter(Boolean).sort();
+
+          // Read the wizard manifest (best-effort) for retired-role detection
+          let existingManifest: WizardManifest | null = null;
+          if (existingCompanyId) {
+            try {
+              const pluginId = await findPluginId(client);
+              if (pluginId) {
+                const settings = await client._fetch(
+                  `/api/plugins/${pluginId}/company-settings/${companyId}`,
+                );
+                const manifestData =
+                  settings?.settingsJson?.wizardManifest ?? settings?.settings_json?.wizardManifest;
+                if (manifestData && typeof manifestData === 'object') {
+                  existingManifest = manifestData as WizardManifest;
+                }
+              }
+            } catch {
+              // Manifest read failure is non-fatal — provisioning still proceeds
+            }
+          }
+
           const repositoryMode = userProjects.some(
             (project) => project?.repoUrl || project?.workspace?.sourceType === 'git_repo',
           )
@@ -2034,6 +2055,55 @@ const plugin = definePlugin({
           log(
             `⚠ Could not save wizard manifest: ${manifestErr instanceof Error ? manifestErr.message : String(manifestErr)}`,
           );
+        }
+
+        // Governance cleanup: create review issues for retired template roles
+        if (existingCompanyId && existingManifest && Array.isArray(existingManifest.roles)) {
+          const newRoleSet = new Set(allRoleNames);
+          const retiredRoles = existingManifest.roles.filter(
+            (role: string) => !newRoleSet.has(role),
+          );
+          for (const role of retiredRoles) {
+            try {
+              const agentData = existingByTemplateRole.get(role);
+              const agentInfo = agentData
+                ? `**Agent ID:** ${agentData.id}\n**Agent name:** ${agentData.title || agentData.name || agentData.id}`
+                : '_No active agent found for this role._';
+              const issueTitle = `Review retired template role: ${role}`;
+              const issueDescription = [
+                `## Retired Role: \`${role}\``,
+                '',
+                'This template role was removed from the company configuration during an update.',
+                'The agent is still active but no longer managed by the wizard.',
+                '',
+                '### Cleanup Checklist',
+                '',
+                "- [ ] Review the agent's current work and open issues",
+                '- [ ] Reassign any in-progress issues to other team members',
+                "- [ ] Consider pausing the agent's heartbeat",
+                '- [ ] Remove module-specific skill files if applicable',
+                '- [ ] Consider terminating the agent if no longer needed',
+                '',
+                agentInfo,
+              ].join('\n');
+              const createdIssue = await client.createIssue(companyId, {
+                title: issueTitle,
+                description: issueDescription,
+                priority: 'low',
+                status: 'todo',
+                ...(boardOperationsIssue?.id
+                  ? { projectId: boardOperationsIssue.id, goalId: boardOperationsIssue.id }
+                  : {}),
+              });
+              log(
+                `✓ Retired-role review issue created for "${role}": ${createdIssue.identifier || createdIssue.id}`,
+              );
+            } catch (retiredRoleErr) {
+              log(
+                `⚠ Could not create retired-role review issue for "${role}": ${retiredRoleErr instanceof Error ? retiredRoleErr.message : String(retiredRoleErr)}`,
+              );
+            }
+          }
         }
 
         return {
