@@ -9,5 +9,8 @@
   "enhances": [
     "Takes over level-specific design from Game Designer/Engineer",
     "Contributes difficulty curve and pacing data to game balancing"
-  ]
+  ],
+  "adapter": {
+    "thinkingLevel": "auto"
+  }
 }

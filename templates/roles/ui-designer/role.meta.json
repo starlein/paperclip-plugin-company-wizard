@@ -7,7 +7,8 @@
   "description": "Owns visual identity, UI design systems, and brand consistency. Creates design specs that engineers implement.",
   "reportsTo": "ceo",
   "adapter": {
-    "chrome": true
+    "chrome": true,
+    "thinkingLevel": "auto"
   },
   "enhances": [
     "Takes over architecture-plan visual/UI layer from Engineer (Engineer becomes fallback for UI architecture)",
