@@ -65,8 +65,12 @@ export function StepSummary() {
         <Button variant="outline" onClick={() => dispatch({ type: 'GO_TO', step: 'roles' })}>
           Back
         </Button>
-        <Button onClick={() => dispatch({ type: 'GO_TO', step: 'provision' })}>
-          {state.existingCompanyId ? 'Provision into Existing Company' : 'Create Company'}
+        <Button
+          onClick={() =>
+            dispatch({ type: 'GO_TO', step: state.path === 'update' ? 'preview' : 'provision' })
+          }
+        >
+          {state.existingCompanyId ? 'Preview Changes' : 'Create Company'}
         </Button>
       </div>
     </div>

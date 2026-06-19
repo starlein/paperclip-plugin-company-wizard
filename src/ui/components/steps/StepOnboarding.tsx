@@ -109,7 +109,7 @@ export function StepOnboarding() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <PathCard
           icon={Building2}
           title="Setup my own org"
@@ -133,6 +133,18 @@ export function StepOnboarding() {
             'Fastest way to get started',
           ]}
           onClick={() => dispatch({ type: 'SET_PATH', path: 'ai' })}
+        />
+        <PathCard
+          icon={RefreshCw}
+          title="Update existing company"
+          description="Re-provision or modify an existing org"
+          details={[
+            'Select company by ID',
+            'Choose preset, modules, and roles',
+            'Preview changes before applying',
+            'Preserves individual skill assignments',
+          ]}
+          onClick={() => dispatch({ type: 'SET_PATH', path: 'update' })}
         />
       </div>
 
