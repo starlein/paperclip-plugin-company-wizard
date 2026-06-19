@@ -30,6 +30,29 @@ Use this flow when the **pr-review module is not active** — i.e., there is no 
 
 If the pr-review module is active and you have a Code Reviewer role on the team, do NOT use the Direct-to-Base-Ref Flow. Instead, use the PR Workflow skill (`skills/pr-workflow.md`) — open a PR, set executionPolicy review stages, and let the merge gate land the branch. Never merge your own branch when a PR review workflow is in place.
 
+## Register the PR as a Work Product
+
+Whenever you open a pull request (via `gh pr create`), immediately register it as a Paperclip work product so it shows up on the issue and the board. Creating the PR on GitHub alone does **not** make it visible in Paperclip.
+
+```
+POST /api/issues/{issueId}/work-products
+Headers: Authorization: Bearer $PAPERCLIP_API_KEY, X-Paperclip-Run-Id: $PAPERCLIP_RUN_ID
+{
+  "type": "pull_request",
+  "provider": "github",
+  "externalId": "<PR number, e.g. 132>",
+  "url": "<full PR URL from `gh pr create`>",
+  "title": "<PR title>",
+  "status": "ready_for_review",
+  "isPrimary": true
+}
+```
+
+Notes:
+- `title` and `url` are required; `url` must be the full PR URL.
+- If the issue runs in an isolated execution workspace, also pass `"executionWorkspaceId"` from your `heartbeat-context` so the PR is linked to that worktree.
+- When the PR later merges or closes, update the work product (`PATCH /api/work-products/{workProductId}`) with `"status": "merged"` or `"closed"`.
+
 ## Rules
 
 - Always pull before starting work to avoid conflicts.

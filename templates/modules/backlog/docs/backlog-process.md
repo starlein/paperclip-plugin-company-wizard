@@ -9,7 +9,7 @@ Goal → Roadmap → Issues → Assignment → Execution → Done
 ```
 
 1. **Goal decomposition** — The backlog owner breaks the company goal into milestones, then milestones into actionable issues.
-2. **Issue creation** — New issues enter the backlog via `POST /api/companies/{companyId}/issues` with `title`, `description`, `priority`, `projectId`, `goalId`, and `labelIds`. Top-level backlog issues must always include the active roadmap `projectId`.
+2. **Issue creation** — New issues enter the backlog via `POST /api/companies/{companyId}/issues` with `title`, `description`, `priority`, `projectId`, `goalId`, and `labelIds`. Top-level backlog issues must always include the active roadmap `projectId`. They must also set workspace isolation explicitly — see **Workspace Isolation** below.
 3. **Pipeline health** — The backlog owner monitors the ready assigned queue. When fewer than about 8 actionable ready issues remain across the active delivery roles, the next small batch is generated from the roadmap.
 4. **Assignment** — Issues are assigned at creation to the best-fit owner. Engineering-ready issues go directly to the Software Engineer (or matching delivery role) so assignment wakeups start work immediately. Leave an issue unassigned only when no suitable owner exists.
 5. **Execution** — Agents check out assigned issues, work them, and hand off deliberately for review or completion.
@@ -27,6 +27,39 @@ Every issue should be:
 ### Acceptance Criteria
 
 Write acceptance criteria in the issue description. Engineers use these to validate their work before marking done. Keep them concrete and testable.
+
+## Workspace Isolation (required at creation)
+
+Every issue runs in a git execution workspace (worktree/branch). To let issues run in
+parallel without colliding in the same worktree, you must declare the workspace intent
+**when you create the issue** — otherwise the issue silently adopts the workspace of
+whatever issue you currently have checked out, which serializes work and corrupts branch
+state.
+
+- **Top-level issue** (independent work, no `parentId`): always send
+  `"executionWorkspaceSettings": { "mode": "isolated_workspace" }` in the create body. This
+  gives the issue its own worktree and branch.
+- **Sub-issue** (part of a larger parent task): set `"parentId": "<parent-issue-id>"` and
+  do **not** send `executionWorkspaceSettings`. The sub-issue deliberately reuses the
+  parent's workspace (the parent cannot be completed/cleaned up while its sub-issues are
+  still open, so sharing is safe and intended).
+
+**Never** create a top-level issue without `executionWorkspaceSettings`. Doing so makes it
+inherit the creator's currently checked-out workspace and blocks parallel execution.
+
+Example top-level create body:
+
+```json
+{
+  "title": "Build campaign onboarding wizard",
+  "description": "...",
+  "priority": "high",
+  "projectId": "<roadmap-project-id>",
+  "goalId": "<goal-id>",
+  "labelIds": ["<label-id>"],
+  "executionWorkspaceSettings": { "mode": "isolated_workspace" }
+}
+```
 
 ## Sources of Issues
 

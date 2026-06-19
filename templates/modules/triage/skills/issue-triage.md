@@ -16,7 +16,7 @@ Use this only when the current assigned issue/routine asks for GitHub issue tria
    - Set priority P0-P3; P0 maps to urgent Paperclip priority.
    - Apply labels with `gh issue edit <number> --add-label "<type>,<priority>"`.
    - Respond to the reporter with acknowledgement, follow-up questions, or a polite close reason.
-   - For actionable issues, create a corresponding Paperclip issue via `POST /api/companies/{companyId}/issues`. Include GitHub issue URL/number, active `projectId`, and `goalId` / `parentId` when applicable.
+   - For actionable issues, create a corresponding Paperclip issue via `POST /api/companies/{companyId}/issues`. Include GitHub issue URL/number, active `projectId`, and `goalId` / `parentId` when applicable. For top-level issues (no `parentId`), also include `"executionWorkspaceSettings": { "mode": "isolated_workspace" }` so each gets its own worktree; subissues set `parentId` and omit it.
 4. Link bidirectionally: GitHub comment references the Paperclip issue, Paperclip issue references GitHub.
 5. Summarize triage results on the assigned triage issue/routine and mark it done.
 
