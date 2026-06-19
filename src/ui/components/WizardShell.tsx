@@ -16,6 +16,8 @@ import { StepRoles } from './steps/StepRoles';
 import { StepSummary } from './steps/StepSummary';
 import { StepAiWizard } from './steps/StepAiWizard';
 import { StepProvision } from './steps/StepProvision';
+import { StepPreview } from './steps/StepPreview';
+import { StepExistingCompany } from './steps/StepExistingCompany';
 import { StepDone } from './steps/StepDone';
 import { Button } from './ui/button';
 
@@ -27,7 +29,9 @@ const STEP_COMPONENTS = {
   preset: StepPreset,
   modules: StepModules,
   roles: StepRoles,
+  'existing-company': StepExistingCompany,
   summary: StepSummary,
+  preview: StepPreview,
   'ai-wizard': StepAiWizard,
   provision: StepProvision,
   done: StepDone,

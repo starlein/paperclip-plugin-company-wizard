@@ -953,6 +953,257 @@ const plugin = definePlugin({
       }
     });
 
+    // Preview company update — dry-run diff of what would change for an existing company.
+    // READ-ONLY: no writes to Paperclip. Returns agents/routines diff and preserved skills.
+    ctx.actions.register('preview-company-update', async (params) => {
+      let tmpDir: string | undefined;
+      try {
+        const existingCompanyId =
+          typeof params.existingCompanyId === 'string' && params.existingCompanyId.trim()
+            ? params.existingCompanyId.trim()
+            : '';
+        if (!existingCompanyId) {
+          return { error: 'existingCompanyId is required for preview.' };
+        }
+
+        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+        const paperclipUrl =
+          cfg.paperclipUrl || process.env.PAPERCLIP_PUBLIC_URL || 'http://localhost:3100';
+        const paperclipEmail = cfg.paperclipEmail || '';
+        const paperclipPassword = cfg.paperclipPassword || '';
+
+        const companyName =
+          typeof params.companyName === 'string' && params.companyName.trim()
+            ? params.companyName.trim()
+            : 'Preview';
+
+        const templatesDir = await ensureTemplatesDir(cfg);
+        tmpDir = path.join(os.tmpdir(), `company-wizard-preview-update-${Date.now()}`);
+
+        const [presets, allModules, roleTemplates] = await Promise.all([
+          loadPresets(templatesDir),
+          loadModules(templatesDir),
+          loadRoles(templatesDir),
+        ]);
+        const roleTemplateByName = new Map(
+          (Array.isArray(roleTemplates) ? roleTemplates : [])
+            .filter((role: any) => role && typeof role.name === 'string')
+            .map((role: any) => [role.name, role]),
+        );
+        const selectedPreset = presets.find((p: any) => p.name === params.presetName) || null;
+        const effectiveModules = resolveEffectiveModules(
+          selectedPreset,
+          allModules,
+          (params.selectedModules as string[]) ?? [],
+        );
+        const goals = collectGoals(selectedPreset, allModules, new Set(effectiveModules));
+        const presetBootstrapData = collectPresetBootstrapData(selectedPreset);
+
+        const previewGoals: any[] = Array.isArray(params.goals)
+          ? (params.goals as any[])
+          : params.goal
+            ? [params.goal]
+            : [];
+        const previewProjects: any[] = Array.isArray(params.projects)
+          ? (params.projects as any[])
+          : [];
+        const previewIssues: any[] = Array.isArray(params.issues) ? (params.issues as any[]) : [];
+
+        const assembleResult = await assembleCompany({
+          companyName,
+          userGoals: previewGoals,
+          userProjects: previewProjects,
+          moduleNames: effectiveModules,
+          extraRoleNames: (params.selectedRoles as string[]) ?? [],
+          inlineGoals: goals,
+          userIssues: previewIssues,
+          presetIssues: presetBootstrapData.issues,
+          presetRoutines: presetBootstrapData.routines,
+          presetLabels: presetBootstrapData.labels,
+          enableIsolatedWorktrees: await resolveEnableIsolatedWorkspacesFromInstance(cfg),
+          enableEnrichedPersonas: true,
+          outputDir: tmpDir,
+          templatesDir,
+        });
+
+        const allRoles = Array.isArray(params.allRoles)
+          ? (params.allRoles as string[])
+          : [...(assembleResult.allRoles ?? [])].filter(Boolean);
+        const teamRoles = allRoles.filter((r: string) => r && r !== 'ceo');
+
+        // Count planned files (assemble created them in tmpDir)
+        let plannedFiles = 0;
+        function countFiles(dir: string): void {
+          if (!fs.existsSync(dir)) return;
+          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory()) countFiles(full);
+            else if (entry.isFile()) plannedFiles++;
+          }
+        }
+        countFiles(assembleResult.companyDir);
+
+        // Connect to Paperclip API to read existing data
+        const client = new PaperclipClient(paperclipUrl, {
+          email: paperclipEmail,
+          password: paperclipPassword,
+        });
+        await client.connect();
+
+        const company = await client.getCompany(existingCompanyId);
+        const existingAgents = await client.listAgents(existingCompanyId);
+        const existingRoutines = await client.listRoutines(existingCompanyId);
+
+        // Build agent diff
+        const existingCeo = Array.isArray(existingAgents)
+          ? existingAgents.find((a: any) => a?.role === 'ceo' && a?.status !== 'terminated')
+          : null;
+
+        const existingByTemplateRole = new Map<string, any>();
+        if (Array.isArray(existingAgents)) {
+          for (const a of existingAgents) {
+            const tr = a?.metadata?.templateRole;
+            if (tr && a?.status !== 'terminated' && a?.role !== 'ceo') {
+              existingByTemplateRole.set(tr, a);
+            }
+          }
+        }
+
+        const agents: { role: string; title: string; action: string }[] = [];
+
+        // CEO always present — update if exists, hire if not
+        const ceoTemplate = roleTemplateByName.get('ceo') || {};
+        const ceoTitle =
+          typeof ceoTemplate.title === 'string' && ceoTemplate.title.trim()
+            ? ceoTemplate.title.trim()
+            : 'CEO';
+        agents.push({
+          role: 'ceo',
+          title: existingCeo?.title || ceoTitle,
+          action: existingCeo ? 'update' : 'hire',
+        });
+
+        // Team roles: hire or update
+        for (const roleName of teamRoles) {
+          const roleTemplate = roleTemplateByName.get(roleName) || {};
+          const roleTitle =
+            typeof roleTemplate.title === 'string' && roleTemplate.title.trim()
+              ? roleTemplate.title.trim()
+              : formatRoleName(roleName);
+          const existing = existingByTemplateRole.get(roleName);
+          agents.push({
+            role: roleName,
+            title: roleTitle,
+            action: existing ? 'update' : 'hire',
+          });
+        }
+
+        // Retire: existing templateRole agents not in the new selection
+        const selectedRoleSet = new Set(allRoles);
+        for (const [tr, agent] of existingByTemplateRole.entries()) {
+          if (!selectedRoleSet.has(tr)) {
+            const roleTemplate = roleTemplateByName.get(tr) || {};
+            const roleTitle =
+              typeof roleTemplate.title === 'string' && roleTemplate.title.trim()
+                ? roleTemplate.title.trim()
+                : formatRoleName(tr);
+            agents.push({
+              role: tr,
+              title: agent?.title || roleTitle,
+              action: 'retire',
+            });
+          }
+        }
+
+        // Build routine diff — match by title (same as syncExistingCompanyRoutines)
+        const existingRoutineByTitle = new Map<string, any>();
+        if (Array.isArray(existingRoutines)) {
+          for (const r of existingRoutines) {
+            const title = routineTemplateTitle(r);
+            if (title) existingRoutineByTitle.set(title.toLowerCase(), r);
+          }
+        }
+
+        const plannedRoutines = [
+          ...(assembleResult.initialRoutines ?? []),
+          ...(presetBootstrapData.routines ?? []),
+        ];
+        // Deduplicate routines by title
+        const seenRoutineTitles = new Set<string>();
+        const routines: { title: string; action: string; assignTo?: string }[] = [];
+        for (const routine of plannedRoutines) {
+          const title = routineTemplateTitle(routine);
+          if (!title) continue;
+          const key = title.toLowerCase();
+          if (seenRoutineTitles.has(key)) continue;
+          seenRoutineTitles.add(key);
+          const existing = existingRoutineByTitle.get(key);
+          routines.push({
+            title,
+            action: existing ? 'update' : 'create',
+            assignTo: routine.assignTo || undefined,
+          });
+        }
+
+        // Collect desiredSkillsPreserved from existing agents
+        const desiredSkillsPreserved: { agentId: string; agentName: string; skills: string[] }[] =
+          [];
+        if (Array.isArray(existingAgents)) {
+          for (const a of existingAgents) {
+            if (
+              a?.adapterConfig &&
+              typeof a.adapterConfig === 'object' &&
+              'paperclipSkillSync' in (a.adapterConfig as Record<string, unknown>)
+            ) {
+              const sync = (a.adapterConfig as Record<string, unknown>).paperclipSkillSync;
+              if (
+                sync &&
+                typeof sync === 'object' &&
+                'desiredSkills' in (sync as Record<string, unknown>)
+              ) {
+                const skills = (sync as Record<string, unknown>).desiredSkills;
+                if (Array.isArray(skills) && skills.length > 0) {
+                  desiredSkillsPreserved.push({
+                    agentId: a.id,
+                    agentName: a.title || a.name || a.id,
+                    skills: skills as string[],
+                  });
+                }
+              }
+            }
+          }
+        }
+
+        // Clean up temp dir
+        try {
+          fs.rmSync(tmpDir, { recursive: true, force: true });
+        } catch {
+          /* */
+        }
+        tmpDir = undefined;
+
+        return {
+          diff: {
+            companyId: existingCompanyId,
+            companyName: company?.name || companyName,
+            agents,
+            routines,
+            desiredSkillsPreserved,
+            plannedFiles,
+          },
+        };
+      } catch (err) {
+        if (tmpDir) {
+          try {
+            fs.rmSync(tmpDir, { recursive: true, force: true });
+          } catch {
+            /* */
+          }
+        }
+        return { error: err instanceof Error ? err.message : String(err) };
+      }
+    });
+
     // Auth check action — called by the summary step to surface credential issues early.
     ctx.actions.register('check-auth', async () => {
       const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
