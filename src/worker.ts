@@ -581,6 +581,67 @@ function routineTemplateTitle(routine: any): string {
   return '';
 }
 
+interface WizardManifest {
+  pluginVersion: string;
+  preset: string | null;
+  modules: string[];
+  roles: string[];
+  generatedFilePaths: Record<string, string[]>;
+  routineTitles: string[];
+  updatedAt: string;
+}
+
+function buildWizardManifest(params: {
+  presetName: string | null;
+  selectedModules: string[];
+  selectedRoleNames: string[];
+  assembleResult: any;
+  initialRoutines: any[];
+}): WizardManifest {
+  const routineTitles = params.initialRoutines
+    .map((r: any) => routineTemplateTitle(r))
+    .filter(Boolean);
+
+  const generatedFilePaths: Record<string, string[]> = {};
+  if (params.assembleResult?.allFiles && typeof params.assembleResult.allFiles === 'object') {
+    for (const relativePath of Object.keys(params.assembleResult.allFiles)) {
+      const match = relativePath.match(/^agents\/([^/]+)\//);
+      if (match) {
+        const agentRole = match[1];
+        if (!generatedFilePaths[agentRole]) generatedFilePaths[agentRole] = [];
+        generatedFilePaths[agentRole].push(relativePath);
+      } else if (relativePath.startsWith('docs/')) {
+        if (!generatedFilePaths['docs']) generatedFilePaths['docs'] = [];
+        generatedFilePaths['docs'].push(relativePath);
+      }
+    }
+  }
+
+  return {
+    pluginVersion: CURRENT_PLUGIN_VERSION,
+    preset: params.presetName,
+    modules: params.selectedModules,
+    roles: params.selectedRoleNames,
+    generatedFilePaths,
+    routineTitles,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+const WIZARD_PLUGIN_KEY = 'starlein.paperclip-plugin-company-wizard';
+
+async function findPluginId(client: PaperclipClient): Promise<string | null> {
+  try {
+    const plugins: any[] = await client._fetch('/api/plugins');
+    const match = Array.isArray(plugins)
+      ? plugins.find((p: any) => p.pluginKey === WIZARD_PLUGIN_KEY)
+      : null;
+    return match?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function syncRoutineTrigger({
   client,
   routineId,
@@ -953,6 +1014,286 @@ const plugin = definePlugin({
       }
     });
 
+    // Preview company update — dry-run diff of what would change for an existing company.
+    // READ-ONLY: no writes to Paperclip. Returns agents/routines diff and preserved skills.
+    ctx.actions.register('preview-company-update', async (params) => {
+      let tmpDir: string | undefined;
+      try {
+        const existingCompanyId =
+          typeof params.existingCompanyId === 'string' && params.existingCompanyId.trim()
+            ? params.existingCompanyId.trim()
+            : '';
+        if (!existingCompanyId) {
+          return { error: 'existingCompanyId is required for preview.' };
+        }
+
+        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+        const paperclipUrl =
+          cfg.paperclipUrl || process.env.PAPERCLIP_PUBLIC_URL || 'http://localhost:3100';
+        const paperclipEmail = cfg.paperclipEmail || '';
+        const paperclipPassword = cfg.paperclipPassword || '';
+
+        const companyName =
+          typeof params.companyName === 'string' && params.companyName.trim()
+            ? params.companyName.trim()
+            : 'Preview';
+
+        const templatesDir = await ensureTemplatesDir(cfg);
+        tmpDir = path.join(os.tmpdir(), `company-wizard-preview-update-${Date.now()}`);
+
+        const [presets, allModules, roleTemplates] = await Promise.all([
+          loadPresets(templatesDir),
+          loadModules(templatesDir),
+          loadRoles(templatesDir),
+        ]);
+        const roleTemplateByName = new Map(
+          (Array.isArray(roleTemplates) ? roleTemplates : [])
+            .filter((role: any) => role && typeof role.name === 'string')
+            .map((role: any) => [role.name, role]),
+        );
+        const selectedPreset = presets.find((p: any) => p.name === params.presetName) || null;
+        const effectiveModules = resolveEffectiveModules(
+          selectedPreset,
+          allModules,
+          (params.selectedModules as string[]) ?? [],
+        );
+        const goals = collectGoals(selectedPreset, allModules, new Set(effectiveModules));
+        const presetBootstrapData = collectPresetBootstrapData(selectedPreset);
+
+        const previewGoals: any[] = Array.isArray(params.goals)
+          ? (params.goals as any[])
+          : params.goal
+            ? [params.goal]
+            : [];
+        const previewProjects: any[] = Array.isArray(params.projects)
+          ? (params.projects as any[])
+          : [];
+        const previewIssues: any[] = Array.isArray(params.issues) ? (params.issues as any[]) : [];
+
+        const assembleResult = await assembleCompany({
+          companyName,
+          userGoals: previewGoals,
+          userProjects: previewProjects,
+          moduleNames: effectiveModules,
+          extraRoleNames: (params.selectedRoles as string[]) ?? [],
+          inlineGoals: goals,
+          userIssues: previewIssues,
+          presetIssues: presetBootstrapData.issues,
+          presetRoutines: presetBootstrapData.routines,
+          presetLabels: presetBootstrapData.labels,
+          enableIsolatedWorktrees: await resolveEnableIsolatedWorkspacesFromInstance(cfg),
+          enableEnrichedPersonas: true,
+          outputDir: tmpDir,
+          templatesDir,
+        });
+
+        const allRoles = Array.isArray(params.allRoles)
+          ? (params.allRoles as string[])
+          : [...(assembleResult.allRoles ?? [])].filter(Boolean);
+        const teamRoles = allRoles.filter((r: string) => r && r !== 'ceo');
+
+        // Count planned files (assemble created them in tmpDir)
+        let plannedFiles = 0;
+        function countFiles(dir: string): void {
+          if (!fs.existsSync(dir)) return;
+          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory()) countFiles(full);
+            else if (entry.isFile()) plannedFiles++;
+          }
+        }
+        countFiles(assembleResult.companyDir);
+
+        // Connect to Paperclip API to read existing data
+        const client = new PaperclipClient(paperclipUrl, {
+          email: paperclipEmail,
+          password: paperclipPassword,
+        });
+        await client.connect();
+
+        const company = await client.getCompany(existingCompanyId);
+        const existingAgents = await client.listAgents(existingCompanyId);
+        const existingRoutines = await client.listRoutines(existingCompanyId);
+
+        // Read the wizard manifest (best-effort) for better retired-role detection
+        let existingManifest: WizardManifest | null = null;
+        try {
+          const pluginId = await findPluginId(client);
+          if (pluginId) {
+            const settings = await client._fetch(
+              `/api/plugins/${pluginId}/company-settings/${existingCompanyId}`,
+            );
+            const manifestData =
+              settings?.settingsJson?.wizardManifest ?? settings?.settings_json?.wizardManifest;
+            if (manifestData && typeof manifestData === 'object') {
+              existingManifest = manifestData as WizardManifest;
+            }
+          }
+        } catch {
+          // Manifest read failure is non-fatal — preview still works without it
+        }
+
+        // Build agent diff
+        const existingCeo = Array.isArray(existingAgents)
+          ? existingAgents.find((a: any) => a?.role === 'ceo' && a?.status !== 'terminated')
+          : null;
+
+        const existingByTemplateRole = new Map<string, any>();
+        if (Array.isArray(existingAgents)) {
+          for (const a of existingAgents) {
+            const tr = a?.metadata?.templateRole;
+            if (tr && a?.status !== 'terminated' && a?.role !== 'ceo') {
+              existingByTemplateRole.set(tr, a);
+            }
+          }
+        }
+
+        const agents: { role: string; title: string; action: string }[] = [];
+
+        // CEO always present — update if exists, hire if not
+        const ceoTemplate = roleTemplateByName.get('ceo') || {};
+        const ceoTitle =
+          typeof ceoTemplate.title === 'string' && ceoTemplate.title.trim()
+            ? ceoTemplate.title.trim()
+            : 'CEO';
+        agents.push({
+          role: 'ceo',
+          title: existingCeo?.title || ceoTitle,
+          action: existingCeo ? 'update' : 'hire',
+        });
+
+        // Team roles: hire or update
+        for (const roleName of teamRoles) {
+          const roleTemplate = roleTemplateByName.get(roleName) || {};
+          const roleTitle =
+            typeof roleTemplate.title === 'string' && roleTemplate.title.trim()
+              ? roleTemplate.title.trim()
+              : formatRoleName(roleName);
+          const existing = existingByTemplateRole.get(roleName);
+          agents.push({
+            role: roleName,
+            title: roleTitle,
+            action: existing ? 'update' : 'hire',
+          });
+        }
+
+        // Retire: existing templateRole agents not in the new selection.
+        // Use the manifest roles list when available — it records which roles
+        // the wizard originally provisioned, so we can distinguish "was in the
+        // wizard's last run" from "manually added by a human" (which we should
+        // never retire without explicit user consent).
+        const selectedRoleSet = new Set(allRoles);
+        const manifestRoleSet = existingManifest?.roles ? new Set(existingManifest.roles) : null;
+        for (const [tr, agent] of existingByTemplateRole.entries()) {
+          if (!selectedRoleSet.has(tr)) {
+            // If we have a manifest and this role was NOT in it, skip retirement —
+            // it was added outside the wizard and shouldn't be auto-retired.
+            if (manifestRoleSet && !manifestRoleSet.has(tr)) {
+              continue;
+            }
+            const roleTemplate = roleTemplateByName.get(tr) || {};
+            const roleTitle =
+              typeof roleTemplate.title === 'string' && roleTemplate.title.trim()
+                ? roleTemplate.title.trim()
+                : formatRoleName(tr);
+            agents.push({
+              role: tr,
+              title: agent?.title || roleTitle,
+              action: 'retire',
+            });
+          }
+        }
+
+        // Build routine diff — match by title (same as syncExistingCompanyRoutines)
+        const existingRoutineByTitle = new Map<string, any>();
+        if (Array.isArray(existingRoutines)) {
+          for (const r of existingRoutines) {
+            const title = routineTemplateTitle(r);
+            if (title) existingRoutineByTitle.set(title.toLowerCase(), r);
+          }
+        }
+
+        const plannedRoutines = [
+          ...(assembleResult.initialRoutines ?? []),
+          ...(presetBootstrapData.routines ?? []),
+        ];
+        // Deduplicate routines by title
+        const seenRoutineTitles = new Set<string>();
+        const routines: { title: string; action: string; assignTo?: string }[] = [];
+        for (const routine of plannedRoutines) {
+          const title = routineTemplateTitle(routine);
+          if (!title) continue;
+          const key = title.toLowerCase();
+          if (seenRoutineTitles.has(key)) continue;
+          seenRoutineTitles.add(key);
+          const existing = existingRoutineByTitle.get(key);
+          routines.push({
+            title,
+            action: existing ? 'update' : 'create',
+            assignTo: routine.assignTo || undefined,
+          });
+        }
+
+        // Collect desiredSkillsPreserved from existing agents
+        const desiredSkillsPreserved: { agentId: string; agentName: string; skills: string[] }[] =
+          [];
+        if (Array.isArray(existingAgents)) {
+          for (const a of existingAgents) {
+            if (
+              a?.adapterConfig &&
+              typeof a.adapterConfig === 'object' &&
+              'paperclipSkillSync' in (a.adapterConfig as Record<string, unknown>)
+            ) {
+              const sync = (a.adapterConfig as Record<string, unknown>).paperclipSkillSync;
+              if (
+                sync &&
+                typeof sync === 'object' &&
+                'desiredSkills' in (sync as Record<string, unknown>)
+              ) {
+                const skills = (sync as Record<string, unknown>).desiredSkills;
+                if (Array.isArray(skills) && skills.length > 0) {
+                  desiredSkillsPreserved.push({
+                    agentId: a.id,
+                    agentName: a.title || a.name || a.id,
+                    skills: skills as string[],
+                  });
+                }
+              }
+            }
+          }
+        }
+
+        // Clean up temp dir
+        try {
+          fs.rmSync(tmpDir, { recursive: true, force: true });
+        } catch {
+          /* */
+        }
+        tmpDir = undefined;
+
+        return {
+          diff: {
+            companyId: existingCompanyId,
+            companyName: company?.name || companyName,
+            agents,
+            routines,
+            desiredSkillsPreserved,
+            plannedFiles,
+            existingManifest,
+          },
+        };
+      } catch (err) {
+        if (tmpDir) {
+          try {
+            fs.rmSync(tmpDir, { recursive: true, force: true });
+          } catch {
+            /* */
+          }
+        }
+        return { error: err instanceof Error ? err.message : String(err) };
+      }
+    });
+
     // Auth check action — called by the summary step to surface credential issues early.
     ctx.actions.register('check-auth', async () => {
       const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
@@ -1210,6 +1551,27 @@ const plugin = definePlugin({
         let bootstrapIssue: { id: string; identifier?: string };
         try {
           const allRoleNames = [...(assembleResult.allRoles ?? [])].filter(Boolean).sort();
+
+          // Read the wizard manifest (best-effort) for retired-role detection
+          let existingManifest: WizardManifest | null = null;
+          if (existingCompanyId) {
+            try {
+              const pluginId = await findPluginId(client);
+              if (pluginId) {
+                const settings = await client._fetch(
+                  `/api/plugins/${pluginId}/company-settings/${companyId}`,
+                );
+                const manifestData =
+                  settings?.settingsJson?.wizardManifest ?? settings?.settings_json?.wizardManifest;
+                if (manifestData && typeof manifestData === 'object') {
+                  existingManifest = manifestData as WizardManifest;
+                }
+              }
+            } catch {
+              // Manifest read failure is non-fatal — provisioning still proceeds
+            }
+          }
+
           const repositoryMode = userProjects.some(
             (project) => project?.repoUrl || project?.workspace?.sourceType === 'git_repo',
           )
@@ -1669,6 +2031,80 @@ const plugin = definePlugin({
         const issueIds = [boardOperationsIssue?.id, hiringPlanIssue?.id, bootstrapIssue!.id].filter(
           Boolean,
         );
+
+        // Persist wizard manifest so future updates can diff against it
+        try {
+          const pluginId = await findPluginId(client);
+          if (pluginId) {
+            const wizardManifest = buildWizardManifest({
+              presetName: selectedPreset?.name ?? null,
+              selectedModules: effectiveModules,
+              selectedRoleNames: allRoleNames,
+              assembleResult,
+              initialRoutines: routines,
+            });
+            await client._fetch(`/api/plugins/${pluginId}/company-settings/${companyId}`, {
+              method: 'PUT',
+              body: JSON.stringify({ settingsJson: { wizardManifest } }),
+            });
+            log('✓ Wizard manifest saved');
+          } else {
+            log('⚠ Could not find plugin ID — manifest not saved');
+          }
+        } catch (manifestErr) {
+          log(
+            `⚠ Could not save wizard manifest: ${manifestErr instanceof Error ? manifestErr.message : String(manifestErr)}`,
+          );
+        }
+
+        // Governance cleanup: create review issues for retired template roles
+        if (existingCompanyId && existingManifest && Array.isArray(existingManifest.roles)) {
+          const newRoleSet = new Set(allRoleNames);
+          const retiredRoles = existingManifest.roles.filter(
+            (role: string) => !newRoleSet.has(role),
+          );
+          for (const role of retiredRoles) {
+            try {
+              const agentData = existingByTemplateRole.get(role);
+              const agentInfo = agentData
+                ? `**Agent ID:** ${agentData.id}\n**Agent name:** ${agentData.title || agentData.name || agentData.id}`
+                : '_No active agent found for this role._';
+              const issueTitle = `Review retired template role: ${role}`;
+              const issueDescription = [
+                `## Retired Role: \`${role}\``,
+                '',
+                'This template role was removed from the company configuration during an update.',
+                'The agent is still active but no longer managed by the wizard.',
+                '',
+                '### Cleanup Checklist',
+                '',
+                "- [ ] Review the agent's current work and open issues",
+                '- [ ] Reassign any in-progress issues to other team members',
+                "- [ ] Consider pausing the agent's heartbeat",
+                '- [ ] Remove module-specific skill files if applicable',
+                '- [ ] Consider terminating the agent if no longer needed',
+                '',
+                agentInfo,
+              ].join('\n');
+              const createdIssue = await client.createIssue(companyId, {
+                title: issueTitle,
+                description: issueDescription,
+                priority: 'low',
+                status: 'todo',
+                ...(boardOperationsIssue?.id
+                  ? { projectId: boardOperationsIssue.id, goalId: boardOperationsIssue.id }
+                  : {}),
+              });
+              log(
+                `✓ Retired-role review issue created for "${role}": ${createdIssue.identifier || createdIssue.id}`,
+              );
+            } catch (retiredRoleErr) {
+              log(
+                `⚠ Could not create retired-role review issue for "${role}": ${retiredRoleErr instanceof Error ? retiredRoleErr.message : String(retiredRoleErr)}`,
+              );
+            }
+          }
+        }
 
         return {
           companyId,
