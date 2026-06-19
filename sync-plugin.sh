@@ -4,7 +4,7 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DOTPAPERCLIP="${PAPERCLIP_DOTPAPERCLIP_HOST:-/root/paperclip/data/docker3/}"
+DOTPAPERCLIP="${PAPERCLIP_DOTPAPERCLIP_HOST:-/home/docker/paperclip/data/docker/}"
 PLUGIN_DIR="$DOTPAPERCLIP/plugins/@starlein/paperclip-plugin-company-wizard"
 RUNTIME_PLUGIN_DIR="$DOTPAPERCLIP/plugins/node_modules/@starlein/paperclip-plugin-company-wizard"
 
@@ -47,11 +47,11 @@ process.stdout.write(JSON.stringify(manifest));
 " 2>/dev/null || echo "")
 
 if [ -n "$MANIFEST_JSON" ]; then
-  docker exec paperclip psql "postgresql://paperclip:paperclip@127.0.0.1:54329/paperclip" \
+  docker exec paperclip psql "postgresql://paperclip:paperclip@172.19.0.2:5432/paperclip" \
     -c "UPDATE plugins SET manifest_json = '$MANIFEST_JSON'::jsonb, package_name='@starlein/paperclip-plugin-company-wizard', status='ready', last_error=NULL, updated_at=now() WHERE plugin_key='starlein.paperclip-plugin-company-wizard';" \
     2>/dev/null && echo "DB manifest + status updated" || echo "DB update skipped (container not running?)"
 else
-  docker exec paperclip psql "postgresql://paperclip:paperclip@127.0.0.1:54329/paperclip" \
+  docker exec paperclip psql "postgresql://paperclip:paperclip@172.19.0.2:5432/paperclip" \
     -c "UPDATE plugins SET status='ready', last_error=NULL WHERE plugin_key='starlein.paperclip-plugin-company-wizard';" \
     2>/dev/null && echo "DB status reset to ready" || echo "DB reset skipped (container not running?)"
 fi
