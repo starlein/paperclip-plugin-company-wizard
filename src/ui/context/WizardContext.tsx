@@ -3,7 +3,7 @@ import type { PresetData, ModuleData, RoleData } from '../types';
 
 // --- Types ---
 
-export type WizardPath = 'manual' | 'ai';
+export type WizardPath = 'manual' | 'ai' | 'update';
 
 export type Step =
   | 'onboarding'
@@ -14,6 +14,8 @@ export type Step =
   | 'modules'
   | 'roles'
   | 'summary'
+  | 'existing-company'
+  | 'preview'
   | 'ai-wizard'
   | 'provision'
   | 'done';
@@ -172,30 +174,48 @@ const MANUAL_STEPS: Step[] = [
 
 const AI_STEPS: Step[] = ['onboarding', 'ai-wizard', 'provision', 'done'];
 
+const UPDATE_STEPS: Step[] = [
+  'onboarding',
+  'existing-company',
+  'preset',
+  'modules',
+  'roles',
+  'summary',
+  'preview',
+  'provision',
+  'done',
+];
+
+function stepsForPath(path: WizardPath | null): Step[] {
+  if (path === 'ai') return AI_STEPS;
+  if (path === 'update') return UPDATE_STEPS;
+  return MANUAL_STEPS;
+}
+
 export function getStepIndex(state: WizardState): number {
-  const steps = state.path === 'ai' ? AI_STEPS : MANUAL_STEPS;
+  const steps = stepsForPath(state.path);
   return steps.indexOf(state.step);
 }
 
 export function getTotalSteps(state: WizardState): number {
-  const steps = state.path === 'ai' ? AI_STEPS : MANUAL_STEPS;
+  const steps = stepsForPath(state.path);
   return steps.filter((s) => s !== 'onboarding' && s !== 'provision' && s !== 'done').length;
 }
 
 export function getUserStepIndex(state: WizardState): number {
-  const steps = state.path === 'ai' ? AI_STEPS : MANUAL_STEPS;
+  const steps = stepsForPath(state.path);
   const userSteps = steps.filter((s) => s !== 'onboarding' && s !== 'provision' && s !== 'done');
   return userSteps.indexOf(state.step as (typeof userSteps)[number]) + 1;
 }
 
 export function nextStep(state: WizardState): Step {
-  const steps = state.path === 'ai' ? AI_STEPS : MANUAL_STEPS;
+  const steps = stepsForPath(state.path);
   const idx = steps.indexOf(state.step);
   return steps[Math.min(idx + 1, steps.length - 1)];
 }
 
 export function prevStep(state: WizardState): Step {
-  const steps = state.path === 'ai' ? AI_STEPS : MANUAL_STEPS;
+  const steps = stepsForPath(state.path);
   const idx = steps.indexOf(state.step);
   return steps[Math.max(idx - 1, 0)];
 }
@@ -248,12 +268,13 @@ const initialState: WizardState = {
 
 function reducer(state: WizardState, action: Action): WizardState {
   switch (action.type) {
-    case 'SET_PATH':
-      return {
-        ...state,
-        path: action.path,
-        step: action.path === 'ai' ? 'ai-wizard' : 'name',
-      };
+    case 'SET_PATH': {
+      let step: Step;
+      if (action.path === 'ai') step = 'ai-wizard';
+      else if (action.path === 'update') step = 'existing-company';
+      else step = 'name';
+      return { ...state, path: action.path, step };
+    }
     case 'GO_TO':
       return { ...state, step: action.step, error: null };
     case 'SET_COMPANY_NAME':
