@@ -46,3 +46,4 @@ Add additional labels if the roadmap calls for them (e.g., `docs`, `design`, `se
 - Always attach at least one label to every issue you create.
 - If the goal is fully decomposed into issues, do not create more. Report status and next review trigger to the CEO/Product Owner.
 - Work products such as roadmap drafts or decomposition tables belong in issue documents/artifacts, not only comments.
+- **Review handoff:** When moving an issue to `in_review`, always assign it to the reviewer. If the issue has an executionPolicy with review stages, Paperclip reassigns automatically. If there is no executionPolicy, PATCH the issue's `assigneeAgentId` to the reviewer before or at the same time as the status change. An issue in `in_review` that is still assigned to the original implementer will stall — no one picks it up. Always reassign on review handoff.

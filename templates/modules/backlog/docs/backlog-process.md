@@ -93,3 +93,7 @@ Re-prioritize when milestones shift or new information arrives. Don't let low-pr
 - The backlog owner coordinates with the CEO on strategic priorities when unclear.
 - If the goal is fully decomposed and all issues are done or in progress, report completion to the CEO rather than inventing new work.
 - When multiple agents create issues (e.g., from user-testing findings), the backlog owner reviews and re-prioritizes as needed.
+
+## Review Handoff
+
+When an issue is ready for review (moving to `in_review`), it must be assigned to the reviewer. If an executionPolicy with review stages is configured, Paperclip reassigns automatically. Otherwise, the person moving the issue must PATCH `assigneeAgentId` to the reviewer. An issue in `in_review` that is still assigned to the original implementer will stall — no one picks it up. Always reassign on review handoff.

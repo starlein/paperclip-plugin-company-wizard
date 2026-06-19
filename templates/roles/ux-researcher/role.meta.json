@@ -10,5 +10,8 @@
     "Takes over market-analysis user research section from Product Owner/CEO",
     "Takes over vision-workshop success metrics validation from CEO",
     "Adds UX review pass when pr-review module is active"
-  ]
+  ],
+  "adapter": {
+    "thinkingLevel": "auto"
+  }
 }

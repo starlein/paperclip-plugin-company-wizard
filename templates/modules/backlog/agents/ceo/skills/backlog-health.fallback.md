@@ -19,3 +19,4 @@ On your heartbeat, after handling assignments:
 - This is a safety net, not your primary job. Let the PO own it.
 - Only create issues when engineers would otherwise have nothing to work on.
 - Keep it minimal — just enough to unblock, not a full grooming session.
+- **Review handoff:** When moving an issue to `in_review`, always assign it to the reviewer. If the issue has an executionPolicy with review stages, Paperclip reassigns automatically. Otherwise PATCH `assigneeAgentId` to the reviewer before or at the same time as the status change.

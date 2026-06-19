@@ -544,6 +544,37 @@ async function syncAgentInstructionsIntoManagedBundle({
   }
 }
 
+/**
+ * Preserve existing `paperclipSkillSync.desiredSkills` from an agent's current
+ * `adapterConfig` when updating it. The plugin rebuilds `adapterConfig` from scratch
+ * (via `buildWorkerAdapterConfig` / `buildCeoAdapterConfig`), which does NOT include
+ * `paperclipSkillSync`. Without this merge, individual runtime skill assignments are
+ * lost on every update.
+ *
+ * Merges the existing `paperclipSkillSync` key into `nextAdapterConfig` so the PATCH
+ * preserves the agent's skill sync preferences.
+ */
+function preserveExistingSkillSync(
+  existingAgent: any,
+  nextAdapterConfig: Record<string, unknown>,
+): Record<string, unknown> {
+  const existingSync =
+    existingAgent?.adapterConfig &&
+    typeof existingAgent.adapterConfig === 'object' &&
+    'paperclipSkillSync' in (existingAgent.adapterConfig as Record<string, unknown>)
+      ? (existingAgent.adapterConfig as Record<string, unknown>).paperclipSkillSync
+      : undefined;
+
+  if (!existingSync) {
+    return nextAdapterConfig;
+  }
+
+  return {
+    ...nextAdapterConfig,
+    paperclipSkillSync: existingSync,
+  };
+}
+
 function routineTemplateTitle(routine: any): string {
   if (typeof routine?.title === 'string' && routine.title.trim()) return routine.title.trim();
   if (typeof routine?.name === 'string' && routine.name.trim()) return routine.name.trim();
@@ -1294,7 +1325,7 @@ const plugin = definePlugin({
               try {
                 const ceoPatch: Record<string, unknown> = {
                   adapterType,
-                  adapterConfig,
+                  adapterConfig: preserveExistingSkillSync(existingCeo, adapterConfig),
                   runtimeConfig: ceoRuntimeConfig,
                   ...(ceoMetadata
                     ? { metadata: { ...(existingCeo.metadata ?? {}), ...ceoMetadata } }
@@ -1452,7 +1483,7 @@ const plugin = definePlugin({
               try {
                 await client.updateAgent(existingAgent.id, {
                   adapterType,
-                  adapterConfig: roleAdapterConfig,
+                  adapterConfig: preserveExistingSkillSync(existingAgent, roleAdapterConfig),
                   runtimeConfig: roleRuntimeConfig,
                   metadata: { ...(existingAgent.metadata ?? {}), ...roleMetadata },
                   ...(!existingAgent.title && roleTitle ? { title: roleTitle } : {}),
