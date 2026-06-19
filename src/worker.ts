@@ -581,6 +581,67 @@ function routineTemplateTitle(routine: any): string {
   return '';
 }
 
+interface WizardManifest {
+  pluginVersion: string;
+  preset: string | null;
+  modules: string[];
+  roles: string[];
+  generatedFilePaths: Record<string, string[]>;
+  routineTitles: string[];
+  updatedAt: string;
+}
+
+function buildWizardManifest(params: {
+  presetName: string | null;
+  selectedModules: string[];
+  selectedRoleNames: string[];
+  assembleResult: any;
+  initialRoutines: any[];
+}): WizardManifest {
+  const routineTitles = params.initialRoutines
+    .map((r: any) => routineTemplateTitle(r))
+    .filter(Boolean);
+
+  const generatedFilePaths: Record<string, string[]> = {};
+  if (params.assembleResult?.allFiles && typeof params.assembleResult.allFiles === 'object') {
+    for (const relativePath of Object.keys(params.assembleResult.allFiles)) {
+      const match = relativePath.match(/^agents\/([^/]+)\//);
+      if (match) {
+        const agentRole = match[1];
+        if (!generatedFilePaths[agentRole]) generatedFilePaths[agentRole] = [];
+        generatedFilePaths[agentRole].push(relativePath);
+      } else if (relativePath.startsWith('docs/')) {
+        if (!generatedFilePaths['docs']) generatedFilePaths['docs'] = [];
+        generatedFilePaths['docs'].push(relativePath);
+      }
+    }
+  }
+
+  return {
+    pluginVersion: CURRENT_PLUGIN_VERSION,
+    preset: params.presetName,
+    modules: params.selectedModules,
+    roles: params.selectedRoleNames,
+    generatedFilePaths,
+    routineTitles,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+const WIZARD_PLUGIN_KEY = 'starlein.paperclip-plugin-company-wizard';
+
+async function findPluginId(client: PaperclipClient): Promise<string | null> {
+  try {
+    const plugins: any[] = await client._fetch('/api/plugins');
+    const match = Array.isArray(plugins)
+      ? plugins.find((p: any) => p.pluginKey === WIZARD_PLUGIN_KEY)
+      : null;
+    return match?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function syncRoutineTrigger({
   client,
   routineId,
@@ -1054,6 +1115,24 @@ const plugin = definePlugin({
         const existingAgents = await client.listAgents(existingCompanyId);
         const existingRoutines = await client.listRoutines(existingCompanyId);
 
+        // Read the wizard manifest (best-effort) for better retired-role detection
+        let existingManifest: WizardManifest | null = null;
+        try {
+          const pluginId = await findPluginId(client);
+          if (pluginId) {
+            const settings = await client._fetch(
+              `/api/plugins/${pluginId}/company-settings/${existingCompanyId}`,
+            );
+            const manifestData =
+              settings?.settingsJson?.wizardManifest ?? settings?.settings_json?.wizardManifest;
+            if (manifestData && typeof manifestData === 'object') {
+              existingManifest = manifestData as WizardManifest;
+            }
+          }
+        } catch {
+          // Manifest read failure is non-fatal — preview still works without it
+        }
+
         // Build agent diff
         const existingCeo = Array.isArray(existingAgents)
           ? existingAgents.find((a: any) => a?.role === 'ceo' && a?.status !== 'terminated')
@@ -1098,10 +1177,20 @@ const plugin = definePlugin({
           });
         }
 
-        // Retire: existing templateRole agents not in the new selection
+        // Retire: existing templateRole agents not in the new selection.
+        // Use the manifest roles list when available — it records which roles
+        // the wizard originally provisioned, so we can distinguish "was in the
+        // wizard's last run" from "manually added by a human" (which we should
+        // never retire without explicit user consent).
         const selectedRoleSet = new Set(allRoles);
+        const manifestRoleSet = existingManifest?.roles ? new Set(existingManifest.roles) : null;
         for (const [tr, agent] of existingByTemplateRole.entries()) {
           if (!selectedRoleSet.has(tr)) {
+            // If we have a manifest and this role was NOT in it, skip retirement —
+            // it was added outside the wizard and shouldn't be auto-retired.
+            if (manifestRoleSet && !manifestRoleSet.has(tr)) {
+              continue;
+            }
             const roleTemplate = roleTemplateByName.get(tr) || {};
             const roleTitle =
               typeof roleTemplate.title === 'string' && roleTemplate.title.trim()
@@ -1190,6 +1279,7 @@ const plugin = definePlugin({
             routines,
             desiredSkillsPreserved,
             plannedFiles,
+            existingManifest,
           },
         };
       } catch (err) {
@@ -1920,6 +2010,31 @@ const plugin = definePlugin({
         const issueIds = [boardOperationsIssue?.id, hiringPlanIssue?.id, bootstrapIssue!.id].filter(
           Boolean,
         );
+
+        // Persist wizard manifest so future updates can diff against it
+        try {
+          const pluginId = await findPluginId(client);
+          if (pluginId) {
+            const wizardManifest = buildWizardManifest({
+              presetName: selectedPreset?.name ?? null,
+              selectedModules: effectiveModules,
+              selectedRoleNames: allRoleNames,
+              assembleResult,
+              initialRoutines: routines,
+            });
+            await client._fetch(`/api/plugins/${pluginId}/company-settings/${companyId}`, {
+              method: 'PUT',
+              body: JSON.stringify({ settingsJson: { wizardManifest } }),
+            });
+            log('✓ Wizard manifest saved');
+          } else {
+            log('⚠ Could not find plugin ID — manifest not saved');
+          }
+        } catch (manifestErr) {
+          log(
+            `⚠ Could not save wizard manifest: ${manifestErr instanceof Error ? manifestErr.message : String(manifestErr)}`,
+          );
+        }
 
         return {
           companyId,
