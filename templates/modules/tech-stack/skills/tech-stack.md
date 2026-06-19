@@ -15,7 +15,7 @@ You own technology decisions. Evaluate options and document choices that align w
    - **Trade-offs**: What was considered and rejected, and why
    - **Dependencies**: Key libraries and their purposes
 4. Create setup issues if needed:
-   - `POST /api/companies/{companyId}/issues` for initial project scaffolding. Include the active `projectId` (and `goalId` / `parentId` when applicable).
+   - `POST /api/companies/{companyId}/issues` for initial project scaffolding. Include the active `projectId` (and `goalId` / `parentId` when applicable). For top-level issues (no `parentId`), also include `"executionWorkspaceSettings": { "mode": "isolated_workspace" }` so each gets its own worktree; subissues set `parentId` and omit it.
 
 ## Rules
 

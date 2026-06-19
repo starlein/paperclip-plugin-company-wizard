@@ -11,7 +11,7 @@ You own market research and competitive analysis. This informs the product roadm
    - **Positioning**: How do we differentiate? What's our unique value proposition?
    - **Risks**: Market risks, timing risks, adoption barriers
 3. Create follow-up issues for any strategic decisions needed:
-   - `POST /api/companies/{companyId}/issues` with findings that require input. Include the active `projectId` (and `goalId` / `parentId` when applicable).
+   - `POST /api/companies/{companyId}/issues` with findings that require input. Include the active `projectId` (and `goalId` / `parentId` when applicable). For top-level issues (no `parentId`), also include `"executionWorkspaceSettings": { "mode": "isolated_workspace" }` so each gets its own worktree; subissues set `parentId` and omit it.
 4. Record summary in your daily notes
 
 ## Rules
