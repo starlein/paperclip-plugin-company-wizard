@@ -94,7 +94,7 @@ async function setupFixtures() {
         title: 'Backlog grooming',
         description: 'Keep the backlog healthy.',
         assignTo: 'product-owner',
-        schedule: '0 */4 * * *',
+        schedule: '0 */2 * * *',
       },
     ],
   });

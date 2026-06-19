@@ -24,7 +24,7 @@
       "title": "Backlog grooming",
       "description": "Routine-run checklist: inspect roadmap/backlog health, ensure at least 8 actionable ready issues exist, create scoped issues (around 3-6 per pass) and assign each to its best-fit agent when capacity is low, link artifacts/goals/projects, summarize changes on the routine issue, then exit.",
       "assignTo": "capability:backlog-health",
-      "schedule": "0 */4 * * *",
+      "schedule": "0 */2 * * *",
       "priority": "medium",
       "concurrencyPolicy": "skip_if_active"
     }
