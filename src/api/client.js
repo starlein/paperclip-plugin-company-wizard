@@ -215,6 +215,19 @@ export class PaperclipClient {
     });
   }
 
+  async getInstructionsBundle(agentId) {
+    return this._fetch(`/api/agents/${agentId}/instructions-bundle`, {
+      method: 'GET',
+    });
+  }
+
+  async deleteInstructionsBundleFile(agentId, { path }) {
+    return this._fetch(`/api/agents/${agentId}/instructions-bundle/file`, {
+      method: 'DELETE',
+      body: JSON.stringify({ path }),
+    });
+  }
+
   async createAgent(companyId, agent) {
     const {
       name,
