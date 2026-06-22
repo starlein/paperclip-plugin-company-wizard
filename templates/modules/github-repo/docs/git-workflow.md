@@ -94,7 +94,7 @@ Use this flow when the **pr-review module is not active** (no Code Reviewer role
 6. Run tests/linting locally if available
 7. Commit with conventional commit message
 8. **Verify the current branch one more time**, then push: `git push -u origin <branch-name>`. The branch name in the push command must match `git branch --show-current`. Never push the base ref as a feature branch — if `git branch --show-current` returns the base ref name, stop and create a feature branch first.
-9. Open a pull request against the base ref: write the PR body to a temp file, then `gh pr create --base <github-base-branch> --head <branch-name> --title "<type>: <description>" --body-file <file>`. Never inline `--body "..."` — a double-quoted shell string keeps `\n` literal (see *Posting PR Bodies & Comments* in `docs/pr-conventions.md`). Verify the PR base matches the configured base ref before merging.
+9. Open a pull request against the base ref: write the PR body to a temp file, then `gh pr create --base <github-base-branch> --head <branch-name> --title "<type>: <description>" --body-file <file>`. Never inline `--body "..."` — a double-quoted shell string keeps `\n` literal (see *Posting PR Bodies & Comments* in `docs/pr-conventions.md`). `<github-base-branch>` is the **plain branch name** — strip any `origin/` prefix from the configured base ref (e.g., configured ref `origin/main` → `--base main`; configured ref `main` → `--base main`). GitHub does not recognise remote-tracking names. Verify the PR base matches the configured base ref before merging.
 10. Merge the PR yourself: `gh pr merge <PR-number> --merge`. Do not wait for a reviewer if none is present. Confirm the PR is closed and the base branch updated before continuing. Never do a direct `git merge` + push to the base branch; always go through a PR.
 11. Clean up the feature branch: `git push origin --delete <branch-name>` (remote) and `git branch -d <branch-name>` (local).
 12. If the issue uses an isolated execution workspace (worktree), archive it from `heartbeat-context` after the merge is pushed.
@@ -151,7 +151,7 @@ When `gh pr merge` fails or `gh pr view <N> --json mergeable,mergeStateStatus` r
 
 1. `git fetch origin`
 2. `git checkout <branch-name>`
-3. `git rebase origin/<base-ref>` — resolve each conflict marker, then `git rebase --continue`
+3. `git rebase origin/<base-branch>` where `<base-branch>` is the plain branch name — strip any `origin/` prefix from the configured base ref first (e.g., configured `origin/main` → `git rebase origin/main`; configured `main` → `git rebase origin/main`). Resolve each conflict marker, then `git rebase --continue`.
 4. Run the full check suite (lint, typecheck, tests) to confirm nothing broke.
 5. `git push --force-with-lease origin <branch-name>` — use `--force-with-lease`, never bare `--force`.
 6. Verify the conflict is resolved: `gh pr view <N> --json mergeable` should now return `MERGEABLE`.

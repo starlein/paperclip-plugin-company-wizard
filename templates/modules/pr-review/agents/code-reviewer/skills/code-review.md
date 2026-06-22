@@ -32,7 +32,7 @@ When `gh pr merge` fails or `gh pr view` reports `mergeable: CONFLICTING` / `mer
 1. Record `changes_requested` on the issue immediately (do not leave it in `in_review` indefinitely) with a comment: "PR has merge conflicts with the base branch — returning to engineer to rebase."
 2. The issue routes back to the engineer (`returnAssignee`). The engineer must:
    - `git fetch origin && git checkout <branch-name>`
-   - `git rebase origin/<base-ref>` (or `git merge origin/<base-ref>` if rebase is inappropriate)
+   - `git rebase origin/<base-branch>` where `<base-branch>` is the plain branch name (strip any `origin/` prefix from the configured base ref — e.g., configured `origin/main` → `git rebase origin/main`)
    - Resolve all conflicts, run checks, commit
    - `git push --force-with-lease origin <branch-name>`
    - Leave an issue comment confirming the rebase, then move the issue back to `in_review`

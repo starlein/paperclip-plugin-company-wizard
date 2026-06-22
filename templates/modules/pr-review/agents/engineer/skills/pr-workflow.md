@@ -12,7 +12,7 @@ When this skill is active, you work in feature branches and open PRs instead of 
 4. **Verify you are on the feature branch** before making changes: `git branch --show-current` must print your branch name, not the base ref. If it prints the base ref name, you forgot step 3 — create the branch now.
 5. Make your changes, commit with Conventional Commits format
 6. **Verify the current branch one more time**, then push: `git push -u origin <branch-name>`. The branch name in the push command must match `git branch --show-current`. Never push the base ref as a feature branch — if `git branch --show-current` returns the base ref name, stop and create a feature branch first.
-7. Open PR against the same resolved base: derive the GitHub base branch from the configured ref (for example, strip the remote prefix only when the ref is remote-tracking), write the body (PR Body Template in `docs/pr-conventions.md`) to a file, then `gh pr create --base <github-base-branch> --head <branch-name> --title "<type>: <description>" --body-file <file>`. Never inline `--body "..."` — a double-quoted shell string keeps `\n` literal and the PR renders as `text\ntext` (see *Posting PR Bodies & Comments*).
+7. Open PR against the same resolved base: `gh pr create --base <github-base-branch> --head <branch-name> --title "<type>: <description>" --body-file <file>`. `<github-base-branch>` is the **plain branch name** — strip any `origin/` prefix from the configured base ref (e.g., configured `origin/main` → `--base main`; configured `main` → `--base main`). GitHub does not recognise remote-tracking names. Write the PR body (PR Body Template in `docs/pr-conventions.md`) to a file first — never inline `--body "..."` (double-quoted shell string keeps `\n` literal; see *Posting PR Bodies & Comments*).
 8. **Register the PR as a Paperclip work product** so it is visible on the issue and board (creating it on GitHub alone does not surface it in Paperclip):
    ```
    POST /api/issues/{issueId}/work-products
@@ -48,7 +48,7 @@ When `gh pr merge` fails or `gh pr view` reports `mergeable: CONFLICTING` / `mer
 
 1. `git fetch origin`
 2. `git checkout <branch-name>`
-3. `git rebase origin/<base-ref>` — resolve all conflicts, then `git rebase --continue`
+3. `git rebase origin/<base-branch>` where `<base-branch>` is the plain branch name — strip any `origin/` prefix from the configured base ref (e.g., configured `origin/main` → `git rebase origin/main`; configured `main` → `git rebase origin/main`). Resolve all conflicts, then `git rebase --continue`.
 4. Run the full check suite (lint, typecheck, tests) to confirm nothing broke.
 5. `git push --force-with-lease origin <branch-name>`
 6. Confirm the PR is no longer conflicting: `gh pr view <N> --json mergeable` should return `MERGEABLE`.

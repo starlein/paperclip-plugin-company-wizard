@@ -17,7 +17,7 @@ Use this flow when the **pr-review module is not active**. You open a PR and mer
 7. Run available checks (lint, typecheck, tests)
 8. Commit using Conventional Commits: `<type>: <description>`
 9. Verify the current branch one more time, then push: `git push -u origin <branch-name>`. The branch name in the push command must match `git branch --show-current`. Never push the base ref as a feature branch — if `git branch --show-current` returns the base ref name, stop and create a feature branch first.
-10. Open a pull request against the base ref: `gh pr create --base <github-base-branch> --head <branch-name> --title "<type>: <description>" --body-file <file>`. Write the PR body (summary, what changed, how to verify) to a temp file first — never inline `--body "..."`. Register the PR as a Paperclip work product (see *Register the PR as a Work Product* below). Verify the PR base matches the configured base ref before merging.
+10. Open a pull request against the base ref: `gh pr create --base <github-base-branch> --head <branch-name> --title "<type>: <description>" --body-file <file>`. `<github-base-branch>` is the **plain branch name** — strip any `origin/` prefix from the configured base ref (e.g., configured `origin/main` → `--base main`). GitHub does not recognise remote-tracking names. Write the PR body to a temp file first — never inline `--body "..."`. Register the PR as a Paperclip work product (see *Register the PR as a Work Product* below). Verify the PR base matches the configured base ref before merging.
 11. Before merging, check that the PR is not conflicting: `gh pr view <PR-number> --json mergeable,mergeStateStatus`. If `mergeable` is `CONFLICTING` or `mergeStateStatus` is `DIRTY`, resolve the conflict before merging — see *Resolving merge conflicts* below.
 11. Merge the PR yourself: `gh pr merge <PR-number> --merge`. After opening the PR, merge it yourself promptly — do not wait for a reviewer if none is present. Confirm the PR is closed and the base branch updated before continuing.
 12. Clean up the feature branch: `git push origin --delete <branch-name>` (remote) and `git branch -d <branch-name>` (local). Update the Paperclip work product to `"status": "merged"` via `PATCH /api/work-products/{workProductId}`.
@@ -96,7 +96,7 @@ When `gh pr merge` fails or `gh pr view <N> --json mergeable,mergeStateStatus` r
 
 1. `git fetch origin`
 2. `git checkout <branch-name>`
-3. `git rebase origin/<base-ref>` — resolve each conflict marker, then `git rebase --continue`
+3. `git rebase origin/<base-branch>` where `<base-branch>` is the plain branch name — strip any `origin/` prefix from the configured base ref (e.g., configured `origin/main` → `git rebase origin/main`; configured `main` → `git rebase origin/main`). Resolve each conflict marker, then `git rebase --continue`.
 4. Run the full check suite (lint, typecheck, tests) to confirm nothing broke.
 5. `git push --force-with-lease origin <branch-name>` — never `--force`, use `--force-with-lease` to avoid overwriting concurrent pushes.
 6. Verify the conflict is gone: `gh pr view <N> --json mergeable` should return `MERGEABLE`.
