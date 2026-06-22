@@ -29,12 +29,14 @@ You are responsible for managing the release lifecycle — versioning, changelog
    - Create the release commit and tag
    - Create a GitHub Release with notes: `gh release create vX.Y.Z --notes "..."`
 
-## Ongoing
+## Ongoing Release Readiness (Routine-Triggered)
 
-On each heartbeat:
-1. Check if unreleased changes have accumulated — review commits since last tag.
-2. If significant changes exist without a release, flag it or initiate a release.
-3. Ensure CHANGELOG.md stays up to date with merged work.
+When assigned a "Release readiness check" routine-run issue:
+
+1. Check if unreleased changes have accumulated since the last release: `git log <last-tag>..HEAD --oneline`. If no unreleased commits, mark done.
+2. Review `docs/CHANGELOG.md` or commit log for breaking changes, new features, or bug fixes that warrant a version bump.
+3. Run the full test suite and build. If failing, create a blocking issue and escalate before continuing.
+4. If a release is warranted, follow the release steps in the *Setup* section of this skill to cut the release. Otherwise leave a comment noting the check result and mark the routine issue done.
 
 ## Rules
 

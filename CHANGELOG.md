@@ -4,6 +4,44 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.9] - 2026-06-22
+
+### Fixed
+
+**Roles — structural gaps in secondary and C-suite roles**
+- `devops`, `cto`, `cmo`, `ux-researcher` AGENTS.md: added Working Rules, Collaboration and Handoffs, and Done Bar sections (previously used a thin "Core Principles"-only pattern with no actionable workflow guidance).
+- `code-reviewer` HEARTBEAT.md step 5: replaced generic "move to in_review" with the correct role-specific flow — merge the PR, archive worktree, record `approved`; or on rejection set `in_progress` and reassign to engineer.
+- `qa` HEARTBEAT.md step 5: replaced generic step with pass → mark done / fail → reassign to engineer with reproduction steps.
+- `code-reviewer` AGENTS.md: added rejection flow in step 8; removed duplicate procedure paragraph from `## Principles`.
+- `security-engineer` AGENTS.md: added missing `## Safety Considerations` section.
+- `product-owner` SOUL.md: renamed section heading and added product ownership bullets.
+- `technical-writer` AGENTS.md step 7: clarified that executionPolicy overrides the direct self-close.
+- HEARTBEAT.md title casing fixed: CEO, CTO, CMO, QA Engineer, UI Designer, UX Researcher, DevOps.
+
+**Operational modules — heartbeat-scan anti-pattern, bar/skill mismatches, missing fallbacks**
+- `dependency-management` and `release-management`: converted heartbeat-scan "Ongoing" sections to routine-triggered procedures; added `routines[]` to both `module.meta.json` files.
+- `release-management`: added CEO fallback skill scoped to documentation only — explicitly forbids `git push --tags`, `gh release create`, and version bumps.
+- `ci-cd` shared skill: added SHA pinning rule, rollback documentation step, and `## Ongoing Health Checks` section for recurring routine runs.
+- `monitoring` shared skill: added dashboard setup step and runbook requirement rule.
+- `ci-cd` engineer fallback: marked output as provisional; added explicit `docs/CI-CD.md` reference.
+- `monitoring` engineer fallback: "liveness probe" → "liveness and readiness probes".
+- `triage` CEO fallback: `gh issue list` now uses full `--json` form; added `executionWorkspaceSettings` note.
+- `codebase-onboarding` CEO fallback: added "Health Check Refresh" section for follow-up runs.
+
+**Product/design modules — critical missing files, duplicate issues, bar gaps**
+- `architecture-plan`: added missing shared `skills/design-system.md` — without it, an engineer acting as primary was silently installed with no design-system skill.
+- `architecture-plan`: added CEO-specific `agents/ceo/skills/architecture-plan.bar.md` with reduced done bar (the shared bar set engineer-level requirements the CEO fallback cannot meet).
+- `architecture-plan` ui-designer contribution skill: added guard clause — wait for `docs/ARCHITECTURE.md` before contributing the UI layer.
+- `architecture-plan` ui-designer design-system skill: added conditional `docs/BRAND-IDENTITY.md` reference.
+- `website-relaunch` module.meta.json: removed 3 duplicate issues (each appeared twice; would have provisioned duplicate board items).
+- `competitive-intel`: added missing `agents/product-owner/skills/competitive-tracking.fallback.md`.
+- Added new bar files: `competitive-intel/skills/competitive-tracking.bar.md`, `documentation/skills/project-docs.bar.md`, `game-design/skills/game-design.bar.md`.
+- `market-analysis` template: added `## User Segments` section.
+- `brand-identity` CEO fallback: fixed inconsistent role name ("designer or PO" → "ui-designer or CMO").
+- `brand-identity` primary skill: added explicit file path for template reference.
+
+---
+
 ## [0.4.8] - 2026-06-22
 
 ### Fixed

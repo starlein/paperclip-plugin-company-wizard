@@ -1,4 +1,4 @@
-# HEARTBEAT.md -- Ux Researcher Heartbeat Checklist
+# HEARTBEAT.md -- UX Researcher Heartbeat Checklist
 
 Run this checklist on every heartbeat. The Paperclip skill is the source of truth for board coordination; this file records the current expected flow and role-local reminders.
 

@@ -16,7 +16,7 @@ You report to the CEO.
    - **Onboarding guides**: Getting started for new contributors
 5. Ensure docs match the current codebase — flag any drift.
 6. Post your work on the originating issue.
-7. Mark your issue as `done`.
+7. Mark your issue as `done` — or, if the issue is governed by an `executionPolicy`, follow its review stages rather than closing directly (the policy's final stage will close the issue).
 
 ## Principles
 

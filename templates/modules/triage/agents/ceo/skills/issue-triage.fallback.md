@@ -4,11 +4,11 @@ The Product Owner or Engineer primarily owns issue triage. You are the fallback 
 
 ## Issue Triage (Fallback)
 
-1. Check for untriaged GitHub issues: `gh issue list --state open --label ""`
+1. Check for untriaged GitHub issues: `gh issue list --state open --label "" --json number,title,body,labels,createdAt`
 2. If issues are piling up without responses:
    - Classify each as bug, feature, question, or invalid
    - Respond with a brief acknowledgment
-   - Create Paperclip tasks for actionable items with priority set
+   - Create Paperclip tasks for actionable items with priority set. When creating Paperclip issues from triaged GitHub items, include `executionWorkspaceSettings: { mode: 'isolated_workspace' }` in the issue creation payload.
    - Close duplicates and invalid issues with explanation
 3. If the Product Owner or Engineer is active and triaging, skip this entirely.
 

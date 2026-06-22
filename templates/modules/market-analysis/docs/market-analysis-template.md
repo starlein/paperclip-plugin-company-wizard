@@ -6,6 +6,23 @@
 - **Problem**: _What problem are we solving?_
 - **Market size**: _How big is the opportunity?_
 
+## User Segments
+
+### Primary Users
+- **Segment name**: [name]
+- **Description**: [who they are]
+- **Key needs**: [what they need from the product]
+- **Pain points**: [what frustrates them today]
+
+### Secondary Users
+- **Segment name**: [name]
+- **Description**: [who they are]
+- **Key needs**: [what they need from the product]
+- **Relationship to primary**: [how they interact with the primary user's workflow]
+
+### Edge Cases
+- [User groups or scenarios that the product must handle but that aren't core users]
+
 ## Competitive Landscape
 
 | Competitor | Strengths | Weaknesses | Differentiation |

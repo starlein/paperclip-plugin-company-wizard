@@ -27,12 +27,15 @@ You are responsible for keeping the project's dependencies healthy, secure, and 
 6. **Execute safe upgrades** — Apply patch and minor updates directly when tests pass.
 7. **Create issues** for major version upgrades or migrations that require dedicated work.
 
-## Ongoing
+## Ongoing Audits (Routine-Triggered)
 
-On each heartbeat when `docs/DEPENDENCY-AUDIT.md` exists:
-1. Run vulnerability scan — if new CVEs appear, create issues immediately.
-2. Check for newly outdated dependencies — update the audit doc.
-3. Apply safe patch updates and verify tests pass.
+When assigned a "Dependency audit" routine-run issue:
+
+1. Run the vulnerability scan: `npm audit --json` (or equivalent for the project's package manager). Flag any new Critical or High CVEs not present in the last audit.
+2. Check for newly outdated dependencies: compare current versions against the latest. Flag anything more than one major version behind.
+3. Apply safe patch updates (semver patch-only, no breaking changes): update, run the test suite, commit if green.
+4. Update `docs/DEPENDENCY-AUDIT.md` with the new scan date, any new findings, and any updates applied.
+5. Mark the routine issue done. If Critical CVEs were found that cannot be patched, create a separate high-priority issue for each and escalate to CEO.
 
 ## Rules
 

@@ -35,7 +35,8 @@ Run this checklist on every heartbeat. The Paperclip skill is the source of trut
 - Upload or attach user-inspectable outputs as work products/artifacts/documents; local filesystem paths alone are not enough.
 - Use issue documents for long plans, specs, QA reports, security reviews, or hiring drafts; comments should summarize and link.
 - Handoffs should use assignment/status/executionPolicy and a concrete next action. Do not rely on generic @-mentions.
-- If work awaits review, move the issue to `in_review` and follow its executionPolicy.
+- **When review/merge is complete:** If you are the merge gate (pr-review module active), record your verdict on the issue: merge the PR (`gh pr merge <number> --merge`), archive any isolated worktree if one exists, then record `approved` — this closes the issue to `done`. If you requested changes (`changes_requested`), set the issue to `in_progress`, reassign to the engineer (the `returnAssignee`), and do not record `approved`.
+- **If advisory only** (pr-review module not active): leave your verdict as a PR comment; the engineer self-merges.
 
 ## 6. Exit
 

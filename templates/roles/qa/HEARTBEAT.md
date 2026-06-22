@@ -1,4 +1,4 @@
-# HEARTBEAT.md -- Qa Heartbeat Checklist
+# HEARTBEAT.md -- QA Engineer Heartbeat Checklist
 
 Run this checklist on every heartbeat. The Paperclip skill is the source of truth for board coordination; this file records the current expected flow and role-local reminders.
 
@@ -35,7 +35,8 @@ Run this checklist on every heartbeat. The Paperclip skill is the source of trut
 - Upload or attach user-inspectable outputs as work products/artifacts/documents; local filesystem paths alone are not enough.
 - Use issue documents for long plans, specs, QA reports, security reviews, or hiring drafts; comments should summarize and link.
 - Handoffs should use assignment/status/executionPolicy and a concrete next action. Do not rely on generic @-mentions.
-- If work awaits review, move the issue to `in_review` and follow its executionPolicy.
+- **If verification passes:** mark the issue `done` with a comment citing the test evidence — or, if the issue is governed by an executionPolicy with a stage after QA, record `approved` to pass it to the next stage.
+- **If verification fails:** reassign to the relevant engineer with exact reproduction steps, set status back to `in_progress`. Do not mark `done` on a failing issue.
 
 ## 6. Exit
 

@@ -28,21 +28,6 @@
   "issues": [
     {
       "title": "Technical site audit",
-      "assignTo": "engineer",
-      "description": "Crawl the current website and document the technical baseline:\n- Complete page inventory (every URL, status codes)\n- Navigation structure and sitemap\n- Tech stack and hosting (framework, CMS, CDN)\n- SEO baseline (meta tags, structured data, robots.txt, sitemap.xml)\n- Analytics and tracking scripts\n\nUse WebFetch or Chrome to access each page. Output: `docs/SITE-AUDIT.md`."
-    },
-    {
-      "title": "Visual and UX audit of current website",
-      "assignTo": "capability:site-audit",
-      "description": "Audit the current website visually — design patterns, content quality, UX observations, accessibility. Follow the `site-audit` skill. Append to `docs/SITE-AUDIT.md` or create `docs/DESIGN-AUDIT.md`."
-    },
-    {
-      "title": "Analyze design assets and create design spec",
-      "assignTo": "engineer",
-      "description": "Process all design files in the `designs/` directory. Follow the `design-ingestion` skill for the full process.\n\n**How to read design files:**\n- **PDFs:** Use the Read tool with the `pages` parameter (e.g., pages 1–5, then 6–10) to view each page visually. Do NOT use text extraction as primary method — design PDFs are visual artifacts.\n- **PNG/SVG/JPG:** Use the Read tool directly to view each image.\n- **Fallback for precise values:** Use `markitdown` or `docling` (install via pip) to supplement visual analysis with extracted metadata. Use `pdffonts` for embedded font names.\n\n**Extract:**\n1. Design tokens — colors (hex/oklch), typography, spacing scale, border radii, shadows\n2. Component inventory — recurring UI components\n3. Page layouts — grid system, responsive breakpoints\n4. Asset catalog — images, icons, illustrations\n\nOutput: `docs/DESIGN-SPEC.md` with all extracted tokens, components, and layouts."
-    },
-    {
-      "title": "Technical site audit",
       "description": "Crawl the current website and document the technical baseline:\n- Complete page inventory (every URL, status codes)\n- Navigation structure and sitemap\n- Content types per page (text, images, videos, downloads)\n- Tech stack and hosting (framework, CMS, CDN, response headers)\n- SEO baseline (meta tags, structured data, canonical URLs, robots.txt, sitemap.xml)\n- Analytics and tracking scripts\n- Performance baseline (page weight, render-blocking resources)\n\nUse WebFetch or Chrome to access each page. Output: `docs/SITE-AUDIT.md`.",
       "priority": "high",
       "assignTo": "engineer"

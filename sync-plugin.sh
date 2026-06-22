@@ -4,7 +4,7 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DOTPAPERCLIP="${PAPERCLIP_DOTPAPERCLIP_HOST:-/home/docker/paperclip/data/docker/}"
+DOTPAPERCLIP="${PAPERCLIP_DOTPAPERCLIP_HOST:-/home/docker/paperclip/data/docker}"
 PLUGIN_DIR="$DOTPAPERCLIP/plugins/@starlein/paperclip-plugin-company-wizard"
 RUNTIME_PLUGIN_DIR="$DOTPAPERCLIP/plugins/node_modules/@starlein/paperclip-plugin-company-wizard"
 

@@ -17,3 +17,13 @@ The Engineer primarily owns codebase auditing and health. You are the fallback �
 - Skip deep code analysis — that requires engineering expertise.
 - Don't create cleanup issues — leave that to the Engineer's thorough audit.
 - Let the Engineer own the ongoing health checks and refactoring work.
+
+## Health Check Refresh (follow-up runs)
+
+When `docs/CODEBASE-AUDIT.md` already exists (a prior audit was completed) and you are assigned a follow-up health check:
+
+1. Read the existing `docs/CODEBASE-AUDIT.md`.
+2. Run a quick surface scan: `find . -name "*.js" -o -name "*.ts" | head -30` to sense if new files or directories have appeared since the last audit date.
+3. Note any obviously new areas (new top-level directories, new dependency groups) not present in the existing document.
+4. Add a dated `## Health Check — <date>` section to `docs/CODEBASE-AUDIT.md` listing: files reviewed, new areas identified, and a note that deep analysis was not performed (this is a CEO fallback — escalate to an engineer for full re-audit if significant new areas were found).
+5. Mark the issue done.

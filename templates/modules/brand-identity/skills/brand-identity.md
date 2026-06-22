@@ -15,7 +15,7 @@ You own the company's visual identity and brand guidelines. Define a cohesive br
    - **Iconography**: Style, stroke weight, grid alignment
    - **Tone of voice**: Communication style, vocabulary, personality
 3. Document everything in `docs/BRAND-IDENTITY.md`:
-   - Use the brand-identity-template as a starting point
+   - Use `docs/brand-identity-template.md` as a starting point
    - Fill in all sections with concrete values and rationale
    - Include visual examples or references where possible
 4. Create initial design tokens if a tech stack exists:

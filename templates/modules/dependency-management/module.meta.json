@@ -21,5 +21,14 @@
       "assignTo": "capability:dependency-audit",
       "description": "Audit all project dependencies for outdated versions, known vulnerabilities, and deprecated packages. Document findings and create a prioritized upgrade plan."
     }
+  ],
+  "routines": [
+    {
+      "name": "Dependency audit",
+      "description": "Scan for new vulnerabilities and outdated packages, apply safe patch updates.",
+      "assignTo": "capability:dependency-audit",
+      "schedule": "0 2 * * 1",
+      "concurrencyPolicy": "forbid"
+    }
   ]
 }
