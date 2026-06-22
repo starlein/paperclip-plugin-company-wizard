@@ -28,7 +28,7 @@ When this skill is active, you work in feature branches and open PRs instead of 
    }
    ```
    `title` and `url` are required (`url` must be the full PR URL). If the issue runs in an isolated worktree, also pass `"executionWorkspaceId"` from `heartbeat-context`. When the PR later merges, update it with `PATCH /api/work-products/{id}` and `"status": "merged"`.
-9. **Only if a code-reviewer is present on the team:** Set the originating issue's `executionPolicy` to gate the merge on review, ending with the Code Reviewer as the merge gate. If no code-reviewer is assigned to this company, skip steps 9–11 entirely and go directly to the self-merge path at step 12. Setting up executionPolicy stages without an eligible non-author merge gate will stall the issue permanently (`422 No eligible approval participant`).
+9. **Only if a code-reviewer is present on the team:** Set the originating issue's `executionPolicy` to gate the merge on review, ending with the Code Reviewer as the merge gate. **Set executionPolicy stages before moving the issue to `in_review` (step 10) — changing stages after the issue has already entered review is not supported.** If no code-reviewer is assigned to this company, skip steps 9–11 entirely and go directly to the self-merge path at step 12. Setting up executionPolicy stages without an eligible non-author merge gate will stall the issue permanently (`422 No eligible approval participant`).
    - One `review` stage with **QA** when a QA agent exists (test adequacy / executed verification).
    - One `review` stage with the **Security Engineer** only when the change is security-relevant (auth, secrets, input boundaries, crypto, dependencies, infra exposure).
    - Domain reviewers (UI Designer, UX Researcher, DevOps) are advisory — they post PR comments and may flag a concern for QA, the Security Engineer, or the merge gate to act on. They are never themselves a review stage.
@@ -55,6 +55,8 @@ When `gh pr merge` fails or `gh pr view` reports `mergeable: CONFLICTING` / `mer
 7. Leave an issue comment noting the rebase, then continue with the merge step.
 
 Never leave a PR with unresolved conflicts without either resolving them or explicitly routing the issue back (`changes_requested`) with a comment explaining the blocker. A dirty PR sitting in `in_review` stalls the entire chain.
+
+If the conflict is too complex to resolve safely (large structural conflict with another in-flight PR), leave an issue comment with the exact conflict description and escalate to the CEO for prioritization.
 
 ## Rules
 
