@@ -18,6 +18,7 @@ Use this flow when the **pr-review module is not active**. You open a PR and mer
 8. Commit using Conventional Commits: `<type>: <description>`
 9. Verify the current branch one more time, then push: `git push -u origin <branch-name>`. The branch name in the push command must match `git branch --show-current`. Never push the base ref as a feature branch — if `git branch --show-current` returns the base ref name, stop and create a feature branch first.
 10. Open a pull request against the base ref: `gh pr create --base <github-base-branch> --head <branch-name> --title "<type>: <description>" --body-file <file>`. Write the PR body (summary, what changed, how to verify) to a temp file first — never inline `--body "..."`. Register the PR as a Paperclip work product (see *Register the PR as a Work Product* below). Verify the PR base matches the configured base ref before merging.
+11. Before merging, check that the PR is not conflicting: `gh pr view <PR-number> --json mergeable,mergeStateStatus`. If `mergeable` is `CONFLICTING` or `mergeStateStatus` is `DIRTY`, resolve the conflict before merging — see *Resolving merge conflicts* below.
 11. Merge the PR yourself: `gh pr merge <PR-number> --merge`. After opening the PR, merge it yourself promptly — do not wait for a reviewer if none is present. Confirm the PR is closed and the base branch updated before continuing.
 12. Clean up the feature branch: `git push origin --delete <branch-name>` (remote) and `git branch -d <branch-name>` (local). Update the Paperclip work product to `"status": "merged"` via `PATCH /api/work-products/{workProductId}`.
 13. If the issue uses an isolated execution workspace (worktree), archive it from your `heartbeat-context` after the merge is pushed.
@@ -80,7 +81,7 @@ Notes:
 - Never force push to the base branch.
 - Use the configured base ref. For external repos, branch and compare from the configured remote/ref and push/merge back to the matching remote branch.
 - Treat push authentication as repository setup, not as an issue blocker. If `git push` says credentials are missing or invalid, verify the helper and `GH_TOKEN` binding first.
-- If you encounter merge conflicts, resolve them carefully. When in doubt, escalate to the CEO.
+- If `gh pr merge` fails or `gh pr view` reports `mergeable: CONFLICTING` / `mergeStateStatus: DIRTY`, resolve the conflict before retrying — see *Resolving merge conflicts* below. Never leave a PR in an unresolved conflicting state without either fixing it or leaving an explicit issue comment with the blocker.
 - Reference the issue ID in the commit body (e.g., `Closes YES-5`).
 - Never mark an issue as `done` unless at least one new commit was created for that issue's work and has been pushed.
 - Before marking `done`, verify there is no uncommitted work (`git status --short` should be clean).
@@ -88,3 +89,17 @@ Notes:
 - You are always the merge owner when no code-reviewer is present. Open a PR and merge it yourself via `gh pr merge <N> --merge` promptly — do not leave branches dangling unmerged. Never do a direct `git merge` + push to the base branch; always go through a PR so the branch history is preserved and branch protection is respected (typos/comment-only/doc fixes with an issue reference may be committed directly to the base ref only when branch protection allows it — see `docs/git-workflow.md` → *Dev Cycle Rules*).
 - **Always work on a feature branch, never on the base branch.** Create the branch with `git checkout -b <branch-name> <base-ref>` before committing. Verify with `git branch --show-current` before every push.
 - **Never push the base ref as if it were a feature branch.** Before `git push -u origin <branch-name>`, confirm that `git branch --show-current` matches `<branch-name>`. If it prints the base ref name instead, you are on the wrong branch — create or switch to the feature branch first.
+
+## Resolving merge conflicts
+
+When `gh pr merge` fails or `gh pr view <N> --json mergeable,mergeStateStatus` returns `CONFLICTING` / `DIRTY`:
+
+1. `git fetch origin`
+2. `git checkout <branch-name>`
+3. `git rebase origin/<base-ref>` — resolve each conflict marker, then `git rebase --continue`
+4. Run the full check suite (lint, typecheck, tests) to confirm nothing broke.
+5. `git push --force-with-lease origin <branch-name>` — never `--force`, use `--force-with-lease` to avoid overwriting concurrent pushes.
+6. Verify the conflict is gone: `gh pr view <N> --json mergeable` should return `MERGEABLE`.
+7. Retry the merge: `gh pr merge <N> --merge`.
+
+If the conflict is too complex to resolve safely (e.g., a large structural conflict with another in-flight PR), leave an issue comment describing the exact conflict and escalate to the CEO for prioritization before abandoning the branch.

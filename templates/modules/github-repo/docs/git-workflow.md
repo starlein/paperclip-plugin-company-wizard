@@ -145,6 +145,22 @@ For a brand-new local repository there is no remote yet, so initialize on `main`
 - **Always work on a feature branch, never on the base branch.** Create the branch with `git checkout -b <branch-name> <base-ref>` before committing any changes. If you are resuming work on an existing issue, `git branch --show-current` should already show the feature branch name.
 - **Verify your branch before pushing.** Before running `git push -u origin <branch-name>`, confirm that `git branch --show-current` prints the feature branch name — not the base ref. If it prints the base ref, you are on the wrong branch: stop and create/switch to the feature branch first. Pushing the base ref as a feature branch corrupts upstream tracking and causes incorrect branch divergence reports.
 
+## Resolving merge conflicts
+
+When `gh pr merge` fails or `gh pr view <N> --json mergeable,mergeStateStatus` reports `CONFLICTING` / `DIRTY`:
+
+1. `git fetch origin`
+2. `git checkout <branch-name>`
+3. `git rebase origin/<base-ref>` — resolve each conflict marker, then `git rebase --continue`
+4. Run the full check suite (lint, typecheck, tests) to confirm nothing broke.
+5. `git push --force-with-lease origin <branch-name>` — use `--force-with-lease`, never bare `--force`.
+6. Verify the conflict is resolved: `gh pr view <N> --json mergeable` should now return `MERGEABLE`.
+7. Retry: `gh pr merge <N> --merge`.
+
+Never leave a PR sitting in a conflicting state without either resolving it or leaving an explicit issue comment with the exact blocker. A dirty PR that is never merged or explicitly closed stalls the entire chain indefinitely.
+
+If the conflict is too complex to resolve safely (large structural conflict with another in-flight PR), comment on the issue with the exact conflict description and escalate to the CEO.
+
 ## CI
 
 If the project has CI configured (e.g., GitHub Actions), always verify your push passes CI. If CI fails, fix it immediately — a broken base ref blocks everyone.

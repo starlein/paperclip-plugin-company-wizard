@@ -18,11 +18,25 @@ Paperclip's runtime **excludes the issue's original executor (the author) from e
 
 ## Merging
 
-1. Merge with `gh pr merge <number> --merge`. No force pushes.
-2. Confirm the merge landed on the correct base.
-3. If Paperclip created an isolated execution workspace for the issue, read its id from `heartbeat-context`, call close-readiness, and archive it after the merge and once the tree is clean. If cleanup is blocked or fails, do **not** record approval — leave the issue open with the exact blocker. If the issue runs in the shared project workspace, do not invent isolated-worktree cleanup.
-4. **Only after the merge and cleanup succeed**, record `approved` (PATCH toward `done`) with a comment citing the executed verification and the merge confirmation. That closes the issue.
-5. Never record `approved` before the merge has actually succeeded, and never leave the issue `done` with the PR still open.
+1. Before merging, check whether the PR branch is up to date with the base: `gh pr view <number> --json mergeable,mergeStateStatus`. If `mergeable` is `CONFLICTING` or `mergeStateStatus` is `DIRTY`, **do not attempt to merge** — go to *Merge conflicts* below first.
+2. Merge with `gh pr merge <number> --merge`. No force pushes.
+3. Confirm the merge landed on the correct base.
+4. If Paperclip created an isolated execution workspace for the issue, read its id from `heartbeat-context`, call close-readiness, and archive it after the merge and once the tree is clean. If cleanup is blocked or fails, do **not** record approval — leave the issue open with the exact blocker. If the issue runs in the shared project workspace, do not invent isolated-worktree cleanup.
+5. **Only after the merge and cleanup succeed**, record `approved` (PATCH toward `done`) with a comment citing the executed verification and the merge confirmation. That closes the issue.
+6. Never record `approved` before the merge has actually succeeded, and never leave the issue `done` with the PR still open.
+
+## Merge conflicts
+
+When `gh pr merge` fails or `gh pr view` reports `mergeable: CONFLICTING` / `mergeStateStatus: DIRTY`:
+
+1. Record `changes_requested` on the issue immediately (do not leave it in `in_review` indefinitely) with a comment: "PR has merge conflicts with the base branch — returning to engineer to rebase."
+2. The issue routes back to the engineer (`returnAssignee`). The engineer must:
+   - `git fetch origin && git checkout <branch-name>`
+   - `git rebase origin/<base-ref>` (or `git merge origin/<base-ref>` if rebase is inappropriate)
+   - Resolve all conflicts, run checks, commit
+   - `git push --force-with-lease origin <branch-name>`
+   - Leave an issue comment confirming the rebase, then move the issue back to `in_review`
+3. The issue re-enters the approval chain and returns to you. Re-run the hard verification gate before merging.
 
 ## When something is wrong
 

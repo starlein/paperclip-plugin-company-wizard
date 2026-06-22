@@ -4,6 +4,17 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.8] - 2026-06-22
+
+### Fixed
+
+- **Merge conflicts no longer leave PRs dangling forever.** When `gh pr merge` fails due to a merge conflict, or `gh pr view` reports `mergeable: CONFLICTING` / `mergeStateStatus: DIRTY`, agents previously had no concrete instructions and left the PR in `in_review` indefinitely. All three relevant skills now include an explicit *Resolving merge conflicts* section: `git fetch && git rebase origin/<base-ref>`, resolve conflict markers, `git push --force-with-lease`, verify `mergeable: MERGEABLE`, retry `gh pr merge`. (`git-workflow.md` skill, `pr-workflow.md` skill, `docs/git-workflow.md`.)
+- **Code Reviewer checks for conflicts before attempting to merge.** The merge gate now runs `gh pr view <number> --json mergeable,mergeStateStatus` before calling `gh pr merge`. If the PR is conflicting or dirty, it immediately records `changes_requested` with a comment routing the issue back to the engineer to rebase — instead of attempting the merge and silently leaving the issue stranded. (`code-review.md`.)
+- **PR Self-Merge flow also guards against dirty merges.** The engineer's self-merge path now checks mergeability before `gh pr merge` and follows the same rebase procedure when conflicting. (`pr-workflow.md`, `git-workflow.md` skill.)
+- **Never leave a conflicting PR without an explicit action.** All skills now state: either resolve the conflict and retry, or leave an issue comment with the exact blocker and (for complex conflicts) escalate to the CEO — do not silently abandon the branch.
+
+---
+
 ## [0.4.7] - 2026-06-22
 
 ### Fixed

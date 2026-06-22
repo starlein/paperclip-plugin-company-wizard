@@ -39,8 +39,22 @@ When this skill is active, you work in feature branches and open PRs instead of 
 10. Move the originating issue to `in_review`.
 11. Wait for the issue to clear its review/approval stages. Each reviewer and the Product Owner records `approved` by PATCHing the issue toward `done`, or `changes_requested` by PATCHing it back to `in_progress`; Paperclip stores the reviewer/approver decision metadata on the issue. Verdicts may be mirrored as PR comments. A `changes_requested` routes the issue back to you — address it, push to the same branch, and that stage re-runs.
 12. **Merging the PR — two paths:**
-    - **Code Reviewer present (PR-Gate mode):** You do not merge your own PR. The Code Reviewer (the non-author merge gate) lands it after every prior stage approves, satisfies the hard verification gate (green CI or pasted test/build output), and records the final `approved` that closes the issue to `done`. Your job is to respond to `changes_requested`: when a stage routes the issue back to you, address the feedback, push to the same branch, and the stage re-runs.
-    - **No code-reviewer present (PR Self-Merge Flow):** You already skipped steps 9–11. Merge the PR yourself: `gh pr merge <N> --merge` once CI is green (or you have pasted test/build output if no CI). All other review roles (qa, product-owner, security-engineer, ui-designer, ux-researcher, devops) may leave advisory comments on the PR, but none block the merge — there are no executionPolicy stages. Update the Paperclip work product to `"status": "merged"` and archive any isolated worktree.
+    - **Code Reviewer present (PR-Gate mode):** You do not merge your own PR. The Code Reviewer (the non-author merge gate) lands it after every prior stage approves, satisfies the hard verification gate (green CI or pasted test/build output), and records the final `approved` that closes the issue to `done`. Your job is to respond to `changes_requested`: when a stage routes the issue back to you, address the feedback, push to the same branch, and the stage re-runs. If `changes_requested` is due to a merge conflict (the Code Reviewer will say so), see *Resolving merge conflicts* below.
+    - **No code-reviewer present (PR Self-Merge Flow):** You already skipped steps 9–11. Before merging, check `gh pr view <N> --json mergeable,mergeStateStatus` — if the PR is `CONFLICTING` or `DIRTY`, resolve the conflict first (see *Resolving merge conflicts* below). Then merge: `gh pr merge <N> --merge` once CI is green (or you have pasted test/build output if no CI). All other review roles (qa, product-owner, security-engineer, ui-designer, ux-researcher, devops) may leave advisory comments on the PR, but none block the merge — there are no executionPolicy stages. Update the Paperclip work product to `"status": "merged"` and archive any isolated worktree.
+
+## Resolving merge conflicts
+
+When `gh pr merge` fails or `gh pr view` reports `mergeable: CONFLICTING` / `mergeStateStatus: DIRTY`:
+
+1. `git fetch origin`
+2. `git checkout <branch-name>`
+3. `git rebase origin/<base-ref>` — resolve all conflicts, then `git rebase --continue`
+4. Run the full check suite (lint, typecheck, tests) to confirm nothing broke.
+5. `git push --force-with-lease origin <branch-name>`
+6. Confirm the PR is no longer conflicting: `gh pr view <N> --json mergeable` should return `MERGEABLE`.
+7. Leave an issue comment noting the rebase, then continue with the merge step.
+
+Never leave a PR with unresolved conflicts without either resolving them or explicitly routing the issue back (`changes_requested`) with a comment explaining the blocker. A dirty PR sitting in `in_review` stalls the entire chain.
 
 ## Rules
 
