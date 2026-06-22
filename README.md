@@ -165,7 +165,7 @@ Start with just a CEO. Everything works. Add roles and responsibilities shift au
 | `tech-stack` | Engineer | CEO | tech-stack |
 | `architecture-plan` | Engineer | CEO | architecture-plan |
 | `design-system` | UI Designer | Engineer | architecture-plan |
-| `pr-review` | QA (gate) / Security Engineer (security-relevant) / Product Owner (approval) / Engineer (merge); Code Reviewer / UI / UX / DevOps advisory | — | pr-review |
+| `pr-review` | QA (review) / Security Engineer (review, security-relevant) / Product Owner (approval, when present) / Code Reviewer (merge gate, non-author); UI / UX / DevOps advisory | — | pr-review |
 | `threat-model` | Security Engineer → DevOps | Engineer | security-audit |
 | `security-review` | Security Engineer → DevOps | Engineer | security-audit |
 | `project-docs` | Technical Writer → Engineer | CEO | documentation |
@@ -342,7 +342,7 @@ Git workflow and commit conventions.
 
 PR-based review workflow. Requires `github-repo`. Activates with `code-reviewer`, `product-owner`, `ui-designer`, `ux-researcher`, `qa`, or `devops`.
 
-Reviews run through the issue's native `executionPolicy` (stages), not child issues: a `review` stage for the Code Reviewer (plus relevant domain reviewers), an `approval` stage for the Product Owner, then a final `approval` **merge gate** owned by the Engineer — who is woken last to merge the PR before recording the verdict that closes the issue. The merge gate is deliberately the last stage so the Product Owner's approval does not auto-close the issue with the PR still open.
+Reviews run through the issue's native `executionPolicy` (stages), not child issues: a `review` stage for QA when present, a `review` stage for the Security Engineer only on security-relevant changes, an `approval` stage for the Product Owner when present, then a final `approval` **merge gate** owned by the Code Reviewer (a non-author) — who is woken last to merge the PR before recording the verdict that closes the issue. The merge gate is deliberately the last stage so the Product Owner's approval does not auto-close the issue with the PR still open. The engineer (the issue's executor) is never a stage participant — Paperclip excludes the original executor, so a self-stage stalls with `422 No eligible approval participant`; this is why the merge gate is the Code Reviewer, not the engineer. Domain reviewers (UI Designer, UX Researcher, DevOps) are advisory — they post PR comments and escalate concerns to a blocking reviewer; they are never themselves a stage. When no Code Reviewer is on the team, no `executionPolicy` stages are set and the engineer self-merges via `gh pr merge <N> --merge` (PR Self-Merge Flow).
 
 - **Task:** Engineer configures PR workflow and branch protection (requires PRs, no approval gate)
 - **Doc:** `docs/pr-conventions.md`

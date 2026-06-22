@@ -433,27 +433,71 @@ describe('assembleCompany integration (real templates)', () => {
     );
   });
 
-  it('pr-review with no code-reviewer produces no executionPolicy reviewGate in assembly output', async () => {
-    // When pr-review is active but code-reviewer is absent, the module still gets loaded
-    // (it activates with engineer + product-owner too), but the assembly must not produce
-    // a blocking merge gate that would stall with 422.
-    // We verify this by checking that the pr-review setup issue's reviewGate
-    // does not name 'engineer' as mergeGate (engineer is excluded from own stages).
-    const meta = JSON.parse(
-      await readFile(join(REAL_TEMPLATES_DIR, 'modules', 'pr-review', 'module.meta.json'), 'utf-8'),
-    );
-    const gate = meta.issues[0].reviewGate;
-    assert.notEqual(
-      gate.mergeGate,
-      'engineer',
-      'mergeGate must never be engineer — engineer is the executor and is excluded from every stage, causing 422 stall',
-    );
-    // The self-merge fallback instruction must be present in the description
-    // (agents read this to know they need to self-merge without code-reviewer)
+  it('pr-review with no code-reviewer produces no executionPolicy sketch and installs the self-merge skill', async () => {
+    // C1: when pr-review is active but code-reviewer is absent, the module still
+    // loads (it activates with engineer + product-owner too), but assembly must
+    // render NO executionPolicy sketch — otherwise the Product Owner approval
+    // would auto-close the issue with the PR still open, or a self-stage stalls
+    // with 422. The engineer takes the self-merge path instead.
+    const { companyDir } = await assembleCompany({
+      companyName: 'NoCodeReviewerCo',
+      moduleNames: ['github-repo', 'pr-review'],
+      extraRoleNames: ['engineer', 'product-owner'],
+      outputDir,
+      templatesDir: REAL_TEMPLATES_DIR,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
     assert.ok(
-      meta.issues[0].description.includes('no code-reviewer') ||
-        meta.issues[0].description.includes('PR-Self-Merge'),
-      'pr-review setup issue must document the self-merge fallback',
+      !bootstrap.includes('**executionPolicy**'),
+      'no executionPolicy sketch is rendered when the configured merge gate (code-reviewer) is absent',
+    );
+    assert.ok(
+      !bootstrap.includes('merge gate (non-author)'),
+      'no merge-gate stage is rendered without an eligible non-author merge gate',
+    );
+
+    // M10: the engineer's installed pr-workflow skill must carry the self-merge
+    // path — agents read this file at runtime, not the module.meta.json string.
+    const prWorkflowSkill = await readFile(
+      join(companyDir, 'agents', 'engineer', 'skills', 'pr-workflow.md'),
+      'utf-8',
+    );
+    assert.ok(
+      prWorkflowSkill.includes('gh pr merge'),
+      'installed engineer pr-workflow skill names the self-merge command',
+    );
+    assert.ok(
+      prWorkflowSkill.toLowerCase().includes('self-merge') ||
+        prWorkflowSkill.includes('No code-reviewer present'),
+      'installed engineer pr-workflow skill documents the self-merge path',
+    );
+  });
+
+  it('pr-review with code-reviewer present but no product-owner omits the PO approval stage', async () => {
+    // M8: the PO approval stage is conditioned on presence. With code-reviewer
+    // present but no product-owner, the rendered gate must not require a PO
+    // approval stage (which would have no eligible participant and stall).
+    const { companyDir } = await assembleCompany({
+      companyName: 'NoPoCo',
+      moduleNames: ['github-repo', 'pr-review'],
+      extraRoleNames: ['engineer', 'code-reviewer', 'qa'],
+      outputDir,
+      templatesDir: REAL_TEMPLATES_DIR,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(
+      bootstrap.includes('**executionPolicy**'),
+      'executionPolicy sketch is rendered when a non-author merge gate (code-reviewer) is present',
+    );
+    assert.ok(
+      bootstrap.includes('(approval) → assign "code-reviewer"'),
+      'the Code Reviewer is rendered as the merge-gate stage',
+    );
+    assert.ok(
+      !bootstrap.includes('(approval) → assign "product-owner"'),
+      'no Product Owner approval stage is rendered when no product-owner is on the team',
     );
   });
 
@@ -640,7 +684,7 @@ describe('assembleCompany integration (real templates)', () => {
       companyName: 'CiGateCo',
       userGoals: [{ title: 'Ship it', description: 'Build and launch' }],
       moduleNames: ['github-repo', 'ci-cd', 'pr-review'],
-      extraRoleNames: ['engineer', 'product-owner', 'qa'],
+      extraRoleNames: ['engineer', 'product-owner', 'qa', 'code-reviewer'],
       outputDir,
       templatesDir: REAL_TEMPLATES_DIR,
     });
@@ -660,7 +704,7 @@ describe('assembleCompany integration (real templates)', () => {
       companyName: 'NoCiGateCo',
       userGoals: [{ title: 'Ship it', description: 'Build and launch' }],
       moduleNames: ['github-repo', 'pr-review'],
-      extraRoleNames: ['engineer', 'product-owner', 'qa'],
+      extraRoleNames: ['engineer', 'product-owner', 'qa', 'code-reviewer'],
       outputDir,
       templatesDir: REAL_TEMPLATES_DIR,
     });
@@ -697,6 +741,19 @@ describe('assembleCompany integration (real templates)', () => {
     assert.ok(
       bootstrap.includes('only when the change is security-relevant'),
       'guardrail makes the security stage conditional',
+    );
+    // M9: verify the rendered executionPolicy stages appear in the correct order
+    // (QA review → Product Owner approval → Code Reviewer merge gate).
+    const qaStageIdx = bootstrap.indexOf('(review) → assign "qa"');
+    const poStageIdx = bootstrap.indexOf('(approval) → assign "product-owner"');
+    const mergeStageIdx = bootstrap.indexOf('(approval) → assign "code-reviewer"');
+    assert.ok(qaStageIdx > -1, 'QA review stage is rendered');
+    assert.ok(poStageIdx > -1, 'Product Owner approval stage is rendered');
+    assert.ok(mergeStageIdx > -1, 'Code Reviewer merge-gate stage is rendered');
+    assert.ok(poStageIdx > qaStageIdx, 'Product Owner approval renders after QA review');
+    assert.ok(
+      mergeStageIdx > poStageIdx,
+      'Code Reviewer merge gate renders after the Product Owner',
     );
   });
 

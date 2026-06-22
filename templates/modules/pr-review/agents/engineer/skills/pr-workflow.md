@@ -16,7 +16,7 @@ When this skill is active, you work in feature branches and open PRs instead of 
 8. **Register the PR as a Paperclip work product** so it is visible on the issue and board (creating it on GitHub alone does not surface it in Paperclip):
    ```
    POST /api/issues/{issueId}/work-products
-   Headers: X-Paperclip-Run-Id: $PAPERCLIP_RUN_ID
+   Headers: Authorization: Bearer $PAPERCLIP_API_KEY, X-Paperclip-Run-Id: $PAPERCLIP_RUN_ID
    {
      "type": "pull_request",
      "provider": "github",
@@ -31,16 +31,16 @@ When this skill is active, you work in feature branches and open PRs instead of 
 9. **Only if a code-reviewer is present on the team:** Set the originating issue's `executionPolicy` to gate the merge on review, ending with the Code Reviewer as the merge gate. If no code-reviewer is assigned to this company, skip steps 9–11 entirely and go directly to the self-merge path at step 12. Setting up executionPolicy stages without an eligible non-author merge gate will stall the issue permanently (`422 No eligible approval participant`).
    - One `review` stage with **QA** when a QA agent exists (test adequacy / executed verification).
    - One `review` stage with the **Security Engineer** only when the change is security-relevant (auth, secrets, input boundaries, crypto, dependencies, infra exposure).
-   - Additional `review` stages only for domain reviewers that should block this specific change.
-   - An `approval` stage with the **Product Owner** as participant (always) — the product sign-off.
-   - A final `approval` stage with the **Code Reviewer** as participant — the **merge gate**. The Code Reviewer is woken *last*, after every reviewer and the Product Owner have cleared, to satisfy the hard verification gate and merge the PR. If the team has no Code Reviewer, use another present non-author agent (e.g. DevOps, the Product Owner, or another engineer) — never yourself.
+   - Domain reviewers (UI Designer, UX Researcher, DevOps) are advisory — they post PR comments and may flag a concern for QA, the Security Engineer, or the merge gate to act on. They are never themselves a review stage.
+   - An `approval` stage with the **Product Owner** when a Product Owner is on the team — the product sign-off. If no Product Owner is present, omit this stage.
+   - A final `approval` stage with the **Code Reviewer** as participant — the **merge gate**. The Code Reviewer is woken *last*, after every reviewer and the Product Owner have cleared, to satisfy the hard verification gate and merge the PR. If the team has no Code Reviewer, do not set executionPolicy stages at all — use the self-merge path at step 12 instead.
    - **Never list yourself (the issue's executor) as a participant in any stage.** Paperclip excludes the original executor to prevent self-review; a stage whose only participant is you has no eligible participant and the issue stalls in `in_review` forever (`422 No eligible approval participant is configured for this issue`).
    - Resolve each role to its agentId first (look up active agents), then set the policy on the issue. Include the PR link in an issue comment so reviewers can find it.
 10. Move the originating issue to `in_review`.
 11. Wait for the issue to clear its review/approval stages. Each reviewer and the Product Owner records `approved` by PATCHing the issue toward `done`, or `changes_requested` by PATCHing it back to `in_progress`; Paperclip stores the reviewer/approver decision metadata on the issue. Verdicts may be mirrored as PR comments. A `changes_requested` routes the issue back to you — address it, push to the same branch, and that stage re-runs.
 12. **Merging the PR — two paths:**
     - **Code Reviewer present (PR-Gate mode):** You do not merge your own PR. The Code Reviewer (the non-author merge gate) lands it after every prior stage approves, satisfies the hard verification gate (green CI or pasted test/build output), and records the final `approved` that closes the issue to `done`. Your job is to respond to `changes_requested`: when a stage routes the issue back to you, address the feedback, push to the same branch, and the stage re-runs.
-    - **No code-reviewer present (PR-Self-Merge mode):** You already skipped steps 9–11. Merge the PR yourself: `gh pr merge <N> --merge` once CI is green (or you have pasted test/build output if no CI). Other review roles (qa, product-owner, security-engineer) may leave advisory comments on the PR, but they do not block the merge. Update the Paperclip work product to `"status": "merged"` and archive any isolated worktree.
+    - **No code-reviewer present (PR Self-Merge Flow):** You already skipped steps 9–11. Merge the PR yourself: `gh pr merge <N> --merge` once CI is green (or you have pasted test/build output if no CI). All other review roles (qa, product-owner, security-engineer, ui-designer, ux-researcher, devops) may leave advisory comments on the PR, but none block the merge — there are no executionPolicy stages. Update the Paperclip work product to `"status": "merged"` and archive any isolated worktree.
 
 ## Rules
 
@@ -50,7 +50,7 @@ When this skill is active, you work in feature branches and open PRs instead of 
 - If a reviewer requests changes, address them, push to the same branch, and re-request review (the stage re-runs).
 - When a code-reviewer is present: the Code Reviewer is the merge owner; you cannot merge your own PR (Paperclip excludes the executor). When no code-reviewer is present: you are the merge owner; skip executionPolicy stages and merge via `gh pr merge <N> --merge` yourself.
 - Before creating a PR, verify the PR base matches the configured project/worktree base. If the base is wrong, retarget the PR before review.
-- **The merge gate must be the last stage, and it must be a non-author.** The Product Owner's `approval` is the product sign-off, not the final stage: if it were last, their verdict would auto-close the issue to `done` with the PR still open on GitHub. Append a final merge-gate `approval` stage for the **Code Reviewer** (or another present non-author agent) after the Product Owner's. Never make yourself the merge gate — Paperclip excludes the executor, so that stage stalls with `422 No eligible approval participant`.
+- **The merge gate must be the last stage, and it must be a non-author.** The Product Owner's `approval` is the product sign-off, not the final stage: if it were last, their verdict would auto-close the issue to `done` with the PR still open on GitHub. Append a final merge-gate `approval` stage for the **Code Reviewer** after the Product Owner's. Never make yourself the merge gate — Paperclip excludes the executor, so that stage stalls with `422 No eligible approval participant`. If no Code Reviewer is on the team, do not set executionPolicy stages; use the self-merge path instead.
 - Do not create separate child review issues and do not use @-mentions to request review; the executionPolicy stages are the governance signal.
 - Do not wait for GitHub-native approving reviews when all agents share the same GitHub credential; GitHub rejects self-approval. The Paperclip executionPolicy stages are the required signal unless a separate non-author GitHub reviewer credential is explicitly available.
 - Post-merge cleanup of any isolated execution workspace belongs to the merge-gate agent (they archive it from `heartbeat-context` when landing the PR). You only clean up your own worktree if you abandon a branch or the issue is cancelled before review. If this issue runs in the shared project workspace, do not invent isolated-worktree cleanup.

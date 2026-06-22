@@ -424,9 +424,9 @@ describe('assembleCompany', () => {
           title: 'Implement gated feature',
           assignTo: 'engineer',
           reviewGate: {
-            reviewers: ['code-reviewer', 'qa', 'missing-role'],
+            reviewers: ['qa', 'missing-role'],
             approver: 'product-owner',
-            mergeGate: 'engineer',
+            mergeGate: 'code-reviewer',
           },
         },
       ],
@@ -442,21 +442,121 @@ describe('assembleCompany', () => {
 
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
     assert.ok(bootstrap.includes('**executionPolicy**'), 'executionPolicy block present');
-    assert.ok(bootstrap.includes('(review) → assign "code-reviewer"'));
     assert.ok(bootstrap.includes('(review) → assign "qa"'));
     assert.ok(bootstrap.includes('(approval) → assign "product-owner"'));
     assert.ok(bootstrap.includes('merge gate'), 'merge gate stage present');
     assert.ok(
-      bootstrap.includes('(approval) → assign "engineer"'),
-      'merge gate assigns the engineer',
+      bootstrap.includes('(approval) → assign "code-reviewer"'),
+      'merge gate assigns the non-author Code Reviewer',
     );
     assert.ok(!bootstrap.includes('missing-role'), 'role absent from team is dropped');
+    assert.ok(
+      !bootstrap.includes('(approval) → assign "engineer"'),
+      'the engineer (executor) is never assigned to a stage',
+    );
 
-    const crIdx = bootstrap.indexOf('"code-reviewer"');
+    const qaIdx = bootstrap.indexOf('(review) → assign "qa"');
     const poStageIdx = bootstrap.indexOf('(approval) → assign "product-owner"');
     const mergeStageIdx = bootstrap.indexOf('merge gate');
-    assert.ok(crIdx > -1 && poStageIdx > crIdx, 'approver renders after reviewers');
+    assert.ok(qaIdx > -1 && poStageIdx > qaIdx, 'approver renders after reviewers');
     assert.ok(mergeStageIdx > poStageIdx, 'merge gate renders after the approver');
+  });
+
+  it('does not render an executionPolicy when the configured merge gate is the issue executor', async () => {
+    // The merge gate must be a non-author. If reviewGate.mergeGate resolves to the
+    // issue's assignTo (the executor), Paperclip excludes that role from every
+    // stage, so the gate would stall with 422. Assembly must therefore render NO
+    // executionPolicy sketch — the engineer takes the self-merge path instead.
+    for (const role of ['code-reviewer', 'qa', 'product-owner', 'engineer']) {
+      const roleDir = join(templatesDir, 'roles', role);
+      await mkdir(roleDir, { recursive: true });
+      await writeJson(join(roleDir, 'role.meta.json'), { name: role });
+      await writeFile(join(roleDir, 'AGENTS.md'), `# ${role} agent\n\n## Skills\n\n`);
+      await writeFile(join(roleDir, 'HEARTBEAT.md'), `# ${role} heartbeat\n`);
+      await writeFile(join(roleDir, 'SOUL.md'), `# ${role} soul\n`);
+    }
+
+    const modDir = join(templatesDir, 'modules', 'self-gate-work');
+    await mkdir(modDir, { recursive: true });
+    await writeJson(join(modDir, 'module.meta.json'), {
+      name: 'self-gate-work',
+      capabilities: [],
+      issues: [
+        {
+          title: 'Implement self-gated feature',
+          assignTo: 'engineer',
+          reviewGate: {
+            reviewers: ['qa'],
+            approver: 'product-owner',
+            mergeGate: 'engineer',
+          },
+        },
+      ],
+    });
+
+    const { companyDir } = await assembleCompany({
+      companyName: 'SelfGateCo',
+      moduleNames: ['self-gate-work'],
+      extraRoleNames: ['engineer', 'qa', 'product-owner'],
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(
+      !bootstrap.includes('**executionPolicy**'),
+      'no executionPolicy sketch when the only merge gate is the executor (self-merge path)',
+    );
+    assert.ok(
+      !bootstrap.includes('merge gate'),
+      'no merge-gate stage when the configured merge gate is the executor',
+    );
+  });
+
+  it('does not render an executionPolicy when the configured merge gate is absent from the team', async () => {
+    // No Code Reviewer on the team → no eligible non-author merge gate → no
+    // executionPolicy stages (PR-Self-Merge). Assembly must not fall back to
+    // substituting another role as a staged gate.
+    for (const role of ['qa', 'product-owner', 'engineer']) {
+      const roleDir = join(templatesDir, 'roles', role);
+      await mkdir(roleDir, { recursive: true });
+      await writeJson(join(roleDir, 'role.meta.json'), { name: role });
+      await writeFile(join(roleDir, 'AGENTS.md'), `# ${role} agent\n\n## Skills\n\n`);
+      await writeFile(join(roleDir, 'HEARTBEAT.md'), `# ${role} heartbeat\n`);
+      await writeFile(join(roleDir, 'SOUL.md'), `# ${role} soul\n`);
+    }
+
+    const modDir = join(templatesDir, 'modules', 'no-gate-work');
+    await mkdir(modDir, { recursive: true });
+    await writeJson(join(modDir, 'module.meta.json'), {
+      name: 'no-gate-work',
+      capabilities: [],
+      issues: [
+        {
+          title: 'Implement feature with no merge gate',
+          assignTo: 'engineer',
+          reviewGate: {
+            reviewers: ['qa'],
+            approver: 'product-owner',
+            mergeGate: 'code-reviewer',
+          },
+        },
+      ],
+    });
+
+    const { companyDir } = await assembleCompany({
+      companyName: 'NoGateCo',
+      moduleNames: ['no-gate-work'],
+      extraRoleNames: ['engineer', 'qa', 'product-owner'],
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(
+      !bootstrap.includes('**executionPolicy**'),
+      'no executionPolicy sketch when the configured merge gate role is absent (self-merge path)',
+    );
   });
 
   it('seeds user/AI domain issues at the front of the backlog, ahead of generic module issues', async () => {

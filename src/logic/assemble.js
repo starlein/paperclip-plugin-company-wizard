@@ -297,7 +297,7 @@ export async function assembleCompany({
   // stage. Roles not present in the team are dropped (no CEO fallback) — a review
   // gate references concrete reviewer roles, and a missing one means that gate
   // simply has one fewer stage.
-  const resolveReviewGate = (reviewGate) => {
+  const resolveReviewGate = (reviewGate, assignTo) => {
     if (!reviewGate || typeof reviewGate !== 'object') return null;
 
     const reviewersRaw = Array.isArray(reviewGate.reviewers) ? reviewGate.reviewers : [];
@@ -321,32 +321,26 @@ export async function assembleCompany({
     // approver — to perform the merge. Without it, the approver's verdict
     // auto-closes the issue and the PR is never merged.
     //
-    // It must NOT be the issue's executor: Paperclip excludes the original executor
-    // from every review/approval stage to prevent self-review, so a stage whose only
-    // participant is the author has no eligible participant and the issue stalls in
-    // `in_review` (422 No eligible approval participant). The engineer therefore can
-    // never be their own merge gate. Prefer the configured role (the Code Reviewer);
-    // if it isn't on the team, fall back to another present non-author role that is
-    // not already a reviewer or the approver.
+    // It must NOT be the issue's executor (assignTo): Paperclip excludes the
+    // original executor from every review/approval stage to prevent self-review,
+    // so a stage whose only participant is the author has no eligible participant
+    // and the issue stalls in `in_review` (422 No eligible approval participant).
+    // The engineer therefore can never be their own merge gate.
+    //
+    // We resolve the merge gate ONLY from the explicitly configured
+    // reviewGate.mergeGate role. If that role is absent from the team, or is the
+    // issue's executor, there is no eligible non-author merge gate — return null
+    // so the engineer takes the self-merge path (no executionPolicy stages). We
+    // deliberately do NOT fall back to another role: the documented contract is
+    // "no Code Reviewer → PR-Self-Merge", not "substitute another role as a
+    // staged gate". A substituted gate would render an executionPolicy sketch the
+    // engineer is explicitly told never to set, and a reviewer-doubling-as-gate
+    // minimal team still stalls whenever the only candidate is the author.
     let mergeGate =
       typeof reviewGate.mergeGate === 'string' && allRoles.has(reviewGate.mergeGate)
         ? reviewGate.mergeGate
         : undefined;
-    if (!mergeGate) {
-      // Prefer a present non-author role that isn't already the approver. The list
-      // is ordered so a dedicated reviewing role wins before a substantive reviewer
-      // (QA) doubles as the merge gate — a non-author may serve in two stages, which
-      // is the only option in a minimal team (engineer + approver + QA).
-      const mergeGateFallbacks = [
-        'code-reviewer',
-        'devops',
-        'ui-designer',
-        'ux-researcher',
-        'security-engineer',
-        'qa',
-      ];
-      mergeGate = mergeGateFallbacks.find((role) => allRoles.has(role) && role !== approver);
-    }
+    if (mergeGate === assignTo) mergeGate = undefined;
 
     // Avoid accidentally requiring the same role twice (e.g. reviewer + approver).
     if (approver) {
@@ -354,7 +348,11 @@ export async function assembleCompany({
       if (idx !== -1) reviewers.splice(idx, 1);
     }
 
-    if (reviewers.length === 0 && !approver && !mergeGate) return null;
+    // Without a resolvable non-author merge gate, render no executionPolicy at
+    // all — the self-merge path applies. Rendering a gate with reviewers/approver
+    // but no merge gate would let the last approval stage auto-close the issue
+    // with the PR still open on GitHub.
+    if (!mergeGate) return null;
     return { reviewers, approver, mergeGate };
   };
 
@@ -1327,7 +1325,7 @@ export async function assembleCompany({
         ['goalId', goalRef ? `→ "${goalRef}"` : undefined],
         ['labelIds', `→ [${issueLabelNames.map((name) => `"${name}"`).join(', ')}]`],
       ]);
-      const issueReviewGate = resolveReviewGate(issue.reviewGate);
+      const issueReviewGate = resolveReviewGate(issue.reviewGate, issue.assignTo);
       if (issueReviewGate) {
         bootstrap += renderReviewGate(issueReviewGate);
       }
@@ -1346,7 +1344,7 @@ export async function assembleCompany({
       const ciClause = hasCi
         ? 'CI (lint/test/build) must be green before the merge gate merges — this is the hard gate and cannot be skipped'
         : 'no CI is configured, so the merge-gate agent must run the test suite/build and paste the real output into the merge-gate verdict before merging — this is the hard gate';
-      bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`. The substantive gate is execution, not opinion: ${ciClause}. Stages, in order: a \`review\` stage for QA when present (test adequacy / running the tests), a \`review\` stage for the Security Engineer **only when the change is security-relevant** (auth, secrets, input boundaries, crypto, dependencies, infra exposure), an \`approval\` stage for the Product Owner (intent/scope), then a final \`approval\` merge-gate stage for the **Code Reviewer** (a non-author who satisfies the hard gate above, merges the PR, then records approval to close the issue). **Never list the issue's executor/author as a participant in any stage** — Paperclip excludes the original executor from review/approval, so a stage whose only participant is the author has no eligible participant and the issue stalls in \`in_review\` (422 No eligible approval participant); this is why the merge gate is the Code Reviewer (or another present non-author), not the engineer who wrote the code. The merge gate must be last so the Product Owner's approval does not auto-close the issue with the PR still open. Other domain reviewers may add advisory, non-blocking comments but do not gate the merge. Every verdict must cite executed verification. Resolve each role to its agentId. Model review stages in executionPolicy rather than child issues or @-mentions.\n`;
+      bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`. The substantive gate is execution, not opinion: ${ciClause}. Stages, in order: a \`review\` stage for QA when present (test adequacy / running the tests), a \`review\` stage for the Security Engineer **only when the change is security-relevant** (auth, secrets, input boundaries, crypto, dependencies, infra exposure), an \`approval\` stage for the Product Owner when present (intent/scope), then a final \`approval\` merge-gate stage for the **Code Reviewer** (a non-author who satisfies the hard gate above, merges the PR, then records approval to close the issue). **Never list the issue's executor/author as a participant in any stage** — Paperclip excludes the original executor from review/approval, so a stage whose only participant is the author has no eligible participant and the issue stalls in \`in_review\` (422 No eligible approval participant); this is why the merge gate is the Code Reviewer (a non-author), not the engineer who wrote the code. The merge gate must be last so the Product Owner's approval does not auto-close the issue with the PR still open. When no Code Reviewer is on the team, do not set executionPolicy stages at all — use the PR-Self-Merge path (the engineer opens the PR and merges via \`gh pr merge <N> --merge\`); other review roles may leave advisory comments but do not block. Other domain reviewers may add advisory, non-blocking comments but do not gate the merge. Every verdict must cite executed verification. Resolve each role to its agentId. Model review stages in executionPolicy rather than child issues or @-mentions.\n`;
     }
     bootstrap += `\n`;
   }

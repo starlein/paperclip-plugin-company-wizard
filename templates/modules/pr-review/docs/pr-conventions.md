@@ -68,8 +68,8 @@ Review runs through the issue's native `executionPolicy` (stages), not separate 
 3. **Engineer** sets the originating issue's `executionPolicy` stages, in order:
    - a `review` stage for **QA** when a QA agent is on the team (test adequacy / running the tests),
    - a `review` stage for the **Security Engineer** *only when the change is security-relevant* (auth, secrets, input boundaries, crypto, dependencies, infra exposure),
-   - an `approval` stage for the **Product Owner** (intent, scope, acceptance),
-   - a final `approval` stage for the **Code Reviewer** as the merge gate (a non-author — Paperclip excludes the issue's executor from every stage).
+   - an `approval` stage for the **Product Owner** when one is on the team (intent, scope, acceptance),
+   - a final `approval` stage for the **Code Reviewer** as the merge gate (a non-author — Paperclip excludes the issue's executor from every stage). When no Code Reviewer is on the team, do not set executionPolicy stages at all — use the PR Self-Merge Flow (the engineer opens the PR and merges via `gh pr merge <N> --merge`); other review roles may leave advisory comments but do not block.
    Resolve each role to its agentId. **Never list the issue's executor (the engineer who authored the work) as a participant in any stage** — the runtime excludes the original executor, so such a stage has no eligible participant and the issue stalls (`422 No eligible approval participant`).
 4. **Engineer** sets the issue to `in_review`.
 5. **QA** (when present) reviews and records `approved`/`changes_requested` through the normal issue update route with executed evidence (see *Merge Rules*), preserving the issue-level review audit trail.
@@ -82,8 +82,8 @@ Review runs through the issue's native `executionPolicy` (stages), not separate 
 
 - **QA** (`review` stage, when present): the substantive gate. Test coverage, regression risk, and validation — backed by tests that actually ran.
 - **Security Engineer** (`review` stage, only when the change is security-relevant): probes the diff for injection, auth, secrets, crypto, dependency, and exposure issues.
-- **Product Owner** (`approval` stage): intent alignment, scope discipline, acceptance criteria.
-- **Code Reviewer** (`approval` stage, last): the merge gate and hard-gate backstop — a non-author who verifies and lands the PR. See *Merge Rules*.
+- **Product Owner** (`approval` stage, when present): intent alignment, scope discipline, acceptance criteria.
+- **Code Reviewer** (`approval` stage, last, when present): the merge gate and hard-gate backstop — a non-author who verifies and lands the PR. See *Merge Rules*. When no Code Reviewer is present, the engineer self-merges via `gh pr merge <N> --merge` and no executionPolicy stages are set.
 - **Domain reviewers** (advisory): optional, non-blocking comments on correctness, clarity, design, accessibility, UX. They never gate the merge.
 
 ## Merge Rules

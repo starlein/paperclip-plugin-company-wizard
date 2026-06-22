@@ -4,6 +4,35 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.7] - 2026-06-22
+
+### Fixed
+
+- **Stall-safe PR merge workflow rules (`executionPolicy` + roles).** Fixes the long-standing defect where companies without a Code Reviewer would create endless branches without ever merging them into the base ref, or open PRs that never got merged. Two modes, chosen automatically from the roles present:
+  - **PR-Gate mode** (Code Reviewer present): Paperclip-native gate flow via `executionPolicy` — QA (review, when present) → Security Engineer (review, only on security-relevant changes) → Product Owner (approval, when present) → **Code Reviewer as the non-author merge gate** (last stage, merges via `gh pr merge <N> --merge` and only then records `approved`, which closes the issue).
+  - **PR-Self-Merge mode** (no Code Reviewer): no `executionPolicy` stages — the engineer opens the PR and merges it themselves via `gh pr merge <N> --merge`. Other review roles leave advisory PR comments but do not block.
+- **`resolveReviewGate` no longer renders an `executionPolicy` sketch without a merge gate (CRITICAL).** Previously, for `engineer + product-owner` (no Code Reviewer), a gate with an approver (PO) but no merge gate was rendered — the PO approval would then auto-close the issue to `done` while the PR was still open on GitHub. Now `null` is returned whenever no non-author merge gate is resolvable (self-merge path). (`src/logic/assemble.js`, `resolveReviewGate`.)
+- **The merge gate can never be the issue executor (guard).** `resolveReviewGate` discards a `mergeGate` that equals the issue's `assignTo` (the executor/author). Because Paperclip excludes the original executor from every stage, a self-stage would stall forever with `422 No eligible approval participant`. The guard prevents this — including for hand-edited presets or future modules. (`src/logic/assemble.js`.)
+- **No more role fallback for the merge gate.** Previously, when the Code Reviewer was absent, another role (DevOps, QA, …) was substituted as a static gate stage — rendering an `executionPolicy` sketch the engineer is explicitly told never to set. Now the rule is consistent: no Code Reviewer → self-merge, no substitution. (`src/logic/assemble.js`.)
+- **Product Owner stage is consistently tied to presence.** The PO approval stage was marked as "always" in four files (skill, conventions, module meta, BOOTSTRAP guardrail) while QA/Security were already conditional. With `pr-review + code-reviewer` but no PO, this produced a stage with no eligible participant → 422. The PO stage now reads "when present" / "when one is on the team" everywhere. (`pr-workflow.md`, `pr-conventions.md`, `module.meta.json`, `assemble.js` guardrail.)
+- **Domain reviewers (UI/UX/DevOps) are consistently advisory.** Previously the skills ("Record your verdict … approved/changes_requested" = blocking stage) contradicted `pr-conventions.md` ("advisory, never gate"). Domain reviewers now post advisory PR comments only and escalate blockers to QA/Security/merge gate — they are never a stage themselves. `infra-review` routes security blockers to the Security Engineer stage instead of blocking directly. (`design-review.md`, `ux-review.md`, `infra-review.md`, `pr-workflow.md`, `pr-conventions.md`.)
+- **`code-reviewer` AGENTS.md is self-consistent.** "Post your review as advisory" + "Your review does not gate the merge" contradicted the merge-gate principle (Principles + `code-review.md`). Line 18 now separates the GitHub comment (advisory — no GitHub-native approval because all agents share one account) from the `executionPolicy` stage (the real gate). Step 8 branches: in pr-review mode the Code Reviewer merges via `gh pr merge` and records `approved`; otherwise it leaves an advisory comment only. (`templates/roles/code-reviewer/AGENTS.md`.)
+- **Product Owner review skill is role-correct.** "Final approver / last gate before merge" was wrong — the PO is the product sign-off *before* the Code Reviewer merge gate, not the final stage. The PO is also not a merge owner (in self-merge mode the engineer merges). (`product-review.md`.)
+- **`docs/git-workflow.md` uses PR self-merge instead of `git merge`+push.** The "Direct-to-Base-Ref Workflow" used `git checkout base → git merge → git push`, which the skill forbids and branch protection (same module) would reject. Replaced with a "PR Self-Merge Flow" using `gh pr create` + `gh pr merge <N> --merge`. (`templates/modules/github-repo/docs/git-workflow.md`.)
+- **Branch protection with `enforce_admins: true`.** Previously `enforce_admins: false` let the shared admin account bypass the PR requirement with a direct push to the base ref — exactly what the protection is meant to prevent. With `required_approving_review_count: 0` the admin can still open a PR and merge it with zero approvals (self-merge stays functional); only the direct-push bypass is closed. Added the "distinct non-author GitHub reviewer credentials" qualifier and a note on `restrictions: null`. (`preset.meta.json`, `git-workflow.md` skill.)
+- **Work-product POST includes the `Authorization` header.** `pr-workflow.md` documented the POST without `Authorization: Bearer $PAPERCLIP_API_KEY`; in authenticated deployments this yielded 401. Header added, matching the `git-workflow.md` skill. (`pr-workflow.md`.)
+- **`worker.ts` typecheck errors fixed.** Seven `Cannot find name` errors occurred because `allRoleNames`, `existingManifest`, `existingByTemplateRole`, and `routines` were declared inside the `try` block but referenced after the `try`/`catch` in the manifest-save and governance-cleanup blocks. The declarations were hoisted before the `try` block; `tsc --noEmit` now passes cleanly. (`src/worker.ts`.)
+
+### Changed
+
+- **README/docs: the merge gate is the Code Reviewer, not the engineer.** The PR-review description in `README.md` had the roles inverted ("merge gate owned by the Engineer") — exactly the 422-stall bug. Corrected to Code Reviewer (non-author) as the merge gate, engineer as the executor (never a stage participant), domain reviewers advisory, and a self-merge path when no Code Reviewer is present. (`README.md`.)
+
+### Tests
+
+- Replaced/augmented static JSON-only tests with behavioral `assembleCompany` calls: no `executionPolicy` sketch + installed self-merge skill when no Code Reviewer is present (C1); guard prevents executor-as-mergeGate (I16); PO stage is omitted when no Product Owner is present (M8); ordered stages QA → PO → Code Reviewer (M9). (`assemble.test.js`, `assemble.integration.test.js`.)
+
+---
+
 ## [0.4.6] - 2026-06-18
 
 ### Changed

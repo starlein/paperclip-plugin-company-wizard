@@ -79,9 +79,9 @@ Rules:
   should print the helper path, and `test -s "$(git rev-parse --git-common-dir)/paperclip-gh-token-cache"`
   should succeed after a run where `GH_TOKEN` was injected.
 
-## Direct-to-Base-Ref Workflow
+## PR Self-Merge Flow
 
-Use this workflow when the **pr-review module is not active** (no Code Reviewer role, no executionPolicy review stages). When PR review is active, use the PR workflow from `docs/pr-conventions.md` instead.
+Use this flow when the **pr-review module is not active** (no Code Reviewer role, no executionPolicy review stages). You open a PR and merge it yourself — there is no external review gate, but all changes go through a PR so branch history is preserved and branch protection is respected. When PR review is active, use the PR workflow from `docs/pr-conventions.md` instead.
 
 1. Resolve the configured base ref from project workspace metadata or the issue's `heartbeat-context` before touching Git. Do not infer it from the current shell branch and do not rewrite it to `main`, `master`, or `origin/*`.
    - External repos: use the project/worktree `repoRef`, `defaultRef`, or `executionWorkspacePolicy.workspaceStrategy.baseRef` exactly as configured.
@@ -94,16 +94,11 @@ Use this workflow when the **pr-review module is not active** (no Code Reviewer 
 6. Run tests/linting locally if available
 7. Commit with conventional commit message
 8. **Verify the current branch one more time**, then push: `git push -u origin <branch-name>`. The branch name in the push command must match `git branch --show-current`. Never push the base ref as a feature branch — if `git branch --show-current` returns the base ref name, stop and create a feature branch first.
-9. Merge to base and push:
-   ```
-   git checkout <base-ref>
-   git merge <branch-name> --no-edit
-   git push origin <base-ref>
-   ```
-   Resolve any merge conflicts (favor your changes; if uncertain, escalate).
-10. Delete the feature branch: `git push origin --delete <branch-name>` and `git branch -d <branch-name>`
-11. If the issue uses an isolated execution workspace (worktree), archive it from `heartbeat-context`.
-12. Verify CI passes on the base branch (if configured). If CI fails, fix immediately.
+9. Open a pull request against the base ref: write the PR body to a temp file, then `gh pr create --base <github-base-branch> --head <branch-name> --title "<type>: <description>" --body-file <file>`. Never inline `--body "..."` — a double-quoted shell string keeps `\n` literal (see *Posting PR Bodies & Comments* in `docs/pr-conventions.md`). Verify the PR base matches the configured base ref before merging.
+10. Merge the PR yourself: `gh pr merge <PR-number> --merge`. Do not wait for a reviewer if none is present. Confirm the PR is closed and the base branch updated before continuing. Never do a direct `git merge` + push to the base branch; always go through a PR.
+11. Clean up the feature branch: `git push origin --delete <branch-name>` (remote) and `git branch -d <branch-name>` (local).
+12. If the issue uses an isolated execution workspace (worktree), archive it from `heartbeat-context` after the merge is pushed.
+13. Verify CI passes on the base branch (if configured). If CI fails, fix immediately.
 
 ## Resolving the default branch
 

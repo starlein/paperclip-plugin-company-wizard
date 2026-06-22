@@ -25,14 +25,14 @@ Use this flow when the **pr-review module is not active**. You open a PR and mer
 
 ## Branch Protection Setup
 
-Configure branch protection once during initial repository setup (this is part of the "Prepare GitHub repository" foundation issue). Branch protection must require a PR before merging but must NOT require GitHub-native approving reviews — all agents share one GitHub account and cannot formally approve their own PRs.
+Configure branch protection once during initial repository setup (this is part of the "Prepare GitHub repository" foundation issue). Branch protection must require a PR before merging but must NOT require GitHub-native approving reviews — all agents share one GitHub account and cannot formally approve their own PRs (unless the project has distinct non-author GitHub reviewer credentials, in which case `required_approving_review_count` may be raised).
 
 ```bash
 gh api repos/{owner}/{repo}/branches/{base}/protection \
   --method PUT --input - <<'EOF'
 {
   "required_status_checks": null,
-  "enforce_admins": false,
+  "enforce_admins": true,
   "required_pull_request_reviews": {
     "required_approving_review_count": 0,
     "dismiss_stale_reviews": false
@@ -42,13 +42,13 @@ gh api repos/{owner}/{repo}/branches/{base}/protection \
 EOF
 ```
 
-Replace `{owner}`, `{repo}`, `{base}` with the actual values. If CI is configured (e.g. the ci-cd module is active), replace `"required_status_checks": null` with the CI context string instead of `null`. Escalate to CEO if `GH_TOKEN` does not have admin rights on the repository.
+Replace `{owner}`, `{repo}`, `{base}` with the actual values. `enforce_admins: true` so the shared admin account cannot bypass the PR requirement with a direct push — with `required_approving_review_count: 0` the admin can still open a PR and merge it with zero approvals, so the self-merge flow keeps working. `restrictions: null` means no push allowlist; the PR gate still applies (do not "fix" it with an empty array, which would block all pushes). If CI is configured (e.g. the ci-cd module is active), replace `"required_status_checks": null` with the CI context string instead of `null`. Escalate to CEO if `GH_TOKEN` does not have admin rights on the repository.
 
 ## When PR Review IS Active
 
 If the pr-review module is active, do NOT use the PR Self-Merge Flow. Instead, use the PR Workflow skill (`skills/pr-workflow.md`):
 - **With a Code Reviewer on the team (PR-Gate mode):** Open a PR, set executionPolicy review stages, and let the Code Reviewer (non-author merge gate) land the branch. Never merge your own branch in this mode.
-- **Without a Code Reviewer (PR-Self-Merge mode):** Open a PR via `gh pr create`, but skip executionPolicy stages entirely. Other review roles (qa, product-owner, security-engineer) may leave advisory comments. Merge the PR yourself via `gh pr merge <N> --merge` once CI is green. See `skills/pr-workflow.md` step 12 for the full self-merge path.
+- **Without a Code Reviewer (PR Self-Merge Flow):** Open a PR via `gh pr create`, but skip executionPolicy stages entirely. Other review roles (qa, product-owner, security-engineer) may leave advisory comments. Merge the PR yourself via `gh pr merge <N> --merge` once CI is green. See `skills/pr-workflow.md` step 12 for the full self-merge path.
 
 ## Register the PR as a Work Product
 
@@ -85,6 +85,6 @@ Notes:
 - Never mark an issue as `done` unless at least one new commit was created for that issue's work and has been pushed.
 - Before marking `done`, verify there is no uncommitted work (`git status --short` should be clean).
 - If no repository change is required, do not mark `done` silently: leave an issue comment explaining why no code change was needed and escalate to the CEO for decision.
-- You are always the merge owner when no code-reviewer is present. Open a PR and merge it yourself via `gh pr merge <N> --merge` promptly — do not leave branches dangling unmerged. Never do a direct `git merge` + push to the base branch; always go through a PR so the branch history is preserved and branch protection is respected.
+- You are always the merge owner when no code-reviewer is present. Open a PR and merge it yourself via `gh pr merge <N> --merge` promptly — do not leave branches dangling unmerged. Never do a direct `git merge` + push to the base branch; always go through a PR so the branch history is preserved and branch protection is respected (typos/comment-only/doc fixes with an issue reference may be committed directly to the base ref only when branch protection allows it — see `docs/git-workflow.md` → *Dev Cycle Rules*).
 - **Always work on a feature branch, never on the base branch.** Create the branch with `git checkout -b <branch-name> <base-ref>` before committing. Verify with `git branch --show-current` before every push.
 - **Never push the base ref as if it were a feature branch.** Before `git push -u origin <branch-name>`, confirm that `git branch --show-current` matches `<branch-name>`. If it prints the base ref name instead, you are on the wrong branch — create or switch to the feature branch first.

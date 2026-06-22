@@ -36,7 +36,7 @@ const DEFAULT_TEMPLATES_REPO_URL =
   'https://github.com/starlein/paperclip-plugin-company-wizard/tree/main/templates';
 const BUNDLED_TEMPLATES_DIR = path.resolve(__dirname, '..', 'templates');
 const PLUGIN_PACKAGE_NAME = '@starlein/paperclip-plugin-company-wizard';
-const CURRENT_PLUGIN_VERSION = '0.4.6';
+const CURRENT_PLUGIN_VERSION = '0.4.7';
 const NPM_LATEST_URL =
   'https://registry.npmjs.org/@starlein%2Fpaperclip-plugin-company-wizard/latest';
 
@@ -1549,11 +1549,18 @@ const plugin = definePlugin({
         let boardOperationsIssue: { id: string; identifier?: string } | null = null;
         let hiringPlanIssue: { id: string; identifier?: string } | null = null;
         let bootstrapIssue: { id: string; identifier?: string };
+        // Hoisted so the post-provisioning manifest-save and governance-cleanup
+        // blocks (which run after this try/catch on the success path) can read
+        // them. The catch block re-throws on failure, so these only need to be
+        // valid on the success path.
+        let allRoleNames: string[] = [];
+        let existingManifest: WizardManifest | null = null;
+        let existingByTemplateRole = new Map<string, any>();
+        let routines: any[] = [];
         try {
-          const allRoleNames = [...(assembleResult.allRoles ?? [])].filter(Boolean).sort();
+          allRoleNames = [...(assembleResult.allRoles ?? [])].filter(Boolean).sort();
 
           // Read the wizard manifest (best-effort) for retired-role detection
-          let existingManifest: WizardManifest | null = null;
           if (existingCompanyId) {
             try {
               const pluginId = await findPluginId(client);
@@ -1792,7 +1799,7 @@ const plugin = definePlugin({
             (r: string) => r && r !== 'ceo',
           );
 
-          let existingByTemplateRole = new Map<string, any>();
+          existingByTemplateRole = new Map<string, any>();
           if (existingCompanyId && teamRoles.length > 0) {
             const agents = await client.listAgents(companyId);
             if (Array.isArray(agents)) {
@@ -1900,7 +1907,7 @@ const plugin = definePlugin({
           // board authority, so it can create or update routines for any agent. Existing
           // company runs match by title and patch routines/triggers instead of creating
           // duplicates; this is the lightweight "apply latest templates" path.
-          const routines = Array.isArray(assembleResult.initialRoutines)
+          routines = Array.isArray(assembleResult.initialRoutines)
             ? assembleResult.initialRoutines
             : [];
 
