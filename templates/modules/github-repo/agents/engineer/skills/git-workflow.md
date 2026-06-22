@@ -48,7 +48,7 @@ Replace `{owner}`, `{repo}`, `{base}` with the actual values. If CI is configure
 
 If the pr-review module is active, do NOT use the PR Self-Merge Flow. Instead, use the PR Workflow skill (`skills/pr-workflow.md`):
 - **With a Code Reviewer on the team (PR-Gate mode):** Open a PR, set executionPolicy review stages, and let the Code Reviewer (non-author merge gate) land the branch. Never merge your own branch in this mode.
-- **Without a Code Reviewer (PR-Self-Merge mode):** Open a PR via `gh pr create`, but skip executionPolicy stages entirely. Other review roles (qa, product-owner) may leave advisory comments. Merge the PR yourself via `gh pr merge <N> --merge` once CI is green. See `skills/pr-workflow.md` step 12 for the full self-merge path.
+- **Without a Code Reviewer (PR-Self-Merge mode):** Open a PR via `gh pr create`, but skip executionPolicy stages entirely. Other review roles (qa, product-owner, security-engineer) may leave advisory comments. Merge the PR yourself via `gh pr merge <N> --merge` once CI is green. See `skills/pr-workflow.md` step 12 for the full self-merge path.
 
 ## Register the PR as a Work Product
 
