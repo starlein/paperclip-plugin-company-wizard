@@ -164,3 +164,38 @@ If the conflict is too complex to resolve safely (large structural conflict with
 ## CI
 
 If the project has CI configured (e.g., GitHub Actions), always verify your push passes CI. If CI fails, fix it immediately — a broken base ref blocks everyone.
+
+### Base-branch-red deadlock
+
+A base branch whose own CI is red poisons every PR opened on it: each PR inherits the red baseline and fails CI at setup (often in 1-3 seconds), before the PR's diff is even exercised. "Never merge without green CI" then deadlocks the whole queue — no single feature PR can make CI green, because the failure is pre-existing on the base, not in the diff.
+
+**Detect base-red before treating a PR failure as the PR's fault.** When a PR's CI fails:
+
+1. `gh pr checks <N>` — list the PR's check runs and their conclusions.
+2. Get the base commit SHA: `gh pr view <N> --json baseRefOid --jq .baseRefOid`.
+3. Fetch the base commit's own checks: `gh api repos/{owner}/{repo}/commits/<base-sha>/check-runs --jq '.check_runs[] | {name, conclusion}'` (and `/commits/<base-sha>/statuses` for legacy status contexts).
+4. Compare. A check that is failing on the base commit itself is an **inherited baseline failure** — not introduced by the PR. The PR's *introduced* failures are the set difference: PR failing checks minus base failing checks.
+
+If the base is red, classify the situation **BASE-BRANCH-RED** and run the baseline-emergency protocol below instead of trying to land feature PRs.
+
+### Baseline-emergency protocol
+
+When the base branch's CI is red:
+
+1. **Pause new feature PRs.** Do not open new feature PRs on a red base — they inherit the failure and pile up. In-flight branches can finish, but leave them unmerged with an issue comment tagged `waiting-on-baseline` until the base is green.
+2. **Claim and fix main first.** The first agent to detect BASE-BRANCH-RED claims the restore by commenting on the triage issue (or creating one) so concurrent detectors do not open duplicate restore PRs. Create a single baseline-restore PR from the base ref that fixes the base failure (CI config, the failing code path, or the secret/scan config). Title it `fix(ci): restore base CI` (or `fix: restore base — <cause>`). Scope the diff to the failure fix only — no feature work in this PR.
+3. **Fast-track the baseline-restore PR.** Its own CI will still show the inherited base failure (the base is red), so the normal "green CI" gate cannot pass. The merge owner (the Code Reviewer in PR-Gate mode, or the engineer in Self-Merge mode) merges it under the narrow exception below.
+4. **Re-verify the base.** After the baseline-restore PR merges, re-run CI on the base: `gh api repos/{owner}/{repo}/commits/<new-base-sha>/check-runs`. If still red, repeat from step 2. Once the base is green:
+5. **Drain the queue.** Rebase each queued feature PR onto the now-green base (`git rebase origin/<base-branch>`, resolve, `git push --force-with-lease`), re-run checks, and merge in order. The inherited baseline failures are gone, so feature PR CI now reflects only their own diffs.
+
+**If the failing check cannot be reproduced locally** (env-specific secrets, runner-only state, external service unavailable), the narrow merge exception cannot be satisfied AND the base cannot be made green by an agent. Escalate to the board/human to fix CI directly on the base — do not pile feature PRs onto the red base while waiting.
+
+### Narrow exception: merging the baseline-restore PR on a red base
+
+The baseline-restore PR — and only that PR — may be merged when its CI is still red, provided ALL of the following hold:
+
+- **Scoped diff:** the PR diff is limited to the base failure fix (CI config, the failing code, or the secret/scan config). It is not a feature PR wearing a `fix(ci)` label.
+- **Executed verification reduces the failure set:** run the exact failing check commands locally — the same commands the failing CI check runs, mapped by check name (e.g. the `Secret Scan` check → the repo's scan command; the `Build` check → `npm run build`). Paste the real output showing the previously-failing checks now pass locally. The remaining failing checks on the PR must be exactly the inherited baseline failures (same set as the base commit), and the PR diff must not touch them. If a failing check cannot be run locally, this exception does not apply — escalate to the board/human.
+- **Document the exception in the merge verdict:** cite the base-sha check set, the local verification output, and that the diff is scoped to the fix. A merge under this exception still requires cited executed verification — it replaces CI-green with local-executed-verification plus diff-scope proof; it does not waive the verification gate.
+
+This exception never applies to feature PRs. A feature PR on a red base waits for the base to be restored; it does not merge under the exception.

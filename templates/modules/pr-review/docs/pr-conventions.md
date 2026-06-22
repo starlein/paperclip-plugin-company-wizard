@@ -90,7 +90,7 @@ Review runs through the issue's native `executionPolicy` (stages), not separate 
 
 The hard gate is **executed verification**, enforced on the merge-gate stage (the Code Reviewer's) and independent of which reviewers are present:
 
-- **With CI:** CI (lint/test/build) must be **green** before the merge gate merges. This is machine-verified and cannot be skipped.
+- **With CI:** CI (lint/test/build) must be **green** before the merge gate merges. This is machine-verified and cannot be skipped — with one narrow exception: the baseline-restore PR (`fix(ci): restore base CI`) may merge when the base branch's own CI is red and the PR carries cited local-executed verification that its scoped diff reduces the base failure set (remaining failing checks exactly the inherited baseline set). See `docs/git-workflow.md` → *Base-branch-red deadlock* and *Narrow exception*. A feature PR on a red base is never merged; the merge gate records `changes_requested` citing `BASE-BRANCH-RED` and routes back with "waiting-on-baseline".
 - **Without CI:** the merge-gate agent must run the full test suite and build locally and paste the real output into the merge-gate verdict before merging. (When QA is present, QA already produced this evidence; the merge gate confirms it.)
 - A verdict that does not cite executed verification — green CI, or pasted test/build output — is not valid.
 - The Product Owner's `approval` stage must be approved.

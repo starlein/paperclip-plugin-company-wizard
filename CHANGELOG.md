@@ -4,6 +4,34 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.10] - 2026-06-22
+
+### Fixed
+
+**Root-cause fix: base-branch-red deadlock, misrouted `in_review`, and missing PR-queue hygiene**
+
+Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `origin/main` CI was red, every PR inherited the red baseline and failed CI in 1-3 seconds at setup, and "never merge without green CI" deadlocked the entire queue. Three independent root causes fixed:
+
+**A — Base-branch-red deadlock (7 files)**
+- `docs/git-workflow.md`: new `## Base-branch-red deadlock` section — agents now detect whether a PR's CI failure is *inherited* (same check failing on the base commit itself) or *introduced* by the PR's diff, using `gh api repos/{owner}/{repo}/commits/<base-sha>/check-runs` for comparison. If the base is red, the situation is classified `BASE-BRANCH-RED` and the baseline-emergency protocol triggers instead.
+- `docs/git-workflow.md`: new `## Baseline-emergency protocol` — pause new feature PRs, claim the restore with a comment so concurrent detectors do not open duplicate restore PRs, create a single `fix(ci): restore base CI` PR, fast-track it through merge under the narrow exception, re-verify the base commit's checks, then rebase and drain the feature-PR queue. If the failing check cannot be reproduced locally (missing secrets / runner-only state), escalate to the board/human rather than stalling.
+- `docs/git-workflow.md`: new `## Narrow exception: merging the baseline-restore PR on a red base` — the baseline-restore PR (and only that PR) may merge with red CI when: diff is scoped to the base failure fix; the exact failing checks pass locally (paste real output); remaining failing checks exactly match the inherited baseline set (not introduced by the diff). Replaces CI-green with local-executed-verification + diff-scope proof; never waives the verification gate; never applies to feature PRs.
+- `git-workflow.md` skill (engineer): step 11 adds a pre-merge CI check (`gh pr checks <N>`) and triggers base-red detection before merging; step 12 adds the Self-Merge baseline-restore exception for the engineer; step 15 routes post-merge base-red to the protocol; new rule in `## Rules` prohibits opening new feature PRs on a red base.
+- `pr-workflow.md` skill (engineer): new `## Base-branch-red deadlock` section — in PR-Gate mode (Code Reviewer present) the engineer comments `BASE-BRANCH-RED` and starts the baseline-restore PR immediately, without waiting for the Code Reviewer's `changes_requested` route-back; in Self-Merge mode the engineer cannot merge a feature PR on a red base but may merge the baseline-restore PR under the narrow exception. The engineer **cannot** record `changes_requested` in PR-Gate mode (author excluded by runtime — 422); this is now explicitly stated in all relevant paths including the merge-conflict closing rule.
+- `code-review.md` (Code Reviewer): hard-gate bullet added after the "cited executed verification" rule — base-red detection + `changes_requested` citing `BASE-BRANCH-RED` for feature PRs; baseline-restore exception for the `fix(ci)` PR with scoped diff + local verification. The existing "Never merge without green CI" rule (§ Rules) is **modified** (not just appended) to carry the same exception caveat.
+- `pr-conventions.md` (shared doc): the `## Merge Rules` "With CI: must be green, cannot be skipped" bullet is **modified** to add the baseline-restore exception caveat — without this the doc injected into the Code Reviewer contradicted the new exception and would re-deadlock.
+
+**B — Misrouted `in_review` with `executionPolicy: null` (3 files)**
+- `engineer/HEARTBEAT.md` step 5: replaced "move to `in_review`" with an explicit guard — verify a review path exists (Code Reviewer present → set `executionPolicy` stages before moving; no Code Reviewer → self-merge path, never `in_review`); recover already-stuck null-policy issues by moving back to `in_progress` and then choosing the right path.
+- `pr-workflow.md` skill: new `## Misrouted in_review (null executionPolicy)` recovery section — move to `in_progress`, set `executionPolicy` stages (Code Reviewer present) or self-merge the PR (no Code Reviewer); leave a comment naming the misroute.
+- `stall-detection.md` step 4: updated to no longer skip `in_review` + `executionPolicy: null` as "pending review" — this is now explicitly identified as a misrouted stall, not a pending approval.
+
+**C — PR-queue hygiene: no monitoring (1 file)**
+- `stall-detection.md`: new `## Misrouted in_review` section — detects `in_review` + null policy during the regular scan (before the summary step), flags as `MISROUTED-REVIEW`, assigns back to the engineer with the recovery action.
+- `stall-detection.md`: new `## PR-queue hygiene` section — every stall-detection routine run (when the `github-repo` module is active) scans the repository's open PR queue via `gh pr list`. Escalates a triage issue when 3+ PRs are UNSTABLE/DIRTY or 8+ PRs are open total. Runs base-branch-red detection first: if the base is red, the triage issue names `BASE-BRANCH-RED` and instructs the baseline-emergency protocol; if the base is green, lists each UNSTABLE/DIRTY PR with its owner and next action (rebase / fix the introduced failure). First detector claims the restore PR by comment to prevent duplicate opens.
+
+---
+
 ## [0.4.9] - 2026-06-22
 
 ### Fixed

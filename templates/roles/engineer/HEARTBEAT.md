@@ -35,7 +35,7 @@ Run this checklist on every heartbeat. The Paperclip skill is the source of trut
 - Upload or attach user-inspectable outputs as work products/artifacts/documents; local filesystem paths alone are not enough.
 - Use issue documents for long plans, specs, QA reports, security reviews, or hiring drafts; comments should summarize and link.
 - Handoffs should use assignment/status/executionPolicy and a concrete next action. Do not rely on generic @-mentions.
-- If work awaits review, move the issue to `in_review`. When no executionPolicy is active, reassign to the Product Owner for acceptance review — never leave finished work in `in_review` assigned to yourself. When an executionPolicy is active, follow its review/approval stages.
+- Before moving work to `in_review`, verify a review path exists. If a Code Reviewer is on the team, set the `executionPolicy` stages (at least one non-author stage) **before** moving to `in_review` — an `in_review` issue with `executionPolicy: null` has no eligible participant and stalls forever (`422 No eligible approval participant`). If no Code Reviewer is on the team, do not move to `in_review` at all: open the PR and merge it yourself via `gh pr merge <N> --merge` in the same heartbeat (self-merge path), then mark `done`. If you find an issue already `in_review` with `executionPolicy: null`, it is a misrouted stall — move it back to `in_progress`, then either set `executionPolicy` stages (Code Reviewer present) or self-merge the PR (no Code Reviewer). Never leave finished work in `in_review` assigned to yourself.
 
 ## 6. Exit
 

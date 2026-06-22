@@ -12,6 +12,7 @@ Paperclip's runtime **excludes the issue's original executor (the author) from e
    - With CI: the PR's CI (lint/test/build) must be **green**. Confirm it on the PR.
    - Without CI: run the full test suite and build yourself and paste the real output into your verdict before merging.
    - A merge without cited executed verification is invalid.
+   - **Base-branch-red:** when the base branch's own CI is red, a feature PR's CI is red from the inherited baseline — not from the PR's diff. Detect base-red per `docs/git-workflow.md` → *Base-branch-red deadlock* (compare the PR's failing checks to the base commit's own checks). Do not merge a feature PR on a red base — record `changes_requested` citing `BASE-BRANCH-RED` and route the issue back with "waiting-on-baseline". The single baseline-restore PR (`fix(ci): restore base CI`) may merge under the narrow exception in `docs/git-workflow.md` → *Narrow exception: merging the baseline-restore PR on a red base*: scoped diff + local executed verification that the fix reduces the failure set + cited base-sha check set. The exception replaces CI-green with local-executed-verification plus diff-scope proof; it does not waive the verification gate and never applies to feature PRs.
 2. **All prior stages approved:** QA's `review` (when present), the Security Engineer's `review` (when added), and the Product Owner's `approval` are all recorded `approved`.
 3. **Correctness pass:** read the diff. Does it do what the PR claims? Are edge cases handled? Is it the simplest, clearest solution? Watch for dead code, exposed secrets, and missing validation at boundaries (defer deep security review to the Security Engineer when the change is security-relevant).
 4. **Base ref:** the PR targets the configured project/worktree base from `heartbeat-context` (`repoRef` / `defaultRef` / `workspaceStrategy.baseRef`). Retarget before merging if it points at the wrong branch.
@@ -50,6 +51,6 @@ Post verdicts as GitHub PR comments via a Markdown file (`gh pr comment <number>
 
 - You are the merge owner. Reviewers before you do not merge; the engineer (author) cannot.
 - "Looks good" is not a verdict. Cite what you examined and the verification you ran or confirmed.
-- Never merge without green CI or pasted test/build output.
+- Never merge without green CI or pasted test/build output — except the baseline-restore PR under the Base-Branch-Red Protocol, which may merge with cited local-executed verification that the fix reduces the base failure set (remaining failing checks exactly the inherited baseline set) and a scoped diff. A feature PR on a red base is never merged; record `changes_requested` citing `BASE-BRANCH-RED` and route back with "waiting-on-baseline".
 - Block on real concerns via `changes_requested` rather than merging around them.
 - Never add the issue's author/executor as a participant in any stage — you are the non-author gate that lands the work.

@@ -54,9 +54,33 @@ When `gh pr merge` fails or `gh pr view` reports `mergeable: CONFLICTING` / `mer
 6. Confirm the PR is no longer conflicting: `gh pr view <N> --json mergeable` should return `MERGEABLE`.
 7. Leave an issue comment noting the rebase, then continue with the merge step.
 
-Never leave a PR with unresolved conflicts without either resolving them or explicitly routing the issue back (`changes_requested`) with a comment explaining the blocker. A dirty PR sitting in `in_review` stalls the entire chain.
+Never leave a PR with unresolved conflicts without either resolving them or leaving an explicit issue comment explaining the blocker — in PR-Gate mode you cannot record `changes_requested` yourself (you are the excluded author); comment the blocker so the Code Reviewer can record `changes_requested` and route the issue back. A dirty PR sitting in `in_review` stalls the entire chain.
 
 If the conflict is too complex to resolve safely (large structural conflict with another in-flight PR), leave an issue comment with the exact conflict description and escalate to the CEO for prioritization.
+
+## Base-branch-red deadlock
+
+When a PR's CI fails, do not assume the PR is at fault. Detect base-red per `docs/git-workflow.md` → *Base-branch-red deadlock*: compare the PR's failing checks against the base commit's own checks. If the base is red, the failure is inherited, not introduced by your diff.
+
+- **Do not open new feature PRs on a red base** — they pile up and inherit the failure.
+- Run the baseline-emergency protocol in `docs/git-workflow.md` → *Baseline-emergency protocol*: fix main first with a single `fix(ci): restore base CI` PR, fast-track it through merge under the narrow exception, re-verify the base is green, then rebase and drain the feature-PR queue.
+- A feature PR on a red base waits for the base to be restored. It never merges under the baseline-restore exception.
+
+In **PR-Gate mode** (Code Reviewer present): you are the issue author and Paperclip excludes you from every executionPolicy stage, so you **cannot record `changes_requested`** — only a stage participant (the Code Reviewer) can. If you detect BASE-BRANCH-RED before moving the issue to `in_review` (step 10), do not move it — leave it `in_progress`, comment `BASE-BRANCH-RED` with the baseline-restore PR link, and start the baseline-emergency protocol now. If the issue is already `in_review`, comment `BASE-BRANCH-RED` with "waiting-on-baseline; starting baseline-restore PR now", then immediately claim and create the `fix(ci): restore base CI` PR per the baseline-emergency protocol in `docs/git-workflow.md` — do not wait for the Code Reviewer's `changes_requested` route-back before beginning the fix. The Code Reviewer reads its `code-review.md` and records `changes_requested` to formally route the issue back; the base fix proceeds in parallel. Do not leave the issue silently in `in_review` against a red base.
+
+In the **Self-Merge path** (no Code Reviewer): do not merge your feature PR on a red base; run the baseline-emergency protocol, then rebase and merge once the base is green. If you opened the `fix(ci): restore base CI` PR under a declared baseline emergency, you may merge it despite red CI under the narrow exception in `docs/git-workflow.md` → *Narrow exception* (run the failing checks locally, paste passing output, remaining failures exactly the inherited baseline set).
+
+## Misrouted in_review (null executionPolicy)
+
+If you find an issue in `in_review` with `executionPolicy: null` (or no stage with a non-author participant), it is stuck — there is no reviewer path and no eligible participant, so it can never advance (`422 No eligible approval participant`). Recover it:
+
+1. Move the issue back to `in_progress` (`PATCH /api/issues/{id}` with `status: "in_progress"`).
+2. Take the correct path for the team:
+   - **Code Reviewer present:** set the `executionPolicy` review/approval stages (step 9 above) *before* moving the issue back to `in_review`. Changing stages after the issue re-enters review is not supported.
+   - **No Code Reviewer:** do not set any `executionPolicy` — use the self-merge path (step 12). Merge the PR yourself via `gh pr merge <N> --merge` and mark the issue `done`; do not route it back to `in_review`.
+3. Leave an issue comment naming the misroute (was `in_review` with no policy) and the recovery action taken.
+
+Never move an issue to `in_review` unless an `executionPolicy` with at least one non-author stage is set (PR-Gate mode) or you are on the self-merge path and will merge it yourself this heartbeat (no Code Reviewer). An `in_review` issue with no policy and no self-merge in progress is a permanent stall.
 
 ## Rules
 
