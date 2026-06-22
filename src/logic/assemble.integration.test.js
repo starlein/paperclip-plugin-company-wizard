@@ -413,6 +413,26 @@ describe('assembleCompany integration (real templates)', () => {
     );
   });
 
+  it('pr-review setup issue documents self-merge fallback when no code-reviewer present', async () => {
+    const meta = JSON.parse(
+      await readFile(join(REAL_TEMPLATES_DIR, 'modules', 'pr-review', 'module.meta.json'), 'utf-8'),
+    );
+    const setupIssueDesc = meta.issues[0].description;
+    assert.ok(
+      setupIssueDesc.includes('no code-reviewer') || setupIssueDesc.includes('PR-Self-Merge'),
+      'pr-review setup issue must document self-merge fallback when code-reviewer is absent',
+    );
+    assert.ok(
+      setupIssueDesc.includes('gh pr merge'),
+      'fallback must name the exact merge command (gh pr merge)',
+    );
+    assert.ok(
+      setupIssueDesc.includes('422 No eligible approval participant') ||
+        setupIssueDesc.toLowerCase().includes('stall'),
+      'setup issue must warn about the 422 stall risk',
+    );
+  });
+
   it('injects skill references into AGENTS.md with correct paths', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'SkillRefCo',
