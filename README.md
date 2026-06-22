@@ -281,7 +281,7 @@ Modules are composable capabilities you layer on top of the base team. Each modu
 | Module | What it does | Kickoff task |
 | :----- | :----------- | :----------- |
 | **`github-repo`** | Git workflow and commit conventions | Engineer initializes repo |
-| **`pr-review`** | PR-based review workflow | Engineer sets up branch protection |
+| **`pr-review`** | PR-based review workflow | Engineer configures PR workflow and branch protection (requires PRs, no approval gate) |
 | **`backlog`** | Auto-generate issues from goals when backlog runs low | Primary owner creates initial backlog |
 | **`auto-assign`** | Assign unassigned issues to idle agents | — |
 | **`stall-detection`** | Detect stuck handovers, nudge or escalate | — |
@@ -344,7 +344,7 @@ PR-based review workflow. Requires `github-repo`. Activates with `code-reviewer`
 
 Reviews run through the issue's native `executionPolicy` (stages), not child issues: a `review` stage for the Code Reviewer (plus relevant domain reviewers), an `approval` stage for the Product Owner, then a final `approval` **merge gate** owned by the Engineer — who is woken last to merge the PR before recording the verdict that closes the issue. The merge gate is deliberately the last stage so the Product Owner's approval does not auto-close the issue with the PR still open.
 
-- **Task:** Engineer sets up branch protection
+- **Task:** Engineer configures PR workflow and branch protection (requires PRs, no approval gate)
 - **Doc:** `docs/pr-conventions.md`
 
 #### backlog

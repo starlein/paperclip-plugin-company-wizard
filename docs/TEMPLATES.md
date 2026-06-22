@@ -165,7 +165,7 @@ Start with just a CEO. Everything works. Add roles and responsibilities shift au
 | Module | What it does | Kickoff task |
 | :----- | :----------- | :----------- |
 | **`github-repo`** | Git workflow and commit conventions | Engineer initializes repo |
-| **`pr-review`** | PR-based review workflow | Engineer sets up branch protection |
+| **`pr-review`** | PR-based review workflow | Engineer configures PR workflow and branch protection (requires PRs, no approval gate) |
 | **`backlog`** | Auto-generate issues from goals when backlog runs low | Primary owner creates initial backlog |
 | **`auto-assign`** | Assign unassigned issues to idle agents | — |
 | **`stall-detection`** | Detect stuck handovers, nudge or escalate | — |
@@ -210,7 +210,7 @@ Git workflow and commit conventions.
 
 #### pr-review
 PR-based review workflow. Requires `github-repo`. Activates with `code-reviewer`, `product-owner`, `ui-designer`, `ux-researcher`, `qa`, or `devops`.
-- **Task:** Engineer sets up branch protection
+- **Task:** Engineer configures PR workflow and branch protection (requires PRs, no approval gate)
 - **Doc:** `docs/pr-conventions.md`
 
 #### backlog
