@@ -433,6 +433,30 @@ describe('assembleCompany integration (real templates)', () => {
     );
   });
 
+  it('pr-review with no code-reviewer produces no executionPolicy reviewGate in assembly output', async () => {
+    // When pr-review is active but code-reviewer is absent, the module still gets loaded
+    // (it activates with engineer + product-owner too), but the assembly must not produce
+    // a blocking merge gate that would stall with 422.
+    // We verify this by checking that the pr-review setup issue's reviewGate
+    // does not name 'engineer' as mergeGate (engineer is excluded from own stages).
+    const meta = JSON.parse(
+      await readFile(join(REAL_TEMPLATES_DIR, 'modules', 'pr-review', 'module.meta.json'), 'utf-8'),
+    );
+    const gate = meta.issues[0].reviewGate;
+    assert.notEqual(
+      gate.mergeGate,
+      'engineer',
+      'mergeGate must never be engineer — engineer is the executor and is excluded from every stage, causing 422 stall',
+    );
+    // The self-merge fallback instruction must be present in the description
+    // (agents read this to know they need to self-merge without code-reviewer)
+    assert.ok(
+      meta.issues[0].description.includes('no code-reviewer') ||
+        meta.issues[0].description.includes('PR-Self-Merge'),
+      'pr-review setup issue must document the self-merge fallback',
+    );
+  });
+
   it('injects skill references into AGENTS.md with correct paths', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'SkillRefCo',

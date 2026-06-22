@@ -28,7 +28,7 @@ When this skill is active, you work in feature branches and open PRs instead of 
    }
    ```
    `title` and `url` are required (`url` must be the full PR URL). If the issue runs in an isolated worktree, also pass `"executionWorkspaceId"` from `heartbeat-context`. When the PR later merges, update it with `PATCH /api/work-products/{id}` and `"status": "merged"`.
-9. Set the originating issue's `executionPolicy` to gate the merge on review, ending with the Code Reviewer as the merge gate:
+9. **Only if a code-reviewer is present on the team:** Set the originating issue's `executionPolicy` to gate the merge on review, ending with the Code Reviewer as the merge gate. If no code-reviewer is assigned to this company, skip steps 9–11 entirely and go directly to the self-merge path at step 12. Setting up executionPolicy stages without an eligible non-author merge gate will stall the issue permanently (`422 No eligible approval participant`).
    - One `review` stage with **QA** when a QA agent exists (test adequacy / executed verification).
    - One `review` stage with the **Security Engineer** only when the change is security-relevant (auth, secrets, input boundaries, crypto, dependencies, infra exposure).
    - Additional `review` stages only for domain reviewers that should block this specific change.
@@ -38,7 +38,9 @@ When this skill is active, you work in feature branches and open PRs instead of 
    - Resolve each role to its agentId first (look up active agents), then set the policy on the issue. Include the PR link in an issue comment so reviewers can find it.
 10. Move the originating issue to `in_review`.
 11. Wait for the issue to clear its review/approval stages. Each reviewer and the Product Owner records `approved` by PATCHing the issue toward `done`, or `changes_requested` by PATCHing it back to `in_progress`; Paperclip stores the reviewer/approver decision metadata on the issue. Verdicts may be mirrored as PR comments. A `changes_requested` routes the issue back to you — address it, push to the same branch, and that stage re-runs.
-12. If a **Code Reviewer** is present on the team: you do not merge your own PR. The Code Reviewer (the non-author merge gate) lands it after every prior stage approves, satisfies the hard verification gate, and records the final `approved` that closes the issue to `done`. Your remaining job is to respond to `changes_requested`: when a stage routes the issue back to you (the `returnAssignee`), address the feedback, push to the same branch, and the routed stage re-runs. **If no code-reviewer is assigned to this company:** skip executionPolicy stages entirely. Other review roles (qa, product-owner, security-engineer) may leave advisory comments on the PR, but they do not block the merge. Merge the PR yourself via `gh pr merge <N> --merge` once CI is green (or you have pasted test/build output if no CI). Update the Paperclip work product to `"status": "merged"` and archive any isolated worktree.
+12. **Merging the PR — two paths:**
+    - **Code Reviewer present (PR-Gate mode):** You do not merge your own PR. The Code Reviewer (the non-author merge gate) lands it after every prior stage approves, satisfies the hard verification gate (green CI or pasted test/build output), and records the final `approved` that closes the issue to `done`. Your job is to respond to `changes_requested`: when a stage routes the issue back to you, address the feedback, push to the same branch, and the stage re-runs.
+    - **No code-reviewer present (PR-Self-Merge mode):** You already skipped steps 9–11. Merge the PR yourself: `gh pr merge <N> --merge` once CI is green (or you have pasted test/build output if no CI). Other review roles (qa, product-owner, security-engineer) may leave advisory comments on the PR, but they do not block the merge. Update the Paperclip work product to `"status": "merged"` and archive any isolated worktree.
 
 ## Rules
 

@@ -2,9 +2,9 @@
 
 You work in a GitHub repository. Follow the conventions in `docs/git-workflow.md` in the project root.
 
-## Direct-to-Base-Ref Flow
+## PR Self-Merge Flow (no pr-review module)
 
-Use this flow when the **pr-review module is not active** — i.e., there is no Code Reviewer role and no executionPolicy review stages. In this flow, you commit and merge directly; there is no external review gate.
+Use this flow when the **pr-review module is not active**. You open a PR and merge it yourself — there is no external review gate, but all changes go through a PR so the branch history is preserved and branch protection is respected.
 
 1. Before the first push on a project, confirm the GitHub credential helper from `docs/git-workflow.md` -> *GitHub Push Authentication* is installed in the primary repository. If `GH_TOKEN` is not injected or the helper cache is empty, stop and escalate instead of attempting unauthenticated pushes.
 2. Resolve the base ref from project workspace metadata or the issue's `heartbeat-context`. Use the configured `repoRef`, `defaultRef`, or `executionWorkspacePolicy.workspaceStrategy.baseRef` exactly as Paperclip provides it. Never guess from the current shell branch and never rewrite the configured ref to `main`, `master`, or `origin/*`. If no base ref is configured anywhere, use the repository's actual default branch — whatever `origin/HEAD` points at, regardless of name (`main`/`master`/`trunk`/…); fall back to `main` then `master` only if the remote advertises no default HEAD. See `docs/git-workflow.md` → *Resolving the default branch*. Never hard-code `main`.
@@ -23,9 +23,32 @@ Use this flow when the **pr-review module is not active** — i.e., there is no 
 13. If the issue uses an isolated execution workspace (worktree), archive it from your `heartbeat-context` after the merge is pushed.
 14. If CI fails on the base branch after the merge, fix immediately.
 
+## Branch Protection Setup
+
+Configure branch protection once during initial repository setup (this is part of the "Prepare GitHub repository" foundation issue). Branch protection must require a PR before merging but must NOT require GitHub-native approving reviews — all agents share one GitHub account and cannot formally approve their own PRs.
+
+```bash
+gh api repos/{owner}/{repo}/branches/{base}/protection \
+  --method PUT --input - <<'EOF'
+{
+  "required_status_checks": null,
+  "enforce_admins": false,
+  "required_pull_request_reviews": {
+    "required_approving_review_count": 0,
+    "dismiss_stale_reviews": false
+  },
+  "restrictions": null
+}
+EOF
+```
+
+Replace `{owner}`, `{repo}`, `{base}` with the actual values. If CI is configured (e.g. the ci-cd module is active), replace `"required_status_checks": null` with the CI context string instead of `null`. Escalate to CEO if `GH_TOKEN` does not have admin rights on the repository.
+
 ## When PR Review IS Active
 
-If the pr-review module is active and you have a Code Reviewer role on the team, do NOT use the Direct-to-Base-Ref Flow. Instead, use the PR Workflow skill (`skills/pr-workflow.md`) — open a PR, set executionPolicy review stages, and let the merge gate land the branch. Never merge your own branch when a PR review workflow is in place.
+If the pr-review module is active, do NOT use the PR Self-Merge Flow. Instead, use the PR Workflow skill (`skills/pr-workflow.md`):
+- **With a Code Reviewer on the team (PR-Gate mode):** Open a PR, set executionPolicy review stages, and let the Code Reviewer (non-author merge gate) land the branch. Never merge your own branch in this mode.
+- **Without a Code Reviewer (PR-Self-Merge mode):** Open a PR via `gh pr create`, but skip executionPolicy stages entirely. Other review roles (qa, product-owner) may leave advisory comments. Merge the PR yourself via `gh pr merge <N> --merge` once CI is green. See `skills/pr-workflow.md` step 12 for the full self-merge path.
 
 ## Register the PR as a Work Product
 
