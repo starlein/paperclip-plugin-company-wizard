@@ -17,14 +17,11 @@ Use this flow when the **pr-review module is not active** — i.e., there is no 
 7. Run available checks (lint, typecheck, tests)
 8. Commit using Conventional Commits: `<type>: <description>`
 9. Verify the current branch one more time, then push: `git push -u origin <branch-name>`. The branch name in the push command must match `git branch --show-current`. Never push the base ref as a feature branch — if `git branch --show-current` returns the base ref name, stop and create a feature branch first.
-10. Merge to base and push:
-    - `git checkout <base-ref>` (the same resolved base branch from step 2)
-    - `git merge <branch-name> --no-edit`
-    - Resolve any conflicts (favor your changes; if uncertain, escalate to the CEO)
-    - `git push origin <base-ref>`
-11. Clean up the feature branch: `git push origin --delete <branch-name>` (remote) and `git branch -d <branch-name>` (local)
-12. If the issue uses an isolated execution workspace (worktree), archive it from your `heartbeat-context` after the merge is pushed.
-13. If CI fails on the base branch after the merge, fix immediately.
+10. Open a pull request against the base ref: `gh pr create --base <github-base-branch> --head <branch-name> --title "<type>: <description>" --body-file <file>`. Write the PR body (summary, what changed, how to verify) to a temp file first — never inline `--body "..."`. Register the PR as a Paperclip work product (see *Register the PR as a Work Product* below). Verify the PR base matches the configured base ref before merging.
+11. Merge the PR yourself: `gh pr merge <PR-number> --merge`. After opening the PR, merge it yourself promptly — do not wait for a reviewer if none is present. Confirm the PR is closed and the base branch updated before continuing.
+12. Clean up the feature branch: `git push origin --delete <branch-name>` (remote) and `git branch -d <branch-name>` (local). Update the Paperclip work product to `"status": "merged"` via `PATCH /api/work-products/{workProductId}`.
+13. If the issue uses an isolated execution workspace (worktree), archive it from your `heartbeat-context` after the merge is pushed.
+14. If CI fails on the base branch after the merge, fix immediately.
 
 ## When PR Review IS Active
 
@@ -65,6 +62,6 @@ Notes:
 - Never mark an issue as `done` unless at least one new commit was created for that issue's work and has been pushed.
 - Before marking `done`, verify there is no uncommitted work (`git status --short` should be clean).
 - If no repository change is required, do not mark `done` silently: leave an issue comment explaining why no code change was needed and escalate to the CEO for decision.
-- When working without a PR review flow, you are the merge owner. Merge your branch to base promptly after pushing — do not leave branches dangling unmerged.
+- You are always the merge owner when no code-reviewer is present. Open a PR and merge it yourself via `gh pr merge <N> --merge` promptly — do not leave branches dangling unmerged. Never do a direct `git merge` + push to the base branch; always go through a PR so the branch history is preserved and branch protection is respected.
 - **Always work on a feature branch, never on the base branch.** Create the branch with `git checkout -b <branch-name> <base-ref>` before committing. Verify with `git branch --show-current` before every push.
 - **Never push the base ref as if it were a feature branch.** Before `git push -u origin <branch-name>`, confirm that `git branch --show-current` matches `<branch-name>`. If it prints the base ref name instead, you are on the wrong branch — create or switch to the feature branch first.
