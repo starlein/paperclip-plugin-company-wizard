@@ -24,6 +24,9 @@ companies/
 
 # Claude local settings
 .claude/settings.local.json
+.claude/agent-memory/
+.claude/agents/
+.claude/worktrees/
 .mcp.json
 
 # Custom templates
