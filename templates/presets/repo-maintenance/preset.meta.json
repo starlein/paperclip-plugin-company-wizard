@@ -35,7 +35,7 @@
           "id": "process-setup",
           "title": "Process Setup",
           "level": "team",
-          "description": "Establish PR review, issue triage, and release workflows. Done when branch protection configured, PR conventions documented, issue labels created, release process documented."
+          "description": "Establish PR review, issue triage, and release workflows. Done when PR workflow documented (branch requires PRs, no approval gate), issue labels created, release process documented."
         },
         {
           "id": "initial-sweep",
@@ -66,8 +66,8 @@
       "assignTo": "engineer"
     },
     {
-      "title": "Configure branch protection and PR workflow",
-      "description": "Set up branch protection on the default branch, require PR reviews, configure review conventions. Document in docs/pr-conventions.md.",
+      "title": "Configure PR workflow and branch protection",
+      "description": "Configure the PR workflow and set up branch protection on the default branch. Branch protection must require a PR before merging (no direct pushes to the base branch), but must NOT require GitHub-native approving reviews — all agents share one GitHub account and cannot formally approve their own PRs; the review gate lives in Paperclip's executionPolicy, not in GitHub. Run: gh api repos/{owner}/{repo}/branches/{base}/protection --method PUT --input - with payload: {\"required_status_checks\": null, \"enforce_admins\": false, \"required_pull_request_reviews\": {\"required_approving_review_count\": 0, \"dismiss_stale_reviews\": false}, \"restrictions\": null}. Document PR conventions in docs/pr-conventions.md.",
       "priority": "high",
       "assignTo": "engineer"
     },
