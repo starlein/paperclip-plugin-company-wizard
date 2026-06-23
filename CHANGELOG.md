@@ -4,6 +4,21 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.11] - 2026-06-23
+
+### Fixed
+
+**Author-only first executionPolicy stage — a stall the v0.4.10 misrouted-`in_review` detection missed**
+
+v0.4.10 caught `in_review` with `executionPolicy: null` (or no non-author stage at all). It did **not** catch `in_review` whose policy *has* non-author stages later, but whose **first/current stage lists only the assignee (author) as a participant**. Paperclip excludes the executor from every stage, so that first stage has no eligible participant and the issue stalls at stage 1 (`422 Only the active reviewer or approver can advance the current execution stage`) — even though later stages look fine. Observed on LeadConversionOptimizer (LEAA-79/76): engineering tasks were misassigned to QA, QA authored the work, moved to `in_review`, and the first review stage was set to QA itself (self-review) → permanent stall the old scan skipped as "pending review".
+
+Four template files close the gap:
+
+- `stall-detection.md` (CEO skill): step 4 skip-rule tightened — "genuinely pending review" now requires the **current (first unapproved) stage** to have a non-author participant. New `## Author-only first stage` section: detect via `GET /api/issues/{id}` (the list endpoint omits `executionPolicy`), inspect `stages[0].participants` vs `assigneeAgentId`; flag `AUTHOR-ONLY-STAGE`; recover with `PATCH {"executionPolicy":null}` (returns the issue to `in_progress` — a bare `{"status":"in_progress"}` is rejected with `422` while a policy is active), then reassign to the correct owner with a non-author first stage or self-merge.
+- `roles/engineer/HEARTBEAT.md` step 5: after moving to `in_review`, `GET` the issue and confirm `stages[0].participants` is not just you; if it is, null the policy and re-set with a non-author first stage. Generalizes "executor" → "assignee/executor (whoever did the work)".
+- `roles/qa/HEARTBEAT.md`: new guard — QA is a **reviewer, not an author**. Implementation tasks assigned to QA are a misassignment: flag and reassign to the engineer instead of authoring + self-reviewing. Never set an `executionPolicy` stage whose only participant is the assignee; self-recovery via `PATCH {"executionPolicy":null}`.
+- `pr-review/docs/pr-conventions.md` step 3: the "never list the executor as a stage participant" rule generalized from "the engineer who authored the work" to "the issue's assignee/executor (engineer, QA, or any role)", with explicit first-stage-author-only stall warning + null-policy recovery; non-engineer roles must not author implementation work and then self-review it.
+
 ## [0.4.10] - 2026-06-22
 
 ### Fixed

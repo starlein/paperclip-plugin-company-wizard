@@ -11,7 +11,7 @@ Use this only when the current assigned issue/routine is titled like "Stall dete
 1. Checkout the assigned routine-run issue.
 2. Query active issues for the relevant company/project: `todo`, `in_progress`, `in_review`, and blocked work where applicable.
 3. For each candidate, inspect latest comments/activity, execution state, blockers, approval/review state, and assigned agent status.
-4. Skip issues with an active run, recent activity, valid `blockedByIssueIds`, or a genuinely pending executionPolicy approval/review (issue `in_review` **with** a non-author stage). An issue `in_review` with `executionPolicy: null` or no non-author stage is NOT pending review — it is a misrouted stall (see *Misrouted in_review* below).
+4. Skip issues with an active run, recent activity, valid `blockedByIssueIds`, or a genuinely pending executionPolicy approval/review — meaning `in_review` **whose current (first unapproved) stage has at least one non-author participant**. An issue `in_review` with `executionPolicy: null`, with no non-author stage at all, OR whose first/current stage lists only the assignee (author) as a participant is NOT pending review — it is a stall (see *Misrouted in_review* and *Author-only first stage* below).
 5. For a likely stall, leave a structured comment on the issue with:
    - issue id/title
    - assigned agent
@@ -29,6 +29,14 @@ An issue in `in_review` with `executionPolicy: null` (or no stage with a non-aut
 1. Flag it in the routine-run summary as `MISROUTED-REVIEW`.
 2. Leave a structured comment on the issue: status `in_review` with no executionPolicy, no eligible reviewer, assigned to the engineer — must recover.
 3. Assign the issue back to the engineer with the next action: move to `in_progress`, then either set `executionPolicy` stages (if a Code Reviewer exists on the team) or self-merge the PR via `gh pr merge <N> --merge` and mark `done` (if no Code Reviewer). An `in_review` issue with no policy and no self-merge in progress is a permanent stall — do not skip it as "pending review".
+
+## Author-only first stage
+
+An issue `in_review` whose **first (current) executionPolicy stage lists only the issue's assignee as a participant** stalls immediately: Paperclip excludes the executor from every stage, so that stage has no eligible participant and the issue can never advance past stage 1 (`422 Only the active reviewer or approver can advance the current execution stage`). This is a stall **even when later stages have non-author participants** — the first stage must pass first, and it cannot. Common cause: a non-engineer (e.g. QA) was assigned implementation work, did it, moved the issue to `in_review`, and the policy's first review stage was set to that same agent (self-review). Detect it during the in_review scan (step 2-5): `GET /api/issues/{id}` for the full `executionPolicy` (the list endpoint omits it), inspect `stages[0].participants`, and compare against `assigneeAgentId`.
+
+1. Flag it in the routine-run summary as `AUTHOR-ONLY-STAGE`.
+2. Leave a structured comment on the issue: `in_review` whose first executionPolicy stage lists only the assignee `<agent>` as participant — author-only stage, no eligible participant, permanent stall (`422`).
+3. Recover by nulling the policy: `PATCH /api/issues/{id}` with `{"executionPolicy":null}` returns the issue to `in_progress` (do not try `{"status":"in_progress"}` alone — a active policy rejects that with `422 Only the active reviewer or approver can advance`). Then reassign to the correct owner (the engineer for implementation work) with the next action: either re-set `executionPolicy` stages with a **non-author first stage** (Code Reviewer present) or self-merge the PR via `gh pr merge <N> --merge` (no Code Reviewer). Never re-add the assignee as a stage participant.
 
 ## PR-queue hygiene
 
