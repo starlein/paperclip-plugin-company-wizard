@@ -4,6 +4,23 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.12] - 2026-06-25
+
+### Changed
+
+**"Update existing company" path: pick from a list, stop re-asking for untouched settings**
+
+The update flow asked the user to paste a company UUID, then showed a Review page with contradictory placeholders (`Company: (unnamed)`, `Goal: (no goal)`, `Repository: Create a new Git repository`) for fields that an update never changes — and on authenticated instances it failed after Review with `Authentication failed (429): Too many requests` plus a misleading "Configure paperclipEmail/paperclipPassword" hint, even though credentials were set.
+
+- **Company picker instead of a UUID field** — `StepExistingCompany` now loads the instance's companies via a new `list-companies` worker action (`GET /api/companies`) and renders them as a selectable list. Selecting one carries the real company **name** forward, so the Review page and assembled workspace use it instead of `(unnamed)`. A manual-ID entry remains as a fallback (and is offered automatically if the list can't be loaded).
+- **Review page trimmed for updates** — in the update path, `ConfigReview` hides the **Goal**, **Repository**, and **Target** rows and shows the company name read-only. These belong to the existing company and stay untouched; the update only re-syncs instructions, docs, modules, roles, and routines.
+
+### Fixed
+
+**429 "Too many requests" after Review on authenticated instances**
+
+Each worker action built its own `PaperclipClient` and performed a fresh Better Auth sign-in. A single wizard run fires several actions back-to-back (`check-auth`, `preview-files`, `preview-company-update`, `start-provision` — the last signing in twice), so the burst tripped the sign-in rate limiter. A new in-process `connectSharedClient` caches the resolved session cookie + board identity (keyed by URL+email, 5-minute TTL) and validates reuse with a cheap `GET` (`ping`) instead of another sign-in. Sign-ins now happen only on first connect or after the session expires. This also removes the misleading "Configure paperclipEmail/paperclipPassword" banner that `isConfigError` raised because the 429 message contained "authenticat".
+
 ## [0.4.11] - 2026-06-23
 
 ### Fixed

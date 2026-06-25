@@ -139,9 +139,9 @@ export function StepOnboarding() {
           title="Update existing company"
           description="Re-provision or modify an existing org"
           details={[
-            'Select company by ID',
-            'Choose preset, modules, and roles',
-            'Preview changes before applying',
+            'Pick from your existing companies',
+            'Re-sync instructions, docs, and routines',
+            'Name, goals, and repository stay untouched',
             'Preserves individual skill assignments',
           ]}
           onClick={() => dispatch({ type: 'SET_PATH', path: 'update' })}

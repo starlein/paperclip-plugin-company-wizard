@@ -588,6 +588,11 @@ type EditingField = 'name' | 'goal' | 'goalDesc' | 'existingCompanyId' | 'reposi
 export function ConfigReview() {
   const state = useWizard();
   const dispatch = useWizardDispatch();
+  // In the update path the target company already owns its name, goals, and repository —
+  // the wizard only re-syncs instructions/docs/modules/roles/routines. Hide those rows so
+  // the summary doesn't show contradictory "(unnamed)" / "(no goal)" / "new repository"
+  // placeholders for fields that stay untouched.
+  const isUpdate = state.path === 'update';
   const [editing, setEditing] = useState<EditingField>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
@@ -722,10 +727,14 @@ export function ConfigReview() {
     <>
       <Card>
         <CardContent className="divide-y p-0">
-          {/* Company name */}
+          {/* Company name — editable when creating; read-only (the existing company) on update */}
           <div className="px-4">
-            <SummaryRow icon={Building2} label="Company" onEdit={() => setEditing('name')}>
-              {editing === 'name' ? (
+            <SummaryRow
+              icon={Building2}
+              label={isUpdate ? 'Company (updating)' : 'Company'}
+              onEdit={isUpdate ? undefined : () => setEditing('name')}
+            >
+              {!isUpdate && editing === 'name' ? (
                 <InlineEdit
                   value={state.companyName}
                   onSave={(v) => {
@@ -735,6 +744,13 @@ export function ConfigReview() {
                   onCancel={() => setEditing(null)}
                   placeholder="Company name"
                 />
+              ) : isUpdate ? (
+                <>
+                  <span className="font-medium">{state.companyName || '(unnamed)'}</span>
+                  <span className="text-muted-foreground ml-2 font-mono text-xs">
+                    {state.existingCompanyId}
+                  </span>
+                </>
               ) : (
                 <>
                   <span className="font-medium">{state.companyName || '(unnamed)'}</span>
@@ -746,139 +762,149 @@ export function ConfigReview() {
             </SummaryRow>
           </div>
 
-          {/* Target company */}
-          <div className="px-4">
-            <SummaryRow
-              icon={ArrowUpRight}
-              label="Target"
-              onEdit={() => setEditing('existingCompanyId')}
-            >
-              {editing === 'existingCompanyId' ? (
-                <InlineEdit
-                  value={state.existingCompanyId}
-                  onSave={(v) => {
-                    dispatch({ type: 'SET_EXISTING_COMPANY_ID', value: v.trim() });
-                    setEditing(null);
-                  }}
-                  onCancel={() => setEditing(null)}
-                  placeholder="Leave empty to create a new company, or paste existing company ID"
-                />
-              ) : state.existingCompanyId ? (
-                <>
-                  <span className="font-medium">Existing company</span>
-                  <span className="text-muted-foreground ml-2 font-mono text-xs">
-                    {state.existingCompanyId}
-                  </span>
-                </>
-              ) : (
-                <span className="text-muted-foreground">Create a new company</span>
-              )}
-            </SummaryRow>
-          </div>
-
-          {/* Repository */}
-          <div className="px-4">
-            <SummaryRow icon={GitBranch} label="Repository" onEdit={() => setEditing('repository')}>
-              {editing === 'repository' ? (
-                <RepositoryEdit
-                  project={primaryProject ?? null}
-                  onSave={(repo) => {
-                    saveRepository(repo);
-                  }}
-                  onCancel={() => setEditing(null)}
-                />
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setEditing('repository')}
-                  className="group/repo w-full text-left rounded-md -mx-1 px-1 py-0.5 hover:bg-accent/50 transition-colors"
-                >
-                  {isExternalRepo ? (
-                    <>
-                      <span className="font-medium">External Git repository</span>
-                      <span className="ml-2 text-xs text-muted-foreground underline decoration-dotted underline-offset-2 group-hover/repo:text-foreground">
-                        Change
-                      </span>
-                      {primaryRepoUrl && (
-                        <p className="text-xs text-muted-foreground mt-0.5 wrap-break-word">
-                          {primaryRepoUrl}
-                        </p>
-                      )}
-                      {primaryRepoRef && (
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Ref: {primaryRepoRef}
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-medium">Create a new Git repository</span>
-                      <span className="ml-2 text-xs text-muted-foreground underline decoration-dotted underline-offset-2 group-hover/repo:text-foreground">
-                        Change — use an existing repository
-                      </span>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Fresh local workspace{primaryRepoRef ? ` on ${primaryRepoRef}` : ''}
-                        {primaryWorkspace?.setupCommand
-                          ? ` · ${primaryWorkspace.setupCommand}`
-                          : ''}
-                      </p>
-                    </>
-                  )}
-                </button>
-              )}
-            </SummaryRow>
-          </div>
-
-          {/* Goals */}
-          <div className="px-4">
-            <SummaryRow icon={Target} label="Goal" onEdit={() => setEditing('goal')}>
-              {editing === 'goal' ? (
-                <InlineEdit
-                  value={state.goals[0]?.title || ''}
-                  onSave={(v) => {
-                    const updated = [...state.goals];
-                    if (updated.length === 0) updated.push({ title: '', description: '' });
-                    updated[0] = { ...updated[0], title: v };
-                    dispatch({ type: 'SET_GOALS', goals: updated });
-                    setEditing('goalDesc');
-                  }}
-                  onCancel={() => setEditing(null)}
-                  placeholder="Goal title"
-                />
-              ) : editing === 'goalDesc' ? (
-                <div className="space-y-1">
-                  <span>{state.goals[0]?.title || '(no goal)'}</span>
+          {/* Target company — only relevant when creating (lets you target an existing company) */}
+          {!isUpdate && (
+            <div className="px-4">
+              <SummaryRow
+                icon={ArrowUpRight}
+                label="Target"
+                onEdit={() => setEditing('existingCompanyId')}
+              >
+                {editing === 'existingCompanyId' ? (
                   <InlineEdit
-                    value={state.goals[0]?.description || ''}
+                    value={state.existingCompanyId}
                     onSave={(v) => {
-                      const updated = [...state.goals];
-                      if (updated.length === 0) updated.push({ title: '', description: '' });
-                      updated[0] = { ...updated[0], description: v };
-                      dispatch({ type: 'SET_GOALS', goals: updated });
+                      dispatch({ type: 'SET_EXISTING_COMPANY_ID', value: v.trim() });
                       setEditing(null);
                     }}
                     onCancel={() => setEditing(null)}
-                    placeholder="Goal description (optional)"
-                    multiline
+                    placeholder="Leave empty to create a new company, or paste existing company ID"
                   />
-                </div>
-              ) : (
-                <>
-                  <span>{state.goals[0]?.title || '(no goal)'}</span>
-                  {state.goals[0]?.description && (
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {state.goals[0].description}
-                    </p>
-                  )}
-                  {state.goals.length > 1 && (
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      + {state.goals.length - 1} sub-goal{state.goals.length > 2 ? 's' : ''}
-                    </p>
-                  )}
-                </>
-              )}
-            </SummaryRow>
-          </div>
+                ) : state.existingCompanyId ? (
+                  <>
+                    <span className="font-medium">Existing company</span>
+                    <span className="text-muted-foreground ml-2 font-mono text-xs">
+                      {state.existingCompanyId}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-muted-foreground">Create a new company</span>
+                )}
+              </SummaryRow>
+            </div>
+          )}
+
+          {/* Repository — untouched on update, so hidden there */}
+          {!isUpdate && (
+            <div className="px-4">
+              <SummaryRow
+                icon={GitBranch}
+                label="Repository"
+                onEdit={() => setEditing('repository')}
+              >
+                {editing === 'repository' ? (
+                  <RepositoryEdit
+                    project={primaryProject ?? null}
+                    onSave={(repo) => {
+                      saveRepository(repo);
+                    }}
+                    onCancel={() => setEditing(null)}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setEditing('repository')}
+                    className="group/repo w-full text-left rounded-md -mx-1 px-1 py-0.5 hover:bg-accent/50 transition-colors"
+                  >
+                    {isExternalRepo ? (
+                      <>
+                        <span className="font-medium">External Git repository</span>
+                        <span className="ml-2 text-xs text-muted-foreground underline decoration-dotted underline-offset-2 group-hover/repo:text-foreground">
+                          Change
+                        </span>
+                        {primaryRepoUrl && (
+                          <p className="text-xs text-muted-foreground mt-0.5 wrap-break-word">
+                            {primaryRepoUrl}
+                          </p>
+                        )}
+                        {primaryRepoRef && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Ref: {primaryRepoRef}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-medium">Create a new Git repository</span>
+                        <span className="ml-2 text-xs text-muted-foreground underline decoration-dotted underline-offset-2 group-hover/repo:text-foreground">
+                          Change — use an existing repository
+                        </span>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Fresh local workspace{primaryRepoRef ? ` on ${primaryRepoRef}` : ''}
+                          {primaryWorkspace?.setupCommand
+                            ? ` · ${primaryWorkspace.setupCommand}`
+                            : ''}
+                        </p>
+                      </>
+                    )}
+                  </button>
+                )}
+              </SummaryRow>
+            </div>
+          )}
+
+          {/* Goals — untouched on update, so hidden there */}
+          {!isUpdate && (
+            <div className="px-4">
+              <SummaryRow icon={Target} label="Goal" onEdit={() => setEditing('goal')}>
+                {editing === 'goal' ? (
+                  <InlineEdit
+                    value={state.goals[0]?.title || ''}
+                    onSave={(v) => {
+                      const updated = [...state.goals];
+                      if (updated.length === 0) updated.push({ title: '', description: '' });
+                      updated[0] = { ...updated[0], title: v };
+                      dispatch({ type: 'SET_GOALS', goals: updated });
+                      setEditing('goalDesc');
+                    }}
+                    onCancel={() => setEditing(null)}
+                    placeholder="Goal title"
+                  />
+                ) : editing === 'goalDesc' ? (
+                  <div className="space-y-1">
+                    <span>{state.goals[0]?.title || '(no goal)'}</span>
+                    <InlineEdit
+                      value={state.goals[0]?.description || ''}
+                      onSave={(v) => {
+                        const updated = [...state.goals];
+                        if (updated.length === 0) updated.push({ title: '', description: '' });
+                        updated[0] = { ...updated[0], description: v };
+                        dispatch({ type: 'SET_GOALS', goals: updated });
+                        setEditing(null);
+                      }}
+                      onCancel={() => setEditing(null)}
+                      placeholder="Goal description (optional)"
+                      multiline
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <span>{state.goals[0]?.title || '(no goal)'}</span>
+                    {state.goals[0]?.description && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {state.goals[0].description}
+                      </p>
+                    )}
+                    {state.goals.length > 1 && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        + {state.goals.length - 1} sub-goal{state.goals.length > 2 ? 's' : ''}
+                      </p>
+                    )}
+                  </>
+                )}
+              </SummaryRow>
+            </div>
+          )}
 
           {/* Modules */}
           <div className="px-4">

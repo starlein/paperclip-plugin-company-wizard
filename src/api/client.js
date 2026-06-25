@@ -162,6 +162,15 @@ export class PaperclipClient {
     });
   }
 
+  /**
+   * List all companies the connected identity can see.
+   * Returns the raw array from `GET /api/companies`.
+   */
+  async listCompanies() {
+    const result = await this._fetch('/api/companies', { method: 'GET' });
+    return Array.isArray(result) ? result : (result?.companies ?? []);
+  }
+
   async updateCompany(companyId, updates) {
     return this._fetch(`/api/companies/${companyId}`, {
       method: 'PATCH',

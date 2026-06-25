@@ -47,7 +47,7 @@ describe("company-wizard", () => {
 
   it("reports available plugin updates", async () => {
     const fetchMock = vi.fn(async () => {
-      return new Response(JSON.stringify({ version: "0.4.12" }), {
+      return new Response(JSON.stringify({ version: "0.4.13" }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
@@ -66,8 +66,8 @@ describe("company-wizard", () => {
     };
 
     expect(result.ok).toBe(true);
-    expect(result.currentVersion).toBe("0.4.11");
-    expect(result.latestVersion).toBe("0.4.12");
+    expect(result.currentVersion).toBe("0.4.12");
+    expect(result.latestVersion).toBe("0.4.13");
     expect(result.updateAvailable).toBe(true);
     expect(result.url).toContain("npmjs.com/package/@starlein/paperclip-plugin-company-wizard");
   });
@@ -255,6 +255,42 @@ describe("company-wizard", () => {
     } finally {
       await rm(tmp, { recursive: true, force: true });
     }
+  });
+
+  it("lists companies for the update dropdown", async () => {
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith("/api/companies")) {
+        return new Response(
+          JSON.stringify([
+            { id: "company-a", name: "Acme", description: "First" },
+            { id: "company-b", name: "Globex" },
+            { id: null, name: "ignored" },
+          ]),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const harness = createTestHarness({
+      manifest,
+      capabilities: manifest.capabilities,
+      config: { paperclipUrl: "http://list-companies.test" },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    const result = (await harness.performAction("list-companies", {})) as {
+      companies?: Array<{ id: string; name: string; description: string }>;
+      error?: string;
+    };
+
+    expect(result.error).toBeUndefined();
+    expect(result.companies).toEqual([
+      { id: "company-a", name: "Acme", description: "First" },
+      { id: "company-b", name: "Globex", description: "" },
+    ]);
   });
 
   it("reports healthy", async () => {

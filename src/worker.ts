@@ -36,7 +36,7 @@ const DEFAULT_TEMPLATES_REPO_URL =
   'https://github.com/starlein/paperclip-plugin-company-wizard/tree/main/templates';
 const BUNDLED_TEMPLATES_DIR = path.resolve(__dirname, '..', 'templates');
 const PLUGIN_PACKAGE_NAME = '@starlein/paperclip-plugin-company-wizard';
-const CURRENT_PLUGIN_VERSION = '0.4.11';
+const CURRENT_PLUGIN_VERSION = '0.4.12';
 const NPM_LATEST_URL =
   'https://registry.npmjs.org/@starlein%2Fpaperclip-plugin-company-wizard/latest';
 
@@ -314,21 +314,89 @@ type InstanceExperimentalSettings = {
   enableIsolatedWorkspaces?: boolean;
 };
 
+/**
+ * Resolve the Paperclip connection parameters from plugin config.
+ */
+function resolvePaperclipCredentials(cfg: Record<string, string>): {
+  url: string;
+  email: string;
+  password: string;
+} {
+  return {
+    url: cfg.paperclipUrl || process.env.PAPERCLIP_PUBLIC_URL || 'http://localhost:3100',
+    email: cfg.paperclipEmail || '',
+    password: cfg.paperclipPassword || '',
+  };
+}
+
+/**
+ * Cross-action session cache. The plugin runs one long-lived worker process, and a
+ * single wizard run fires several actions back-to-back (check-auth, preview-files,
+ * preview-company-update, start-provision) — each of which previously created its own
+ * client and performed a fresh Better Auth sign-in. On authenticated instances the
+ * sign-in endpoint is rate-limited, so the burst tripped `429 Too many requests`.
+ *
+ * We cache the resolved session cookie (+ board identity) keyed by URL+email and reuse
+ * it across actions for a short TTL, validating with a cheap GET (`ping`) rather than
+ * another sign-in. Sign-ins only happen on first connect or after the cookie expires.
+ */
+type SharedAuthCache = {
+  key: string;
+  ts: number;
+  sessionCookie: string | null;
+  boardUserId: string | null;
+  boardUserName: string | null;
+  boardUserEmail: string | null;
+};
+
+let sharedAuthCache: SharedAuthCache | null = null;
+const SHARED_AUTH_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * Connect to Paperclip, reusing a cached session when one is still valid. Returns a
+ * ready-to-use client. On a cache hit the session cookie is validated with a single
+ * GET; on a miss (or stale/invalid session) it performs a normal `connect()` and
+ * refreshes the cache.
+ */
+async function connectSharedClient(cfg: Record<string, string>): Promise<PaperclipClient> {
+  const { url, email, password } = resolvePaperclipCredentials(cfg);
+  const key = `${url}|${email}`;
+  const client = new PaperclipClient(url, { email, password });
+
+  if (
+    sharedAuthCache &&
+    sharedAuthCache.key === key &&
+    Date.now() - sharedAuthCache.ts < SHARED_AUTH_TTL_MS
+  ) {
+    client.sessionCookie = sharedAuthCache.sessionCookie;
+    client.boardUserId = sharedAuthCache.boardUserId;
+    client.boardUserName = sharedAuthCache.boardUserName;
+    client.boardUserEmail = sharedAuthCache.boardUserEmail;
+    // Validate cheaply (a GET, not the rate-limited sign-in). If the session is still
+    // good, reuse it; otherwise fall through to a fresh connect below.
+    if (await client.ping()) {
+      return client;
+    }
+  }
+
+  await client.connect();
+  sharedAuthCache = {
+    key,
+    ts: Date.now(),
+    sessionCookie: client.sessionCookie,
+    boardUserId: client.boardUserId,
+    boardUserName: client.boardUserName,
+    boardUserEmail: client.boardUserEmail,
+  };
+  return client;
+}
+
 async function resolveEnableIsolatedWorkspacesFromInstance(
   cfg: Record<string, string>,
   log?: (msg: string) => void,
 ): Promise<boolean> {
-  const paperclipUrl =
-    cfg.paperclipUrl || process.env.PAPERCLIP_PUBLIC_URL || 'http://localhost:3100';
-  const paperclipEmail = cfg.paperclipEmail || '';
-  const paperclipPassword = cfg.paperclipPassword || '';
-  const instanceClient = new PaperclipClient(paperclipUrl, {
-    email: paperclipEmail,
-    password: paperclipPassword,
-  });
-
   try {
-    await instanceClient.connect();
+    const instanceClient = await connectSharedClient(cfg);
     const experimentalSettings = (await instanceClient.getInstanceExperimentalSettings()) as
       | InstanceExperimentalSettings
       | undefined;
@@ -1028,10 +1096,6 @@ const plugin = definePlugin({
         }
 
         const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
-        const paperclipUrl =
-          cfg.paperclipUrl || process.env.PAPERCLIP_PUBLIC_URL || 'http://localhost:3100';
-        const paperclipEmail = cfg.paperclipEmail || '';
-        const paperclipPassword = cfg.paperclipPassword || '';
 
         const companyName =
           typeof params.companyName === 'string' && params.companyName.trim()
@@ -1105,11 +1169,7 @@ const plugin = definePlugin({
         countFiles(assembleResult.companyDir);
 
         // Connect to Paperclip API to read existing data
-        const client = new PaperclipClient(paperclipUrl, {
-          email: paperclipEmail,
-          password: paperclipPassword,
-        });
-        await client.connect();
+        const client = await connectSharedClient(cfg);
 
         const company = await client.getCompany(existingCompanyId);
         const existingAgents = await client.listAgents(existingCompanyId);
@@ -1296,18 +1356,32 @@ const plugin = definePlugin({
 
     // Auth check action — called by the summary step to surface credential issues early.
     ctx.actions.register('check-auth', async () => {
-      const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
-      const paperclipUrl =
-        cfg.paperclipUrl || process.env.PAPERCLIP_PUBLIC_URL || 'http://localhost:3100';
       try {
-        const client = new PaperclipClient(paperclipUrl, {
-          email: cfg.paperclipEmail || '',
-          password: cfg.paperclipPassword || '',
-        });
-        await client.connect();
+        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+        await connectSharedClient(cfg);
         return { ok: true };
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) };
+      }
+    });
+
+    // List companies — populates the "Update existing company" dropdown so the user
+    // picks from a list instead of pasting a UUID. Returns { companies } or { error }.
+    ctx.actions.register('list-companies', async () => {
+      try {
+        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+        const client = await connectSharedClient(cfg);
+        const companies = await client.listCompanies();
+        const normalized = (Array.isArray(companies) ? companies : [])
+          .filter((c: any) => c && typeof c.id === 'string')
+          .map((c: any) => ({
+            id: c.id as string,
+            name: typeof c.name === 'string' ? c.name : '',
+            description: typeof c.description === 'string' ? c.description : '',
+          }));
+        return { companies: normalized };
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : String(err) };
       }
     });
 
@@ -1401,10 +1475,7 @@ const plugin = definePlugin({
 
       try {
         const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
-        const paperclipUrl =
-          cfg.paperclipUrl || process.env.PAPERCLIP_PUBLIC_URL || 'http://localhost:3100';
         const paperclipEmail = cfg.paperclipEmail || '';
-        const paperclipPassword = cfg.paperclipPassword || '';
         const enableIsolatedWorktrees = await resolveEnableIsolatedWorkspacesFromInstance(cfg, log);
         const enableEnrichedPersonas = true;
 
@@ -1437,13 +1508,12 @@ const plugin = definePlugin({
         const goals = collectGoals(selectedPreset, allModules, new Set(effectiveModules));
         const presetBootstrapData = collectPresetBootstrapData(selectedPreset);
 
-        // Step 2: Connect to Paperclip API early to resolve user identity for git commits
+        // Step 2: Connect to Paperclip API early to resolve user identity for git commits.
+        // Reuses the session established by the preceding check-auth / preview actions
+        // (cached in-process), so an authenticated instance isn't hit with repeated
+        // sign-ins that trip its rate limiter (429).
         log('Connecting to Paperclip API...');
-        const client = new PaperclipClient(paperclipUrl, {
-          email: paperclipEmail,
-          password: paperclipPassword,
-        });
-        await client.connect();
+        const client = await connectSharedClient(cfg);
         log('Connected.');
 
         // Resolve git identity from board session (fall back to Paperclip Bootstrap)
@@ -2116,7 +2186,7 @@ const plugin = definePlugin({
         return {
           companyId,
           issuePrefix: company.issuePrefix,
-          paperclipUrl,
+          paperclipUrl: client.baseUrl,
           agentIds: { ceo: ceoAgentId!, ...teamAgentIds },
           issueIds,
           logs,
