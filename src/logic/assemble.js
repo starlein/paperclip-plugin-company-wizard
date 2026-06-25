@@ -258,7 +258,24 @@ export async function assembleCompany({
     ? presetRoutines.map((routine) => ({ ...routine, source: routine.source || 'preset' }))
     : [];
   const explicitBootstrapLabels = Array.isArray(presetLabels) ? [...presetLabels] : [];
-  const roleAdapterOverrides = new Map(); // role name → merged adapter overrides from modules
+  const roleAdapterOverrides = new Map(); // role name → merged adapter overrides (role.meta.json baseline + modules)
+  // Seed each role's adapter baseline from its role.meta.json so the per-role thinking
+  // level (e.g. "auto") reaches provisioning — module adapterOverrides merge on top
+  // below (module wins). Without this seed, only module overrides were propagated and
+  // every worker fell back to the flat DEFAULT_WORKER_THINKING_LEVEL.
+  for (const role of allRoles) {
+    const roleMeta = roleMetaByName.get(role) || {};
+    const adapter = roleMeta && typeof roleMeta.adapter === 'object' ? roleMeta.adapter : {};
+    const thinkingLevel =
+      (typeof adapter.thinkingLevel === 'string' && adapter.thinkingLevel.trim()) ||
+      (typeof adapter.modelReasoningEffort === 'string' && adapter.modelReasoningEffort.trim()) ||
+      (typeof adapter.reasoningEffort === 'string' && adapter.reasoningEffort.trim()) ||
+      (typeof adapter.effort === 'string' && adapter.effort.trim()) ||
+      '';
+    if (thinkingLevel) {
+      roleAdapterOverrides.set(role, { thinkingLevel });
+    }
+  }
   // doc filename → Set of roles it is relevant to. A doc whose owning module has no
   // role association (company-wide) is marked with the '*' sentinel and goes to all
   // agents. Used so each agent only references the docs that matter to its role.

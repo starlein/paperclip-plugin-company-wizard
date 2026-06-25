@@ -4,6 +4,18 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.13] - 2026-06-25
+
+### Changed
+
+**Worker agents default to `auto` thinking effort, and per-role adapter levels now reach provisioning**
+
+Provisioned worker (non-CEO) agents were pinned to `thinkingLevel`/`modelReasoningEffort: "medium"`, and the `"thinkingLevel": "auto"` declared in each `role.meta.json` was silently dropped at provisioning time — the `roleAdapterOverrides` passed to `buildWorkerAdapterConfig` were assembled only from **module** `adapterOverrides`, never from the role's own `adapter` block. So every worker ran at a flat `medium` regardless of its template.
+
+- `DEFAULT_WORKER_THINKING_LEVEL` changed from `medium` to `auto` — let the model pick effort per task instead of pinning a flat level. The CEO default is unchanged (`high`, still inherits the wizard's explicit setting).
+- `assembleCompany` now seeds `roleAdapterOverrides` from each role's `role.meta.json` adapter (`thinkingLevel` / `modelReasoningEffort` / `reasoningEffort` / `effort`), so a role's declared level reaches the provisioned agent. Module `adapterOverrides` still merge on top (module wins).
+- `buildAdapterConfig` now also resolves an override expressed as `effort`, and strips the raw thinking keys before re-applying the resolved level per adapter — so a non-codex adapter no longer carries a stray `thinkingLevel`.
+
 ## [0.4.12] - 2026-06-25
 
 ### Changed

@@ -42,10 +42,10 @@ describe('CEO provisioning defaults', () => {
     });
   });
 
-  it('defaults worker agents to medium thinking and does not inherit the CEO thinking level', () => {
-    assert.equal(DEFAULT_WORKER_THINKING_LEVEL, 'medium');
+  it('defaults worker agents to auto thinking and does not inherit the CEO thinking level', () => {
+    assert.equal(DEFAULT_WORKER_THINKING_LEVEL, 'auto');
 
-    // CEO configured xhigh — workers must NOT inherit it; they default to medium.
+    // CEO configured xhigh — workers must NOT inherit it; they default to auto.
     assert.deepEqual(
       buildWorkerAdapterConfig({
         userCeoAdapter: { thinkingLevel: 'xhigh' },
@@ -54,19 +54,36 @@ describe('CEO provisioning defaults', () => {
       {
         cwd: '/paperclip/companies/Dialer',
         model: 'gpt-5.5',
-        modelReasoningEffort: 'medium',
-        thinkingLevel: 'medium',
+        modelReasoningEffort: 'auto',
+        thinkingLevel: 'auto',
         dangerouslyBypassApprovalsAndSandbox: true,
       },
     );
   });
 
-  it('lets a role override raise a worker thinking level above the medium default', () => {
+  it('lets a role override set a worker thinking level above the auto default', () => {
     assert.deepEqual(
       buildWorkerAdapterConfig({
         userCeoAdapter: { thinkingLevel: 'xhigh' },
         companyDir: '/paperclip/companies/Dialer',
         roleAdapterOverrides: { thinkingLevel: 'high' },
+      }),
+      {
+        cwd: '/paperclip/companies/Dialer',
+        model: 'gpt-5.5',
+        modelReasoningEffort: 'high',
+        thinkingLevel: 'high',
+        dangerouslyBypassApprovalsAndSandbox: true,
+      },
+    );
+  });
+
+  it('normalizes a role override expressed as `effort` and does not leak the raw key', () => {
+    assert.deepEqual(
+      buildWorkerAdapterConfig({
+        userCeoAdapter: {},
+        companyDir: '/paperclip/companies/Dialer',
+        roleAdapterOverrides: { effort: 'high' },
       }),
       {
         cwd: '/paperclip/companies/Dialer',

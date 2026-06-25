@@ -1,10 +1,10 @@
 export const DEFAULT_CEO_ADAPTER_TYPE = 'codex_local';
 export const DEFAULT_CEO_MODEL = 'gpt-5.5';
 export const DEFAULT_CEO_THINKING_LEVEL = 'high';
-// Worker (non-CEO) agents default to a more modest reasoning effort. High thinking
-// for the whole team is expensive and slow, and most worker tasks don't need it.
-// A role can still raise this via its role.meta.json adapter override.
-export const DEFAULT_WORKER_THINKING_LEVEL = 'medium';
+// Worker (non-CEO) agents default to 'auto' reasoning effort — let the model decide
+// per task instead of pinning a flat level. A role can still set an explicit level
+// via its role.meta.json adapter override (now propagated to provisioning).
+export const DEFAULT_WORKER_THINKING_LEVEL = 'auto';
 export const DEFAULT_CEO_MAX_CONCURRENT_RUNS = 1;
 export const DEFAULT_CEO_HEARTBEAT_INTERVAL_SEC = 3600;
 
@@ -45,6 +45,7 @@ function buildAdapterConfig({
     asTrimmedString(roleAdapterOverrides.thinkingLevel) ||
     asTrimmedString(roleAdapterOverrides.modelReasoningEffort) ||
     asTrimmedString(roleAdapterOverrides.reasoningEffort) ||
+    asTrimmedString(roleAdapterOverrides.effort) ||
     defaultThinkingLevel;
 
   const adapterConfig = {
@@ -54,6 +55,13 @@ function buildAdapterConfig({
   };
   delete adapterConfig.promptTemplate;
   delete adapterConfig.bootstrapPromptTemplate;
+  // Thinking effort is applied per-adapter below from the resolved `thinkingLevel`.
+  // Strip the raw override keys so they don't leak into the config (and so a
+  // non-codex adapter doesn't carry a stray thinkingLevel).
+  delete adapterConfig.thinkingLevel;
+  delete adapterConfig.modelReasoningEffort;
+  delete adapterConfig.reasoningEffort;
+  delete adapterConfig.effort;
 
   if (adapterType === 'codex_local') {
     adapterConfig.modelReasoningEffort = thinkingLevel;

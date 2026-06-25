@@ -36,7 +36,7 @@ const DEFAULT_TEMPLATES_REPO_URL =
   'https://github.com/starlein/paperclip-plugin-company-wizard/tree/main/templates';
 const BUNDLED_TEMPLATES_DIR = path.resolve(__dirname, '..', 'templates');
 const PLUGIN_PACKAGE_NAME = '@starlein/paperclip-plugin-company-wizard';
-const CURRENT_PLUGIN_VERSION = '0.4.12';
+const CURRENT_PLUGIN_VERSION = '0.4.13';
 const NPM_LATEST_URL =
   'https://registry.npmjs.org/@starlein%2Fpaperclip-plugin-company-wizard/latest';
 
