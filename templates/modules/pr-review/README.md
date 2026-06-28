@@ -29,7 +29,7 @@ Adds a PR-based review workflow with dedicated reviewer roles.
 
 ## Handover mechanism
 
-The issue's native `executionPolicy` (`review`/`approval` stages). Each reviewer is the active participant of a stage and records an `approved` / `changes_requested` decision through the normal issue update route; Paperclip stores the reviewer/approver audit trail on the issue (`reviewed_by` / `approved_by` metadata where exposed). The decision may be mirrored as a GitHub PR comment. Do not create separate review subissues. If a reviewer doesn't wake, the CEO's stall-detection (if enabled) will catch it.
+The issue's native `executionPolicy` (`review`/`approval` stages). Each reviewer is the active participant of a stage and records an `approved` / `changes_requested` decision through the normal issue update route; Paperclip stores the reviewer/approver audit trail on the issue (`reviewed_by` / `approved_by` metadata where exposed). The decision may be mirrored as a GitHub PR comment. Do not create separate review subissues, and **do not model the merge as a standalone "Code review and merge PR #N" issue that is `blockedBy` the review issues** — that strands the merge once the reviews close `done` (Paperclip won't reliably re-wake a `blocked` issue whose blockers are all `done`), so the PR is never merged even when green. The merge gate is the **last `executionPolicy` stage on the same implementation issue**, which advances in place. If a reviewer doesn't wake, or a merge issue ends up stranded `blocked`, the CEO's stall-detection (if enabled) will catch it (*Stranded blocked* / *PR-queue hygiene*).
 
 ## Best for
 

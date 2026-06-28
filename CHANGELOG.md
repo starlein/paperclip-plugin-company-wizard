@@ -4,6 +4,23 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.14] - 2026-06-25
+
+### Fixed
+
+**Stranded-blocked merge issues — a CEO-routine safety net (templates)**
+
+> The longstanding, CI-independent root cause of "agents open PRs but never merge them" was a **contradiction in the Code Reviewer's instructions** — the role's `AGENTS.md` said "Never merge PRs. That's the engineer's job." while its skill (and the engineer's pr-workflow) made the Code Reviewer the merge owner, so nobody merged. That was already fixed in **v0.4.7** (commit `3e065cf`); instances still piling up PRs are running pre-v0.4.7 instruction bundles and need a template-cache refresh + update-company to pick up the corrected instructions. This v0.4.14 entry addresses a **secondary, downstream** failure, not that root cause.
+
+Observed on two live instances (LeadConversionOptimizer, Dial24Modern2): because the normal merge never fired, the CEO fanned a single PR out into separate per-role issues (QA/Security/Product) plus a standalone "Code review and merge PR #N" issue assigned to the Code Reviewer and `blockedBy` those reviews. When the reviews close `done`, Paperclip does not reliably re-wake the blocked merge issue (worker heartbeats are disabled, and the liveness watchdog skips a `blocked` issue whose blockers are all `done`), so even those explicit merge issues strand. Evidence: merge issues sitting `blocked` with `blockerAttention.needs_attention` and zero unresolved blockers.
+
+Template fixes:
+
+- `stall-detection.md` (CEO skill): new `## Stranded blocked` recovery — detect a `blocked` issue whose blockers are all `done`/`cancelled` (or `blockerAttention` with `unresolvedBlockerCount: 0`), flag `STRANDED-BLOCKED`, reactivate via `PATCH {"status":"in_progress"}`, re-assign to the merge owner to trigger a wake, and run the merge. Step 4's skip-rule now treats "blocked with all blockers done" as a stall, not validly blocked. PR-queue hygiene gains a step 7 that reconciles each open green/mergeable PR against its owning issue and merges/reactivates when the merge step was skipped.
+- `bootstrap-instructions.md` + `pr-review/README.md`: explicit prohibition — one PR ⇒ one issue ⇒ its `executionPolicy` stages. Never fan a PR out into per-role `blocks`-linked issues, and never model the merge as a standalone `blockedBy` merge issue; the merge gate is the last stage on the same implementation issue, which advances in place.
+
+> Note: the durable platform-level guarantee (auto-reactivate a `blocked` issue once it has no unresolved blockers, and/or a workspace-finalize-barrier timeout) lives in the Paperclip server, not this plugin. These template changes prevent the fan-out and add a CEO-routine safety net that recovers already-stranded merges.
+
 ## [0.4.13] - 2026-06-25
 
 ### Changed
