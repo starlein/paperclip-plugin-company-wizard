@@ -4,6 +4,14 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.17] - 2026-06-29
+
+### Fixed
+
+**Worker agents no longer send `reasoning.effort: "auto"` to Codex (400 error)**
+
+Worker agents default to `DEFAULT_WORKER_THINKING_LEVEL = 'auto'` ("let the model decide"), but Codex's `reasoning.effort` API rejects `"auto"` with a 400 — the accepted values are `none|minimal|low|medium|high|xhigh`. The "let the model decide" semantics are achieved by **omitting the parameter entirely**. Both the worker provisioning path (`ceo-defaults.js` → `buildAdapterConfig`) and the BOOTSTRAP.md generation path (`assemble.js` → `resolveRoleAdapterConfig`) now strip `modelReasoningEffort` and `thinkingLevel` when the resolved level is `"auto"` for `codex_local` adapters, so Codex picks its own effort instead of failing. Explicit levels (`none`–`xhigh`) are still passed through unchanged.
+
 ## [0.4.16] - 2026-06-28
 
 ### Changed

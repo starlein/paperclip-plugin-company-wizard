@@ -64,8 +64,15 @@ function buildAdapterConfig({
   delete adapterConfig.effort;
 
   if (adapterType === 'codex_local') {
-    adapterConfig.modelReasoningEffort = thinkingLevel;
-    adapterConfig.thinkingLevel = thinkingLevel;
+    // Codex's `reasoning.effort` only accepts none|minimal|low|medium|high|xhigh —
+    // it rejects 'auto' with a 400. 'auto' means "let the model decide", which for
+    // Codex is expressed by *omitting* the param entirely (Codex picks its own
+    // effort). Only set the effort when we have a concrete level the API accepts.
+    const codexEffort = thinkingLevel && thinkingLevel !== 'auto' ? thinkingLevel : '';
+    if (codexEffort) {
+      adapterConfig.modelReasoningEffort = codexEffort;
+      adapterConfig.thinkingLevel = codexEffort;
+    }
     adapterConfig.dangerouslyBypassApprovalsAndSandbox = true;
   } else if (adapterType === 'claude_local') {
     adapterConfig.dangerouslySkipPermissions = true;

@@ -46,6 +46,9 @@ describe('CEO provisioning defaults', () => {
     assert.equal(DEFAULT_WORKER_THINKING_LEVEL, 'auto');
 
     // CEO configured xhigh — workers must NOT inherit it; they default to auto.
+    // 'auto' is NOT a value Codex's `reasoning.effort` accepts — for codex_local it
+    // is expressed by *omitting* the param entirely (Codex picks its own effort), so
+    // neither modelReasoningEffort nor thinkingLevel is set on the adapter config.
     assert.deepEqual(
       buildWorkerAdapterConfig({
         userCeoAdapter: { thinkingLevel: 'xhigh' },
@@ -54,8 +57,6 @@ describe('CEO provisioning defaults', () => {
       {
         cwd: '/paperclip/companies/Dialer',
         model: 'gpt-5.5',
-        modelReasoningEffort: 'auto',
-        thinkingLevel: 'auto',
         dangerouslyBypassApprovalsAndSandbox: true,
       },
     );
@@ -73,6 +74,23 @@ describe('CEO provisioning defaults', () => {
         model: 'gpt-5.5',
         modelReasoningEffort: 'high',
         thinkingLevel: 'high',
+        dangerouslyBypassApprovalsAndSandbox: true,
+      },
+    );
+  });
+
+  it('omits reasoning effort entirely for codex_local when the resolved level is auto', () => {
+    // An explicit `auto` role override must NOT be passed through — Codex rejects
+    // 'auto' with a 400; "let the model decide" is expressed by omitting the field.
+    assert.deepEqual(
+      buildWorkerAdapterConfig({
+        userCeoAdapter: {},
+        companyDir: '/paperclip/companies/Dialer',
+        roleAdapterOverrides: { thinkingLevel: 'auto' },
+      }),
+      {
+        cwd: '/paperclip/companies/Dialer',
+        model: 'gpt-5.5',
         dangerouslyBypassApprovalsAndSandbox: true,
       },
     );

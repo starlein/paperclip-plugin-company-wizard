@@ -1590,6 +1590,36 @@ describe('assembleCompany', () => {
     assert.ok(!skill.includes('Output bar'), 'no bar appended when flag off');
   });
 
+  it('omits modelReasoningEffort and thinkingLevel from BOOTSTRAP.md when resolved level is auto', async () => {
+    // Worker roles default to 'auto' thinking — Codex rejects 'auto' with a 400,
+    // so the BOOTSTRAP.md must NOT include those fields for auto-valued roles.
+    const workerMeta = join(templatesDir, 'roles', 'engineer', 'role.meta.json');
+    await writeJson(workerMeta, {
+      name: 'engineer',
+      base: true,
+      title: 'Software Engineer',
+      paperclipRole: 'engineer',
+      description: 'Implements features and fixes bugs.',
+      adapter: { thinkingLevel: 'auto' },
+    });
+
+    const { companyDir } = await assembleCompany({
+      companyName: 'AutoCo',
+      moduleNames: [],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    const engineerBlock = bootstrap.split('### Engineer')[1] || '';
+
+    // 'auto' must not appear as modelReasoningEffort or thinkingLevel
+    assert.ok(!engineerBlock.includes('**adapterConfig.modelReasoningEffort**'));
+    assert.ok(!engineerBlock.includes('**adapterConfig.thinkingLevel**'));
+    // A concrete level (e.g. 'high') should still be rendered
+  });
+
   it('resolves capability:* task assignments to the primary owner role', async () => {
     // Add a task with capability: reference
     const aaModuleMeta = join(templatesDir, 'modules', 'auto-assign', 'module.meta.json');
