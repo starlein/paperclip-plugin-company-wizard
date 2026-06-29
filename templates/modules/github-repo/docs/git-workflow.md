@@ -79,26 +79,24 @@ Rules:
   should print the helper path, and `test -s "$(git rev-parse --git-common-dir)/paperclip-gh-token-cache"`
   should succeed after a run where `GH_TOKEN` was injected.
 
-## PR Self-Merge Flow
+## Direct-to-Base Flow
 
-Use this flow when the **pr-review module is not active** (no Code Reviewer role, no executionPolicy review stages). You open a PR and merge it yourself — there is no external review gate, but all changes go through a PR so branch history is preserved and branch protection is respected. When PR review is active, use the PR workflow from `docs/pr-conventions.md` instead.
+Use this flow when the **pr-review module is not active** (no Code Reviewer role, no executionPolicy review stages). With no reviewer, a per-change pull request adds no value and is where branches pile up unmerged, so you work **directly on the base branch**: verify locally, then commit and push to the base ref. Open a PR only as a *fallback* when branch protection rejects the direct push. When PR review is active, use the PR workflow from `docs/pr-conventions.md` instead.
 
 1. Resolve the configured base ref from project workspace metadata or the issue's `heartbeat-context` before touching Git. Do not infer it from the current shell branch and do not rewrite it to `main`, `master`, or `origin/*`.
    - External repos: use the project/worktree `repoRef`, `defaultRef`, or `executionWorkspacePolicy.workspaceStrategy.baseRef` exactly as configured.
    - Fresh/local repos: use the configured local branch.
    - Only if no base ref is configured anywhere, detect the repository's default branch — see *Resolving the default branch* below. Never hard-code `main`.
-2. Pull/fetch latest from that base before editing.
-3. **Create a feature branch** from the base ref: `git checkout -b <branch-name> <base-ref>`. Never commit directly on the base branch. The branch name should reference the issue (e.g., `LEA-5-add-landing-hero`). If you are already on a correctly named feature branch, skip this step.
-4. **Verify you are on the feature branch** before making changes: `git branch --show-current` must print `<branch-name>`, not the base ref. If it prints the base ref name, you forgot step 3 — create the branch now.
-5. Make changes
-6. Run tests/linting locally if available
-7. Commit with conventional commit message
-8. **Verify the current branch one more time**, then push: `git push -u origin <branch-name>`. The branch name in the push command must match `git branch --show-current`. Never push the base ref as a feature branch — if `git branch --show-current` returns the base ref name, stop and create a feature branch first.
-9. Open a pull request against the base ref: write the PR body to a temp file, then `gh pr create --base <github-base-branch> --head <branch-name> --title "<type>: <description>" --body-file <file>`. Never inline `--body "..."` — a double-quoted shell string keeps `\n` literal (see *Posting PR Bodies & Comments* in `docs/pr-conventions.md`). `<github-base-branch>` is the **plain branch name** — strip any `origin/` prefix from the configured base ref (e.g., configured ref `origin/main` → `--base main`; configured ref `main` → `--base main`). GitHub does not recognise remote-tracking names. Verify the PR base matches the configured base ref before merging.
-10. Merge the PR yourself: `gh pr merge <PR-number> --merge`. Do not wait for a reviewer if none is present. Confirm the PR is closed and the base branch updated before continuing. Never do a direct `git merge` + push to the base branch; always go through a PR.
-11. Clean up the feature branch: `git push origin --delete <branch-name>` (remote) and `git branch -d <branch-name>` (local).
-12. If the issue uses an isolated execution workspace (worktree), archive it from `heartbeat-context` after the merge is pushed.
-13. Verify CI passes on the base branch (if configured). If CI fails, fix immediately.
+2. Update to latest base: `git fetch origin`, check out the base branch, `git pull --ff-only origin <base-branch>` (`<base-branch>` = plain name, strip any `origin/` prefix).
+3. Make changes (on the base branch, or a short-lived local branch you fast-forward back into the base before pushing). Do not open a GitHub PR.
+4. **Run the authoritative gate locally — always:** lint, typecheck, the full test suite, and the build; paste the real output into the issue. This local executed verification is the merge gate when the company has no CI/CD module.
+5. Commit with a Conventional Commit message, referencing the issue in the body (`Closes <issue-id>`).
+6. Push to the base ref: `git push origin HEAD:<base-branch>`.
+   - Rejected as **non-fast-forward**: `git pull --rebase origin <base-branch>`, re-run checks, push again.
+   - Rejected by **branch protection** (PR required): use the PR fallback — feature branch → `git push -u origin <branch-name>` → `gh pr create --base <base-branch> ... --body-file <file>` (register the PR as a work product) → `gh pr merge <N> --merge --delete-branch`. This is the only case where you open a PR.
+7. Confirm it landed: `git log origin/<base-branch> -1` shows your commit.
+8. If the issue uses an isolated execution workspace (worktree), archive it from `heartbeat-context` after the push.
+9. **Company-owned CI/CD only** (`ci-cd` module active): if the base CI goes red after your push, fix it immediately (see *Base-branch-red deadlock*). A pre-existing repo check the company never configured is advisory — not a gate.
 
 ## Resolving the default branch
 
@@ -142,8 +140,8 @@ For a brand-new local repository there is no remote yet, so initialize on `main`
 
 ## Branch Safety
 
-- **Always work on a feature branch, never on the base branch.** Create the branch with `git checkout -b <branch-name> <base-ref>` before committing any changes. If you are resuming work on an existing issue, `git branch --show-current` should already show the feature branch name.
-- **Verify your branch before pushing.** Before running `git push -u origin <branch-name>`, confirm that `git branch --show-current` prints the feature branch name — not the base ref. If it prints the base ref, you are on the wrong branch: stop and create/switch to the feature branch first. Pushing the base ref as a feature branch corrupts upstream tracking and causes incorrect branch divergence reports.
+- **Match the branch to the flow.** In the **Direct-to-Base Flow** (no pr-review module) you commit on the base ref and push to it directly — that is intended. In the **PR-review flow** (and the PR fallback) you must work on a feature branch and never push the base ref as a feature branch: before `git push -u origin <branch-name>`, confirm `git branch --show-current` prints the feature branch name, not the base ref.
+- **Always pull/fast-forward before pushing to the base ref** so your push is a fast-forward; if it is rejected as non-fast-forward, `git pull --rebase` and retry. Never force-push the base branch.
 
 ## Resolving merge conflicts
 

@@ -36,7 +36,7 @@ const DEFAULT_TEMPLATES_REPO_URL =
   'https://github.com/starlein/paperclip-plugin-company-wizard/tree/main/templates';
 const BUNDLED_TEMPLATES_DIR = path.resolve(__dirname, '..', 'templates');
 const PLUGIN_PACKAGE_NAME = '@starlein/paperclip-plugin-company-wizard';
-const CURRENT_PLUGIN_VERSION = '0.4.14';
+const CURRENT_PLUGIN_VERSION = '0.4.15';
 const NPM_LATEST_URL =
   'https://registry.npmjs.org/@starlein%2Fpaperclip-plugin-company-wizard/latest';
 
@@ -150,6 +150,36 @@ async function ensureTemplatesDir(cfg: Record<string, string>): Promise<string> 
       'Templates not found and download failed. Configure templatesPath or templatesRepoUrl in plugin settings.',
     );
   }
+}
+
+/**
+ * The directory `ensureTemplatesDir` will actually READ from, without downloading.
+ * Must mirror `ensureTemplatesDir`'s resolution (incl. the Docker layout) so the
+ * refresh path targets the SAME dir the worker reads — otherwise a refresh writes
+ * `~/.paperclip/plugin-templates` while the worker keeps reading the stale
+ * `~/plugin-templates` (Docker), and template fixes never reach provisioning.
+ */
+function resolveTemplatesCacheDir(cfg: Record<string, string>): string {
+  if (cfg.templatesPath) return cfg.templatesPath;
+  if (isDockerLayout()) return path.join(os.homedir(), 'plugin-templates');
+  return path.join(os.homedir(), '.paperclip', 'plugin-templates');
+}
+
+/**
+ * Delete and re-download the templates cache from GitHub so the next assembly uses
+ * the latest published templates. Returns the refreshed dir. Throws on failure;
+ * callers that must not fail (e.g. provisioning) should wrap in try/catch and fall
+ * back to the existing cache.
+ */
+function refreshTemplatesCache(cfg: Record<string, string>, log?: (m: string) => void): string {
+  const repoUrl = cfg.templatesRepoUrl || DEFAULT_TEMPLATES_REPO_URL;
+  const targetDir = resolveTemplatesCacheDir(cfg);
+  if (fs.existsSync(targetDir)) {
+    fs.rmSync(targetDir, { recursive: true, force: true });
+  }
+  downloadTemplatesFromGithub(targetDir, repoUrl);
+  log?.(`✓ Refreshed templates cache from ${repoUrl} → ${targetDir}`);
+  return targetDir;
 }
 
 type SecretResolverContext = {
@@ -928,15 +958,12 @@ const plugin = definePlugin({
     ctx.actions.register('refresh-templates', async () => {
       try {
         const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
-        const repoUrl = cfg.templatesRepoUrl || DEFAULT_TEMPLATES_REPO_URL;
-        const targetDir =
-          cfg.templatesPath || path.join(os.homedir(), '.paperclip', 'plugin-templates');
-
-        if (fs.existsSync(targetDir)) {
-          fs.rmSync(targetDir, { recursive: true, force: true });
-        }
-        downloadTemplatesFromGithub(targetDir, repoUrl);
-        return { ok: true };
+        // Refresh the SAME dir ensureTemplatesDir reads (Docker-aware) — previously
+        // this always targeted ~/.paperclip/plugin-templates, so on Docker instances
+        // (where the worker reads ~/plugin-templates) the refresh hit the wrong dir
+        // and template fixes never reached the agents.
+        const targetDir = refreshTemplatesCache(cfg);
+        return { ok: true, targetDir };
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) };
       }
@@ -1485,6 +1512,27 @@ const plugin = definePlugin({
             ? params.existingCompanyId.trim()
             : '';
         if (!companyName) return { error: 'companyName is required', logs };
+
+        // Refresh the templates cache from the repo before assembling so an update
+        // always provisions the LATEST published instructions — otherwise a stale
+        // local cache silently re-writes old agent instructions over the fix
+        // (a fixed-but-never-deployed trap, especially on existing-company updates).
+        // Best-effort: a download failure falls back to the existing cache.
+        //
+        // Skip when `templatesPath` is explicitly configured — that path is a
+        // user-managed templates dir (e.g. a local working copy synced by hand), and
+        // deleting + re-downloading it from GitHub on every provision would clobber it.
+        if (params.refreshTemplates !== false && !cfg.templatesPath) {
+          try {
+            refreshTemplatesCache(cfg, log);
+          } catch (err) {
+            log(
+              `⚠ Could not refresh templates cache (${err instanceof Error ? err.message : String(err)}); using existing cache.`,
+            );
+          }
+        } else if (cfg.templatesPath) {
+          log(`Using configured templatesPath (${cfg.templatesPath}); skipping auto-refresh.`);
+        }
 
         const templatesDir = await ensureTemplatesDir(cfg);
 

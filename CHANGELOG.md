@@ -4,6 +4,24 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.15] - 2026-06-28
+
+### Fixed
+
+**Template-cache refresh now hits the dir the worker reads (Docker) — fixes "fixed but never deployed"**
+
+`refresh-templates` (the "Update templates" button) always deleted/re-downloaded `~/.paperclip/plugin-templates`, but on Docker instances the worker reads `~/plugin-templates` (`isDockerLayout()`). So refreshing never updated the dir the worker actually assembles from, and shipped template fixes (e.g. the v0.4.7 Code-Reviewer merge-ownership fix) silently never reached agents. A shared `resolveTemplatesCacheDir`/`refreshTemplatesCache` helper now targets the same Docker-aware dir, and `start-provision` refreshes the cache from the repo before assembling (best-effort; `params.refreshTemplates: false` opts out) so an update always provisions the latest published instructions.
+
+### Changed
+
+**CI/CD is a merge gate only when the company owns it (`ci-cd` module)**
+
+The merge gate enforced "CI must be green" whenever the repo had any CI checks — so a pre-existing/external CI on an imported repo (broken or flaky, never configured by the company) deadlocked the merge queue. Now the **authoritative gate is the merge-gate agent's executed local lint/test/build** (run it, paste the output); a green CI is required *in addition* only when the `ci-cd` module is active (the company runs its own pipeline). Without a CI/CD module, pre-existing repo checks are advisory — never block a merge solely on a check the company never set up. Reworded across `pr-conventions.md`, `code-review.md`, `qa-review.md`, the Code-Reviewer `AGENTS.md`, and the engineer `git-workflow.md`.
+
+**Without the pr-review module, the engineer works direct-to-base instead of opening a PR**
+
+The no-pr-review fallback was a "PR Self-Merge Flow" that still opened a PR per change — the source of the orphan/draft/conflict PR pile-up. With no reviewer, that PR adds no value, so the engineer now commits and pushes **directly to the base ref** after local verification, and opens a PR *only* as a fallback when branch protection rejects the direct push. Rewrote `github-repo` `git-workflow.md` (skill + `docs/git-workflow.md`) to the Direct-to-Base Flow, updated Branch-Protection guidance (do not require PRs for an unreviewed company), and scoped the engineer `HEARTBEAT.md` review-path rule to "pr-review active". The PR workflow remains gated to the `pr-review` module only.
+
 ## [0.4.14] - 2026-06-25
 
 ### Fixed
