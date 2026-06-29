@@ -18,8 +18,7 @@
     "prepare": "husky"
   },
   "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
+    "access": "public"
   },
   "lint-staged": {
     "src/**/*.{ts,tsx,js,jsx}": [

@@ -13,14 +13,24 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v6
+      - uses: pnpm/action-setup@v4
         with:
-          node-version: '24'
+          version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
           registry-url: 'https://registry.npmjs.org'
-          package-manager-cache: false  # never use caching in release builds
-      - run: npm ci
-      - run: npm run build --if-present
-      - run: npm test
-      - run: npm publish  # Or: npm stage publish
+          scope: '@starlein'
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm build:prod
+      - run: pnpm test
+      - run: pnpm test:logic
+      - run: pnpm publish --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
