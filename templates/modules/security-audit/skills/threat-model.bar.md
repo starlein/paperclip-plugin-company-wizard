@@ -2,7 +2,7 @@
 
 A good threat model:
 
-- A `docs/THREAT-MODEL.md` with a system overview that includes components, data flows, and explicit trust boundaries; STRIDE threats against the identified attack surfaces; a risk rating (Likelihood × Impact) for each threat; and mitigations for every Critical and High risk.
+- A `../../docs/THREAT-MODEL.md` with a system overview that includes components, data flows, and explicit trust boundaries; STRIDE threats against the identified attack surfaces; a risk rating (Likelihood × Impact) for each threat; and mitigations for every Critical and High risk.
 - Critical and High risks have corresponding follow-up issues with specific remediation tasks.
 
 Not done:

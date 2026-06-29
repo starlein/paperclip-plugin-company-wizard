@@ -202,15 +202,16 @@ describe('assembleCompany', () => {
     );
     assert.ok(skillContent.includes('# Git skill'));
 
-    // AGENTS.md should reference the skill via an absolute path (no unresolved $AGENT_HOME)
+    // AGENTS.md should reference the skill by a RELATIVE path (resolved by the
+    // runtime from the AGENTS.md directory), with no `$AGENT_HOME/` file prefix.
     const agentsMd = await readFile(join(companyDir, 'agents', 'engineer', 'AGENTS.md'), 'utf-8');
     assert.ok(
-      agentsMd.includes(join(companyDir, 'agents', 'engineer', 'skills', 'git-workflow.md')),
-      'AGENTS.md should reference the skill by absolute path',
+      agentsMd.includes('Read and follow: `skills/git-workflow.md`'),
+      'AGENTS.md should reference the skill by relative path',
     );
     assert.ok(
-      !agentsMd.includes('$AGENT_HOME'),
-      'AGENTS.md should not contain unresolved $AGENT_HOME',
+      !agentsMd.includes('$AGENT_HOME/'),
+      'AGENTS.md should not contain a $AGENT_HOME/ file prefix',
     );
   });
 
@@ -816,16 +817,20 @@ describe('assembleCompany', () => {
     assert.ok(
       projectBlock.includes('**executionWorkspacePolicy.workspaceStrategy.baseRef**: origin/main'),
     );
-    assert.ok(!projectBlock.includes('**workspace.cwd**:'));
+    // External-repo projects are now cloned INTO the company's projects dir, so the
+    // workspace carries a cwd under projects/ (alongside repoUrl) instead of a
+    // separate host-managed clone path.
+    assert.ok(projectBlock.includes('**workspace.cwd**:'));
+    assert.ok(projectBlock.includes('/projects/App'));
     assert.ok(
       !projectBlock.includes('Enable isolated worktrees once the repo exists'),
       'an external repo already gets isolated worktrees, so no deferral note',
     );
-    assert.ok(
-      bootstrap.includes(
-        'workspace: { sourceType: "git_repo", repoUrl: "https://github.com/example/app", repoRef: "origin/main", defaultRef: "origin/main", isPrimary: true }',
-      ),
-    );
+    assert.ok(bootstrap.includes('sourceType: "git_repo"'));
+    assert.ok(bootstrap.includes('repoUrl: "https://github.com/example/app"'));
+    assert.ok(bootstrap.includes('repoRef: "origin/main"'));
+    // External repo is cloned into the company's projects dir.
+    assert.ok(/cwd: "[^"]*\/projects\/App"/.test(bootstrap));
   });
 
   it('preserves configured git workspace policy base ref for isolated worktrees', async () => {

@@ -4,10 +4,10 @@ The Security Engineer owns threat modeling above you. You are the fallback — s
 
 ## Threat Model (Fallback)
 
-1. If no `docs/THREAT-MODEL.md` exists and the Security Engineer hasn't started:
+1. If no `../../docs/THREAT-MODEL.md` exists and the Security Engineer hasn't started:
    - Map the infrastructure attack surface: exposed ports, network boundaries, cloud IAM
    - Identify deployment-specific risks: container escapes, supply chain, CI/CD pipeline security
-   - Document in `docs/THREAT-MODEL.md`
+   - Document in `../../docs/THREAT-MODEL.md`
    - Tag the Security Engineer to expand with application-layer analysis
 2. If the Security Engineer is active, skip this entirely.
 

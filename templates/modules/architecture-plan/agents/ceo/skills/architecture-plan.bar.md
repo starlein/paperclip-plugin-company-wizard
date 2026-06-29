@@ -1,11 +1,11 @@
 ## Architecture Plan — Done Bar (CEO Fallback)
 
 **Done:**
-- `docs/ARCHITECTURE.md` exists with at least: a brief system overview (what the system does, its main components), the primary data flows, and a clear note that this is a CEO-generated placeholder pending engineer review.
+- `../../docs/ARCHITECTURE.md` exists with at least: a brief system overview (what the system does, its main components), the primary data flows, and a clear note that this is a CEO-generated placeholder pending engineer review.
 - A follow-up issue exists, assigned to an engineer or the architecture-plan capability, to complete the full architecture document.
 
 **Not done:**
-- No `docs/ARCHITECTURE.md` exists at all.
+- No `../../docs/ARCHITECTURE.md` exists at all.
 - The document exists but contains no actionable overview (placeholder text only).
 - No follow-up issue was created for the engineer to complete the work.
 

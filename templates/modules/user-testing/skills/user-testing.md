@@ -7,7 +7,7 @@ You own usability evaluations and user testing. This ensures the product meets r
 1. Review the company goal, product description, and user personas
 2. Design test scenarios covering critical user flows
 3. Define success metrics for each scenario (task completion, error rate, time-on-task)
-4. Execute evaluations and document in `docs/USER-TESTING.md`:
+4. Execute evaluations and document in `../../docs/USER-TESTING.md`:
    - **Heuristic analysis**: Apply usability heuristics to key screens and flows
    - **Task flow evaluation**: Walk through core tasks as target personas would
    - **Accessibility review**: Check against basic accessibility standards (contrast, keyboard nav, screen reader)

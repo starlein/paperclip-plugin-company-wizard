@@ -4,9 +4,9 @@ The Audio Designer primarily owns the game's audio. You are the fallback — ste
 
 ## Audio Design (Fallback)
 
-1. If `docs/GDD.md` exists but there is no audio and no audio designer is active:
+1. If `../../docs/GDD.md` exists but there is no audio and no audio designer is active:
    - Add placeholder sounds for the gameplay-critical events first (player action, hit, pickup, success, failure) so feedback is legible.
-   - Note the intended character of each sound in `docs/AUDIO-DIRECTION.md` and mark it **provisional**.
+   - Note the intended character of each sound in `../../docs/AUDIO-DIRECTION.md` and mark it **provisional**.
    - Keep volumes in config, not hardcoded.
 2. If an audio designer is active, skip this entirely.
 

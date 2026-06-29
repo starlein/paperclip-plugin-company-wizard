@@ -43,7 +43,7 @@ Flag any external integrations (forms, payment, chat widgets) that need replacem
 
 ## Output
 
-Write the complete audit to `docs/SITE-AUDIT.md` with sections:
+Write the complete audit to `../../docs/SITE-AUDIT.md` with sections:
 1. Page Inventory (table of all URLs with metadata)
 2. Site Structure (navigation, information architecture)
 3. Technical Stack (framework, hosting, integrations)

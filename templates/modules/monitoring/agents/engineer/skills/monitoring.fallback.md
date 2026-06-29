@@ -4,10 +4,10 @@ The DevOps engineer primarily owns monitoring and observability. You are the fal
 
 ## Monitoring (Fallback)
 
-1. If no `docs/MONITORING.md` exists and DevOps hasn't started:
+1. If no `../../docs/MONITORING.md` exists and DevOps hasn't started:
    - Add basic health check endpoints (liveness and readiness probes returning 200)
    - Set up structured JSON logging with timestamp, level, and service fields
-   - Document the setup in `docs/MONITORING.md`
+   - Document the setup in `../../docs/MONITORING.md`
    - Mark the strategy as **provisional** — it needs DevOps review for alerting, dashboards, and SLOs
 2. If DevOps is active, skip this entirely.
 

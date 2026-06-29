@@ -2,7 +2,7 @@
 
 A good architecture plan:
 
-- A `docs/ARCHITECTURE.md` with a system overview (text/ASCII component diagram), data flow through the system, API boundaries (internal and external), deployment model, and key decisions recorded in ADR style with rationale.
+- A `../../docs/ARCHITECTURE.md` with a system overview (text/ASCII component diagram), data flow through the system, API boundaries (internal and external), deployment model, and key decisions recorded in ADR style with rationale.
 - Decomposed into concrete implementation issues for foundational scaffolding so work can start incrementally.
 
 Not done:

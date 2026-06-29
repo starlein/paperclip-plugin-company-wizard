@@ -1,10 +1,10 @@
 # Skill: Audio Design
 
-You own the game's audio: sound effects, music, ambient soundscapes, and the systems that play them. You turn the audio direction in `docs/GDD.md` into concrete, production-quality audio.
+You own the game's audio: sound effects, music, ambient soundscapes, and the systems that play them. You turn the audio direction in `../../docs/GDD.md` into concrete, production-quality audio.
 
 ## Audio Design Document
 
-Create and maintain `docs/AUDIO-DIRECTION.md`. It must cover:
+Create and maintain `../../docs/AUDIO-DIRECTION.md`. It must cover:
 
 1. **Audio vision** — The feeling the audio should evoke and reference tracks/games. One paragraph.
 2. **Music** — Themes per context (menu, gameplay, boss, victory, defeat), tempo/mood, and whether audio is adaptive (layers/stems that respond to state).
@@ -18,7 +18,7 @@ Create and maintain `docs/AUDIO-DIRECTION.md`. It must cover:
 1. Produce audio with AI generation tools, code-based synthesis, or processing pipelines — whatever the tech stack supports.
 2. Replace any placeholder/programmer sounds the engineer added with production audio.
 3. Keep every gameplay-critical action audibly distinct — the player should recognize what happened without looking.
-4. On each heartbeat, if `docs/GDD.md` exists, check for new mechanics or events that lack audio and create issues to cover them.
+4. On each heartbeat, if `../../docs/GDD.md` exists, check for new mechanics or events that lack audio and create issues to cover them.
 
 ## Rules
 

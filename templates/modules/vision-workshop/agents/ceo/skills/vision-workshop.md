@@ -5,7 +5,7 @@ You own the company vision. Refine the initial goal into a strategic foundation 
 ## Vision Workshop Process
 
 1. Review the company goal and any existing context (market analysis, team composition)
-2. Define and document in `docs/VISION.md`:
+2. Define and document in `../../docs/VISION.md`:
    - **Vision statement**: One sentence describing the desired future state
    - **Mission**: How the company achieves that vision
    - **Success metrics**: 3-5 measurable KPIs with target values and timeframes

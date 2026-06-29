@@ -17,7 +17,7 @@
     {
       "title": "Build initial competitive landscape",
       "assignTo": "capability:competitive-tracking",
-      "description": "Research key competitors: their positioning, strengths, weaknesses, pricing, and recent moves. Document a living competitive landscape in docs/COMPETITIVE-LANDSCAPE.md with actionable differentiation insights."
+      "description": "Research key competitors: their positioning, strengths, weaknesses, pricing, and recent moves. Document a living competitive landscape in ../../docs/COMPETITIVE-LANDSCAPE.md with actionable differentiation insights."
     }
   ]
 }

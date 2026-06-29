@@ -59,19 +59,19 @@
   "issues": [
     {
       "title": "Create Game Design Document",
-      "description": "Define the game's complete design. Follow the GDD template in docs/gdd-template.md.\n\nMust include: concept pitch, core mechanic (input → action → feedback → consequence), three-layer game loop, progression system, win/lose conditions, controls, art direction, audio direction, and all tuning parameters.\n\nOutput: docs/GDD.md",
+      "description": "Define the game's complete design. Follow the GDD template in ../../docs/gdd-template.md.\n\nMust include: concept pitch, core mechanic (input → action → feedback → consequence), three-layer game loop, progression system, win/lose conditions, controls, art direction, audio direction, and all tuning parameters.\n\nOutput: ../../docs/GDD.md",
       "priority": "critical",
       "assignTo": "game-designer"
     },
     {
       "title": "Choose game engine and set up project",
-      "description": "Based on the GDD requirements (genre, platform, art style), evaluate and select a game engine or framework. Options to consider:\n- **Web:** Phaser, PixiJS, Three.js, Kaboom.js, vanilla Canvas/WebGL\n- **Cross-platform:** Godot, Unity, Love2D, Defold\n- **Minimal:** Custom engine if the game is simple enough\n\nSet up the project structure, build pipeline, and basic game loop scaffold. Document the choice in docs/TECH-STACK.md.",
+      "description": "Based on the GDD requirements (genre, platform, art style), evaluate and select a game engine or framework. Options to consider:\n- **Web:** Phaser, PixiJS, Three.js, Kaboom.js, vanilla Canvas/WebGL\n- **Cross-platform:** Godot, Unity, Love2D, Defold\n- **Minimal:** Custom engine if the game is simple enough\n\nSet up the project structure, build pipeline, and basic game loop scaffold. Document the choice in ../../docs/TECH-STACK.md.",
       "priority": "critical",
       "assignTo": "engineer"
     },
     {
       "title": "Define art style guide",
-      "description": "Based on the GDD art direction, create a concrete art style guide:\n- Sprite/asset dimensions and resolution\n- Color palette (exact hex values, limited palette if pixel art)\n- Color language: what colors mean in gameplay (player, enemy, pickup, hazard, background)\n- Animation conventions: frame counts, frame rates, style\n- Asset naming conventions and directory structure\n- Reference images or generated style samples\n\nOutput: docs/ART-STYLE-GUIDE.md and sample assets in assets/reference/",
+      "description": "Based on the GDD art direction, create a concrete art style guide:\n- Sprite/asset dimensions and resolution\n- Color palette (exact hex values, limited palette if pixel art)\n- Color language: what colors mean in gameplay (player, enemy, pickup, hazard, background)\n- Animation conventions: frame counts, frame rates, style\n- Asset naming conventions and directory structure\n- Reference images or generated style samples\n\nOutput: ../../docs/ART-STYLE-GUIDE.md and sample assets in assets/reference/",
       "priority": "high",
       "assignTo": "game-artist"
     },
@@ -95,7 +95,7 @@
     },
     {
       "title": "First playtest and balancing pass",
-      "description": "Play the prototype and document findings:\n- Is the core mechanic fun? Does it feel good?\n- Are controls responsive? Any input lag or awkwardness?\n- Difficulty: too easy, too hard, or unclear?\n- What's missing that would make it fun? What should be cut?\n- Tuning parameter adjustments needed\n\nOutput: docs/PLAYTEST-RESULTS.md with specific findings and recommended changes.",
+      "description": "Play the prototype and document findings:\n- Is the core mechanic fun? Does it feel good?\n- Are controls responsive? Any input lag or awkwardness?\n- Difficulty: too easy, too hard, or unclear?\n- What's missing that would make it fun? What should be cut?\n- Tuning parameter adjustments needed\n\nOutput: ../../docs/PLAYTEST-RESULTS.md with specific findings and recommended changes.",
       "priority": "high",
       "assignTo": "game-designer"
     },
@@ -113,7 +113,7 @@
     },
     {
       "title": "Design all levels and progression",
-      "description": "Create detailed level designs for the full game:\n- Level-by-level breakdown: layout, encounters, mechanics introduced, difficulty target\n- Progression curve: how difficulty ramps across the full game\n- Unlock schedule: what the player earns and when\n- Pacing map: tension/relief rhythm across the full experience\n\nOutput: docs/LEVEL-DESIGNS.md with per-level specs.",
+      "description": "Create detailed level designs for the full game:\n- Level-by-level breakdown: layout, encounters, mechanics introduced, difficulty target\n- Progression curve: how difficulty ramps across the full game\n- Unlock schedule: what the player earns and when\n- Pacing map: tension/relief rhythm across the full experience\n\nOutput: ../../docs/LEVEL-DESIGNS.md with per-level specs.",
       "priority": "high",
       "assignTo": "level-designer"
     },
@@ -131,7 +131,7 @@
     },
     {
       "title": "Final balancing and bug fixing",
-      "description": "Play through the entire game and:\n- Adjust difficulty curve based on full playthrough\n- Fix all gameplay bugs\n- Tune all parameters for satisfying progression\n- Verify no soft-locks or unwinnable states\n- Check edge cases: max score, empty inventory, rapid inputs\n\nUpdate docs/GDD.md with final tuning values.",
+      "description": "Play through the entire game and:\n- Adjust difficulty curve based on full playthrough\n- Fix all gameplay bugs\n- Tune all parameters for satisfying progression\n- Verify no soft-locks or unwinnable states\n- Check edge cases: max score, empty inventory, rapid inputs\n\nUpdate ../../docs/GDD.md with final tuning values.",
       "priority": "high",
       "assignTo": "game-designer"
     },

@@ -14,12 +14,12 @@ You own the company's visual identity and brand guidelines. Define a cohesive br
    - **Logo usage**: Clear space, minimum size, do's and don'ts
    - **Iconography**: Style, stroke weight, grid alignment
    - **Tone of voice**: Communication style, vocabulary, personality
-3. Document everything in `docs/BRAND-IDENTITY.md`:
-   - Use `docs/brand-identity-template.md` as a starting point
+3. Document everything in `../../docs/BRAND-IDENTITY.md`:
+   - Use `../../docs/brand-identity-template.md` as a starting point
    - Fill in all sections with concrete values and rationale
    - Include visual examples or references where possible
 4. Create initial design tokens if a tech stack exists:
-   - If `docs/TECH-STACK.md` is present, produce a tokens file (CSS custom properties or JSON) matching the chosen stack
+   - If `../../docs/TECH-STACK.md` is present, produce a tokens file (CSS custom properties or JSON) matching the chosen stack
    - Reference the design-system module if the architecture-plan module exists
 
 ## Rules

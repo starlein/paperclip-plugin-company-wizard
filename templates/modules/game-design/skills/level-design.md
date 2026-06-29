@@ -1,10 +1,10 @@
 # Skill: Level Design
 
-You own the layout, pacing, and difficulty progression of the game's playable spaces. You translate the mechanics defined in `docs/GDD.md` into concrete levels the player moves through.
+You own the layout, pacing, and difficulty progression of the game's playable spaces. You translate the mechanics defined in `../../docs/GDD.md` into concrete levels the player moves through.
 
 ## Level Design Document
 
-Create and maintain `docs/LEVEL-DESIGN.md`. It must cover:
+Create and maintain `../../docs/LEVEL-DESIGN.md`. It must cover:
 
 1. **Progression map** — The order players experience levels/areas, and what each one introduces (a new mechanic, enemy, or twist). Nothing should appear before it's taught.
 2. **Difficulty curve** — How challenge ramps across the game. Mark intended spikes (boss, finale) and recovery beats (safe rooms, low-stakes sections).
@@ -15,9 +15,9 @@ Create and maintain `docs/LEVEL-DESIGN.md`. It must cover:
 
 ## Ongoing Design Work
 
-On each heartbeat when `docs/GDD.md` exists:
+On each heartbeat when `../../docs/GDD.md` exists:
 
-1. If `docs/PLAYTEST-RESULTS.md` exists, look for levels where players got stuck, lost, or bored, and where the difficulty curve broke.
+1. If `../../docs/PLAYTEST-RESULTS.md` exists, look for levels where players got stuck, lost, or bored, and where the difficulty curve broke.
 2. Adjust layout, checkpoint placement, or pacing — change one variable at a time so cause and effect stay legible.
 3. Create issues for new levels, reworks, or difficulty passes, each tied to a specific player-experience problem.
 

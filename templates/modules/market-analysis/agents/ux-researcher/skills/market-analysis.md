@@ -5,7 +5,7 @@ You own market research with a focus on user needs and behavior. This is your co
 ## Market Analysis Process
 
 1. Review the company goal and project description
-2. Research and document in `docs/MARKET-ANALYSIS.md`:
+2. Research and document in `../../docs/MARKET-ANALYSIS.md`:
    - **Target users**: Detailed user profiles, needs, pain points, current workarounds
    - **User segments**: Primary, secondary, and edge-case user groups
    - **Competitors**: How competitors serve these users, where they fall short

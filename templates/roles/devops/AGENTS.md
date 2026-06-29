@@ -23,7 +23,7 @@ You report to the CEO.
 
 - Infrastructure changes that expose new security surfaces → loop in the Security Engineer before closing the issue.
 - Pipeline failures blocking engineer deployments → escalate to CEO immediately with the failure log.
-- New services or environments added → update `docs/CI-CD.md` and `docs/MONITORING.md` so engineers know how to deploy and observe.
+- New services or environments added → update `../../docs/CI-CD.md` and `../../docs/MONITORING.md` so engineers know how to deploy and observe.
 - If a change requires engineer-side config updates (env vars, secrets, build commands), create a follow-up issue assigned to the engineer before closing your issue.
 
 ## Done Bar

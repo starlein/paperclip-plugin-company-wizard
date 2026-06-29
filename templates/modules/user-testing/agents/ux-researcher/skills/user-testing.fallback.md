@@ -4,10 +4,10 @@ The QA engineer primarily owns test strategy and usability validation. You are t
 
 ## User Testing (Fallback)
 
-1. If no `docs/USER-TESTING.md` exists and QA hasn't started:
+1. If no `../../docs/USER-TESTING.md` exists and QA hasn't started:
    - Design test scenarios covering critical user flows from a user-centered perspective
    - Conduct heuristic evaluation against usability principles
-   - Document findings in `docs/USER-TESTING.md`
+   - Document findings in `../../docs/USER-TESTING.md`
    - Focus on user experience quality — task flows, cognitive load, error recovery
 2. If QA is active, skip this entirely.
 

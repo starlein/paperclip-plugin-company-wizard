@@ -8,7 +8,7 @@ Use this when assigned a codebase-audit issue, codebase-health routine, or expli
 
 ## Initial Audit
 
-Run this when `docs/CODEBASE-AUDIT.md` does not yet exist.
+Run this when `../../docs/CODEBASE-AUDIT.md` does not yet exist.
 
 1. Map the project structure — identify key directories, entry points, and architectural layers.
 2. Read configuration files (package.json, tsconfig, Dockerfile, CI configs) to understand the tech stack and build pipeline.
@@ -16,7 +16,7 @@ Run this when `docs/CODEBASE-AUDIT.md` does not yet exist.
 4. Assess test coverage — untested paths, missing tests, weak assertions.
 5. Identify tech debt — dead code, unused exports, complex functions, inconsistent patterns, duplicated logic.
 6. Check for code quality issues — long files, deep nesting, too many parameters, missing boundary error handling.
-7. Document findings in `docs/CODEBASE-AUDIT.md` or an issue document/work product:
+7. Document findings in `../../docs/CODEBASE-AUDIT.md` or an issue document/work product:
    - architecture overview
    - tech stack summary
    - tech debt inventory ranked by severity

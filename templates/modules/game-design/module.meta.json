@@ -34,7 +34,7 @@
     {
       "title": "Create Game Design Document",
       "assignTo": "capability:game-design",
-      "description": "Define the game's core design: genre, core mechanic, game loop, progression system, win/lose conditions, control scheme, and target audience. Document everything in docs/GDD.md. This is the single source of truth for what the game is."
+      "description": "Define the game's core design: genre, core mechanic, game loop, progression system, win/lose conditions, control scheme, and target audience. Document everything in ../../docs/GDD.md. This is the single source of truth for what the game is."
     }
   ]
 }

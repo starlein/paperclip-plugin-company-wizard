@@ -39,7 +39,7 @@ _Summary of current backlog health. Update on each heartbeat cycle._
 - **Ready assigned issues:** _(count by owner)_
 - **Unassigned todo issues:** _(count; should normally be 0 except items without a suitable owner)_
 - **In-progress issues:** _(count)_
-- **Health:** _(healthy / thin / empty / bloated — see docs/backlog-process.md)_
+- **Health:** _(healthy / thin / empty / bloated — see ../../docs/backlog-process.md)_
 
 ## Decisions Log
 

@@ -9,7 +9,7 @@ You own technology decisions. Evaluate options and document choices that align w
    - List viable options
    - Evaluate against criteria: team familiarity, ecosystem maturity, performance, cost
    - Document the decision and rationale
-3. Write the complete tech stack to `docs/TECH-STACK.md`:
+3. Write the complete tech stack to `../../docs/TECH-STACK.md`:
    - **Chosen stack**: Technology per layer with version
    - **Rationale**: Why each choice was made
    - **Trade-offs**: What was considered and rejected, and why

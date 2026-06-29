@@ -4,10 +4,10 @@ The UX Researcher, CMO, and PO all own market research above you. You are the la
 
 ## Market Analysis (Fallback)
 
-1. If no `docs/MARKET-ANALYSIS.md` exists and the PO hasn't started:
+1. If no `../../docs/MARKET-ANALYSIS.md` exists and the PO hasn't started:
    - Write a brief competitive landscape overview
    - Identify the top 2-3 competitors and key differentiators
-   - Document in `docs/MARKET-ANALYSIS.md`
+   - Document in `../../docs/MARKET-ANALYSIS.md`
    - Tag the researcher, CMO, or PO to expand and maintain the analysis
 2. If the researcher, CMO, or PO is active, skip this entirely.
 

@@ -1,6 +1,6 @@
 # Skill: Monitoring
 
-You are responsible for setting up observability, alerting, and health checks for the project. Follow the conventions in `docs/MONITORING.md` in the project root.
+You are responsible for setting up observability, alerting, and health checks for the project. Follow the conventions in `../../docs/MONITORING.md` in the project root.
 
 ## Steps
 
@@ -9,8 +9,8 @@ You are responsible for setting up observability, alerting, and health checks fo
 3. Configure error tracking — capture unhandled exceptions with context (request ID, user, stack trace).
 4. Set up structured logging — all log output must be machine-parseable JSON with consistent fields.
 5. Define alert thresholds for key metrics (error rate, latency, uptime, resource usage).
-6. Set up a basic operational dashboard (in the monitoring tool configured for this project) showing: request rate, error rate, latency (p50/p99), and the key health indicators defined above. Document the dashboard URL/name in `docs/MONITORING.md`.
-7. Document the full observability strategy in `docs/MONITORING.md`.
+6. Set up a basic operational dashboard (in the monitoring tool configured for this project) showing: request rate, error rate, latency (p50/p99), and the key health indicators defined above. Document the dashboard URL/name in `../../docs/MONITORING.md`.
+7. Document the full observability strategy in `../../docs/MONITORING.md`.
 
 ## Rules
 

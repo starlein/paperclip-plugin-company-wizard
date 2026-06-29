@@ -11,7 +11,7 @@ You own security code review for the project. This catches vulnerabilities in th
    - **Data exposure**: Leaked secrets, verbose errors, unnecessary data in responses
    - **Dependencies**: Known CVEs in dependencies (`npm audit` or equivalent)
    - **Configuration**: Missing security headers, permissive CORS, debug mode in production
-2. Document in `docs/SECURITY-REVIEW.md`:
+2. Document in `../../docs/SECURITY-REVIEW.md`:
    - **Findings** with severity (Critical/High/Medium/Low), location, and evidence
    - **Recommendations** for each finding with specific fix guidance
    - **Dependency report** with CVE details

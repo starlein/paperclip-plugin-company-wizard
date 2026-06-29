@@ -18,7 +18,7 @@ Review is by *probing*, not by reading. Your verdict must state what you actuall
 1. You are the active participant of a `review` stage on the issue carrying the PR link.
 2. State **what you probed and how** (e.g. "checked the new `/upload` endpoint for path traversal with `../` inputs; validated the content-type allowlist"). A verdict without concrete checks is invalid.
 3. Record the stage decision through the normal issue update route: `approved` by PATCHing the issue toward `done` with the checks performed, or `changes_requested` by PATCHing back to `in_progress` with the specific finding, impact, and remediation.
-4. Optionally mirror as a GitHub PR comment via a Markdown file (`## ✅ Approved` / `## 🔄 Changes requested`), run `gh pr comment <number> --body-file <file>`. Never inline `--body "..."`. See `docs/pr-conventions.md` → *Posting PR Bodies & Comments*.
+4. Optionally mirror as a GitHub PR comment via a Markdown file (`## ✅ Approved` / `## 🔄 Changes requested`), run `gh pr comment <number> --body-file <file>`. Never inline `--body "..."`. See `../../docs/pr-conventions.md` → *Posting PR Bodies & Comments*.
 
 ## Rules
 

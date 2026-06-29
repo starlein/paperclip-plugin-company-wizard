@@ -15,7 +15,7 @@ You are the DevOps engineer and CI/CD is your core domain. You own the full pipe
    - Run smoke tests after deployment
 4. Add status badges to the project README
 5. Set up infrastructure-as-code for pipeline resources (runners, caches, secrets)
-6. Document the full pipeline in `docs/CI-CD.md`
+6. Document the full pipeline in `../../docs/CI-CD.md`
 
 ## Rules
 

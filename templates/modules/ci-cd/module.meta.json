@@ -18,7 +18,7 @@
     {
       "title": "Set up CI/CD pipeline",
       "assignTo": "capability:ci-cd",
-      "description": "Configure continuous integration (lint, test, build) and deployment pipeline. Document the setup in docs/CI-CD.md. Use GitHub Actions or equivalent."
+      "description": "Configure continuous integration (lint, test, build) and deployment pipeline. Document the setup in ../../docs/CI-CD.md. Use GitHub Actions or equivalent."
     },
     {
       "title": "Add linter and configure lint rules",

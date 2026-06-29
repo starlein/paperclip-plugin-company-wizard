@@ -510,15 +510,20 @@ describe('assembleCompany integration (real templates)', () => {
       templatesDir: REAL_TEMPLATES_DIR,
     });
 
-    // github-repo has agent-specific skill for engineer; reference must be the
-    // absolute provisioned path, not an unresolved $AGENT_HOME placeholder.
+    // github-repo has an agent-specific skill for engineer; the reference must be
+    // RELATIVE (resolved by the runtime from the AGENTS.md dir), not an absolute
+    // path and not an unresolved $AGENT_HOME placeholder.
     const engAgentsMd = await readFile(
       join(companyDir, 'agents', 'engineer', 'AGENTS.md'),
       'utf-8',
     );
     assert.ok(
-      engAgentsMd.includes(join(companyDir, 'agents', 'engineer', 'skills', 'git-workflow.md')),
-      'engineer AGENTS.md should reference git-workflow skill by absolute path',
+      engAgentsMd.includes('Read and follow: `skills/git-workflow.md`'),
+      'engineer AGENTS.md should reference git-workflow skill by relative path',
+    );
+    assert.ok(
+      !engAgentsMd.includes(join(companyDir, 'agents', 'engineer', 'skills', 'git-workflow.md')),
+      'engineer AGENTS.md should not contain an absolute skill path',
     );
 
     // Skill file should exist at the referenced location
@@ -528,7 +533,7 @@ describe('assembleCompany integration (real templates)', () => {
     );
   });
 
-  it('resolves all $AGENT_HOME references to absolute paths in agent files', async () => {
+  it('rewrites $AGENT_HOME file references to relative paths in agent files', async () => {
     const { companyDir, allRoles } = await assembleCompany({
       companyName: 'AgentHomeCo',
       moduleNames: ['github-repo'],
@@ -543,17 +548,17 @@ describe('assembleCompany integration (real templates)', () => {
         const p = join(roleDir, file);
         if (!(await exists(p))) continue;
         const content = await readFile(p, 'utf-8');
+        // File references (`$AGENT_HOME/<file>`) are stripped to relative; bare
+        // `$AGENT_HOME` prose (the runtime home env var) may remain.
         assert.ok(
-          !content.includes('$AGENT_HOME'),
-          `${role}/${file} should not contain unresolved $AGENT_HOME`,
+          !content.includes('$AGENT_HOME/'),
+          `${role}/${file} should not contain a $AGENT_HOME/ file prefix`,
         );
-        // The role's own files should be referenced under its absolute home dir.
-        if (content.includes('/skills/') || content.includes('/HEARTBEAT.md')) {
-          assert.ok(
-            content.includes(roleDir),
-            `${role}/${file} should reference files under its absolute home dir`,
-          );
-        }
+        // Instruction refs must be relative, never under the absolute home dir.
+        assert.ok(
+          !content.includes(`${roleDir}/skills/`) && !content.includes(`${roleDir}/HEARTBEAT.md`),
+          `${role}/${file} should reference sibling files relatively, not by absolute path`,
+        );
       }
     }
   });

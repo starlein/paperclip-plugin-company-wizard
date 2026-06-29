@@ -2,7 +2,7 @@
 
 A good accessibility audit:
 
-- A `docs/ACCESSIBILITY-AUDIT.md` covering WCAG 2.2 AA across: semantic HTML, keyboard navigation, colour contrast, ARIA usage, images/media, forms, and zoom/responsive behaviour.
+- A `../../docs/ACCESSIBILITY-AUDIT.md` covering WCAG 2.2 AA across: semantic HTML, keyboard navigation, colour contrast, ARIA usage, images/media, forms, and zoom/responsive behaviour.
 - Each finding has a severity (Critical / Major / Minor), a specific location, and a concrete remediation — Critical and Major findings have follow-up issues created.
 
 Not done:

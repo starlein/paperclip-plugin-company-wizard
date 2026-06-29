@@ -4,10 +4,10 @@ QA and the UX Researcher primarily own usability evaluation. You are the fallbac
 
 ## User Testing (Fallback)
 
-1. If no `docs/USER-TESTING.md` exists and no one above you has started:
+1. If no `../../docs/USER-TESTING.md` exists and no one above you has started:
    - Create a basic test plan covering the most critical user flows
    - Evaluate against acceptance criteria from the product roadmap
-   - Document findings in `docs/USER-TESTING.md`
+   - Document findings in `../../docs/USER-TESTING.md`
    - Mark all findings as **provisional** — they need validation by QA or a researcher
 2. If QA or the researcher is active, skip this entirely.
 

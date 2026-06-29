@@ -10,7 +10,7 @@ Coordinate with the CEO on the vision by providing:
 - **Metrics reality check**: Propose user-centered KPIs (retention, task completion, satisfaction)
 - **Non-goals validation**: Are we correctly excluding things users don't need?
 
-Document your research inputs in `docs/VISION.md` under a `## User Research Inputs` section.
+Document your research inputs in `../../docs/VISION.md` under a `## User Research Inputs` section.
 
 ## Rules
 

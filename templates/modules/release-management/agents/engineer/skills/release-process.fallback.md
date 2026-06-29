@@ -4,9 +4,9 @@ DevOps primarily owns the release process. You are the fallback — step in only
 
 ## Release Process (Fallback)
 
-1. If no `docs/RELEASE-PROCESS.md` exists and DevOps hasn't started:
+1. If no `../../docs/RELEASE-PROCESS.md` exists and DevOps hasn't started:
    - Check the project for existing versioning (git tags, package.json version)
-   - Document the current state in `docs/RELEASE-PROCESS.md`
+   - Document the current state in `../../docs/RELEASE-PROCESS.md`
    - If no process exists, set up basic semver + CHANGELOG.md
    - Mark the document as **provisional** — it needs DevOps review for CI integration and rollback procedures
 2. If DevOps is active, skip this entirely.

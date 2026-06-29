@@ -20,7 +20,7 @@ You are responsible for keeping the project's dependencies healthy, secure, and 
    - Can it be updated in-place (patch/minor bump)?
    - Does it require migration work (major version, breaking changes)?
    - Are there alternatives if the dependency is abandoned?
-5. **Document** findings in `docs/DEPENDENCY-AUDIT.md`:
+5. **Document** findings in `../../docs/DEPENDENCY-AUDIT.md`:
    - Summary table of dependencies by status (current, outdated, vulnerable, deprecated)
    - Prioritized upgrade plan with estimated effort
    - Lock file hygiene notes
@@ -34,7 +34,7 @@ When assigned a "Dependency audit" routine-run issue:
 1. Run the vulnerability scan: `npm audit --json` (or equivalent for the project's package manager). Flag any new Critical or High CVEs not present in the last audit.
 2. Check for newly outdated dependencies: compare current versions against the latest. Flag anything more than one major version behind.
 3. Apply safe patch updates (semver patch-only, no breaking changes): update, run the test suite, commit if green.
-4. Update `docs/DEPENDENCY-AUDIT.md` with the new scan date, any new findings, and any updates applied.
+4. Update `../../docs/DEPENDENCY-AUDIT.md` with the new scan date, any new findings, and any updates applied.
 5. Mark the routine issue done. If Critical CVEs were found that cannot be patched, create a separate high-priority issue for each and escalate to CEO.
 
 ## Rules

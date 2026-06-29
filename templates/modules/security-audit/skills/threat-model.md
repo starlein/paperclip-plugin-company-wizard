@@ -4,8 +4,8 @@ You own threat modeling for the project. This identifies security risks before t
 
 ## Threat Modeling Process
 
-1. Review the system architecture — if `docs/ARCHITECTURE.md` exists, use it as the starting point. Otherwise, analyze the codebase structure directly.
-2. Document in `docs/THREAT-MODEL.md`:
+1. Review the system architecture — if `../../docs/ARCHITECTURE.md` exists, use it as the starting point. Otherwise, analyze the codebase structure directly.
+2. Document in `../../docs/THREAT-MODEL.md`:
    - **System overview**: Components, data flows, trust boundaries
    - **Attack surfaces**: Entry points, APIs, user inputs, external integrations
    - **Threats (STRIDE)**: Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege

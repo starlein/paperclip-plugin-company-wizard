@@ -4,11 +4,11 @@ The UI Designer primarily owns brand identity and visual guidelines. You are the
 
 ## Brand Identity (Fallback)
 
-1. If no `docs/BRAND-IDENTITY.md` exists and no designer has started:
+1. If no `../../docs/BRAND-IDENTITY.md` exists and no designer has started:
    - Define brand positioning: mission statement, target audience, key differentiators
    - Establish tone of voice and communication guidelines
    - Set up a minimal color palette and typography recommendation
-   - Document in `docs/BRAND-IDENTITY.md` and mark visual choices as **provisional**
+   - Document in `../../docs/BRAND-IDENTITY.md` and mark visual choices as **provisional**
    - Create an issue for the designer to refine visual identity
 2. If a designer is active, skip this entirely.
 

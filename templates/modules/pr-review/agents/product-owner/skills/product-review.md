@@ -17,7 +17,7 @@ You review PRs for intent alignment, scope discipline, and acceptance criteria. 
 2. Record your verdict through the normal issue update route for your approval stage:
    - **approved** if the change meets product requirements
    - **changes_requested** with specific feedback tied to acceptance criteria
-3. Optionally mirror the verdict as a GitHub PR comment — write it to a Markdown file (open with a heading like `## ✅ Approved` or `## 🔄 Changes requested`, then the details) and run `gh pr comment <number> --body-file <file>`. Never use inline `--body "..."`: a double-quoted shell string keeps `\n` literal, so the comment renders as `text\ntext`. See `docs/pr-conventions.md` → *Posting PR Bodies & Comments*.
+3. Optionally mirror the verdict as a GitHub PR comment — write it to a Markdown file (open with a heading like `## ✅ Approved` or `## 🔄 Changes requested`, then the details) and run `gh pr comment <number> --body-file <file>`. Never use inline `--body "..."`: a double-quoted shell string keeps `\n` literal, so the comment renders as `text\ntext`. See `../../docs/pr-conventions.md` → *Posting PR Bodies & Comments*.
 
 ## Rules
 

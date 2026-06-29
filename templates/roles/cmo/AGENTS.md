@@ -21,7 +21,7 @@ You report to the CEO.
 
 ## Collaboration and Handoffs
 
-- Brand guidelines or messaging changes → notify the UI Designer and CEO; update `docs/BRAND-IDENTITY.md`.
+- Brand guidelines or messaging changes → notify the UI Designer and CEO; update `../../docs/BRAND-IDENTITY.md`.
 - Launch plans requiring engineering work → create issues for the engineer with clear acceptance criteria and timeline.
 - Market analysis or competitive intel findings → share summary with CEO and Product Owner via issue comment.
 - Content needing legal review or board approval → escalate before publishing.

@@ -4,9 +4,9 @@ You are establishing the project's design system foundations when no UI Designer
 
 ## Steps
 
-1. Read `docs/TECH-STACK.md` if it exists to understand the frontend framework and styling approach.
-2. Read `docs/BRAND-IDENTITY.md` if it exists for color palette, typography, and brand direction.
-3. If `docs/DESIGN-SYSTEM.md` does not exist, create it using `docs/design-system-template.md` as a starting point.
+1. Read `../../docs/TECH-STACK.md` if it exists to understand the frontend framework and styling approach.
+2. Read `../../docs/BRAND-IDENTITY.md` if it exists for color palette, typography, and brand direction.
+3. If `../../docs/DESIGN-SYSTEM.md` does not exist, create it using `../../docs/design-system-template.md` as a starting point.
 4. Define the minimum viable token set:
    - **Colors**: primary, secondary, background, surface, text, error/warning/success. Use the brand palette if available, otherwise choose accessible defaults (WCAG AA contrast ratio ≥ 4.5:1 for text).
    - **Typography**: 2–3 font sizes (body, heading, small), font family (system stack if no brand font specified), line heights.
@@ -21,5 +21,5 @@ You are establishing the project's design system foundations when no UI Designer
 
 - Keep it practical over perfect. Consistent tokens are more valuable than a comprehensive design system.
 - Do not create visual assets (icons, illustrations) — document where placeholders should go.
-- Reference `docs/ARCHITECTURE.md` for the component hierarchy if it exists.
-- If `docs/DESIGN-SYSTEM.md` already exists (a UI Designer ran first), review it for engineering feasibility and add implementation notes — do not overwrite their work.
+- Reference `../../docs/ARCHITECTURE.md` for the component hierarchy if it exists.
+- If `../../docs/DESIGN-SYSTEM.md` already exists (a UI Designer ran first), review it for engineering feasibility and add implementation notes — do not overwrite their work.

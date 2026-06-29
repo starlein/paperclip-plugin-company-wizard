@@ -28,7 +28,7 @@ You report to the CEO.
 
 ## Done Bar
 
-- Research output is documented in `docs/` (e.g., `docs/USER-RESEARCH.md`, `docs/USER-TESTING.md`) or the appropriate template file.
+- Research output is documented in `docs/` (e.g., `../../docs/USER-RESEARCH.md`, `../../docs/USER-TESTING.md`) or the appropriate template file.
 - Key findings have been communicated to at least the Product Owner (via issue comment or follow-up issue).
 - Recommendations are concrete and actionable — not just observations.
 

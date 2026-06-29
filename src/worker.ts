@@ -36,7 +36,7 @@ const DEFAULT_TEMPLATES_REPO_URL =
   'https://github.com/starlein/paperclip-plugin-company-wizard/tree/main/templates';
 const BUNDLED_TEMPLATES_DIR = path.resolve(__dirname, '..', 'templates');
 const PLUGIN_PACKAGE_NAME = '@starlein/paperclip-plugin-company-wizard';
-const CURRENT_PLUGIN_VERSION = '0.4.15';
+const CURRENT_PLUGIN_VERSION = '0.4.16';
 const NPM_LATEST_URL =
   'https://registry.npmjs.org/@starlein%2Fpaperclip-plugin-company-wizard/latest';
 
@@ -569,75 +569,46 @@ function formatRoleName(role: string): string {
     .join(' ');
 }
 
-function collectInstructionFiles(rootDir: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  if (!fs.existsSync(rootDir)) return out;
-
-  const walk = (dir: string) => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const abs = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        walk(abs);
-        continue;
-      }
-      if (!entry.isFile()) continue;
-      const rel = path.relative(rootDir, abs).split(path.sep).join('/');
-      out[rel] = fs.readFileSync(abs, 'utf-8');
-    }
-  };
-
-  walk(rootDir);
-  return out;
-}
-
-async function syncAgentInstructionsIntoManagedBundle({
+/**
+ * Point an agent's instructions at the assembled on-disk directory using the host's
+ * **external** bundle mode (rather than a managed bundle materialized under
+ * `companies/<companyId>/agents/<agentId>/instructions`). `sourceDir` is the
+ * human-readable assembled dir, e.g.
+ * `…/companies/<CompanyName>/agents/<role>/`, and `entryFile` is `AGENTS.md`.
+ *
+ * `updateInstructionsBundle({ mode: 'external', rootPath, entryFile })` sets
+ * `instructionsBundleMode`/`instructionsRootPath`/`instructionsEntryFile` AND
+ * `instructionsFilePath = rootPath/entryFile` on the agent's adapterConfig. Every
+ * local adapter (codex/claude/acpx) reads `instructionsFilePath`, injects its
+ * content, and tells the model to resolve relative file references from its
+ * directory — so the assembled `HEARTBEAT.md` / `skills/<x>.md` / `../../docs/<y>.md`
+ * references resolve correctly without any absolute paths, and existing managed
+ * agents are migrated to external in a single call.
+ */
+async function setExternalInstructionsBundle({
   client,
   agentId,
   sourceDir,
   entryFile,
-  fallbackEntryContent,
   log,
 }: {
   client: any;
   agentId: string;
   sourceDir: string;
   entryFile: string;
-  fallbackEntryContent?: string;
   log: (m: string) => void;
 }) {
   try {
     await client.updateInstructionsBundle(agentId, {
-      mode: 'managed',
+      mode: 'external',
+      rootPath: sourceDir,
       entryFile,
       clearLegacyPromptTemplate: true,
     });
-
-    const files = collectInstructionFiles(sourceDir);
-    if (
-      !files[entryFile] &&
-      typeof fallbackEntryContent === 'string' &&
-      fallbackEntryContent.trim()
-    ) {
-      files[entryFile] = fallbackEntryContent;
-    }
-
-    const entries = Object.entries(files).sort(([a], [b]) => a.localeCompare(b));
-    if (entries.length === 0) {
-      log('⚠ No instruction files found to sync into managed bundle.');
-      return;
-    }
-
-    for (const [relativePath, content] of entries) {
-      await client.upsertInstructionsBundleFile(agentId, {
-        path: relativePath,
-        content,
-      });
-    }
-
-    log(`✓ Synced ${entries.length} instruction file(s) into managed bundle`);
+    log(`✓ Pointed instructions at external dir ${sourceDir} (entry ${entryFile})`);
   } catch (err) {
     log(
-      `⚠ Could not sync managed instructions bundle: ${err instanceof Error ? err.message : String(err)}`,
+      `⚠ Could not set external instructions bundle: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
 }
@@ -1630,9 +1601,11 @@ const plugin = definePlugin({
         const ceoInstructionsDir = path.join(companyDir, 'agents', 'ceo');
         const ceoEntryFile = 'AGENTS.md';
         const ceoEntryPath = path.join(ceoInstructionsDir, ceoEntryFile);
-        const ceoPromptTemplate = fs.existsSync(ceoEntryPath)
-          ? fs.readFileSync(ceoEntryPath, 'utf-8')
-          : '';
+        if (!fs.existsSync(ceoEntryPath)) {
+          log(
+            `⚠ Assembled CEO entry file missing at ${ceoEntryPath}; external bundle may be empty.`,
+          );
+        }
 
         log('');
         log(`✓ Generated files: ${companyDir}`);
@@ -1777,18 +1750,9 @@ const plugin = definePlugin({
             companyDir,
             roleAdapterOverrides: assembleResult.roleAdapterOverrides?.get('ceo') ?? {},
           });
-          const ceoInstructionFiles = collectInstructionFiles(ceoInstructionsDir);
-          if (
-            !ceoInstructionFiles[ceoEntryFile] &&
-            typeof ceoPromptTemplate === 'string' &&
-            ceoPromptTemplate.trim()
-          ) {
-            ceoInstructionFiles[ceoEntryFile] = ceoPromptTemplate;
-          }
-          const ceoInstructionsBundle =
-            Object.keys(ceoInstructionFiles).length > 0
-              ? { entryFile: ceoEntryFile, files: ceoInstructionFiles }
-              : undefined;
+          // The CEO uses an EXTERNAL instructions bundle pointing at the assembled
+          // on-disk dir (set after create/update), so no managed bundle is uploaded.
+          adapterConfig.instructionsFilePath = ceoEntryPath;
 
           const logPendingApproval = (agent: any) => {
             if (!agent?._pendingApprovalId) return;
@@ -1845,7 +1809,6 @@ const plugin = definePlugin({
                 reportsTo: null,
                 adapterType,
                 adapterConfig,
-                instructionsBundle: ceoInstructionsBundle,
                 runtimeConfig: ceoRuntimeConfig,
                 permissions: { canCreateAgents: true },
                 ...(boardOperationsIssue?.id ? { sourceIssueId: boardOperationsIssue.id } : {}),
@@ -1865,7 +1828,6 @@ const plugin = definePlugin({
               reportsTo: null,
               adapterType,
               adapterConfig,
-              instructionsBundle: ceoInstructionsBundle,
               runtimeConfig: ceoRuntimeConfig,
               permissions: { canCreateAgents: true },
               ...(boardOperationsIssue?.id ? { sourceIssueId: boardOperationsIssue.id } : {}),
@@ -1875,12 +1837,11 @@ const plugin = definePlugin({
             logPendingApproval(ceoAgent);
           }
 
-          await syncAgentInstructionsIntoManagedBundle({
+          await setExternalInstructionsBundle({
             client,
             agentId: ceoAgentId,
             sourceDir: ceoInstructionsDir,
             entryFile: ceoEntryFile,
-            fallbackEntryContent: ceoPromptTemplate,
             log,
           });
 
@@ -1959,11 +1920,9 @@ const plugin = definePlugin({
               roleAdapterOverrides: assembleResult.roleAdapterOverrides?.get(roleName) ?? {},
             });
             const roleInstructionsDir = path.join(companyDir, 'agents', roleName);
-            const roleInstructionFiles = collectInstructionFiles(roleInstructionsDir);
-            const roleInstructionsBundle =
-              Object.keys(roleInstructionFiles).length > 0
-                ? { entryFile: 'AGENTS.md', files: roleInstructionFiles }
-                : undefined;
+            // External instructions bundle pointing at the assembled on-disk dir
+            // (set after create/update); no managed bundle is uploaded.
+            roleAdapterConfig.instructionsFilePath = path.join(roleInstructionsDir, 'AGENTS.md');
 
             const existingAgent = existingByTemplateRole.get(roleName);
             if (existingAgent?.id) {
@@ -1985,7 +1944,7 @@ const plugin = definePlugin({
                 );
               }
               teamAgentIds[roleName] = existingAgent.id;
-              await syncAgentInstructionsIntoManagedBundle({
+              await setExternalInstructionsBundle({
                 client,
                 agentId: existingAgent.id,
                 sourceDir: roleInstructionsDir,
@@ -2005,11 +1964,17 @@ const plugin = definePlugin({
               reportsTo: ceoAgentId,
               adapterType,
               adapterConfig: roleAdapterConfig,
-              instructionsBundle: roleInstructionsBundle,
               runtimeConfig: roleRuntimeConfig,
               ...(hiringPlanIssue?.id ? { sourceIssueId: hiringPlanIssue.id } : {}),
             });
             teamAgentIds[roleName] = roleAgent.id;
+            await setExternalInstructionsBundle({
+              client,
+              agentId: roleAgent.id,
+              sourceDir: roleInstructionsDir,
+              entryFile: 'AGENTS.md',
+              log,
+            });
             log(`✓ ${roleTitle} created (${roleAgent.id})`);
             if (roleAgent?._pendingApprovalId) {
               log(

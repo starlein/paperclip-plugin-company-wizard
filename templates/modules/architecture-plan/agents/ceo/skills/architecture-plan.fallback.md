@@ -4,9 +4,9 @@ The Engineer primarily owns system architecture. You are the fallback — step i
 
 ## Architecture Plan (Fallback)
 
-1. If no `docs/ARCHITECTURE.md` exists and no engineer has started:
+1. If no `../../docs/ARCHITECTURE.md` exists and no engineer has started:
    - Sketch a minimal architecture based on the tech stack and project goals
-   - Document in `docs/ARCHITECTURE.md`
+   - Document in `../../docs/ARCHITECTURE.md`
    - Create an issue for the engineer to review and expand
 2. If an engineer is active, skip this entirely.
 

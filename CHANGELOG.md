@@ -4,6 +4,21 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.16] - 2026-06-28
+
+### Changed
+
+**Agents and projects use external paths under `companies/<Company>/…` with relative instruction references**
+
+Agents were provisioned with a **managed** instructions bundle (materialized by the host under `companies/<companyId>/agents/<agentId>/instructions/`), and the assembled instruction files hard-coded **absolute** `$AGENT_HOME/...` paths that pointed at the human-readable `companies/<CompanyName>/agents/<role>/` dir — a mismatch that made references fragile and unportable.
+
+- **External instructions bundle (all agents, incl. CEO):** provisioning now points each agent at its assembled on-disk dir via `updateInstructionsBundle({ mode: 'external', rootPath: '…/companies/<Company>/agents/<role>', entryFile: 'AGENTS.md' })`. That call also sets `adapterConfig.instructionsFilePath`, which every local adapter (codex/claude/acpx) loads — instructing the model to *"resolve relative file references from the instructions directory"*. Existing managed agents are migrated to external on the next update.
+- **Relative references** in assembled files: `$AGENT_HOME/HEARTBEAT.md` → `HEARTBEAT.md`, `$AGENT_HOME/skills/<x>.md` → `skills/<x>.md`. Bare `$AGENT_HOME` prose (the runtime home env var) is left intact. The old absolute-path rewrite is removed; no managed-bundle file upload happens anymore.
+- **Company doc references unified to `../../docs/<y>.md`** across every agent-facing file (AGENTS.md, HEARTBEAT, skills, the shipped docs themselves like `git-workflow.md`/`pr-conventions.md`, heartbeat-sections, bootstrap-instructions, and module/preset issue descriptions) — 170+ refs. This path is **cwd-independent**: both the instructions dir (`agents/<role>/`) and the execution cwd (the project workspace `projects/<name>/`) sit at depth 2 under the company dir, so `../../docs/` resolves to `companies/<Company>/docs/` from either. A bare `docs/<y>.md` would have broken once the agent runs in a project workspace.
+- **Project workspaces** are realized under `companies/<Company>/projects/<Project>` for external (`git_repo`) projects too — the repo is cloned into that dir via `workspace.cwd` instead of a separate host-managed clone path (local projects already used this path).
+
+> Deploy + "Update templates" + update-company to migrate a live company's agents from managed to external instructions.
+
 ## [0.4.15] - 2026-06-28
 
 ### Fixed

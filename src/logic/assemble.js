@@ -579,7 +579,7 @@ export async function assembleCompany({
       }
       await appendToFile(
         join(companyDir, 'agents', roleName, 'AGENTS.md'),
-        `\nRead and follow: \`$AGENT_HOME/skills/${fileName}\`\n`,
+        `\nRead and follow: \`skills/${fileName}\`\n`,
       );
       const sourceTag = resolved.source === 'shared' ? ', shared' : '';
       const barTag = barApplied ? ', output bar' : '';
@@ -628,7 +628,7 @@ export async function assembleCompany({
           await copyFile(join(skillsDir, skillFile), join(destSkillsDir, skillFile));
           await appendToFile(
             join(companyDir, 'agents', role.name, 'AGENTS.md'),
-            `\nRead and follow: \`$AGENT_HOME/skills/${skillFile}\`\n`,
+            `\nRead and follow: \`skills/${skillFile}\`\n`,
           );
           onProgress(`+ agents/${role.name}/skills/${skillFile} (${moduleName})`);
         }
@@ -731,31 +731,33 @@ export async function assembleCompany({
         if (relevantDocs.length === 0) continue;
 
         let docRefs =
-          '\n## Shared Documentation\n\nReference docs relevant to your role (paths are relative to your workspace home):\n';
+          '\n## Shared Documentation\n\nReference docs relevant to your role (paths are relative to this AGENTS.md, in the shared company docs dir):\n';
         for (const doc of relevantDocs) {
-          docRefs += `\nRead: \`docs/${doc}\`\n`;
+          docRefs += `\nRead: \`../../docs/${doc}\`\n`;
         }
         await appendToFile(agentsMd, docRefs);
       }
     }
   }
 
-  // 5b. Resolve `$AGENT_HOME` references to absolute paths.
+  // 5b. Rewrite `$AGENT_HOME/<file>` file references to paths RELATIVE to the
+  // agent's AGENTS.md.
   //
-  // Role templates and the generated skill references use `$AGENT_HOME/...` to
-  // point at the agent's own files (HEARTBEAT.md, SOUL.md, TOOLS.md, skills/,
-  // memory/, life/). At runtime Paperclip sets AGENT_HOME to a separate per-agent
-  // workspace dir (<instanceRoot>/workspaces/<agentId>) that does NOT contain
-  // these provisioned files, so the references would not resolve. The agent's
-  // instructionsFilePath is the absolute companyDir/agents/<role>/AGENTS.md, and
-  // its sibling files live alongside it — so we rewrite `$AGENT_HOME` to that
-  // absolute directory, which resolves regardless of the agent's runtime cwd.
+  // Each agent is provisioned with `adapterConfig.instructionsFilePath` =
+  // `companyDir/agents/<role>/AGENTS.md`, and every local adapter (codex/claude/acpx)
+  // injects that file and instructs the model to "resolve any relative file
+  // references from <dir of instructionsFilePath>". So a sibling reference written
+  // as `HEARTBEAT.md` / `skills/x.md` resolves correctly regardless of the agent's
+  // runtime cwd, and shared docs are reached via `../../docs/<doc>`. We therefore
+  // strip the `$AGENT_HOME/` prefix from file references (→ relative). Bare
+  // `$AGENT_HOME` (no trailing slash) is left untouched: it is prose about the
+  // runtime home env var the adapter still sets (life/memory/knowledge live there),
+  // not an instruction-file reference.
   const agentsBaseDirForSubst = join(companyDir, 'agents');
   if (await exists(agentsBaseDirForSubst)) {
     const agentRoleDirs = await readdir(agentsBaseDirForSubst, { withFileTypes: true });
     for (const roleDir of agentRoleDirs) {
       if (!roleDir.isDirectory()) continue;
-      const absoluteAgentHome = join(agentsBaseDirForSubst, roleDir.name);
       const subst = async (dir) => {
         const entries = await readdir(dir, { withFileTypes: true });
         for (const entry of entries) {
@@ -764,8 +766,8 @@ export async function assembleCompany({
             await subst(full);
           } else if (entry.name.endsWith('.md')) {
             const content = await readFile(full, 'utf-8');
-            if (content.includes('$AGENT_HOME')) {
-              await writeFile(full, content.split('$AGENT_HOME').join(absoluteAgentHome));
+            if (content.includes('$AGENT_HOME/')) {
+              await writeFile(full, content.split('$AGENT_HOME/').join(''));
             }
           }
         }
@@ -1053,7 +1055,11 @@ export async function assembleCompany({
       if (repoUrl) workspace.repoUrl = repoUrl;
       if (repoRef) workspace.repoRef = repoRef;
       if (defaultRef) workspace.defaultRef = defaultRef;
-      delete workspace.cwd;
+      // Clone the external repo INTO the company's projects dir (the host realizes a
+      // workspace at `workspace.cwd`), so external-repo projects live at
+      // `companies/<Company>/projects/<Project>` like local ones — not a separate
+      // host-managed clone path.
+      if (!workspace.cwd) workspace.cwd = localCwd;
     } else {
       if (!workspace.cwd) workspace.cwd = localCwd;
       // A bare `git init -b main` leaves an UNBORN main branch (no commits). The

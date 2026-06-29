@@ -2,7 +2,7 @@
 
 A good market analysis:
 
-- A `docs/MARKET-ANALYSIS.md` that covers: target market (who the users are and what problem is being solved), a competitor breakdown with each player's strengths and weaknesses, a clear positioning statement with a unique value proposition, and identified market/adoption risks.
+- A `../../docs/MARKET-ANALYSIS.md` that covers: target market (who the users are and what problem is being solved), a competitor breakdown with each player's strengths and weaknesses, a clear positioning statement with a unique value proposition, and identified market/adoption risks.
 - Each insight is evidence-based and tied to a concrete product decision or follow-up action.
 
 Not done:

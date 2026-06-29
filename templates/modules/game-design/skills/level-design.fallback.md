@@ -4,8 +4,8 @@ The Level Designer primarily owns level layout and pacing. You are the fallback 
 
 ## Level Design (Fallback)
 
-1. If `docs/GDD.md` exists but no level structure has been defined and no level designer is active:
-   - Sketch a minimal progression in `docs/LEVEL-DESIGN.md`: an ordered list of levels/areas and the one mechanic or challenge each introduces.
+1. If `../../docs/GDD.md` exists but no level structure has been defined and no level designer is active:
+   - Sketch a minimal progression in `../../docs/LEVEL-DESIGN.md`: an ordered list of levels/areas and the one mechanic or challenge each introduces.
    - Set a rough difficulty curve (easy → hard) and place checkpoints generously.
    - Mark the document as **provisional** — it needs a dedicated level-design pass.
 2. If a level designer is active, skip this entirely.

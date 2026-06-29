@@ -16,7 +16,7 @@
     {
       "title": "Define brand identity and visual guidelines",
       "assignTo": "capability:brand-identity",
-      "description": "Create the brand book: logo usage, color palette, typography, iconography, and tone-of-voice guidelines. Document everything in docs/BRAND-IDENTITY.md."
+      "description": "Create the brand book: logo usage, color palette, typography, iconography, and tone-of-voice guidelines. Document everything in ../../docs/BRAND-IDENTITY.md."
     }
   ]
 }

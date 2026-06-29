@@ -2,7 +2,7 @@
 
 A good security review:
 
-- A `docs/SECURITY-REVIEW.md` with findings that include: severity (Critical / High / Medium / Low), exact file path and line number, the evidence (code snippet or reproduction step), and a specific recommended fix.
+- A `../../docs/SECURITY-REVIEW.md` with findings that include: severity (Critical / High / Medium / Low), exact file path and line number, the evidence (code snippet or reproduction step), and a specific recommended fix.
 - A dependency report with CVE details from `npm audit` or equivalent. Critical and High findings have follow-up issues created.
 
 Not done:

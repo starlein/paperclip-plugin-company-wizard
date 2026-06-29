@@ -102,7 +102,7 @@ For each distinct page design:
 
 ## Output
 
-Write the complete specification to `docs/DESIGN-SPEC.md` with sections:
+Write the complete specification to `../../docs/DESIGN-SPEC.md` with sections:
 1. Design Tokens (colors, typography, spacing, etc.)
 2. Component Library (each component with description and states)
 3. Page Layouts (each page with structure and responsive notes)

@@ -4,10 +4,10 @@ The Customer Success Manager, CMO, and Product Owner own competitive intelligenc
 
 ## Competitive Tracking (Fallback)
 
-1. If no `docs/COMPETITIVE-LANDSCAPE.md` exists and nobody has started:
+1. If no `../../docs/COMPETITIVE-LANDSCAPE.md` exists and nobody has started:
    - Identify the top 2-3 competitors based on the company goal
    - Write a brief comparison: what they do, how we differ
-   - Document in `docs/COMPETITIVE-LANDSCAPE.md`
+   - Document in `../../docs/COMPETITIVE-LANDSCAPE.md`
    - Tag the Customer Success Manager, CMO, or Product Owner to expand
 2. If any of the above roles are active, skip this entirely.
 

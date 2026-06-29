@@ -5,8 +5,8 @@ You own the visual design system. Establish the foundational patterns that ensur
 ## Design System Process
 
 1. Review the company goal, brand context, and target audience
-2. If `docs/BRAND-IDENTITY.md` exists, use it as the authoritative source for color palette, typography, and brand voice. Do not invent a palette that contradicts established brand identity.
-3. Define and document in `docs/DESIGN-SYSTEM.md`:
+2. If `../../docs/BRAND-IDENTITY.md` exists, use it as the authoritative source for color palette, typography, and brand voice. Do not invent a palette that contradicts established brand identity.
+3. Define and document in `../../docs/DESIGN-SYSTEM.md`:
    - **Color palette**: Primary, secondary, accent, semantic (success, error, warning), neutrals
    - **Typography**: Font families, scale (heading/body/caption sizes), weights, line heights
    - **Spacing**: Base unit and scale (4px, 8px, 12px, 16px, 24px, 32px, 48px, 64px)

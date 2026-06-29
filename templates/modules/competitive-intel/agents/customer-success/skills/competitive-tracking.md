@@ -4,8 +4,8 @@ You own competitive intelligence from the customer perspective. You hear what cu
 
 ## Competitive Tracking Process
 
-1. Review the company goal and existing market analysis — if `docs/MARKET-ANALYSIS.md` exists, use it as context.
-2. Research and document in `docs/COMPETITIVE-LANDSCAPE.md`:
+1. Review the company goal and existing market analysis — if `../../docs/MARKET-ANALYSIS.md` exists, use it as context.
+2. Research and document in `../../docs/COMPETITIVE-LANDSCAPE.md`:
    - **Competitor profiles**: For each key competitor (3-5), document:
      - Product overview and target audience
      - What customers say about switching to/from them

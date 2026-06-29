@@ -5,7 +5,7 @@ You own market research and competitive analysis. This informs the product roadm
 ## Market Analysis Process
 
 1. Review the company goal and project description
-2. Research and document in `docs/MARKET-ANALYSIS.md`:
+2. Research and document in `../../docs/MARKET-ANALYSIS.md`:
    - **Target market**: Who are the users? What problem are we solving?
    - **Competitors**: Who else operates in this space? What are their strengths and weaknesses?
    - **Positioning**: How do we differentiate? What's our unique value proposition?

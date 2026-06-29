@@ -17,7 +17,7 @@
     {
       "title": "Conduct initial market analysis",
       "assignTo": "capability:market-analysis",
-      "description": "Research the target market, identify competitors, analyze positioning opportunities, and document findings in docs/MARKET-ANALYSIS.md. This informs the product roadmap and strategic priorities."
+      "description": "Research the target market, identify competitors, analyze positioning opportunities, and document findings in ../../docs/MARKET-ANALYSIS.md. This informs the product roadmap and strategic priorities."
     }
   ]
 }

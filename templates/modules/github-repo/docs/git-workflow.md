@@ -81,7 +81,7 @@ Rules:
 
 ## Direct-to-Base Flow
 
-Use this flow when the **pr-review module is not active** (no Code Reviewer role, no executionPolicy review stages). With no reviewer, a per-change pull request adds no value and is where branches pile up unmerged, so you work **directly on the base branch**: verify locally, then commit and push to the base ref. Open a PR only as a *fallback* when branch protection rejects the direct push. When PR review is active, use the PR workflow from `docs/pr-conventions.md` instead.
+Use this flow when the **pr-review module is not active** (no Code Reviewer role, no executionPolicy review stages). With no reviewer, a per-change pull request adds no value and is where branches pile up unmerged, so you work **directly on the base branch**: verify locally, then commit and push to the base ref. Open a PR only as a *fallback* when branch protection rejects the direct push. When PR review is active, use the PR workflow from `../../docs/pr-conventions.md` instead.
 
 1. Resolve the configured base ref from project workspace metadata or the issue's `heartbeat-context` before touching Git. Do not infer it from the current shell branch and do not rewrite it to `main`, `master`, or `origin/*`.
    - External repos: use the project/worktree `repoRef`, `defaultRef`, or `executionWorkspacePolicy.workspaceStrategy.baseRef` exactly as configured.

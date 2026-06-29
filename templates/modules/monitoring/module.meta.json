@@ -18,7 +18,7 @@
     {
       "title": "Set up monitoring and observability",
       "assignTo": "capability:monitoring",
-      "description": "Configure health checks, error tracking, logging, and alerting. Document the observability strategy in docs/MONITORING.md."
+      "description": "Configure health checks, error tracking, logging, and alerting. Document the observability strategy in ../../docs/MONITORING.md."
     }
   ]
 }

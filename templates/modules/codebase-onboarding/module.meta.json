@@ -18,7 +18,7 @@
     {
       "title": "Audit codebase and document architecture",
       "assignTo": "capability:codebase-audit",
-      "description": "Read the existing codebase, map the architecture, identify tech debt hotspots and test coverage gaps. Document findings in docs/CODEBASE-AUDIT.md. Create follow-up issues for cleanup opportunities."
+      "description": "Read the existing codebase, map the architecture, identify tech debt hotspots and test coverage gaps. Document findings in ../../docs/CODEBASE-AUDIT.md. Create follow-up issues for cleanup opportunities."
     }
   ]
 }

@@ -1,6 +1,6 @@
 # Skill: CI/CD Pipeline
 
-You manage continuous integration and deployment pipelines. Follow the conventions in `docs/CI-CD.md` in the project root.
+You manage continuous integration and deployment pipelines. Follow the conventions in `../../docs/CI-CD.md` in the project root.
 
 ## Setup Steps
 
@@ -13,10 +13,10 @@ You manage continuous integration and deployment pipelines. Follow the conventio
    - Trigger on merge to the default branch
    - Deploy to the target environment
    - Run smoke tests after deployment
-4. Pin every third-party action to a full commit SHA (`uses: actions/checkout@<sha>`, not `@v4`). SHA pinning prevents supply-chain attacks from a compromised action version tag. Record the pinned SHAs in `docs/CI-CD.md` → *Pinned Action SHAs*.
-5. Document the rollback procedure in `docs/CI-CD.md` → *Rollback*: how to revert a failed deploy (e.g., `git revert` + redeploy, or infra rollback command), how to verify the rollback succeeded, and the recovery SLA. A pipeline with no documented rollback path is not done.
+4. Pin every third-party action to a full commit SHA (`uses: actions/checkout@<sha>`, not `@v4`). SHA pinning prevents supply-chain attacks from a compromised action version tag. Record the pinned SHAs in `../../docs/CI-CD.md` → *Pinned Action SHAs*.
+5. Document the rollback procedure in `../../docs/CI-CD.md` → *Rollback*: how to revert a failed deploy (e.g., `git revert` + redeploy, or infra rollback command), how to verify the rollback succeeded, and the recovery SLA. A pipeline with no documented rollback path is not done.
 6. Add status badges to the project README
-7. Document the full pipeline in `docs/CI-CD.md`
+7. Document the full pipeline in `../../docs/CI-CD.md`
 
 ## Ongoing Health Checks
 

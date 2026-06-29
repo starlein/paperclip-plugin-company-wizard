@@ -4,7 +4,7 @@ You are the primary owner of the game design. This is your core responsibility.
 
 ## Game Design Document
 
-Create and maintain `docs/GDD.md` as the single source of truth. Cover every section thoroughly:
+Create and maintain `../../docs/GDD.md` as the single source of truth. Cover every section thoroughly:
 
 1. **Concept** — One-paragraph pitch. Genre, theme, target platform, target audience. What makes this game unique?
 2. **Core mechanic** — The central verb. Define precisely: input → action → feedback → consequence. What makes it feel good?
@@ -28,7 +28,7 @@ Create and maintain `docs/GDD.md` as the single source of truth. Cover every sec
 
 After each playtest round:
 
-1. Read `docs/PLAYTEST-RESULTS.md` (if it exists).
+1. Read `../../docs/PLAYTEST-RESULTS.md` (if it exists).
 2. Identify the top 3 balance issues by player impact.
 3. Adjust tuning parameters with clear rationale.
 4. Update the GDD with new values.

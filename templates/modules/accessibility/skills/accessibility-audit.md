@@ -5,7 +5,7 @@ You own accessibility compliance. This ensures the product is usable by everyone
 ## Accessibility Audit Process
 
 1. Review the project for WCAG 2.2 compliance at Level AA (minimum).
-2. Check and document in `docs/ACCESSIBILITY-AUDIT.md`:
+2. Check and document in `../../docs/ACCESSIBILITY-AUDIT.md`:
    - **Semantic HTML**: Correct heading hierarchy, landmark regions, form labels
    - **Keyboard navigation**: All interactive elements focusable and operable, logical tab order, visible focus indicators
    - **Color and contrast**: Minimum 4.5:1 for normal text, 3:1 for large text, no color-only information

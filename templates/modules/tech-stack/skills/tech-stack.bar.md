@@ -2,7 +2,7 @@
 
 A good tech stack evaluation:
 
-- A `docs/TECH-STACK.md` that lists the chosen technology per layer (language, framework, database, infra) with version, the rationale for each choice, and the alternatives that were considered and rejected.
+- A `../../docs/TECH-STACK.md` that lists the chosen technology per layer (language, framework, database, infra) with version, the rationale for each choice, and the alternatives that were considered and rejected.
 - Covers at least: team familiarity, ecosystem maturity, performance trade-offs, and cost for each layer.
 
 Not done:

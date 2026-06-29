@@ -6,7 +6,7 @@
     {
       "title": "Define company vision, success metrics, and strategic milestones",
       "assignTo": "ceo",
-      "description": "Refine the company goal into a clear vision statement, define measurable success metrics, and establish strategic milestones. Document in docs/VISION.md. This becomes the north star for all downstream planning."
+      "description": "Refine the company goal into a clear vision statement, define measurable success metrics, and establish strategic milestones. Document in ../../docs/VISION.md. This becomes the north star for all downstream planning."
     }
   ]
 }

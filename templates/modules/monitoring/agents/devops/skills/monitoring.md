@@ -11,7 +11,7 @@ You are the DevOps engineer and observability is your core domain. You own the f
 5. Define alert thresholds for key metrics (error rate, latency, uptime, resource usage).
 6. Set up dashboards for operational visibility (API latency, error rates, infrastructure health).
 7. Configure on-call routing and escalation policies.
-8. Document the full observability strategy in `docs/MONITORING.md`.
+8. Document the full observability strategy in `../../docs/MONITORING.md`.
 
 ## Rules
 

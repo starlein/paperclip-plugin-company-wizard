@@ -4,8 +4,8 @@ You own system architecture. Design the structure that implements the tech stack
 
 ## Architecture Planning Process
 
-1. If `docs/TECH-STACK.md` exists, review it alongside the project requirements. Otherwise, gather tech stack context from the codebase and project docs.
-2. Design and document in `docs/ARCHITECTURE.md`:
+1. If `../../docs/TECH-STACK.md` exists, review it alongside the project requirements. Otherwise, gather tech stack context from the codebase and project docs.
+2. Design and document in `../../docs/ARCHITECTURE.md`:
    - **System overview**: High-level component diagram (describe in text/ASCII)
    - **Component structure**: Modules, services, or packages and their responsibilities
    - **Data flow**: How data moves through the system

@@ -4,8 +4,8 @@ You own competitive intelligence. This is a living analysis — profiles evolve 
 
 ## Competitive Tracking Process
 
-1. Review the company goal and existing market analysis — if `docs/MARKET-ANALYSIS.md` exists, use it as context. Otherwise, start from the project description.
-2. Research and document in `docs/COMPETITIVE-LANDSCAPE.md`:
+1. Review the company goal and existing market analysis — if `../../docs/MARKET-ANALYSIS.md` exists, use it as context. Otherwise, start from the project description.
+2. Research and document in `../../docs/COMPETITIVE-LANDSCAPE.md`:
    - **Competitor profiles**: For each key competitor (3-5), document:
      - Product overview and target audience
      - Positioning and messaging

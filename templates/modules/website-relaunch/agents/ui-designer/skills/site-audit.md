@@ -54,7 +54,7 @@ Note which visual patterns from the current site should be preserved vs. replace
 
 ## Output
 
-Write the complete audit to `docs/SITE-AUDIT.md` with sections:
+Write the complete audit to `../../docs/SITE-AUDIT.md` with sections:
 1. Page Inventory (table of all URLs with page type and status)
 2. Visual Design Patterns (current color palette, typography, component library)
 3. Content Assessment (quality, structure, and brand voice per page)

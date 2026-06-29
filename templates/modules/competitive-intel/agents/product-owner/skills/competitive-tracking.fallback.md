@@ -4,12 +4,12 @@ A specialist in competitive intelligence (Customer Success or CMO) is handling p
 
 ## Steps
 
-1. Read `docs/COMPETITIVE-INTEL.md` if it exists. If it does not, check back after the primary competitive-tracking agent has completed their initial audit.
+1. Read `../../docs/COMPETITIVE-INTEL.md` if it exists. If it does not, check back after the primary competitive-tracking agent has completed their initial audit.
 2. Review recent competitor changes for product-roadmap implications:
    - New features from competitors that close a gap with your product → create a backlog issue "Evaluate [feature] parity with [competitor]" with the relevant section from COMPETITIVE-INTEL.md.
    - Competitor pricing or positioning shifts that affect your value proposition → add a comment to the relevant goal or create an issue for CEO/CMO review.
 3. Update the product backlog with any priority changes driven by competitive pressure (coordinate with CEO before reprioritising existing high-priority items).
-4. Add a `## Product Implications` section to `docs/COMPETITIVE-INTEL.md` if it doesn't already exist, noting your recommendations.
+4. Add a `## Product Implications` section to `../../docs/COMPETITIVE-INTEL.md` if it doesn't already exist, noting your recommendations.
 5. Mark the issue done.
 
 ## Rules

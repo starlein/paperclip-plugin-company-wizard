@@ -4,7 +4,7 @@ The Game Designer or Engineer primarily owns the game design. You are the fallba
 
 ## Game Design (Fallback)
 
-1. If no `docs/GDD.md` exists and no one else has started:
+1. If no `../../docs/GDD.md` exists and no one else has started:
    - Write a minimal Game Design Document covering: concept pitch, core mechanic, basic game loop, target platform
    - List obvious design questions that need answers (progression, win conditions, art style)
    - Mark the document as **provisional** — it needs a thorough design review

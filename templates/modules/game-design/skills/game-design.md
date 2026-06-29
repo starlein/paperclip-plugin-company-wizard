@@ -4,7 +4,7 @@ You own the Game Design Document (GDD) and the ongoing design of the game's mech
 
 ## Game Design Document
 
-Create and maintain `docs/GDD.md` as the single source of truth. It must cover:
+Create and maintain `../../docs/GDD.md` as the single source of truth. It must cover:
 
 1. **Concept** — One-paragraph pitch. Genre, theme, target platform, target audience.
 2. **Core mechanic** — The one thing the player does most. Define it precisely: input → action → feedback → consequence.
@@ -24,9 +24,9 @@ Create and maintain `docs/GDD.md` as the single source of truth. It must cover:
 
 ## Ongoing Design Work
 
-On each heartbeat when `docs/GDD.md` exists:
+On each heartbeat when `../../docs/GDD.md` exists:
 
-1. Review recent playtesting feedback (if `docs/PLAYTEST-RESULTS.md` exists).
+1. Review recent playtesting feedback (if `../../docs/PLAYTEST-RESULTS.md` exists).
 2. Identify mechanics that aren't working — not fun, confusing, or broken.
 3. Propose design changes with clear rationale: what's wrong, what to try, expected impact.
 4. Update tuning parameters based on playtest data.

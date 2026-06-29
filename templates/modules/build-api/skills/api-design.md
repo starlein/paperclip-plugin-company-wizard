@@ -35,7 +35,7 @@ When designing the data model:
 
 ## Output Artifacts
 
-Document your API design decisions in `docs/API-DESIGN.md`:
+Document your API design decisions in `../../docs/API-DESIGN.md`:
 - Resource model (entities and relationships)
 - Endpoint inventory (method, path, description, auth requirement)
 - Authentication strategy

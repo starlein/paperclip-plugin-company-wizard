@@ -29,7 +29,7 @@
           "id": "repo-onboarding",
           "title": "Repo Onboarding",
           "level": "team",
-          "description": "Understand the existing codebase and document its current state. Done when docs/CODEBASE-AUDIT.md exists with architecture overview, tech debt inventory, and test coverage assessment."
+          "description": "Understand the existing codebase and document its current state. Done when ../../docs/CODEBASE-AUDIT.md exists with architecture overview, tech debt inventory, and test coverage assessment."
         },
         {
           "id": "process-setup",
@@ -55,19 +55,19 @@
   "issues": [
     {
       "title": "Audit codebase and document architecture",
-      "description": "Read the existing codebase, map architecture, identify tech debt hotspots and test coverage gaps. Document in docs/CODEBASE-AUDIT.md.",
+      "description": "Read the existing codebase, map architecture, identify tech debt hotspots and test coverage gaps. Document in ../../docs/CODEBASE-AUDIT.md.",
       "priority": "high",
       "assignTo": "engineer"
     },
     {
       "title": "Run initial dependency audit",
-      "description": "Audit all dependencies for outdated versions and known vulnerabilities. Document in docs/DEPENDENCY-AUDIT.md. Apply safe patch updates.",
+      "description": "Audit all dependencies for outdated versions and known vulnerabilities. Document in ../../docs/DEPENDENCY-AUDIT.md. Apply safe patch updates.",
       "priority": "high",
       "assignTo": "engineer"
     },
     {
       "title": "Configure PR workflow and branch protection",
-      "description": "Configure the PR workflow and set up branch protection on the default branch. Branch protection must require a PR before merging (no direct pushes to the base branch — set enforce_admins: true so the shared admin account cannot bypass the PR rule), but must NOT require GitHub-native approving reviews — all agents share one GitHub account and cannot formally approve their own PRs; the review gate lives in Paperclip's executionPolicy, not in GitHub. Use the exact gh api heredoc command from the git-workflow skill → Branch Protection Setup: `gh api repos/{owner}/{repo}/branches/{base}/protection --method PUT --input - <<'EOF'` with payload {\"required_status_checks\": null, \"enforce_admins\": true, \"required_pull_request_reviews\": {\"required_approving_review_count\": 0, \"dismiss_stale_reviews\": false}, \"restrictions\": null}. With required_approving_review_count: 0 the shared account can still open a PR and merge it with zero approvals, so the self-merge flow keeps working. Document PR conventions in docs/pr-conventions.md.",
+      "description": "Configure the PR workflow and set up branch protection on the default branch. Branch protection must require a PR before merging (no direct pushes to the base branch — set enforce_admins: true so the shared admin account cannot bypass the PR rule), but must NOT require GitHub-native approving reviews — all agents share one GitHub account and cannot formally approve their own PRs; the review gate lives in Paperclip's executionPolicy, not in GitHub. Use the exact gh api heredoc command from the git-workflow skill → Branch Protection Setup: `gh api repos/{owner}/{repo}/branches/{base}/protection --method PUT --input - <<'EOF'` with payload {\"required_status_checks\": null, \"enforce_admins\": true, \"required_pull_request_reviews\": {\"required_approving_review_count\": 0, \"dismiss_stale_reviews\": false}, \"restrictions\": null}. With required_approving_review_count: 0 the shared account can still open a PR and merge it with zero approvals, so the self-merge flow keeps working. Document PR conventions in ../../docs/pr-conventions.md.",
       "priority": "high",
       "assignTo": "engineer"
     },
@@ -79,7 +79,7 @@
     },
     {
       "title": "Document or establish release process",
-      "description": "Review current release workflow. If none exists, establish semver + changelog. Document in docs/RELEASE-PROCESS.md.",
+      "description": "Review current release workflow. If none exists, establish semver + changelog. Document in ../../docs/RELEASE-PROCESS.md.",
       "priority": "medium",
       "assignTo": "engineer"
     },

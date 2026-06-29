@@ -2,7 +2,7 @@
 
 A good API design:
 
-- A `docs/API-DESIGN.md` with a resource model, full endpoint inventory (method, path, auth requirement), authentication strategy, error-handling conventions (consistent error shape), and pagination approach.
+- A `../../docs/API-DESIGN.md` with a resource model, full endpoint inventory (method, path, auth requirement), authentication strategy, error-handling conventions (consistent error shape), and pagination approach.
 - Every endpoint has: description, parameter types and constraints, request/response schema, example request/response, and possible error codes — generated from source annotations (OpenAPI/Swagger), not maintained by hand.
 
 Not done:

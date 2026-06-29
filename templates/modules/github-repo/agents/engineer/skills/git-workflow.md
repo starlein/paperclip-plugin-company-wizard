@@ -1,13 +1,13 @@
 # Skill: Git Workflow
 
-You work in a GitHub repository. Follow the conventions in `docs/git-workflow.md` in the project root. The PR-specific steps in that doc apply only to the PR fallback below and to the PR-review flow — your default without a review module is to work directly on the base branch.
+You work in a GitHub repository. Follow the conventions in `../../docs/git-workflow.md` in the project root. The PR-specific steps in that doc apply only to the PR fallback below and to the PR-review flow — your default without a review module is to work directly on the base branch.
 
 ## Direct-to-Base Flow (no pr-review module)
 
 Use this flow when the **pr-review module is not active** — there is no Code Reviewer and no executionPolicy review stages. With no reviewer, a per-change pull request adds no value and is exactly where branches pile up unmerged, so you work **directly on the base branch**: verify locally, then commit and push to the base ref. You open a PR only as a *fallback* when branch protection rejects the direct push.
 
-1. **Auth (first push on a project):** confirm the GitHub credential helper from `docs/git-workflow.md` → *GitHub Push Authentication* is installed in the primary repository. If `GH_TOKEN` is not injected or the helper cache is empty, stop and escalate instead of attempting unauthenticated pushes.
-2. **Resolve the base ref** from project workspace metadata or the issue's `heartbeat-context`. Use the configured `repoRef`, `defaultRef`, or `executionWorkspacePolicy.workspaceStrategy.baseRef` exactly as Paperclip provides it. Never guess from the current shell branch and never rewrite the configured ref. If none is configured, use whatever `origin/HEAD` points at (`main`/`master`/`trunk`/…); fall back to `main` then `master` only if the remote advertises no default HEAD. See `docs/git-workflow.md` → *Resolving the default branch*. Never hard-code `main`.
+1. **Auth (first push on a project):** confirm the GitHub credential helper from `../../docs/git-workflow.md` → *GitHub Push Authentication* is installed in the primary repository. If `GH_TOKEN` is not injected or the helper cache is empty, stop and escalate instead of attempting unauthenticated pushes.
+2. **Resolve the base ref** from project workspace metadata or the issue's `heartbeat-context`. Use the configured `repoRef`, `defaultRef`, or `executionWorkspacePolicy.workspaceStrategy.baseRef` exactly as Paperclip provides it. Never guess from the current shell branch and never rewrite the configured ref. If none is configured, use whatever `origin/HEAD` points at (`main`/`master`/`trunk`/…); fall back to `main` then `master` only if the remote advertises no default HEAD. See `../../docs/git-workflow.md` → *Resolving the default branch*. Never hard-code `main`.
 3. **Update to latest base:** `git fetch origin`, check out the base branch, and fast-forward: `git pull --ff-only origin <base-branch>` (`<base-branch>` = the plain name, strip any `origin/` prefix).
 4. **Make your changes** on the base branch (or a short-lived local branch you fast-forward back into the base before pushing — your choice). Do **not** open a GitHub PR.
 5. **Run the authoritative gate locally — always:** lint, typecheck, the full test suite, and the build. Paste the real command output into the issue. **This local executed verification is the merge gate** when the company has no CI/CD module. Do not commit/push work whose local checks fail.
@@ -17,7 +17,7 @@ Use this flow when the **pr-review module is not active** — there is no Code R
    - If the push is **rejected by branch protection** (e.g. "protected branch hook declined" / a PR is required), use the **PR fallback** below. This is the only case where you open a PR in this flow.
 8. **Confirm it landed:** `git log origin/<base-branch> -1` shows your commit.
 9. If the issue uses an isolated execution workspace (worktree), archive it from your `heartbeat-context` after the push.
-10. **Company-owned CI/CD only:** if the `ci-cd` module is active and the base CI goes red after your push, run the baseline-emergency protocol in `docs/git-workflow.md` → *Base-branch-red deadlock*. A pre-existing repo check the company never configured is **advisory** — do not treat it as a gate or let it block your work.
+10. **Company-owned CI/CD only:** if the `ci-cd` module is active and the base CI goes red after your push, run the baseline-emergency protocol in `../../docs/git-workflow.md` → *Base-branch-red deadlock*. A pre-existing repo check the company never configured is **advisory** — do not treat it as a gate or let it block your work.
 
 ### PR fallback (only when branch protection requires a PR)
 

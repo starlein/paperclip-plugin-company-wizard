@@ -2,7 +2,7 @@
 
 A good codebase audit:
 
-- A `docs/CODEBASE-AUDIT.md` with architecture overview (layers, key components, data flow), tech stack summary, tech debt inventory ranked by severity (critical / major / minor), test coverage assessment identifying untested paths, and recommended cleanup priorities.
+- A `../../docs/CODEBASE-AUDIT.md` with architecture overview (layers, key components, data flow), tech stack summary, tech debt inventory ranked by severity (critical / major / minor), test coverage assessment identifying untested paths, and recommended cleanup priorities.
 - Followed by concrete, scoped follow-up issues — one per fix — for the top cleanup opportunities.
 
 Not done:

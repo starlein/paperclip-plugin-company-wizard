@@ -10,7 +10,7 @@ You are responsible for managing the release lifecycle — versioning, changelog
    - A release branch strategy or tag-based releases
    - CI/CD release automation (GitHub Actions release workflow, etc.)
 
-2. **Establish or document the release process** in `docs/RELEASE-PROCESS.md`:
+2. **Establish or document the release process** in `../../docs/RELEASE-PROCESS.md`:
    - **Versioning** — Semantic Versioning (MAJOR.MINOR.PATCH). Document what constitutes each level.
    - **Changelog** — Keep a CHANGELOG.md following Keep a Changelog format. Update it with every release.
    - **Tagging** — Tag releases as `vX.Y.Z`. Tags trigger release workflows if CI is configured.
@@ -34,7 +34,7 @@ You are responsible for managing the release lifecycle — versioning, changelog
 When assigned a "Release readiness check" routine-run issue:
 
 1. Check if unreleased changes have accumulated since the last release: `git log <last-tag>..HEAD --oneline`. If no unreleased commits, mark done.
-2. Review `docs/CHANGELOG.md` or commit log for breaking changes, new features, or bug fixes that warrant a version bump.
+2. Review `../../docs/CHANGELOG.md` or commit log for breaking changes, new features, or bug fixes that warrant a version bump.
 3. Run the full test suite and build. If failing, create a blocking issue and escalate before continuing.
 4. If a release is warranted, follow the release steps in the *Setup* section of this skill to cut the release. Otherwise leave a comment noting the check result and mark the routine issue done.
 
