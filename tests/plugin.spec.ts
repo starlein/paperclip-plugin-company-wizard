@@ -47,7 +47,7 @@ describe("company-wizard", () => {
 
   it("reports available plugin updates", async () => {
     const fetchMock = vi.fn(async () => {
-      return new Response(JSON.stringify({ version: "0.4.17" }), {
+      return new Response(JSON.stringify({ version: "0.4.18" }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
@@ -66,10 +66,35 @@ describe("company-wizard", () => {
     };
 
     expect(result.ok).toBe(true);
-    expect(result.currentVersion).toBe("0.4.16");
-    expect(result.latestVersion).toBe("0.4.17");
+    expect(result.currentVersion).toBe(manifest.version);
+    expect(result.latestVersion).toBe("0.4.18");
     expect(result.updateAvailable).toBe(true);
     expect(result.url).toContain("npmjs.com/package/@starlein/paperclip-plugin-company-wizard");
+  });
+
+  it("does not report an update when the installed plugin is current", async () => {
+    const fetchMock = vi.fn(async () => {
+      return new Response(JSON.stringify({ version: manifest.version }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const harness = createTestHarness({ manifest, capabilities: manifest.capabilities });
+    await plugin.definition.setup(harness.ctx);
+
+    const result = (await harness.performAction("check-update", {})) as {
+      ok?: boolean;
+      currentVersion?: string;
+      latestVersion?: string;
+      updateAvailable?: boolean;
+    };
+
+    expect(result.ok).toBe(true);
+    expect(result.currentVersion).toBe(manifest.version);
+    expect(result.latestVersion).toBe(manifest.version);
+    expect(result.updateAvailable).toBe(false);
   });
 
   it("prepares fresh local project workspaces before provisioning", async () => {

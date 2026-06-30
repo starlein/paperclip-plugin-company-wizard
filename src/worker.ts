@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import manifest from './manifest.js';
 // @ts-ignore — plain JS modules, bundled by esbuild
 import { assembleCompany, toPascalCase } from './logic/assemble.js';
 // @ts-ignore — plain JS module, bundled by esbuild
@@ -36,7 +37,7 @@ const DEFAULT_TEMPLATES_REPO_URL =
   'https://github.com/starlein/paperclip-plugin-company-wizard/tree/main/templates';
 const BUNDLED_TEMPLATES_DIR = path.resolve(__dirname, '..', 'templates');
 const PLUGIN_PACKAGE_NAME = '@starlein/paperclip-plugin-company-wizard';
-const CURRENT_PLUGIN_VERSION = '0.4.16';
+const CURRENT_PLUGIN_VERSION = manifest.version;
 const NPM_LATEST_URL =
   'https://registry.npmjs.org/@starlein%2Fpaperclip-plugin-company-wizard/latest';
 
