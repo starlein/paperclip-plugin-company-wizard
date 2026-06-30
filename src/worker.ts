@@ -41,6 +41,22 @@ const CURRENT_PLUGIN_VERSION = manifest.version;
 const NPM_LATEST_URL =
   'https://registry.npmjs.org/@starlein%2Fpaperclip-plugin-company-wizard/latest';
 
+async function fetchLatestPluginVersion(): Promise<string> {
+  const response = await fetch(NPM_LATEST_URL, {
+    headers: { accept: 'application/json' },
+  });
+  if (!response.ok) {
+    throw new Error(`npm registry returned ${response.status}`);
+  }
+
+  const data = (await response.json()) as { version?: unknown };
+  const latestVersion = typeof data.version === 'string' ? data.version.trim() : '';
+  if (!latestVersion) {
+    throw new Error('npm registry response did not include a version');
+  }
+  return latestVersion;
+}
+
 /** Recursively copy a directory (sync). */
 function copyDirSync(src: string, dest: string): void {
   fs.mkdirSync(dest, { recursive: true });
@@ -943,28 +959,7 @@ const plugin = definePlugin({
 
     ctx.actions.register('check-update', async () => {
       try {
-        const response = await fetch(NPM_LATEST_URL, {
-          headers: { accept: 'application/json' },
-        });
-        if (!response.ok) {
-          return {
-            ok: false,
-            currentVersion: CURRENT_PLUGIN_VERSION,
-            packageName: PLUGIN_PACKAGE_NAME,
-            error: `npm registry returned ${response.status}`,
-          };
-        }
-
-        const data = (await response.json()) as { version?: unknown };
-        const latestVersion = typeof data.version === 'string' ? data.version.trim() : '';
-        if (!latestVersion) {
-          return {
-            ok: false,
-            currentVersion: CURRENT_PLUGIN_VERSION,
-            packageName: PLUGIN_PACKAGE_NAME,
-            error: 'npm registry response did not include a version',
-          };
-        }
+        const latestVersion = await fetchLatestPluginVersion();
 
         return {
           ok: true,
@@ -973,6 +968,47 @@ const plugin = definePlugin({
           latestVersion,
           updateAvailable: isNewerVersion(latestVersion, CURRENT_PLUGIN_VERSION),
           url: 'https://www.npmjs.com/package/@starlein/paperclip-plugin-company-wizard',
+        };
+      } catch (err) {
+        return {
+          ok: false,
+          currentVersion: CURRENT_PLUGIN_VERSION,
+          packageName: PLUGIN_PACKAGE_NAME,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
+    });
+
+    ctx.actions.register('prepare-plugin-update', async () => {
+      try {
+        const latestVersion = await fetchLatestPluginVersion();
+        const updateAvailable = isNewerVersion(latestVersion, CURRENT_PLUGIN_VERSION);
+        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+        const targetDir = refreshTemplatesCache(cfg);
+        const { client } = await connectSharedClient(cfg);
+        const pluginId = await findPluginId(client);
+
+        if (!pluginId) {
+          return {
+            ok: false,
+            currentVersion: CURRENT_PLUGIN_VERSION,
+            latestVersion,
+            updateAvailable,
+            templatesUpdated: true,
+            templatesTargetDir: targetDir,
+            error: 'Could not find the installed Company Wizard plugin record.',
+          };
+        }
+
+        return {
+          ok: true,
+          pluginId,
+          packageName: PLUGIN_PACKAGE_NAME,
+          currentVersion: CURRENT_PLUGIN_VERSION,
+          latestVersion,
+          updateAvailable,
+          templatesUpdated: true,
+          templatesTargetDir: targetDir,
         };
       } catch (err) {
         return {

@@ -137,6 +137,7 @@ export interface WizardState {
 type Action =
   | { type: 'SET_PATH'; path: WizardPath }
   | { type: 'GO_TO'; step: Step }
+  | { type: 'RESTORE_NAV'; path: WizardPath | null; step: Step }
   | { type: 'SET_COMPANY_NAME'; value: string }
   | { type: 'SET_GOALS'; goals: Goal[] }
   | { type: 'SET_PROJECTS'; projects: WizardProject[] }
@@ -277,6 +278,8 @@ function reducer(state: WizardState, action: Action): WizardState {
     }
     case 'GO_TO':
       return { ...state, step: action.step, error: null };
+    case 'RESTORE_NAV':
+      return { ...state, path: action.path, step: action.step, error: null };
     case 'SET_COMPANY_NAME':
       return { ...state, companyName: action.value };
     case 'SET_GOALS':

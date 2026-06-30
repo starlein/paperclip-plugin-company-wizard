@@ -13,6 +13,29 @@ type UpdateInfo = {
   url?: string;
 };
 
+type PreparedPluginUpdate = UpdateInfo & {
+  pluginId?: string;
+  templatesUpdated?: boolean;
+  templatesTargetDir?: string;
+  error?: string;
+};
+
+async function upgradeInstalledPlugin(pluginId: string, version: string): Promise<unknown> {
+  const response = await fetch(`/api/plugins/${encodeURIComponent(pluginId)}/upgrade`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ version }),
+  });
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error || `Plugin upgrade failed (${response.status})`);
+  }
+
+  return response.json();
+}
+
 function PathCard({
   icon: Icon,
   title,
@@ -64,9 +87,12 @@ export function StepOnboarding() {
   const dispatch = useWizardDispatch();
   const refreshTemplates = usePluginAction('refresh-templates');
   const checkUpdate = usePluginAction('check-update');
+  const preparePluginUpdate = usePluginAction('prepare-plugin-update');
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMsg, setRefreshMsg] = useState<string | null>(null);
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [pluginUpdating, setPluginUpdating] = useState(false);
+  const [pluginUpdateMsg, setPluginUpdateMsg] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,6 +123,47 @@ export function StepOnboarding() {
       setRefreshMsg(err instanceof Error ? err.message : 'Refresh failed');
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const handlePluginUpdate = async () => {
+    setPluginUpdating(true);
+    setPluginUpdateMsg('Updating templates...');
+    try {
+      const prepared = (await preparePluginUpdate({})) as PreparedPluginUpdate;
+      if (!prepared?.ok) {
+        throw new Error(prepared?.error || 'Could not prepare plugin update');
+      }
+
+      if (!prepared.updateAvailable) {
+        setUpdateInfo({
+          ok: true,
+          currentVersion: prepared.currentVersion,
+          latestVersion: prepared.latestVersion,
+          updateAvailable: false,
+        });
+        setPluginUpdateMsg('Templates updated. Plugin is already current.');
+        return;
+      }
+
+      if (!prepared.pluginId || !prepared.latestVersion) {
+        throw new Error('Could not resolve installed plugin record or target version');
+      }
+
+      setPluginUpdateMsg(`Installing Company Wizard ${prepared.latestVersion}...`);
+      await upgradeInstalledPlugin(prepared.pluginId, prepared.latestVersion);
+      setUpdateInfo({
+        ok: true,
+        currentVersion: prepared.latestVersion,
+        latestVersion: prepared.latestVersion,
+        updateAvailable: false,
+      });
+      setPluginUpdateMsg('Plugin updated. Reloading...');
+      window.setTimeout(() => window.location.reload(), 1200);
+    } catch (err) {
+      setPluginUpdateMsg(err instanceof Error ? err.message : 'Plugin update failed');
+    } finally {
+      setPluginUpdating(false);
     }
   };
 
@@ -151,7 +218,7 @@ export function StepOnboarding() {
       <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
         <button
           onClick={handleRefresh}
-          disabled={refreshing}
+          disabled={refreshing || pluginUpdating}
           className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
         >
           <RefreshCw className={cn('h-3 w-3', refreshing && 'animate-spin')} />
@@ -163,13 +230,23 @@ export function StepOnboarding() {
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
               Company Wizard plugin update: {updateInfo.currentVersion} → {updateInfo.latestVersion}
+              <button
+                type="button"
+                onClick={handlePluginUpdate}
+                disabled={pluginUpdating}
+                className="inline-flex items-center gap-1 font-medium text-foreground hover:underline disabled:opacity-50 disabled:no-underline"
+                title="Install the latest Company Wizard plugin, refresh templates, and reload"
+              >
+                <RefreshCw className={cn('h-3 w-3', pluginUpdating && 'animate-spin')} />
+                {pluginUpdating ? 'Updating...' : 'Update now'}
+              </button>
               {updateInfo.url && (
                 <a
                   href={updateInfo.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-0.5 font-medium text-foreground hover:underline"
-                  title="Update the Company Wizard plugin package, then reload Paperclip"
+                  className="inline-flex items-center gap-0.5 text-muted-foreground hover:text-foreground hover:underline"
+                  title="Open the npm package page"
                 >
                   npm
                   <ExternalLink className="h-3 w-3" />
@@ -177,6 +254,18 @@ export function StepOnboarding() {
               )}
             </span>
           </>
+        )}
+        {pluginUpdateMsg && (
+          <span
+            className={cn(
+              'basis-full text-center text-xs',
+              pluginUpdateMsg.includes('failed') || pluginUpdateMsg.includes('Could not')
+                ? 'text-destructive'
+                : 'text-muted-foreground',
+            )}
+          >
+            {pluginUpdateMsg}
+          </span>
         )}
         {refreshMsg && <span className="text-xs text-muted-foreground">{refreshMsg}</span>}
       </div>

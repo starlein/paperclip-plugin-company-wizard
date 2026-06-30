@@ -4,6 +4,39 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.18] - 2026-06-30
+
+### Added
+
+**One-click plugin update from the wizard onboarding screen**
+
+The onboarding update notice now includes an **Update now** action. It refreshes the template cache, resolves the installed Company Wizard plugin record, calls Paperclip's plugin upgrade endpoint for the latest npm version, and reloads the page once the update is installed. The worker-side update check now shares one npm-version fetch helper and exposes a new `prepare-plugin-update` action that returns the target plugin id, latest version, and refreshed template cache path.
+
+**Browser back/forward navigation inside the wizard**
+
+Wizard step changes are now mirrored into `window.history`, and `popstate` restores the wizard path and step. Users can use the browser back/forward buttons to move through the manual, AI, and update paths without losing the current wizard state.
+
+### Fixed
+
+**PR-review guidance is now strictly gated to the `pr-review` module**
+
+Removed unconditional PR-review bootstrap prose from the shared bootstrap instructions. PR review policy guidance now only appears from the assembler's `pr-review` module gate, so companies without `pr-review` do not receive merge-gate or executionPolicy PR-review instructions. The Engineer heartbeat also no longer assumes `skills/git-workflow.md` exists unless the `github-repo` module installed it.
+
+**Every declared fallback owner now receives fallback instructions**
+
+The template consistency audit found three capability owner chains that named fallback owners without shipping the matching fallback skill file. Added:
+
+- `dependency-management`: Security Engineer fallback for `dependency-audit`
+- `game-design`: Engineer fallback for `game-design`
+- `triage`: Engineer fallback for `issue-triage`
+
+### Verified
+
+- Real-template structural audit: 17 roles, 26 modules, 15 presets, 0 consistency problems.
+- Generated-output spot checks: no PR-review text without `pr-review`; CI/CD text only when `ci-cd` is selected; PR-review text only when `pr-review` is selected.
+- Checked current Paperclip source under `../paperclip/` for executionPolicy participant exclusion and isolated-workspace gating.
+- `npm run test:logic`, `npm run typecheck`, and `npm run build` pass.
+
 ## [0.4.17] - 2026-06-29
 
 ### Fixed
