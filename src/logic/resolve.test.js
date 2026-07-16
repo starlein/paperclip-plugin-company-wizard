@@ -7,6 +7,10 @@ import {
   buildModuleDeps,
   expandModuleDeps,
   getBlockingDependents,
+  skillSlug,
+  humanizeSkillName,
+  hashSkillContent,
+  buildCompanySkillSet,
 } from './resolve.js';
 
 // --- formatRoleName ---
@@ -235,5 +239,108 @@ describe('getBlockingDependents', () => {
   it('returns empty for modules with no dependents', () => {
     const blockers = getBlockingDependents('no-deps', ['no-deps', 'pr-review'], requiredBy);
     assert.deepEqual(blockers, []);
+  });
+});
+
+describe('skillSlug', () => {
+  it('returns the base name for primary variants', () => {
+    assert.equal(skillSlug('architecture-plan', 'primary'), 'architecture-plan');
+  });
+  it('suffixes fallback variants', () => {
+    assert.equal(skillSlug('architecture-plan', 'fallback'), 'architecture-plan-fallback');
+  });
+});
+
+describe('humanizeSkillName', () => {
+  it('title-cases kebab names', () => {
+    assert.equal(humanizeSkillName('architecture-plan', 'primary'), 'Architecture Plan');
+  });
+  it('marks fallback variants', () => {
+    assert.equal(
+      humanizeSkillName('architecture-plan', 'fallback'),
+      'Architecture Plan (fallback)',
+    );
+  });
+});
+
+describe('hashSkillContent', () => {
+  it('is stable and content-sensitive', () => {
+    assert.equal(hashSkillContent('a'), hashSkillContent('a'));
+    assert.notEqual(hashSkillContent('a'), hashSkillContent('b'));
+  });
+});
+
+describe('buildCompanySkillSet', () => {
+  it('shares one slug when content is identical across roles', () => {
+    const { companySkills, roleSkillSlugs } = buildCompanySkillSet([
+      {
+        roleName: 'engineer',
+        baseSlug: 'ci-cd',
+        name: 'Ci Cd',
+        description: 'ci-cd — primary skill',
+        categories: ['ci-cd'],
+        markdown: 'SAME',
+      },
+      {
+        roleName: 'devops',
+        baseSlug: 'ci-cd',
+        name: 'Ci Cd',
+        description: 'ci-cd — primary skill',
+        categories: ['ci-cd'],
+        markdown: 'SAME',
+      },
+    ]);
+    assert.equal(companySkills.length, 1);
+    assert.equal(companySkills[0].slug, 'ci-cd');
+    assert.deepEqual(roleSkillSlugs.get('engineer'), ['ci-cd']);
+    assert.deepEqual(roleSkillSlugs.get('devops'), ['ci-cd']);
+  });
+
+  it('disambiguates divergent content under the same base slug by representative role', () => {
+    const { companySkills, roleSkillSlugs } = buildCompanySkillSet([
+      {
+        roleName: 'engineer',
+        baseSlug: 'design-system',
+        name: 'Design System',
+        description: 'd',
+        categories: ['x'],
+        markdown: 'ENG',
+      },
+      {
+        roleName: 'ui-designer',
+        baseSlug: 'design-system',
+        name: 'Design System',
+        description: 'd',
+        categories: ['x'],
+        markdown: 'UID',
+      },
+    ]);
+    const slugs = companySkills.map((s) => s.slug).sort();
+    assert.deepEqual(slugs, ['design-system', 'design-system-ui-designer']);
+    // 'engineer' sorts before 'ui-designer', so it keeps the base slug.
+    assert.deepEqual(roleSkillSlugs.get('engineer'), ['design-system']);
+    assert.deepEqual(roleSkillSlugs.get('ui-designer'), ['design-system-ui-designer']);
+  });
+
+  it('keeps primary and fallback as separate slugs', () => {
+    const { companySkills } = buildCompanySkillSet([
+      {
+        roleName: 'engineer',
+        baseSlug: 'ci-cd',
+        name: 'Ci Cd',
+        description: 'd',
+        categories: ['x'],
+        markdown: 'P',
+      },
+      {
+        roleName: 'qa',
+        baseSlug: 'ci-cd-fallback',
+        name: 'Ci Cd (fallback)',
+        description: 'd',
+        categories: ['x'],
+        markdown: 'F',
+      },
+    ]);
+    assert.deepEqual(companySkills.map((s) => s.slug).sort(), ['ci-cd', 'ci-cd-fallback']);
   });
 });
