@@ -361,7 +361,7 @@ describe("company-wizard", () => {
       if (url.endsWith("/api/companies/co-1/skills") && method === "POST") {
         const body = JSON.parse(String(init?.body || "{}"));
         skillCreateBodies.push(body);
-        return json({ id: `skill-${body.slug}`, key: body.slug, slug: body.slug }, 201);
+        return json({ id: `skill-${body.slug}`, key: `key-${body.slug}`, slug: body.slug }, 201);
       }
       if (url.endsWith("/api/companies/co-1/issues") && method === "POST") {
         const body = JSON.parse(String(init?.body || "{}"));
@@ -396,7 +396,7 @@ describe("company-wizard", () => {
       // The engineer hire carried the skill key in desiredSkills.
       const engineerHire = hireBodies.find((b) => b.role === "general" || b.title === "Engineer" || b.name === "Engineer");
       expect(engineerHire).toBeTruthy();
-      expect(engineerHire.desiredSkills).toContain("ci-cd");
+      expect(engineerHire.desiredSkills).toContain("key-ci-cd");
     } finally {
       await rm(tmp, { recursive: true, force: true });
     }
