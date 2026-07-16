@@ -631,34 +631,61 @@ async function setExternalInstructionsBundle({
 }
 
 /**
- * Preserve existing `paperclipSkillSync.desiredSkills` from an agent's current
- * `adapterConfig` when updating it. The plugin rebuilds `adapterConfig` from scratch
- * (via `buildWorkerAdapterConfig` / `buildCeoAdapterConfig`), which does NOT include
- * `paperclipSkillSync`. Without this merge, individual runtime skill assignments are
- * lost on every update.
- *
- * Merges the existing `paperclipSkillSync` key into `nextAdapterConfig` so the PATCH
- * preserves the agent's skill sync preferences.
+ * Create or update the assembled Company Skills for a company, idempotent by
+ * slug (templates are the source of truth). Returns a slug → key map used to
+ * populate agent `desiredSkills`. Must run BEFORE any agent that references
+ * these skills is hired.
  */
-function preserveExistingSkillSync(
-  existingAgent: any,
-  nextAdapterConfig: Record<string, unknown>,
-): Record<string, unknown> {
-  const existingSync =
-    existingAgent?.adapterConfig &&
-    typeof existingAgent.adapterConfig === 'object' &&
-    'paperclipSkillSync' in (existingAgent.adapterConfig as Record<string, unknown>)
-      ? (existingAgent.adapterConfig as Record<string, unknown>).paperclipSkillSync
-      : undefined;
+async function provisionCompanySkills(
+  client: any,
+  companyId: string,
+  companySkills: Array<{
+    slug: string;
+    name: string;
+    description?: string;
+    markdown: string;
+    categories?: string[];
+  }>,
+  log: (msg: string) => void,
+): Promise<Map<string, string>> {
+  const slugToKey = new Map<string, string>();
+  if (!Array.isArray(companySkills) || companySkills.length === 0) return slugToKey;
 
-  if (!existingSync) {
-    return nextAdapterConfig;
+  let existing: any[] = [];
+  try {
+    const listed = await client.listCompanySkills(companyId);
+    existing = Array.isArray(listed) ? listed : [];
+  } catch (err) {
+    log(
+      `⚠ Could not list existing company skills: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  const bySlug = new Map<string, any>();
+  for (const s of existing) {
+    if (s && typeof s.slug === 'string') bySlug.set(s.slug, s);
   }
 
-  return {
-    ...nextAdapterConfig,
-    paperclipSkillSync: existingSync,
-  };
+  for (const skill of companySkills) {
+    const found = bySlug.get(skill.slug);
+    if (!found) {
+      const created = await client.createCompanySkill(companyId, {
+        name: skill.name,
+        slug: skill.slug,
+        description: skill.description,
+        markdown: skill.markdown,
+        categories: skill.categories,
+      });
+      slugToKey.set(skill.slug, created?.key || skill.slug);
+      log(`✓ Created company skill "${skill.slug}"`);
+      continue;
+    }
+    slugToKey.set(skill.slug, found.key || skill.slug);
+    if ((found.markdown ?? '') !== skill.markdown) {
+      await client.updateCompanySkill(companyId, found.id, { markdown: skill.markdown });
+      log(`✓ Updated company skill "${skill.slug}"`);
+    }
+  }
+  return slugToKey;
 }
 
 function routineTemplateTitle(routine: any): string {
@@ -1688,6 +1715,21 @@ const plugin = definePlugin({
         try {
           allRoleNames = [...(assembleResult.allRoles ?? [])].filter(Boolean).sort();
 
+          log('Provisioning company skills...');
+          const slugToKey = await provisionCompanySkills(
+            client,
+            companyId,
+            assembleResult.companySkills ?? [],
+            log,
+          );
+          const desiredSkillsForRole = (roleName: string): string[] =>
+            (
+              (assembleResult.roleSkillSlugs as Map<string, string[]> | undefined)?.get(roleName) ??
+              []
+            )
+              .map((slug) => slugToKey.get(slug))
+              .filter((key): key is string => Boolean(key));
+
           // Read the wizard manifest (best-effort) for retired-role detection
           if (existingCompanyId) {
             try {
@@ -1813,7 +1855,8 @@ const plugin = definePlugin({
               try {
                 const ceoPatch: Record<string, unknown> = {
                   adapterType,
-                  adapterConfig: preserveExistingSkillSync(existingCeo, adapterConfig),
+                  adapterConfig,
+                  desiredSkills: desiredSkillsForRole('ceo'),
                   runtimeConfig: ceoRuntimeConfig,
                   ...(ceoMetadata
                     ? { metadata: { ...(existingCeo.metadata ?? {}), ...ceoMetadata } }
@@ -1846,6 +1889,7 @@ const plugin = definePlugin({
                 reportsTo: null,
                 adapterType,
                 adapterConfig,
+                desiredSkills: desiredSkillsForRole('ceo'),
                 runtimeConfig: ceoRuntimeConfig,
                 permissions: { canCreateAgents: true },
                 ...(boardOperationsIssue?.id ? { sourceIssueId: boardOperationsIssue.id } : {}),
@@ -1865,6 +1909,7 @@ const plugin = definePlugin({
               reportsTo: null,
               adapterType,
               adapterConfig,
+              desiredSkills: desiredSkillsForRole('ceo'),
               runtimeConfig: ceoRuntimeConfig,
               permissions: { canCreateAgents: true },
               ...(boardOperationsIssue?.id ? { sourceIssueId: boardOperationsIssue.id } : {}),
@@ -1966,7 +2011,8 @@ const plugin = definePlugin({
               try {
                 await client.updateAgent(existingAgent.id, {
                   adapterType,
-                  adapterConfig: preserveExistingSkillSync(existingAgent, roleAdapterConfig),
+                  adapterConfig: roleAdapterConfig,
+                  desiredSkills: desiredSkillsForRole(roleName),
                   runtimeConfig: roleRuntimeConfig,
                   metadata: { ...(existingAgent.metadata ?? {}), ...roleMetadata },
                   ...(!existingAgent.title && roleTitle ? { title: roleTitle } : {}),
@@ -2001,6 +2047,7 @@ const plugin = definePlugin({
               reportsTo: ceoAgentId,
               adapterType,
               adapterConfig: roleAdapterConfig,
+              desiredSkills: desiredSkillsForRole(roleName),
               runtimeConfig: roleRuntimeConfig,
               ...(hiringPlanIssue?.id ? { sourceIssueId: hiringPlanIssue.id } : {}),
             });
