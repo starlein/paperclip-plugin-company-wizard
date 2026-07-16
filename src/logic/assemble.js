@@ -15,6 +15,7 @@ import {
   DEFAULT_CEO_MAX_CONCURRENT_RUNS,
   DEFAULT_CEO_HEARTBEAT_INTERVAL_SEC,
 } from './ceo-defaults.js';
+import { skillSlug, humanizeSkillName, buildCompanySkillSet } from './resolve.js';
 // modulesWithActiveGoals removed — goals no longer contain issues
 
 async function exists(p) {
@@ -432,6 +433,8 @@ export async function assembleCompany({
   }
   initialIssues.unshift(...resolvedUserIssues);
 
+  const skillRecords = [];
+
   for (const moduleName of moduleNames) {
     const moduleDir = join(templatesDir, 'modules', moduleName);
     if (!(await exists(moduleDir))) {
@@ -558,33 +561,35 @@ export async function assembleCompany({
       return null;
     }
 
-    // Helper: copy a resolved skill into the agent's skills/ dir
+    // Helper: resolve a skill and collect it as a Company Skill record
+    // (no longer writes files into the agent's skills/ dir).
     async function installSkill(roleName, fileName, label) {
       const resolved = await resolveSkillFile(roleName, fileName);
       if (!resolved) return false;
-      const destSkillsDir = join(companyDir, 'agents', roleName, 'skills');
-      await mkdir(destSkillsDir, { recursive: true });
-      const destFile = join(destSkillsDir, fileName);
-      await copyFile(resolved.path, destFile);
-      // Append a primary skill's output/review bar when present.
+      const baseName = fileName.replace(/\.md$/, '').replace(/\.fallback$/, '');
+      const variant = fileName.endsWith('.fallback.md') ? 'fallback' : 'primary';
+      let markdown = await readFile(resolved.path, 'utf-8');
       let barApplied = false;
       if (enableEnrichedPersonas && label === 'primary') {
-        const barFileName = fileName.replace(/\.md$/, '.bar.md');
-        const bar = await resolveSkillFile(roleName, barFileName);
+        const bar = await resolveSkillFile(roleName, fileName.replace(/\.md$/, '.bar.md'));
         if (bar) {
           const barContent = await readFile(bar.path, 'utf-8');
-          await appendToFile(destFile, '\n' + barContent.trim() + '\n');
+          markdown = `${markdown.trimEnd()}\n\n${barContent.trim()}\n`;
           barApplied = true;
         }
       }
-      await appendToFile(
-        join(companyDir, 'agents', roleName, 'AGENTS.md'),
-        `\nRead and follow: \`skills/${fileName}\`\n`,
-      );
+      skillRecords.push({
+        roleName,
+        baseSlug: skillSlug(baseName, variant),
+        name: humanizeSkillName(baseName, variant),
+        description: `${moduleName} — ${variant} skill`,
+        categories: [moduleName],
+        markdown,
+      });
       const sourceTag = resolved.source === 'shared' ? ', shared' : '';
       const barTag = barApplied ? ', output bar' : '';
       onProgress(
-        `+ agents/${roleName}/skills/${fileName} (${moduleName}, ${label}${sourceTag}${barTag})`,
+        `+ skill ${skillSlug(baseName, variant)} → ${roleName} (${moduleName}, ${label}${sourceTag}${barTag})`,
       );
       return true;
     }
@@ -623,17 +628,32 @@ export async function assembleCompany({
           // Skip if this skill belongs to a capability (already handled above)
           if (capabilityOwners.has(skillBaseName)) continue;
 
-          const destSkillsDir = join(companyDir, 'agents', role.name, 'skills');
-          await mkdir(destSkillsDir, { recursive: true });
-          await copyFile(join(skillsDir, skillFile), join(destSkillsDir, skillFile));
-          await appendToFile(
-            join(companyDir, 'agents', role.name, 'AGENTS.md'),
-            `\nRead and follow: \`skills/${skillFile}\`\n`,
-          );
-          onProgress(`+ agents/${role.name}/skills/${skillFile} (${moduleName})`);
+          const baseName = skillName.replace(/\.fallback$/, '');
+          const variant = skillFile.endsWith('.fallback.md') ? 'fallback' : 'primary';
+          const markdown = await readFile(join(skillsDir, skillFile), 'utf-8');
+          skillRecords.push({
+            roleName: role.name,
+            baseSlug: skillSlug(baseName, variant),
+            name: humanizeSkillName(baseName, variant),
+            description: `${moduleName} — ${variant} skill`,
+            categories: [moduleName],
+            markdown,
+          });
+          onProgress(`+ skill ${skillSlug(baseName, variant)} → ${role.name} (${moduleName})`);
         }
       }
     }
+  }
+
+  const { companySkills, roleSkillSlugs } = buildCompanySkillSet(skillRecords);
+  const slugToSkillName = new Map(companySkills.map((s) => [s.slug, s.name]));
+  for (const [roleName, slugs] of roleSkillSlugs) {
+    if (!slugs.length) continue;
+    const lines = slugs.map((slug) => `- ${slugToSkillName.get(slug) ?? slug}`).join('\n');
+    await appendToFile(
+      join(companyDir, 'agents', roleName, 'AGENTS.md'),
+      `\n## Installed skills\n\nThese skills are installed into your runtime and auto-discovered by your harness. Use them when relevant:\n\n${lines}\n`,
+    );
   }
 
   // 4. Inject module heartbeat sections into HEARTBEAT.md files
@@ -1447,6 +1467,8 @@ export async function assembleCompany({
     initialIssues,
     initialRoutines,
     roleAdapterOverrides,
+    companySkills,
+    roleSkillSlugs,
     mainProject: mainProjectInfo,
   };
 }

@@ -186,8 +186,8 @@ describe('assembleCompany', () => {
     assert.ok(gitDoc.includes('# Git Workflow'));
   });
 
-  it('injects module skills into agent skills/ and appends to AGENTS.md', async () => {
-    const { companyDir } = await assembleCompany({
+  it('emits skills as companySkills data and appends Installed skills block to AGENTS.md', async () => {
+    const result = await assembleCompany({
       companyName: 'SkillTest',
       moduleNames: ['github-repo'],
       extraRoleNames: [],
@@ -195,20 +195,27 @@ describe('assembleCompany', () => {
       templatesDir,
     });
 
-    // Skill file should exist
-    const skillContent = await readFile(
-      join(companyDir, 'agents', 'engineer', 'skills', 'git-workflow.md'),
+    // Skill is emitted as company skill data, not as a file on disk.
+    const gitSkill = result.companySkills.find((s) => s.slug === 'git-workflow');
+    assert.ok(gitSkill, 'git-workflow skill should be in companySkills');
+    assert.ok(gitSkill.markdown.includes('# Git skill'), 'skill markdown should carry content');
+
+    // engineer is assigned the git-workflow skill slug
+    assert.ok(
+      result.roleSkillSlugs.get('engineer')?.includes('git-workflow'),
+      'engineer should have git-workflow in roleSkillSlugs',
+    );
+
+    // AGENTS.md should list the skill under ## Installed skills (not "Read and follow:")
+    const agentsMd = await readFile(
+      join(result.companyDir, 'agents', 'engineer', 'AGENTS.md'),
       'utf-8',
     );
-    assert.ok(skillContent.includes('# Git skill'));
-
-    // AGENTS.md should reference the skill by a RELATIVE path (resolved by the
-    // runtime from the AGENTS.md directory), with no `$AGENT_HOME/` file prefix.
-    const agentsMd = await readFile(join(companyDir, 'agents', 'engineer', 'AGENTS.md'), 'utf-8');
     assert.ok(
-      agentsMd.includes('Read and follow: `skills/git-workflow.md`'),
-      'AGENTS.md should reference the skill by relative path',
+      agentsMd.includes('## Installed skills'),
+      'AGENTS.md should have ## Installed skills section',
     );
+    assert.ok(agentsMd.includes('Git Workflow'), 'AGENTS.md should list the skill by human name');
     assert.ok(
       !agentsMd.includes('$AGENT_HOME/'),
       'AGENTS.md should not contain a $AGENT_HOME/ file prefix',
@@ -1244,8 +1251,8 @@ describe('assembleCompany', () => {
     assert.ok(progress.some((p) => p.includes('gated-mod') && p.includes('○')));
   });
 
-  it('assigns primary skill to capability owner and fallback to non-owner', async () => {
-    const { companyDir } = await assembleCompany({
+  it('assigns primary skill slug to capability owner and fallback slug to non-owner', async () => {
+    const result = await assembleCompany({
       companyName: 'CapCo',
       moduleNames: ['auto-assign'],
       extraRoleNames: ['product-owner'],
@@ -1253,15 +1260,23 @@ describe('assembleCompany', () => {
       templatesDir,
     });
 
-    // product-owner is primary owner → gets auto-assign.md (primary)
-    const poSkills = await readdir(join(companyDir, 'agents', 'product-owner', 'skills'));
-    assert.ok(poSkills.includes('auto-assign.md'));
+    // product-owner is primary owner → gets auto-assign (primary slug)
+    assert.ok(
+      result.roleSkillSlugs.get('product-owner')?.includes('auto-assign'),
+      'product-owner should have auto-assign (primary)',
+    );
 
-    // ceo is fallback → gets auto-assign.fallback.md
-    const ceoSkills = await readdir(join(companyDir, 'agents', 'ceo', 'skills'));
-    assert.ok(ceoSkills.includes('auto-assign.fallback.md'));
-    // ceo should NOT get the primary auto-assign.md
-    assert.ok(!ceoSkills.includes('auto-assign.md'));
+    // ceo is fallback → gets auto-assign-fallback slug
+    assert.ok(
+      result.roleSkillSlugs.get('ceo')?.includes('auto-assign-fallback'),
+      'ceo should have auto-assign-fallback',
+    );
+    // ceo should NOT get the primary auto-assign slug (only the fallback)
+    const ceoSlugs = result.roleSkillSlugs.get('ceo') ?? [];
+    assert.ok(
+      !ceoSlugs.includes('auto-assign'),
+      'ceo should not have the primary auto-assign slug',
+    );
   });
 
   it('injects heartbeat sections from modules into HEARTBEAT.md', async () => {
@@ -1535,7 +1550,7 @@ describe('assembleCompany', () => {
     );
   });
 
-  it('appends a primary skill output bar by default, and never emits .bar.md standalone', async () => {
+  it('appends a primary skill output bar by default into emitted markdown', async () => {
     const modDir = join(templatesDir, 'modules', 'demo');
     await mkdir(join(modDir, 'skills'), { recursive: true });
     await writeJson(join(modDir, 'module.meta.json'), {
@@ -1548,7 +1563,7 @@ describe('assembleCompany', () => {
       '## Output bar\n\nA result without tests is not done.\n',
     );
 
-    const { companyDir } = await assembleCompany({
+    const result = await assembleCompany({
       companyName: 'BarCo',
       moduleNames: ['demo'],
       extraRoleNames: [],
@@ -1556,15 +1571,30 @@ describe('assembleCompany', () => {
       templatesDir,
     });
 
-    const skillPath = join(companyDir, 'agents', 'engineer', 'skills', 'demo-skill.md');
-    const skill = await readFile(skillPath, 'utf-8');
-    assert.ok(skill.includes('Do the thing.'), 'primary skill body present');
-    assert.ok(skill.includes('## Output bar'), 'output bar appended to primary skill');
-    const skillFiles = await readdir(join(companyDir, 'agents', 'engineer', 'skills'));
-    assert.ok(!skillFiles.includes('demo-skill.bar.md'), '.bar.md must not be a standalone file');
+    // Primary skill is emitted in companySkills with bar appended to markdown
+    const skill = result.companySkills.find((s) => s.slug === 'demo-skill');
+    assert.ok(skill, 'demo-skill should be in companySkills');
+    assert.ok(skill.markdown.includes('Do the thing.'), 'primary skill body present');
+    assert.ok(
+      skill.markdown.includes('## Output bar'),
+      'output bar appended to primary skill markdown',
+    );
+
+    // No embedded skill files are written (no skills/ dir for engineer)
+    const engineerSkillsDir = join(result.companyDir, 'agents', 'engineer', 'skills');
+    let embeddedFiles = [];
+    try {
+      embeddedFiles = await readdir(engineerSkillsDir);
+    } catch {
+      embeddedFiles = [];
+    }
+    assert.ok(
+      !embeddedFiles.includes('demo-skill.bar.md'),
+      '.bar.md must not be a standalone file',
+    );
   });
 
-  it('can internally suppress output bars for baseline regression fixtures', async () => {
+  it('can internally suppress output bars in emitted markdown when enrichment is disabled', async () => {
     const modDir = join(templatesDir, 'modules', 'demo2');
     await mkdir(join(modDir, 'skills'), { recursive: true });
     await writeJson(join(modDir, 'module.meta.json'), {
@@ -1574,7 +1604,7 @@ describe('assembleCompany', () => {
     await writeFile(join(modDir, 'skills', 'demo2-skill.md'), '# Demo2\n\nWork.\n');
     await writeFile(join(modDir, 'skills', 'demo2-skill.bar.md'), '## Output bar\n\nbar text\n');
 
-    const { companyDir } = await assembleCompany({
+    const result = await assembleCompany({
       companyName: 'BaselineCo',
       moduleNames: ['demo2'],
       extraRoleNames: [],
@@ -1583,11 +1613,10 @@ describe('assembleCompany', () => {
       templatesDir,
     });
 
-    const skill = await readFile(
-      join(companyDir, 'agents', 'engineer', 'skills', 'demo2-skill.md'),
-      'utf-8',
-    );
-    assert.ok(!skill.includes('Output bar'), 'no bar appended when flag off');
+    // When enrichment is off, the bar must not appear in the emitted skill markdown
+    const skill = result.companySkills.find((s) => s.slug === 'demo2-skill');
+    assert.ok(skill, 'demo2-skill should be in companySkills');
+    assert.ok(!skill.markdown.includes('Output bar'), 'no bar appended to markdown when flag off');
   });
 
   it('omits modelReasoningEffort and thinkingLevel from BOOTSTRAP.md when resolved level is auto', async () => {
@@ -1618,6 +1647,45 @@ describe('assembleCompany', () => {
     assert.ok(!engineerBlock.includes('**adapterConfig.modelReasoningEffort**'));
     assert.ok(!engineerBlock.includes('**adapterConfig.thinkingLevel**'));
     // A concrete level (e.g. 'high') should still be rendered
+  });
+
+  it('emits deduped companySkills and role assignments instead of embedded files', async () => {
+    // Module with a capability skill owned by engineer (primary)
+    const modDir = join(templatesDir, 'modules', 'ci-cd');
+    await mkdir(join(modDir, 'skills'), { recursive: true });
+    await writeJson(join(modDir, 'module.meta.json'), {
+      name: 'ci-cd',
+      capabilities: [{ skill: 'ci-cd', owners: ['engineer'], fallbackSkill: 'ci-cd.fallback' }],
+    });
+    await writeFile(join(modDir, 'skills', 'ci-cd.md'), '# CI/CD primary\n');
+    await writeFile(join(modDir, 'skills', 'ci-cd.fallback.md'), '# CI/CD fallback\n');
+
+    const result = await assembleCompany({
+      companyName: 'Acme',
+      moduleNames: ['ci-cd'],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+      onProgress: () => {},
+    });
+
+    const slugs = result.companySkills.map((s) => s.slug).sort();
+    assert.ok(slugs.includes('ci-cd'), 'primary slug present');
+    assert.deepEqual(result.roleSkillSlugs.get('engineer'), ['ci-cd']);
+
+    // No embedded skill files are written anymore.
+    const engineerSkillsDir = join(result.companyDir, 'agents', 'engineer', 'skills');
+    let embedded = [];
+    try {
+      embedded = await readdir(engineerSkillsDir);
+    } catch {
+      embedded = [];
+    }
+    assert.equal(embedded.length, 0, 'no embedded skill files');
+
+    // Primary content is carried in the emitted skill markdown.
+    const primary = result.companySkills.find((s) => s.slug === 'ci-cd');
+    assert.match(primary.markdown, /CI\/CD primary/);
   });
 
   it('resolves capability:* task assignments to the primary owner role', async () => {
