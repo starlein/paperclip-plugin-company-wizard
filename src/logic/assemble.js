@@ -1458,6 +1458,14 @@ export async function assembleCompany({
   }
   bootstrap += `${stepN}. **Start CEO heartbeat** (one-time initial wakeup)\n`;
 
+  if (companySkills.length > 0) {
+    bootstrap += `## Company Skills (pre-provisioned)\n\nThese skills are installed in the Skills Store and assigned to agents via \`desiredSkills\`. Do not recreate them:\n\n`;
+    for (const skill of companySkills) {
+      bootstrap += `- \`${skill.slug}\` — ${skill.name}\n`;
+    }
+    bootstrap += `\n`;
+  }
+
   await writeFile(join(companyDir, 'BOOTSTRAP.md'), bootstrap);
   onProgress('+ BOOTSTRAP.md');
 

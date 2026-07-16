@@ -1708,4 +1708,26 @@ describe('assembleCompany', () => {
     assert.equal(initialIssues.length, 1);
     assert.equal(initialIssues[0].assignTo, 'product-owner');
   });
+
+  it('lists provisioned Company Skills in BOOTSTRAP.md', async () => {
+    const modDir = join(templatesDir, 'modules', 'ci-cd');
+    await mkdir(join(modDir, 'skills'), { recursive: true });
+    await writeJson(join(modDir, 'module.meta.json'), {
+      name: 'ci-cd',
+      capabilities: [{ skill: 'ci-cd', owners: ['engineer'] }],
+    });
+    await writeFile(join(modDir, 'skills', 'ci-cd.md'), '# CI/CD\n');
+
+    const result = await assembleCompany({
+      companyName: 'Acme',
+      moduleNames: ['ci-cd'],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+      onProgress: () => {},
+    });
+    const bootstrap = await readFile(join(result.companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.match(bootstrap, /Company Skills/);
+    assert.match(bootstrap, /ci-cd/);
+  });
 });

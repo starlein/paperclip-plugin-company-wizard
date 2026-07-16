@@ -74,12 +74,12 @@ templates/
 
 ### Skill Resolution
 
-For a capability's primary skill, assembly checks two locations in order:
+Skills are provisioned as **Company Skills** (Skills Store) rather than written as files into `agents/<role>/skills/`. The assembler resolves skill markdown from two locations in priority order:
 
 1. `agents/<role>/skills/<skill>.md` — role-specific override (wins if present)
 2. `skills/<skill>.md` — shared skill (default for any primary owner)
 
-Role-specific overrides exist only when a role brings a genuinely different approach. Fallback variants are always role-specific.
+`assembleCompany()` returns `companySkills` (array of `{ slug, name, markdown }`) and `roleSkillSlugs` (`Map<role, slug[]>`). During provisioning, each skill is created once in the Skills Store, and agent hire requests carry a `desiredSkills` field (derived from `roleSkillSlugs`) so agents receive only their assigned slugs. Role-specific overrides exist only when a role brings a genuinely different approach. Fallback variants are always role-specific.
 
 ### Doc References in Skills
 
@@ -115,11 +115,11 @@ Enabled by default when templates provide fragments. The plugin no longer expose
 - **Gracefully optimistic architecture** — Capabilities extend when roles are present, degrade gracefully when absent. A capability's `owners[]` chain determines primary/fallback assignment at assembly time.
 - **`adapterOverrides` field** — Module-level adapter config (e.g., `{ "chrome": true }`) merged into agent `adapterConfig` at provisioning. Keeps role templates clean.
 - **toPascalCase** — Company and project names become PascalCase directory names. Special characters are stripped.
-- **BOOTSTRAP.md** — Generated guide with: company description, goal hierarchy (with `level` and `parentGoal` in HTML-comment frontmatter), projects with workspace + goal links, agents with role + instructionsFilePath, issues with assignee + project, routines with schedule + concurrencyPolicy, and provisioning steps in API dependency order. Used as the bootstrap issue description for the CEO.
+- **BOOTSTRAP.md** — Generated guide with: company description, goal hierarchy (with `level` and `parentGoal` in HTML-comment frontmatter), projects with workspace + goal links, agents with role + instructionsFilePath, issues with assignee + project, routines with schedule + concurrencyPolicy, Company Skills (pre-provisioned slugs in the Skills Store), and provisioning steps in API dependency order. Used as the bootstrap issue description for the CEO.
 
 ### Paperclip API Flow (start-provision)
 
-Connects to Paperclip API (auto-detects auth mode). Resolves the target company: creates a new one (with `companyDescription`) or, when `existingCompanyId` is passed, loads it via `getCompany` (existing-company runs skip company creation and skip cleanup on error). Creates Board Operations and Hiring Plan issues, writes `decision-log` and `hiring-plan` documents, then provisions CEO/team agents via governed `/agent-hires` requests with full managed `instructionsBundle` payloads and `sourceIssueId` provenance. Pending approval ids are logged for board action and are not auto-approved. Scheduled routines are created with board authority, then a Bootstrap Issue is created for the CEO (description = BOOTSTRAP.md content, title uses the resolved company name). The CEO then reads the bootstrap issue and creates remaining goals/issues and links pre-created projects as described in BOOTSTRAP.md.
+Connects to Paperclip API (auto-detects auth mode). Resolves the target company: creates a new one (with `companyDescription`) or, when `existingCompanyId` is passed, loads it via `getCompany` (existing-company runs skip company creation and skip cleanup on error). Creates Board Operations and Hiring Plan issues, writes `decision-log` and `hiring-plan` documents. **Provisions Company Skills** — each skill from `companySkills` is upserted into the Skills Store before any agents are hired. Then provisions CEO/team agents via governed `/agent-hires` requests with full managed `instructionsBundle` payloads, `sourceIssueId` provenance, and `desiredSkills` set deterministically per role from `roleSkillSlugs` (replacing the old `preserveExistingSkillSync` approach). Pending approval ids are logged for board action and are not auto-approved. Scheduled routines are created with board authority, then a Bootstrap Issue is created for the CEO (description = BOOTSTRAP.md content, title uses the resolved company name). The CEO then reads the bootstrap issue and creates remaining goals/issues and links pre-created projects as described in BOOTSTRAP.md.
 
 Optional setting `disableBoardApprovalOnNewCompanies` (default `false`): when `true`, new companies are PATCHed to `requireBoardApprovalForNewAgents=false` right after creation for legacy fully-autonomous bootstrap behavior. Ignored for existing-company runs.
 
