@@ -29,6 +29,53 @@ describe('assembleCompany integration (real templates)', () => {
     await rm(tmpDir, { recursive: true, force: true });
   });
 
+  it('keeps execution workspaces reusable when issues complete', async () => {
+    const roleEntries = await readdir(join(REAL_TEMPLATES_DIR, 'roles'), { withFileTypes: true });
+    for (const roleEntry of roleEntries.filter((entry) => entry.isDirectory())) {
+      const heartbeat = await readFile(
+        join(REAL_TEMPLATES_DIR, 'roles', roleEntry.name, 'HEARTBEAT.md'),
+        'utf-8',
+      );
+      assert.ok(
+        heartbeat.includes('Preserve execution workspaces across issue completion'),
+        `${roleEntry.name}/HEARTBEAT.md should preserve reusable workspaces`,
+      );
+      assert.ok(
+        heartbeat.includes('/interactions') &&
+          heartbeat.includes('/approvals') &&
+          heartbeat.includes('pending') &&
+          heartbeat.includes('interaction'),
+        `${roleEntry.name}/HEARTBEAT.md should recognize interaction-owned review waits`,
+      );
+    }
+
+    const markdownFiles = (await readdir(REAL_TEMPLATES_DIR, { recursive: true })).filter((file) =>
+      file.endsWith('.md'),
+    );
+    const destructiveInstructions = [];
+    for (const relativePath of markdownFiles) {
+      const content = await readFile(join(REAL_TEMPLATES_DIR, relativePath), 'utf-8');
+      for (const [index, line] of content.split('\n').entries()) {
+        const mentionsWorkspace = /\b(?:workspace|worktree)s?\b/i.test(line);
+        const requestsDestruction =
+          /\b(?:archive|delete)(?:s|d)?\b/i.test(line) ||
+          /\bclose(?:s|d)?\s+(?:an? |the |any )?(?:isolated |execution )?(?:workspace|worktree)s?\b/i.test(
+            line,
+          );
+        const explicitlyForbidsDestruction = /\bdo not\b|\bneither\b/i.test(line);
+        if (mentionsWorkspace && requestsDestruction && !explicitlyForbidsDestruction) {
+          destructiveInstructions.push(`${relativePath}:${index + 1}: ${line}`);
+        }
+      }
+    }
+
+    assert.deepEqual(
+      destructiveInstructions,
+      [],
+      `templates must not retire workspaces during normal issue completion:\n${destructiveInstructions.join('\n')}`,
+    );
+  });
+
   it('assembles quality preset with all expected role directories and files', async () => {
     // Quality preset: roles = product-owner, code-reviewer; modules = github-repo, pr-review, backlog, auto-assign, stall-detection
     const { companyDir, allRoles, initialIssues } = await assembleCompany({
@@ -289,6 +336,16 @@ describe('assembleCompany integration (real templates)', () => {
         `${label} should be routine-run scoped, not every-heartbeat scoped`,
       );
     }
+
+    const stallSkill = companySkills.find((skill) => skill.slug === 'stall-detection');
+    assert.ok(stallSkill.markdown.includes('/diagnostics/blockers'));
+    assert.ok(stallSkill.markdown.includes('/diagnostics/wakes'));
+    assert.ok(stallSkill.markdown.includes('/diagnostics/subtree'));
+    assert.ok(stallSkill.markdown.includes('/interactions'));
+    assert.ok(stallSkill.markdown.includes('/recovery-actions'));
+    assert.ok(stallSkill.markdown.includes('in_review_without_action_path'));
+    assert.ok(stallSkill.markdown.includes('pendingFinalizeBlockerCount'));
+    assert.ok(stallSkill.markdown.includes('WORKSPACE-FINALIZE-PENDING'));
   });
 
   it('real bootstrap instructions use executionPolicy review gates without child-review conflict', async () => {
@@ -481,6 +538,12 @@ describe('assembleCompany integration (real templates)', () => {
       prWorkflowSkill.markdown.toLowerCase().includes('self-merge') ||
         prWorkflowSkill.markdown.includes('No code-reviewer present'),
       'emitted engineer pr-workflow skill documents the self-merge path',
+    );
+    assert.ok(
+      prWorkflowSkill.markdown.includes('not sufficient evidence') &&
+        prWorkflowSkill.markdown.includes('/interactions') &&
+        prWorkflowSkill.markdown.includes('/recovery-actions'),
+      'emitted engineer pr-workflow diagnoses all review action paths before recovery',
     );
   });
 

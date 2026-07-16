@@ -4,6 +4,40 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.19] - 2026-07-16
+
+### Added
+
+**Paperclip Company Skills Store integration**
+
+Assembly now resolves module skills into deterministic, content-deduplicated Company Skills instead of copying skill markdown into every agent directory. Provisioning upserts those skills by slug before hiring agents, maps the returned stable skill keys to each role's `desiredSkills`, and updates existing agents idempotently. Role-specific variants remain distinct when their content differs, while identical shared skills collapse to one company record. Generated `AGENTS.md` and `BOOTSTRAP.md` files list the runtime-installed skills without instructing the CEO to recreate them.
+
+### Changed
+
+- Bumped `@paperclipai/plugin-sdk` and `@paperclipai/shared` compatibility to `2026.707.0`.
+- The plugin manifest now requires Paperclip `2026.707.0` and declares the `skills.managed` capability.
+- Claude-based CEO provisioning now defaults to `claude-opus-4-8`.
+
+### Fixed
+
+**Issue completion no longer destroys reusable execution workspaces**
+
+Every role heartbeat and the GitHub, PR-review, and stall-recovery workflows previously instructed the finishing agent or merge gate to archive an isolated execution workspace before marking the issue `done`. Archiving immediately removes the worktree and makes the workspace record ineligible for reuse, so later review, follow-up, and dependent runs could resolve a workspace that no longer existed.
+
+Generated companies now preserve execution workspaces after normal completion and reserve retirement for an explicit board/operator action. The templates also clarify that Paperclip's `cleanupEligibleAt` / "Cleanup: Not scheduled" field is metadata rather than an automatic cleanup scheduler. A real-template regression test rejects future unqualified instructions to archive/delete/close workspaces during completion.
+
+**Stall detection now understands Paperclip action paths and diagnostics**
+
+Role heartbeats and PR workflows no longer classify `in_review` plus `executionPolicy: null` as a stall by itself. They preserve valid waits owned by pending issue interactions, approvals, user owners, monitors, wakes, active runs, or recovery issues. The stall-detection routine now uses Paperclip's blocker, wake, subtree, interaction, approval, and recovery APIs to distinguish dependency waits from `in_review_without_action_path`, dependency-ready issues that missed their wake, and completed blockers whose workspace finalization is still pending or failed.
+
+The API client also drops the removed `blockParentUntilDone` create-issue field and supplies Paperclip's required `todo` status when callers omit it.
+
+### Verified
+
+- Audited every route used by the API client against a live Paperclip `2026.707+` OpenAPI document.
+- Exercised Company Skill creation and `desiredSkills` hire payloads through the plugin harness.
+- Covered workspace preservation, interaction-aware review waits, liveness diagnostics, and create-issue schema compatibility with real-template and API regression tests.
+
 ## [0.4.18] - 2026-06-30
 
 ### Added

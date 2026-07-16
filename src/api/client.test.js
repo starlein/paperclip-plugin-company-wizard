@@ -164,7 +164,7 @@ describe('PaperclipClient provisioning helpers', () => {
     });
   });
 
-  it('forwards issue parent and label fields so bootstrap-created subissues stay scoped', async () => {
+  it('forwards current issue fields and defaults the required status to todo', async () => {
     const requests = [];
     globalThis.fetch = async (url, opts = {}) => {
       requests.push({ url, body: JSON.parse(opts.body) });
@@ -179,13 +179,17 @@ describe('PaperclipClient provisioning helpers', () => {
       parentId: 'parent-1',
       projectId: 'project-1',
       labelIds: ['label-1'],
-      status: 'todo',
+      blockParentUntilDone: true,
     });
 
     assert.equal(requests[0].body.parentId, 'parent-1');
     assert.equal(requests[0].body.projectId, 'project-1');
     assert.deepEqual(requests[0].body.labelIds, ['label-1']);
     assert.equal(requests[0].body.status, 'todo');
+    assert.ok(
+      !Object.hasOwn(requests[0].body, 'blockParentUntilDone'),
+      'removed Paperclip fields must not leak into create-issue payloads',
+    );
   });
 
   it('patches issues through the top-level issue update route', async () => {

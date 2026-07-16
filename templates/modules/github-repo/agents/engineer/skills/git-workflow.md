@@ -16,7 +16,7 @@ Use this flow when the **pr-review module is not active** — there is no Code R
    - If the push is **rejected as non-fast-forward** (someone else pushed), `git pull --rebase origin <base-branch>`, re-run the checks, and push again.
    - If the push is **rejected by branch protection** (e.g. "protected branch hook declined" / a PR is required), use the **PR fallback** below. This is the only case where you open a PR in this flow.
 8. **Confirm it landed:** `git log origin/<base-branch> -1` shows your commit.
-9. If the issue uses an isolated execution workspace (worktree), archive it from your `heartbeat-context` after the push.
+9. If the issue uses an isolated execution workspace (worktree), leave it reusable after the push. Do not archive/delete it during issue completion; workspace retirement is a separate board/operator action.
 10. **Company-owned CI/CD only:** if the `ci-cd` module is active and the base CI goes red after your push, run the baseline-emergency protocol in `../../docs/git-workflow.md` → *Base-branch-red deadlock*. A pre-existing repo check the company never configured is **advisory** — do not treat it as a gate or let it block your work.
 
 ### PR fallback (only when branch protection requires a PR)

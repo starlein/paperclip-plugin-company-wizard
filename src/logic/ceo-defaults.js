@@ -8,7 +8,7 @@ export const DEFAULT_WORKER_THINKING_LEVEL = 'auto';
 export const DEFAULT_CEO_MAX_CONCURRENT_RUNS = 1;
 export const DEFAULT_CEO_HEARTBEAT_INTERVAL_SEC = 3600;
 
-const DEFAULT_CLAUDE_CEO_MODEL = 'claude-opus-4-6';
+const DEFAULT_CLAUDE_CEO_MODEL = 'claude-opus-4-8';
 
 function asTrimmedString(value) {
   return typeof value === 'string' ? value.trim() : '';

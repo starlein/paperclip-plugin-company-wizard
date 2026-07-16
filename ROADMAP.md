@@ -66,6 +66,8 @@
 - Only the CEO keeps an always-on heartbeat — worker agents are woken on assignment, preventing concurrent-run bursts that crashed the dev server
 - Fresh local repos no longer bootstrap with isolated git worktrees — the `isolated_workspace` / `git_worktree` policy is suppressed until the repo and base ref exist
 - Workspace isolation follows Paperclip instance settings — the wizard reads `enableIsolatedWorkspaces` from the instance experimental settings; no plugin setting
+- Execution workspaces remain reusable after issue completion — role and workflow templates no longer archive/delete isolated worktrees as part of marking work `done`; retirement stays a separate board/operator action
+- Stall detection is interaction-aware — null execution policies are diagnosed alongside interactions, approvals, user owners, monitors, wakes, runs, and recovery actions using Paperclip's liveness endpoints
 - Assembly fixes — `$AGENT_HOME` rewritten to absolute paths, shared docs scoped per role, relative doc paths, duplicate bootstrap issues deduplicated, orphaned CFO role removed
 - Inline file editing — preview and edit any assembled file in the ConfigReview step before provisioning (`fileOverrides`)
 - Repository workspace setup — choose a fresh local or existing external Git repo via the manual step or inline on the review screen (both manual and AI paths)

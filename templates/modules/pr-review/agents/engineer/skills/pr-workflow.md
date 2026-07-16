@@ -40,7 +40,7 @@ When this skill is active, you work in feature branches and open PRs instead of 
 11. Wait for the issue to clear its review/approval stages. Each reviewer and the Product Owner records `approved` by PATCHing the issue toward `done`, or `changes_requested` by PATCHing it back to `in_progress`; Paperclip stores the reviewer/approver decision metadata on the issue. Verdicts may be mirrored as PR comments. A `changes_requested` routes the issue back to you — address it, push to the same branch, and that stage re-runs.
 12. **Merging the PR — two paths:**
     - **Code Reviewer present (PR-Gate mode):** You do not merge your own PR. The Code Reviewer (the non-author merge gate) lands it after every prior stage approves, satisfies the hard verification gate (green CI or pasted test/build output), and records the final `approved` that closes the issue to `done`. Your job is to respond to `changes_requested`: when a stage routes the issue back to you, address the feedback, push to the same branch, and the stage re-runs. If `changes_requested` is due to a merge conflict (the Code Reviewer will say so), see *Resolving merge conflicts* below.
-    - **No code-reviewer present (PR Self-Merge Flow):** You already skipped steps 9–11. Before merging, check `gh pr view <N> --json mergeable,mergeStateStatus` — if the PR is `CONFLICTING` or `DIRTY`, resolve the conflict first (see *Resolving merge conflicts* below). Then merge: `gh pr merge <N> --merge` once CI is green (or you have pasted test/build output if no CI). All other review roles (qa, product-owner, security-engineer, ui-designer, ux-researcher, devops) may leave advisory comments on the PR, but none block the merge — there are no executionPolicy stages. Update the Paperclip work product to `"status": "merged"` and archive any isolated worktree.
+    - **No code-reviewer present (PR Self-Merge Flow):** You already skipped steps 9–11. Before merging, check `gh pr view <N> --json mergeable,mergeStateStatus` — if the PR is `CONFLICTING` or `DIRTY`, resolve the conflict first (see *Resolving merge conflicts* below). Then merge: `gh pr merge <N> --merge` once CI is green (or you have pasted test/build output if no CI). All other review roles (qa, product-owner, security-engineer, ui-designer, ux-researcher, devops) may leave advisory comments on the PR, but none block the merge — there are no executionPolicy stages. Update the Paperclip work product to `"status": "merged"` and leave any isolated execution workspace reusable.
 
 ## Resolving merge conflicts
 
@@ -70,17 +70,17 @@ In **PR-Gate mode** (Code Reviewer present): you are the issue author and Paperc
 
 In the **Self-Merge path** (no Code Reviewer): do not merge your feature PR on a red base; run the baseline-emergency protocol, then rebase and merge once the base is green. If you opened the `fix(ci): restore base CI` PR under a declared baseline emergency, you may merge it despite red CI under the narrow exception in `../../docs/git-workflow.md` → *Narrow exception* (run the failing checks locally, paste passing output, remaining failures exactly the inherited baseline set).
 
-## Misrouted in_review (null executionPolicy)
+## Misrouted in_review (no action path)
 
-If you find an issue in `in_review` with `executionPolicy: null` (or no stage with a non-author participant), it is stuck — there is no reviewer path and no eligible participant, so it can never advance (`422 No eligible approval participant`). Recover it:
+`executionPolicy: null` is not sufficient evidence that an existing `in_review` issue is stuck. First inspect `GET /api/issues/{id}/interactions`, `GET /api/issues/{id}/approvals`, the issue's user owner, scheduled monitor, active/queued wakes, and `GET /api/issues/{id}/recovery-actions`. A pending interaction or approval, user owner, monitor, wake, active run, or recovery issue is an explicit waiting path; leave it intact. Recover only when the issue has neither a usable non-author execution stage nor any of those paths:
 
 1. Move the issue back to `in_progress` (`PATCH /api/issues/{id}` with `status: "in_progress"`).
 2. Take the correct path for the team:
    - **Code Reviewer present:** set the `executionPolicy` review/approval stages (step 9 above) *before* moving the issue back to `in_review`. Changing stages after the issue re-enters review is not supported.
    - **No Code Reviewer:** do not set any `executionPolicy` — use the self-merge path (step 12). Merge the PR yourself via `gh pr merge <N> --merge` and mark the issue `done`; do not route it back to `in_review`.
-3. Leave an issue comment naming the misroute (was `in_review` with no policy) and the recovery action taken.
+3. Leave an issue comment naming the missing action path and the recovery action taken.
 
-Never move an issue to `in_review` unless an `executionPolicy` with at least one non-author stage is set (PR-Gate mode) or you are on the self-merge path and will merge it yourself this heartbeat (no Code Reviewer). An `in_review` issue with no policy and no self-merge in progress is a permanent stall.
+For new PR work, never move an issue to `in_review` unless an `executionPolicy` with at least one non-author stage is set (PR-Gate mode) or you are on the self-merge path and will merge it yourself this heartbeat (no Code Reviewer). For existing issues, diagnose the full action path before changing state.
 
 ## Rules
 
@@ -93,5 +93,5 @@ Never move an issue to `in_review` unless an `executionPolicy` with at least one
 - **The merge gate must be the last stage, and it must be a non-author.** The Product Owner's `approval` is the product sign-off, not the final stage: if it were last, their verdict would auto-close the issue to `done` with the PR still open on GitHub. Append a final merge-gate `approval` stage for the **Code Reviewer** after the Product Owner's. Never make yourself the merge gate — Paperclip excludes the executor, so that stage stalls with `422 No eligible approval participant`. If no Code Reviewer is on the team, do not set executionPolicy stages; use the self-merge path instead.
 - Do not create separate child review issues and do not use @-mentions to request review; the executionPolicy stages are the governance signal.
 - Do not wait for GitHub-native approving reviews when all agents share the same GitHub credential; GitHub rejects self-approval. The Paperclip executionPolicy stages are the required signal unless a separate non-author GitHub reviewer credential is explicitly available.
-- Post-merge cleanup of any isolated execution workspace belongs to the merge-gate agent (they archive it from `heartbeat-context` when landing the PR). You only clean up your own worktree if you abandon a branch or the issue is cancelled before review. If this issue runs in the shared project workspace, do not invent isolated-worktree cleanup.
+- Preserve isolated execution workspaces after merge. Neither the author nor merge-gate agent archives/deletes a workspace during normal issue completion; review, follow-up, or dependent work may reuse it. Retirement is a separate board/operator action, including for abandoned or cancelled work.
 - **Never push the base ref as if it were a feature branch.** Before `git push -u origin <branch-name>`, confirm that `git branch --show-current` matches `<branch-name>`. If it prints the base ref name instead, you are on the wrong branch — create or switch to the feature branch first.

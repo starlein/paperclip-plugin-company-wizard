@@ -381,7 +381,6 @@ export class PaperclipClient {
       executionWorkspaceSettings,
       executionPolicy,
       blockedByIssueIds,
-      blockParentUntilDone,
     },
   ) {
     return this._fetch(`/api/companies/${companyId}/issues`, {
@@ -389,7 +388,7 @@ export class PaperclipClient {
       body: JSON.stringify({
         title,
         description: description || null,
-        status: status || undefined,
+        status: status || 'todo',
         priority: priority || 'medium',
         parentId: parentId || undefined,
         projectId: projectId || undefined,
@@ -402,7 +401,6 @@ export class PaperclipClient {
         executionWorkspaceSettings: executionWorkspaceSettings || undefined,
         executionPolicy: executionPolicy || undefined,
         blockedByIssueIds: blockedByIssueIds || undefined,
-        blockParentUntilDone: blockParentUntilDone || undefined,
       }),
     });
   }

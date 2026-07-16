@@ -35,13 +35,14 @@ Run this checklist on every heartbeat. The Paperclip skill is the source of trut
 - Upload or attach user-inspectable outputs as work products/artifacts/documents; local filesystem paths alone are not enough.
 - Use issue documents for long plans, specs, QA reports, security reviews, or hiring drafts; comments should summarize and link.
 - Handoffs should use assignment/status/executionPolicy and a concrete next action. Do not rely on generic @-mentions.
-- **When review/merge is complete:** If you are the merge gate (pr-review module active), record your verdict on the issue: merge the PR (`gh pr merge <number> --merge`), archive any isolated worktree if one exists, then record `approved` — this closes the issue to `done`. If you requested changes (`changes_requested`), set the issue to `in_progress`, reassign to the engineer (the `returnAssignee`), and do not record `approved`.
+- Before treating an `in_review` issue as stalled, check `GET /api/issues/{id}/interactions` and `GET /api/issues/{id}/approvals`. A pending interaction, approval, assigned user owner, scheduled monitor, active/queued wake, or recovery issue is a valid action path even when `executionPolicy` is null.
+- **When review/merge is complete:** If you are the merge gate (pr-review module active), record your verdict on the issue: merge the PR (`gh pr merge <number> --merge`), leave any isolated execution workspace reusable, then record `approved` — this closes the issue to `done`. If you requested changes (`changes_requested`), set the issue to `in_progress`, reassign to the engineer (the `returnAssignee`), and do not record `approved`.
 - **If advisory only** (pr-review module not active): leave your verdict as a PR comment; the engineer self-merges.
 
 ## 6. Exit
 
 - Always comment before exiting any issue you touched: status, evidence, blockers, work products, and next action.
-- If the issue used an isolated execution workspace/worktree, close it before final disposition: read `currentExecutionWorkspace.id` from `heartbeat-context`, check `GET /api/execution-workspaces/{id}/close-readiness`, then archive with `PATCH /api/execution-workspaces/{id}` `{ "status": "archived" }` after commits/PRs are merged and the tree is clean. If close-readiness or cleanup is blocked, do not mark `done`; leave the issue `blocked`/`in_review` with the exact cleanup blocker and next owner.
+- Preserve execution workspaces across issue completion. Do not archive or delete an isolated workspace/worktree as part of marking an issue `done`; follow-up, review, or dependent work may reuse it, and Paperclip can restore a missing worktree only while its workspace record remains reusable. Leave cleanup to a board operator unless the issue explicitly requests retiring that workspace. `cleanupEligibleAt` / "Cleanup: Not scheduled" is lifecycle metadata, not an automatic cleanup scheduler.
 - If no assigned work, valid approval/review, or routine-run exists, exit cleanly without scanning unrelated unassigned work.
 
 ## Rules
