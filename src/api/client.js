@@ -186,6 +186,30 @@ export class PaperclipClient {
     return this._fetch(`/api/companies/${companyId}`, { method: 'GET' });
   }
 
+  async listCompanySkills(companyId) {
+    return this._fetch(`/api/companies/${companyId}/skills`, { method: 'GET' });
+  }
+
+  async createCompanySkill(companyId, { name, slug, description, markdown, categories }) {
+    return this._fetch(`/api/companies/${companyId}/skills`, {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        ...(slug !== undefined ? { slug } : {}),
+        ...(description !== undefined ? { description } : {}),
+        ...(markdown !== undefined ? { markdown } : {}),
+        ...(categories !== undefined ? { categories } : {}),
+      }),
+    });
+  }
+
+  async updateCompanySkill(companyId, skillId, updates) {
+    return this._fetch(`/api/companies/${companyId}/skills/${skillId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates || {}),
+    });
+  }
+
   async listAgents(companyId) {
     return this._fetch(`/api/companies/${companyId}/agents`, { method: 'GET' });
   }

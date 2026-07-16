@@ -311,3 +311,47 @@ describe('PaperclipClient instance settings helpers', () => {
     assert.equal(settings.enableIsolatedWorkspaces, true);
   });
 });
+
+describe('PaperclipClient company skills', () => {
+  it('creates a company skill via POST /companies/:id/skills', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({
+        url: String(url),
+        method: opts.method,
+        body: opts.body ? JSON.parse(opts.body) : null,
+      });
+      return jsonResponse({ id: 'skill-1', key: 'ci-cd', slug: 'ci-cd' }, 201);
+    };
+    const client = new PaperclipClient('http://paperclip.test');
+    const result = await client.createCompanySkill('company-1', {
+      name: 'Ci Cd',
+      slug: 'ci-cd',
+      description: 'ci-cd — primary skill',
+      markdown: '# CI/CD',
+      categories: ['ci-cd'],
+    });
+    assert.equal(result.key, 'ci-cd');
+    assert.equal(requests[0].method, 'POST');
+    assert.ok(requests[0].url.endsWith('/api/companies/company-1/skills'));
+    assert.equal(requests[0].body.slug, 'ci-cd');
+    assert.equal(requests[0].body.markdown, '# CI/CD');
+  });
+
+  it('lists and updates company skills', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({ url: String(url), method: opts.method || 'GET' });
+      if (String(url).endsWith('/skills') && (!opts.method || opts.method === 'GET')) {
+        return jsonResponse([{ id: 'skill-1', key: 'ci-cd', slug: 'ci-cd' }]);
+      }
+      return jsonResponse({ id: 'skill-1', key: 'ci-cd', slug: 'ci-cd' });
+    };
+    const client = new PaperclipClient('http://paperclip.test');
+    const list = await client.listCompanySkills('company-1');
+    assert.equal(list[0].slug, 'ci-cd');
+    await client.updateCompanySkill('company-1', 'skill-1', { markdown: '# new' });
+    assert.equal(requests[1].method, 'PATCH');
+    assert.ok(requests[1].url.endsWith('/api/companies/company-1/skills/skill-1'));
+  });
+});
