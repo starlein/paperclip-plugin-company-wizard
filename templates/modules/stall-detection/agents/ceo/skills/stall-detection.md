@@ -2,6 +2,8 @@
 
 You own stall detection when you are explicitly assigned a stall-detection routine run. This is not an every-heartbeat background scan.
 
+This routine is the **periodic backstop**. Individual top-level issues should also carry a per-issue **task watchdog** (`watchdog: { agentId, instructions }` set at issue creation — see the backlog-health skill), which Paperclip fires event-driven the moment an issue's subtree stalls. When you find a stalled top-level issue here that has no watchdog, add one as part of the fix so it recovers natively next time instead of waiting for this scan.
+
 ## When To Use This Skill
 
 Use this only when the current assigned issue/routine is titled like "Stall detection" or explicitly asks you to inspect stalled work. Otherwise follow the normal Paperclip heartbeat rule: only work assigned issues and do not scan the whole board.
@@ -69,3 +71,4 @@ As part of every stall-detection run, scan the repository's open PR queue for pi
 - Do not interrupt running agents.
 - Do not close or cancel another agent's work unless the issue explicitly grants that authority.
 - Be specific: which issue, which agent, last activity, why stalled, and who owns the next action.
+- **Never archive or retire your own routine-run workspace.** This routine is pure control-plane work (reading and patching the board via the API) — it needs no repository state. When you finish, mark the routine issue `done` and exit. Do not call `PATCH /api/execution-workspaces/{id}` with `{"status":"archived"}`, do not check `close-readiness` to trigger a teardown, and do not otherwise remove the worktree your run is using. Archiving it mid-run makes Paperclip fail the run's workspace validation and breaks the next reuse of that workspace. Workspace retirement is a board/operator action only.

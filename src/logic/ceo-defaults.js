@@ -1,5 +1,5 @@
 export const DEFAULT_CEO_ADAPTER_TYPE = 'codex_local';
-export const DEFAULT_CEO_MODEL = 'gpt-5.5';
+export const DEFAULT_CEO_MODEL = 'gpt-5.6';
 export const DEFAULT_CEO_THINKING_LEVEL = 'high';
 // Worker (non-CEO) agents default to 'auto' reasoning effort — let the model decide
 // per task instead of pinning a flat level. A role can still set an explicit level

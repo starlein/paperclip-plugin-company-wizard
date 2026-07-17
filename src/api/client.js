@@ -381,6 +381,7 @@ export class PaperclipClient {
       executionWorkspaceSettings,
       executionPolicy,
       blockedByIssueIds,
+      watchdog,
     },
   ) {
     return this._fetch(`/api/companies/${companyId}/issues`, {
@@ -401,6 +402,9 @@ export class PaperclipClient {
         executionWorkspaceSettings: executionWorkspaceSettings || undefined,
         executionPolicy: executionPolicy || undefined,
         blockedByIssueIds: blockedByIssueIds || undefined,
+        // Task watchdog (native stall recovery): { agentId, instructions? }.
+        // The named agent is woken to recover the issue's subtree if it stalls.
+        watchdog: watchdog && watchdog.agentId ? watchdog : undefined,
       }),
     });
   }
@@ -410,6 +414,26 @@ export class PaperclipClient {
       method: 'PATCH',
       body: JSON.stringify(updates || {}),
     });
+  }
+
+  // Upsert a task watchdog on an existing issue. The watching agent must be
+  // invokable (active), so callers should treat failures as non-fatal.
+  async setIssueWatchdog(issueId, { agentId, instructions } = {}) {
+    return this._fetch(`/api/issues/${issueId}/watchdog`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        agentId,
+        ...(instructions ? { instructions } : {}),
+      }),
+    });
+  }
+
+  async getIssueWatchdog(issueId) {
+    return this._fetch(`/api/issues/${issueId}/watchdog`, { method: 'GET' });
+  }
+
+  async deleteIssueWatchdog(issueId) {
+    return this._fetch(`/api/issues/${issueId}/watchdog`, { method: 'DELETE' });
   }
 
   async putIssueDocument(issueId, key, { title, format, body, baseRevisionId }) {

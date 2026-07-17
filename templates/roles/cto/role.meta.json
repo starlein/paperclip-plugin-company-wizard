@@ -12,7 +12,7 @@
     "Adds architecture review pass when pr-review module is active"
   ],
   "adapter": {
-    "model": "claude-opus-4-6",
+    "model": "claude-opus-4-8",
     "effort": "high",
     "thinkingLevel": "auto"
   }

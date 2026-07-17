@@ -20,3 +20,4 @@ On your heartbeat, after handling assignments:
 - Only create issues when engineers would otherwise have nothing to work on.
 - Keep it minimal — just enough to unblock, not a full grooming session.
 - **Review handoff:** When moving an issue to `in_review`, always assign it to the reviewer. If the issue has an executionPolicy with review stages, Paperclip reassigns automatically. Otherwise PATCH `assigneeAgentId` to the reviewer before or at the same time as the status change.
+- Never archive or retire your own grooming-run workspace. Setting `executionWorkspaceSettings` on child issues you create is fine; your own run's workspace is different. Do not `PATCH /api/execution-workspaces/{id}` to `archived` or remove the worktree your run uses — it fails the run's workspace validation and breaks the next reuse. Retirement is a board/operator action only.

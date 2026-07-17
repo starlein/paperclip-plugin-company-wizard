@@ -2175,6 +2175,31 @@ const plugin = definePlugin({
           });
           bootstrapIssue = issue as { id: string; identifier?: string };
           log(`✓ Bootstrap task created: ${bootstrapIssue.identifier || bootstrapIssue.id}`);
+
+          // Attach a task watchdog so the initial company setup self-recovers if it
+          // stalls. The CEO watches its own bootstrap subtree; if runs go terminal
+          // without the work completing, Paperclip wakes the CEO with these recovery
+          // instructions. Best-effort: in the governed hire flow the CEO may still be
+          // pending approval (not yet invokable), which makes the watchdog upsert fail —
+          // that is non-fatal, so we log and continue (the stall-detection routine still
+          // covers the company).
+          try {
+            await client.setIssueWatchdog(bootstrapIssue.id, {
+              agentId: ceoAgentId,
+              instructions:
+                'Bootstrap/setup stalled. Re-read this issue and BOOTSTRAP.md, then resume: ' +
+                'create any missing goals/issues, link the pre-created projects and routines, ' +
+                'and unblock or reassign whatever stopped. Do not archive or delete any ' +
+                'execution workspace as part of recovery. Leave the issue in a clear final state.',
+            });
+            log('✓ Watchdog attached to bootstrap task (CEO self-recovery).');
+          } catch (wdErr) {
+            log(
+              `⚠ Could not attach bootstrap watchdog (non-fatal — likely CEO pending approval): ${
+                wdErr instanceof Error ? wdErr.message : String(wdErr)
+              }`,
+            );
+          }
         } catch (err) {
           log(`✗ Provisioning failed: ${err instanceof Error ? err.message : String(err)}`);
           if (createdCompany) {

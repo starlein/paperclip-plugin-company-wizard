@@ -192,6 +192,48 @@ describe('PaperclipClient provisioning helpers', () => {
     );
   });
 
+  it('forwards a task watchdog on issue create only when an agentId is present', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({ url, body: JSON.parse(opts.body) });
+      return jsonResponse({ id: 'issue-1' }, 201);
+    };
+
+    const client = new PaperclipClient('http://paperclip.test');
+    // With a watchdog
+    await client.createIssue('company-1', {
+      title: 'Bootstrap',
+      watchdog: { agentId: 'ceo-1', instructions: 'recover if stalled' },
+    });
+    assert.deepEqual(requests[0].body.watchdog, {
+      agentId: 'ceo-1',
+      instructions: 'recover if stalled',
+    });
+
+    // Without an agentId — the field is dropped, not sent as an invalid object
+    await client.createIssue('company-1', { title: 'No watchdog', watchdog: {} });
+    assert.ok(
+      !Object.hasOwn(requests[1].body, 'watchdog') || requests[1].body.watchdog === undefined,
+      'watchdog without agentId must not be sent',
+    );
+  });
+
+  it('upserts a task watchdog through PUT /issues/:id/watchdog', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({ url, method: opts.method, body: JSON.parse(opts.body) });
+      return jsonResponse({ id: 'wd-1' });
+    };
+
+    const client = new PaperclipClient('http://paperclip.test');
+    await client.setIssueWatchdog('issue-1', { agentId: 'ceo-1', instructions: 'recover' });
+
+    assert.equal(requests[0].url, 'http://paperclip.test/api/issues/issue-1/watchdog');
+    assert.equal(requests[0].method, 'PUT');
+    assert.equal(requests[0].body.agentId, 'ceo-1');
+    assert.equal(requests[0].body.instructions, 'recover');
+  });
+
   it('patches issues through the top-level issue update route', async () => {
     const requests = [];
     globalThis.fetch = async (url, opts = {}) => {

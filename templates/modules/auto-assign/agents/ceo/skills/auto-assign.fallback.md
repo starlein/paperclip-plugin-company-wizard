@@ -22,3 +22,4 @@ On your heartbeat, after handling your own assignments:
 - Do not run this from normal heartbeats.
 - Do not self-assign random unassigned work.
 - If no suitable match exists, leave the issue unassigned and state the reason in the routine-run comment.
+- Never archive or retire your own routine-run workspace. This is control-plane work via the API; do not `PATCH /api/execution-workspaces/{id}` to `archived` or remove the worktree your run uses — it fails the run's workspace validation and breaks the next reuse. Retirement is a board/operator action only.

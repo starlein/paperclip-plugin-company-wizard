@@ -248,7 +248,9 @@ const initialState: WizardState = {
   goals: [],
   projects: [],
   issues: [],
-  ceoAdapter: { type: 'codex_local', cwd: '', model: 'gpt-5.5' },
+  // model is an optional override; empty means "use the adapter-appropriate default"
+  // (gpt-5.6 for Codex, claude-opus-4-8 for Claude) resolved in buildCeoAdapterConfig.
+  ceoAdapter: { type: 'codex_local', cwd: '', model: '' },
   existingCompanyId: '',
   presetName: '',
   selectedModules: [],

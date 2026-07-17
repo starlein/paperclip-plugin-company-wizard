@@ -14,6 +14,18 @@ const ADAPTER_TYPES = [
   { value: 'hermes_local', label: 'Hermes', desc: 'Local Hermes agent' },
 ];
 
+// Model suggestions per adapter. The field stays free-text (any model id works);
+// these just power the dropdown datalist and the placeholder. First entry is the
+// adapter's default (resolved in buildCeoAdapterConfig when the field is left empty).
+const MODEL_SUGGESTIONS: Record<string, string[]> = {
+  codex_local: ['gpt-5.6', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5', 'gpt-5.4'],
+  claude_local: ['claude-opus-4-8', 'claude-fable-5', 'claude-mythos-5', 'claude-sonnet-4-6'],
+};
+
+function modelSuggestionsFor(adapterType: string): string[] {
+  return MODEL_SUGGESTIONS[adapterType] ?? [];
+}
+
 export function StepName() {
   const state = useWizard();
   const dispatch = useWizardDispatch();
@@ -126,12 +138,23 @@ export function StepName() {
                 Model <span className="text-muted-foreground font-normal">(optional)</span>
               </label>
               <Input
-                placeholder="gpt-5.5"
+                list="ceo-model-suggestions"
+                placeholder={modelSuggestionsFor(state.ceoAdapter.type)[0] || 'default for adapter'}
                 value={state.ceoAdapter.model}
                 onChange={(e) =>
                   dispatch({ type: 'SET_CEO_ADAPTER', adapter: { model: e.target.value } })
                 }
               />
+              <datalist id="ceo-model-suggestions">
+                {modelSuggestionsFor(state.ceoAdapter.type).map((m) => (
+                  <option key={m} value={m} />
+                ))}
+              </datalist>
+              <p className="text-xs text-muted-foreground">
+                Leave empty for the adapter default (
+                {modelSuggestionsFor(state.ceoAdapter.type)[0] || 'adapter default'}). Codex:
+                gpt-5.6 (+ sol/terra/luna). Claude: opus-4-8, fable-5, mythos-5.
+              </p>
             </div>
           </div>
         )}
