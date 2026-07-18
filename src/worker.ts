@@ -665,23 +665,16 @@ async function provisionCompanySkills(
     if (s && typeof s.slug === 'string') bySlug.set(s.slug, s);
   }
 
-  for (const skill of companySkills) {
-    const found = bySlug.get(skill.slug);
-    if (!found) {
-      const created = await client.createCompanySkill(companyId, {
-        name: skill.name,
-        slug: skill.slug,
-        description: skill.description,
-        markdown: skill.markdown,
-        categories: skill.categories,
-      });
-      slugToKey.set(skill.slug, created?.key || skill.slug);
-      log(`✓ Created company skill "${skill.slug}"`);
-      continue;
-    }
     slugToKey.set(skill.slug, found.key || skill.slug);
-    if ((found.markdown ?? '') !== skill.markdown) {
-      await client.updateCompanySkill(companyId, found.id, { markdown: skill.markdown });
+    const updates: Record<string, unknown> = {};
+    if ((found.name ?? '') !== skill.name) updates.name = skill.name;
+    if ((found.description ?? '') !== (skill.description ?? '')) {
+      updates.description = skill.description ?? null;
+    }
+    if (Array.isArray(skill.categories)) updates.categories = skill.categories;
+    if ((found.markdown ?? '') !== skill.markdown) updates.markdown = skill.markdown;
+    if (Object.keys(updates).length > 0) {
+      await client.updateCompanySkill(companyId, found.id, updates);
       log(`✓ Updated company skill "${skill.slug}"`);
     }
   }
