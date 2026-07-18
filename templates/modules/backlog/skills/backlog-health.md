@@ -25,7 +25,7 @@ Add additional labels if the roadmap calls for them (e.g., `docs`, `design`, `se
 
 ## Backlog Health Check
 
-1. Checkout the assigned backlog/routine issue before mutating the board.
+1. Checkout the assigned backlog/routine issue in Paperclip before mutating the board. This is API-only control-plane work; do not create or enter a repository worktree for the grooming run.
 2. Read the current company goals, roadmap/project context, existing issue documents, and recent decision log entries.
 3. Query existing issues for the relevant project/goal and avoid duplicates.
 4. If the backlog is thin or unclear, create around 3-6 small actionable issues via `POST /api/companies/{companyId}/issues`.
@@ -48,4 +48,4 @@ Add additional labels if the roadmap calls for them (e.g., `docs`, `design`, `se
 - If the goal is fully decomposed into issues, do not create more. Report status and next review trigger to the CEO/Product Owner.
 - Work products such as roadmap drafts or decomposition tables belong in issue documents/artifacts, not only comments.
 - **Review handoff:** When moving an issue to `in_review`, always assign it to the reviewer. If the issue has an executionPolicy with review stages, Paperclip reassigns automatically. If there is no executionPolicy, PATCH the issue's `assigneeAgentId` to the reviewer before or at the same time as the status change. An issue in `in_review` that is still assigned to the original implementer will stall — no one picks it up. Always reassign on review handoff.
-- **Never archive or retire your own grooming-run workspace.** Setting `executionWorkspaceSettings` on the *child issues you create* is correct; that is different from your own run's workspace. Do not `PATCH /api/execution-workspaces/{id}` to `archived` and do not remove the worktree your grooming run is using — archiving it mid-run fails the run's workspace validation and breaks the next reuse. Workspace retirement is a board/operator action only.
+- **Backlog grooming is intentionally project-detached and must not use a git worktree.** Perform the run through Paperclip APIs only. Setting `projectId` and isolated `executionWorkspaceSettings` on the *work issues you create* is correct; that does not attach the grooming run itself to their project or worktrees. Do not clone, branch, run `git worktree add`, or try to repair the routine by attaching it to a project.

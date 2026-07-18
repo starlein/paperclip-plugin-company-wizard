@@ -99,6 +99,24 @@ async function setupFixtures() {
     ],
   });
 
+  // Module: control-routines (API-only scheduled work that must not inherit a
+  // project's isolated git-worktree policy)
+  const controlDir = join(templatesDir, 'modules', 'control-routines');
+  await mkdir(controlDir, { recursive: true });
+  await writeJson(join(controlDir, 'module.meta.json'), {
+    name: 'control-routines',
+    capabilities: [],
+    routines: [
+      {
+        title: 'Backlog grooming',
+        description: 'Keep the backlog healthy through the Paperclip API.',
+        assignTo: 'product-owner',
+        schedule: '0 */2 * * *',
+        useProjectWorkspace: false,
+      },
+    ],
+  });
+
   // Module: gated-mod (has activatesWithRoles)
   const gatedDir = join(templatesDir, 'modules', 'gated-mod');
   await mkdir(gatedDir, { recursive: true });
@@ -387,6 +405,42 @@ describe('assembleCompany', () => {
       type: 'git_worktree',
       baseRef: 'release/2026-q2',
     });
+  });
+
+  it('keeps API-only control routines detached from project worktrees', async () => {
+    const { companyDir, initialRoutines } = await assembleCompany({
+      companyName: 'ControlCo',
+      moduleNames: ['control-routines'],
+      extraRoleNames: ['product-owner'],
+      enableIsolatedWorktrees: true,
+      userProjects: [
+        {
+          name: 'ControlCo',
+          description: 'desc',
+          goals: [],
+          workspace: {
+            sourceType: 'git_repo',
+            repoUrl: 'https://github.com/example/app.git',
+            repoRef: 'main',
+            defaultRef: 'main',
+            isPrimary: true,
+          },
+        },
+      ],
+      outputDir,
+      templatesDir,
+    });
+
+    assert.equal(initialRoutines.length, 1);
+    assert.equal(initialRoutines[0].useProjectWorkspace, false);
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(bootstrap.includes('projectId**: none (control-plane routine; no project worktree)'));
+    assert.ok(
+      bootstrap.includes('**Create project** "ControlCo"'),
+      'a detached routine alone must not cause the worker to pre-create the project',
+    );
+    assert.ok(!bootstrap.includes('**Main project already created**'));
   });
 
   it('keeps the CEO creating the main project when there are no routines', async () => {

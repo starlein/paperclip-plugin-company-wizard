@@ -19,6 +19,7 @@ import {
   buildWorkerAgentRuntimeConfig,
   normalizeCeoAdapterType,
 } from './logic/ceo-defaults.js';
+import { routineProjectPayload, routineUsesProjectWorkspace } from './logic/routines.js';
 // @ts-ignore
 import {
   collectGoals,
@@ -846,6 +847,7 @@ async function syncExistingCompanyRoutines({
       title,
       description: routine.description || null,
       assigneeAgentId,
+      ...routineProjectPayload(routine, undefined, { sync: true }),
       priority: routine.priority || 'medium',
       status: routine.status || 'active',
       concurrencyPolicy: routine.concurrencyPolicy || 'skip_if_active',
@@ -2087,7 +2089,7 @@ const plugin = definePlugin({
             : [];
 
           if (!existingCompanyId) {
-            // Pre-create the main project so every routine can be linked to it.
+            // Pre-create the main project so project-scoped routines can be linked to it.
             // The CEO creates projects during bootstrap, but it can only edit
             // routines assigned to ITSELF — routines owned by other agents (PM,
             // etc.) would otherwise stay project-less forever. The wizard runs
@@ -2096,7 +2098,7 @@ const plugin = definePlugin({
             // still created (project-less) rather than blocking provisioning.
             let mainProjectId: string | undefined;
             const mainProject = assembleResult.mainProject;
-            if (routines.length > 0 && mainProject?.name) {
+            if (routines.some(routineUsesProjectWorkspace) && mainProject?.name) {
               try {
                 const createdProject = await client.createProject(companyId, {
                   name: mainProject.name,
@@ -2131,7 +2133,7 @@ const plugin = definePlugin({
                   title,
                   description: routine.description,
                   assigneeAgentId,
-                  projectId: mainProjectId,
+                  ...routineProjectPayload(routine, mainProjectId),
                   priority: routine.priority || 'medium',
                   concurrencyPolicy: routine.concurrencyPolicy || 'skip_if_active',
                   catchUpPolicy: routine.catchUpPolicy || 'skip_missed',

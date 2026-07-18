@@ -16,6 +16,7 @@ import {
   DEFAULT_CEO_HEARTBEAT_INTERVAL_SEC,
 } from './ceo-defaults.js';
 import { skillSlug, humanizeSkillName, buildCompanySkillSet } from './resolve.js';
+import { routineUsesProjectWorkspace } from './routines.js';
 // modulesWithActiveGoals removed — goals no longer contain issues
 
 async function exists(p) {
@@ -1224,9 +1225,11 @@ export async function assembleCompany({
   const mainProject = resolvedProjects[0];
   const mainProjectName = mainProject?.name || companyName;
 
-  // When there are scheduled routines, the worker pre-creates the main project
-  // (with board authority) so every routine — including those owned by non-CEO
-  // agents — can be linked to it at creation time. The CEO, which otherwise
+  // When there are project-scoped scheduled routines, the worker pre-creates
+  // the main project (with board authority) so every such routine — including
+  // those owned by non-CEO agents — can be linked to it at creation time.
+  // Control-plane routines can opt out so they do not inherit a project
+  // worktree policy. The CEO, which otherwise
   // creates projects during bootstrap, can only edit routines assigned to
   // itself, so routines owned by other agents would stay project-less. Expose
   // the resolved main project (with its normalized workspace) so the worker can
@@ -1244,8 +1247,9 @@ export async function assembleCompany({
       })()
     : null;
   // Mirror the worker's gate: the main project is only pre-created when there
-  // are routines to attach. Otherwise the CEO still creates it during bootstrap.
-  const mainProjectPreCreated = initialRoutines.length > 0 && mainProjectInfo !== null;
+  // are project-scoped routines to attach. Otherwise the CEO still creates it.
+  const mainProjectPreCreated =
+    initialRoutines.some(routineUsesProjectWorkspace) && mainProjectInfo !== null;
 
   if (resolvedProjects.length > 0) {
     bootstrap += `## Projects\n\n`;
@@ -1410,7 +1414,12 @@ export async function assembleCompany({
         ['schedule', routine.schedule],
         ['priority', routine.priority || 'medium'],
         ['concurrencyPolicy', routine.concurrencyPolicy || 'skip_if_active'],
-        ['projectId', `→ "${mainProjectName}"`],
+        [
+          'projectId',
+          routineUsesProjectWorkspace(routine)
+            ? `→ "${mainProjectName}"`
+            : 'none (control-plane routine; no project worktree)',
+        ],
       ]);
       if (routine.description) {
         bootstrap += `${escapeBody(routine.description)}\n\n`;

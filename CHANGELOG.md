@@ -4,13 +4,17 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.4.20] - 2026-07-17
+## [0.4.20] - 2026-07-18
 
 ### Fixed
 
 **Workspace-lifecycle hardening — agents no longer archive their own active run workspace**
 
 Diagnosed a class of routine-run failures where an agent (e.g. the CEO on a stall-detection run) archived its own execution workspace mid-run via `PATCH /api/execution-workspaces/{id}` `{"status":"archived"}`. That removes the git worktree while the run is still finalizing, so the run fails Paperclip's post-run workspace validation (`workspace_validation_failed`) even though the work succeeded — and, for a `reuse_existing` routine workspace, breaks the next scheduled run. The shared "Preserve execution workspaces" instruction in all 17 role `HEARTBEAT.md` files is now an unconditional prohibition (names the archive API call, `git worktree remove`, and branch deletion; covers routine runs and "cleanup" gestures, not just marking an issue `done`). The `stall-detection`, `auto-assign`, and `backlog` skills (primary + CEO fallback variants) carry a targeted rule that these control-plane routines never retire their own run workspace.
+
+**Backlog grooming no longer inherits project worktrees**
+
+The backlog-grooming routine is now explicitly project-detached. Scheduled grooming issues perform API-only board operations without inheriting the main project's isolated git-worktree policy, while the implementation issues they create remain linked to the project and receive isolated workspace settings. Updating an existing company clears any legacy project link from the routine.
 
 ### Added
 
