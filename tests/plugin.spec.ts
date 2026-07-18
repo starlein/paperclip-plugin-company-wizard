@@ -329,13 +329,14 @@ describe("company-wizard", () => {
     const tmp = await mkdtemp(join(tmpdir(), "company-wizard-skills-"));
     const templatesPath = join(tmp, "templates");
 
-    // Minimal fixture templates: base ceo + engineer, one module with a capability skill.
     for (const role of ["ceo", "engineer"]) {
       const roleDir = join(templatesPath, "roles", role);
       await mkdir(roleDir, { recursive: true });
-      await writeFile(join(roleDir, "role.meta.json"), JSON.stringify({ name: role, base: true }));
+      await writeFile(
+        join(roleDir, "role.meta.json"),
+        JSON.stringify({ name: role, base: role === "ceo" }),
+      );
       await writeFile(join(roleDir, "AGENTS.md"), `# ${role}\n\n## Skills\n`);
-      await writeFile(join(roleDir, "HEARTBEAT.md"), `# ${role} heartbeat\n`);
       await writeFile(join(roleDir, "SOUL.md"), `# ${role} soul\n`);
     }
     const modDir = join(templatesPath, "modules", "ci-cd");
