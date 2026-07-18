@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createTestHarness } from "@paperclipai/plugin-sdk/testing";
@@ -323,5 +323,83 @@ describe("company-wizard", () => {
   it("reports healthy", async () => {
     const health = await plugin.definition.onHealth!();
     expect(health.status).toBe("ok");
+  });
+
+  it("provisions Company Skills and passes desiredSkills on hire", async () => {
+    const tmp = await mkdtemp(join(tmpdir(), "company-wizard-skills-"));
+    const templatesPath = join(tmp, "templates");
+
+    for (const role of ["ceo", "engineer"]) {
+      const roleDir = join(templatesPath, "roles", role);
+      await mkdir(roleDir, { recursive: true });
+      await writeFile(
+        join(roleDir, "role.meta.json"),
+        JSON.stringify({ name: role, base: role === "ceo" }),
+      );
+      await writeFile(join(roleDir, "AGENTS.md"), `# ${role}\n\n## Skills\n`);
+      await writeFile(join(roleDir, "SOUL.md"), `# ${role} soul\n`);
+    }
+    const modDir = join(templatesPath, "modules", "ci-cd");
+    await mkdir(join(modDir, "skills"), { recursive: true });
+    await writeFile(
+      join(modDir, "module.meta.json"),
+      JSON.stringify({ name: "ci-cd", capabilities: [{ skill: "ci-cd", owners: ["engineer"] }] }),
+    );
+    await writeFile(join(modDir, "skills", "ci-cd.md"), "# CI/CD\n");
+
+    const skillCreateBodies: any[] = [];
+    const hireBodies: any[] = [];
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method || "GET";
+      const json = (body: unknown, status = 200) =>
+        new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+
+      if (url.endsWith("/api/companies") && method === "GET") return json([]);
+      if (url.endsWith("/api/instance/settings/experimental")) return json({ enableIsolatedWorkspaces: false });
+      if (url.endsWith("/api/companies") && method === "POST") return json({ id: "co-1", name: "Acme" }, 201);
+      if (url.endsWith("/api/companies/co-1/skills") && method === "GET") return json([]);
+      if (url.endsWith("/api/companies/co-1/skills") && method === "POST") {
+        const body = JSON.parse(String(init?.body || "{}"));
+        skillCreateBodies.push(body);
+        return json({ id: `skill-${body.slug}`, key: `key-${body.slug}`, slug: body.slug }, 201);
+      }
+      if (url.endsWith("/api/companies/co-1/issues") && method === "POST") {
+        const body = JSON.parse(String(init?.body || "{}"));
+        return json({ id: body.title === "Board Operations" ? "issue-board" : "issue-hiring" }, 201);
+      }
+      if (url.includes("/documents/") && method === "PUT") return json({ ok: true });
+      if (url.endsWith("/api/companies/co-1/agent-hires") && method === "POST") {
+        hireBodies.push(JSON.parse(String(init?.body || "{}")));
+        return json({ agent: { id: `agent-${hireBodies.length}` } }, 201);
+      }
+      // Generic success for anything else the flow touches (bundle files, routines, etc.)
+      return json({ ok: true, id: "x", key: "x", slug: "x" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const harness = createTestHarness({
+        manifest,
+        capabilities: manifest.capabilities,
+        config: { companiesDir: tmp, templatesPath, paperclipUrl: "http://paperclip.test" },
+      });
+      await plugin.definition.setup(harness.ctx);
+
+      await harness.performAction("start-provision", {
+        companyName: "Acme",
+        selectedModules: ["ci-cd"],
+        selectedRoles: ["engineer"],
+      });
+
+      // A Company Skill was created for the module capability.
+      expect(skillCreateBodies.map((b) => b.slug)).toContain("ci-cd");
+      // The engineer hire carried the skill key in desiredSkills.
+      const engineerHire = hireBodies.find((b) => b.role === "general" || b.title === "Engineer" || b.name === "Engineer");
+      expect(engineerHire).toBeTruthy();
+      expect(engineerHire.desiredSkills).toContain("key-ci-cd");
+    } finally {
+      await rm(tmp, { recursive: true, force: true });
+    }
   });
 });

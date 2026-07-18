@@ -20,3 +20,4 @@ On your heartbeat, after handling assignments:
 - Only create issues when engineers would otherwise have nothing to work on.
 - Keep it minimal — just enough to unblock, not a full grooming session.
 - **Review handoff:** When moving an issue to `in_review`, always assign it to the reviewer. If the issue has an executionPolicy with review stages, Paperclip reassigns automatically. Otherwise PATCH `assigneeAgentId` to the reviewer before or at the same time as the status change.
+- Backlog grooming is intentionally project-detached and must remain API-only. Do not create or enter a git worktree for the grooming run, and do not attach the routine itself to a project. Setting `projectId` and isolated `executionWorkspaceSettings` on the work issues you create is still required and does not change the grooming run's workspace behavior.

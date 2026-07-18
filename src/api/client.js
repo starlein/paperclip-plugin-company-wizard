@@ -186,6 +186,30 @@ export class PaperclipClient {
     return this._fetch(`/api/companies/${companyId}`, { method: 'GET' });
   }
 
+  async listCompanySkills(companyId) {
+    return this._fetch(`/api/companies/${companyId}/skills`, { method: 'GET' });
+  }
+
+  async createCompanySkill(companyId, { name, slug, description, markdown, categories }) {
+    return this._fetch(`/api/companies/${companyId}/skills`, {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        ...(slug !== undefined ? { slug } : {}),
+        ...(description !== undefined ? { description } : {}),
+        ...(markdown !== undefined ? { markdown } : {}),
+        ...(categories !== undefined ? { categories } : {}),
+      }),
+    });
+  }
+
+  async updateCompanySkill(companyId, skillId, updates) {
+    return this._fetch(`/api/companies/${companyId}/skills/${skillId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates || {}),
+    });
+  }
+
   async listAgents(companyId) {
     return this._fetch(`/api/companies/${companyId}/agents`, { method: 'GET' });
   }
@@ -357,7 +381,7 @@ export class PaperclipClient {
       executionWorkspaceSettings,
       executionPolicy,
       blockedByIssueIds,
-      blockParentUntilDone,
+      watchdog,
     },
   ) {
     return this._fetch(`/api/companies/${companyId}/issues`, {
@@ -365,7 +389,7 @@ export class PaperclipClient {
       body: JSON.stringify({
         title,
         description: description || null,
-        status: status || undefined,
+        status: status || 'todo',
         priority: priority || 'medium',
         parentId: parentId || undefined,
         projectId: projectId || undefined,
@@ -378,7 +402,9 @@ export class PaperclipClient {
         executionWorkspaceSettings: executionWorkspaceSettings || undefined,
         executionPolicy: executionPolicy || undefined,
         blockedByIssueIds: blockedByIssueIds || undefined,
-        blockParentUntilDone: blockParentUntilDone || undefined,
+        // Task watchdog (native stall recovery): { agentId, instructions? }.
+        // The named agent is woken to recover the issue's subtree if it stalls.
+        watchdog: watchdog && watchdog.agentId ? watchdog : undefined,
       }),
     });
   }
@@ -388,6 +414,29 @@ export class PaperclipClient {
       method: 'PATCH',
       body: JSON.stringify(updates || {}),
     });
+  }
+
+  // Upsert a task watchdog on an existing issue. The watching agent must be
+  // invokable (active), so callers should treat failures as non-fatal.
+  async setIssueWatchdog(issueId, { agentId, instructions } = {}) {
+    if (!agentId) {
+      throw new Error('setIssueWatchdog requires agentId');
+    }
+    return this._fetch(`/api/issues/${issueId}/watchdog`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        agentId,
+        ...(instructions ? { instructions } : {}),
+      }),
+    });
+  }
+
+  async getIssueWatchdog(issueId) {
+    return this._fetch(`/api/issues/${issueId}/watchdog`, { method: 'GET' });
+  }
+
+  async deleteIssueWatchdog(issueId) {
+    return this._fetch(`/api/issues/${issueId}/watchdog`, { method: 'DELETE' });
   }
 
   async putIssueDocument(issueId, key, { title, format, body, baseRevisionId }) {

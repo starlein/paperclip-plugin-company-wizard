@@ -1,6 +1,6 @@
 # Skill: Code Review (final merge gate)
 
-You are the **final merge gate** for pull requests. After QA, the Security Engineer (when relevant), and the Product Owner have approved, the issue's `executionPolicy` routes its final `approval` stage to you. You do a last correctness pass, satisfy the hard verification gate, **merge the PR**, clean up, and only then record `approved` — which closes the issue to `done`.
+You are the **final merge gate** for pull requests. After QA, the Security Engineer (when relevant), and the Product Owner have approved, the issue's `executionPolicy` routes its final `approval` stage to you. You do a last correctness pass, satisfy the hard verification gate, **merge the PR**, preserve its execution workspace for reuse, and only then record `approved` — which closes the issue to `done`.
 
 ## Why you, and not the engineer
 
@@ -22,8 +22,8 @@ Paperclip's runtime **excludes the issue's original executor (the author) from e
 1. Before merging, check whether the PR branch is up to date with the base: `gh pr view <number> --json mergeable,mergeStateStatus`. If `mergeable` is `CONFLICTING` or `mergeStateStatus` is `DIRTY`, **do not attempt to merge** — go to *Merge conflicts* below first.
 2. Merge with `gh pr merge <number> --merge`. No force pushes.
 3. Confirm the merge landed on the correct base.
-4. If Paperclip created an isolated execution workspace for the issue, read its id from `heartbeat-context`, call close-readiness, and archive it after the merge and once the tree is clean. If cleanup is blocked or fails, do **not** record approval — leave the issue open with the exact blocker. If the issue runs in the shared project workspace, do not invent isolated-worktree cleanup.
-5. **Only after the merge and cleanup succeed**, record `approved` (PATCH toward `done`) with a comment citing the executed verification and the merge confirmation. That closes the issue.
+4. If Paperclip created an isolated execution workspace for the issue, leave it reusable after the merge. Do not archive/delete it during approval; later review, follow-up, or dependent work may still reference the workspace.
+5. **Only after the merge succeeds**, record `approved` (PATCH toward `done`) with a comment citing the executed verification and the merge confirmation. That closes the issue.
 6. Never record `approved` before the merge has actually succeeded, and never leave the issue `done` with the PR still open.
 
 ## Merge conflicts

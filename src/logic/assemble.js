@@ -15,6 +15,8 @@ import {
   DEFAULT_CEO_MAX_CONCURRENT_RUNS,
   DEFAULT_CEO_HEARTBEAT_INTERVAL_SEC,
 } from './ceo-defaults.js';
+import { skillSlug, humanizeSkillName, buildCompanySkillSet } from './resolve.js';
+import { routineUsesProjectWorkspace } from './routines.js';
 // modulesWithActiveGoals removed — goals no longer contain issues
 
 async function exists(p) {
@@ -432,6 +434,8 @@ export async function assembleCompany({
   }
   initialIssues.unshift(...resolvedUserIssues);
 
+  const skillRecords = [];
+
   for (const moduleName of moduleNames) {
     const moduleDir = join(templatesDir, 'modules', moduleName);
     if (!(await exists(moduleDir))) {
@@ -558,33 +562,35 @@ export async function assembleCompany({
       return null;
     }
 
-    // Helper: copy a resolved skill into the agent's skills/ dir
+    // Helper: resolve a skill and collect it as a Company Skill record
+    // (no longer writes files into the agent's skills/ dir).
     async function installSkill(roleName, fileName, label) {
       const resolved = await resolveSkillFile(roleName, fileName);
       if (!resolved) return false;
-      const destSkillsDir = join(companyDir, 'agents', roleName, 'skills');
-      await mkdir(destSkillsDir, { recursive: true });
-      const destFile = join(destSkillsDir, fileName);
-      await copyFile(resolved.path, destFile);
-      // Append a primary skill's output/review bar when present.
+      const baseName = fileName.replace(/\.md$/, '').replace(/\.fallback$/, '');
+      const variant = fileName.endsWith('.fallback.md') ? 'fallback' : 'primary';
+      let markdown = await readFile(resolved.path, 'utf-8');
       let barApplied = false;
       if (enableEnrichedPersonas && label === 'primary') {
-        const barFileName = fileName.replace(/\.md$/, '.bar.md');
-        const bar = await resolveSkillFile(roleName, barFileName);
+        const bar = await resolveSkillFile(roleName, fileName.replace(/\.md$/, '.bar.md'));
         if (bar) {
           const barContent = await readFile(bar.path, 'utf-8');
-          await appendToFile(destFile, '\n' + barContent.trim() + '\n');
+          markdown = `${markdown.trimEnd()}\n\n${barContent.trim()}\n`;
           barApplied = true;
         }
       }
-      await appendToFile(
-        join(companyDir, 'agents', roleName, 'AGENTS.md'),
-        `\nRead and follow: \`skills/${fileName}\`\n`,
-      );
+      skillRecords.push({
+        roleName,
+        baseSlug: skillSlug(baseName, variant),
+        name: humanizeSkillName(baseName, variant),
+        description: `${moduleName} — ${variant} skill`,
+        categories: [moduleName],
+        markdown,
+      });
       const sourceTag = resolved.source === 'shared' ? ', shared' : '';
       const barTag = barApplied ? ', output bar' : '';
       onProgress(
-        `+ agents/${roleName}/skills/${fileName} (${moduleName}, ${label}${sourceTag}${barTag})`,
+        `+ skill ${skillSlug(baseName, variant)} → ${roleName} (${moduleName}, ${label}${sourceTag}${barTag})`,
       );
       return true;
     }
@@ -623,17 +629,32 @@ export async function assembleCompany({
           // Skip if this skill belongs to a capability (already handled above)
           if (capabilityOwners.has(skillBaseName)) continue;
 
-          const destSkillsDir = join(companyDir, 'agents', role.name, 'skills');
-          await mkdir(destSkillsDir, { recursive: true });
-          await copyFile(join(skillsDir, skillFile), join(destSkillsDir, skillFile));
-          await appendToFile(
-            join(companyDir, 'agents', role.name, 'AGENTS.md'),
-            `\nRead and follow: \`skills/${skillFile}\`\n`,
-          );
-          onProgress(`+ agents/${role.name}/skills/${skillFile} (${moduleName})`);
+          const baseName = skillName.replace(/\.fallback$/, '');
+          const variant = skillFile.endsWith('.fallback.md') ? 'fallback' : 'primary';
+          const markdown = await readFile(join(skillsDir, skillFile), 'utf-8');
+          skillRecords.push({
+            roleName: role.name,
+            baseSlug: skillSlug(baseName, variant),
+            name: humanizeSkillName(baseName, variant),
+            description: `${moduleName} — ${variant} skill`,
+            categories: [moduleName],
+            markdown,
+          });
+          onProgress(`+ skill ${skillSlug(baseName, variant)} → ${role.name} (${moduleName})`);
         }
       }
     }
+  }
+
+  const { companySkills, roleSkillSlugs } = buildCompanySkillSet(skillRecords);
+  const slugToSkillName = new Map(companySkills.map((s) => [s.slug, s.name]));
+  for (const [roleName, slugs] of roleSkillSlugs) {
+    if (!slugs.length) continue;
+    const lines = slugs.map((slug) => `- ${slugToSkillName.get(slug) ?? slug}`).join('\n');
+    await appendToFile(
+      join(companyDir, 'agents', roleName, 'AGENTS.md'),
+      `\n## Installed skills\n\nThese skills are installed into your runtime and auto-discovered by your harness. Use them when relevant:\n\n${lines}\n`,
+    );
   }
 
   // 4. Inject module heartbeat sections into HEARTBEAT.md files
@@ -1204,9 +1225,11 @@ export async function assembleCompany({
   const mainProject = resolvedProjects[0];
   const mainProjectName = mainProject?.name || companyName;
 
-  // When there are scheduled routines, the worker pre-creates the main project
-  // (with board authority) so every routine — including those owned by non-CEO
-  // agents — can be linked to it at creation time. The CEO, which otherwise
+  // When there are project-scoped scheduled routines, the worker pre-creates
+  // the main project (with board authority) so every such routine — including
+  // those owned by non-CEO agents — can be linked to it at creation time.
+  // Control-plane routines can opt out so they do not inherit a project
+  // worktree policy. The CEO, which otherwise
   // creates projects during bootstrap, can only edit routines assigned to
   // itself, so routines owned by other agents would stay project-less. Expose
   // the resolved main project (with its normalized workspace) so the worker can
@@ -1224,8 +1247,9 @@ export async function assembleCompany({
       })()
     : null;
   // Mirror the worker's gate: the main project is only pre-created when there
-  // are routines to attach. Otherwise the CEO still creates it during bootstrap.
-  const mainProjectPreCreated = initialRoutines.length > 0 && mainProjectInfo !== null;
+  // are project-scoped routines to attach. Otherwise the CEO still creates it.
+  const mainProjectPreCreated =
+    initialRoutines.some(routineUsesProjectWorkspace) && mainProjectInfo !== null;
 
   if (resolvedProjects.length > 0) {
     bootstrap += `## Projects\n\n`;
@@ -1390,7 +1414,12 @@ export async function assembleCompany({
         ['schedule', routine.schedule],
         ['priority', routine.priority || 'medium'],
         ['concurrencyPolicy', routine.concurrencyPolicy || 'skip_if_active'],
-        ['projectId', `→ "${mainProjectName}"`],
+        [
+          'projectId',
+          routineUsesProjectWorkspace(routine)
+            ? `→ "${mainProjectName}"`
+            : 'none (control-plane routine; no project worktree)',
+        ],
       ]);
       if (routine.description) {
         bootstrap += `${escapeBody(routine.description)}\n\n`;
@@ -1438,6 +1467,14 @@ export async function assembleCompany({
   }
   bootstrap += `${stepN}. **Start CEO heartbeat** (one-time initial wakeup)\n`;
 
+  if (companySkills.length > 0) {
+    bootstrap += `\n## Company Skills (pre-provisioned)\n\nThese skills are installed in the Skills Store and assigned to agents via \`desiredSkills\`. Do not recreate them:\n\n`;
+    for (const skill of companySkills) {
+      bootstrap += `- \`${skill.slug}\` — ${skill.name}\n`;
+    }
+    bootstrap += `\n`;
+  }
+
   await writeFile(join(companyDir, 'BOOTSTRAP.md'), bootstrap);
   onProgress('+ BOOTSTRAP.md');
 
@@ -1447,6 +1484,8 @@ export async function assembleCompany({
     initialIssues,
     initialRoutines,
     roleAdapterOverrides,
+    companySkills,
+    roleSkillSlugs,
     mainProject: mainProjectInfo,
   };
 }

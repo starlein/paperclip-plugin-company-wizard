@@ -4,6 +4,64 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.20] - 2026-07-18
+
+### Fixed
+
+**Workspace-lifecycle hardening — agents no longer archive their own active run workspace**
+
+Diagnosed a class of routine-run failures where an agent (e.g. the CEO on a stall-detection run) archived its own execution workspace mid-run via `PATCH /api/execution-workspaces/{id}` `{"status":"archived"}`. That removes the git worktree while the run is still finalizing, so the run fails Paperclip's post-run workspace validation (`workspace_validation_failed`) even though the work succeeded — and, for a `reuse_existing` routine workspace, breaks the next scheduled run. The shared "Preserve execution workspaces" instruction in all 17 role `HEARTBEAT.md` files is now an unconditional prohibition (names the archive API call, `git worktree remove`, and branch deletion; covers routine runs and "cleanup" gestures, not just marking an issue `done`). The `stall-detection`, `auto-assign`, and `backlog` skills (primary + CEO fallback variants) carry a targeted rule that these control-plane routines never retire their own run workspace.
+
+**Backlog grooming no longer inherits project worktrees**
+
+The backlog-grooming routine is now explicitly project-detached. Scheduled grooming issues perform API-only board operations without inheriting the main project's isolated git-worktree policy, while the implementation issues they create remain linked to the project and receive isolated workspace settings. Updating an existing company clears any legacy project link from the routine.
+
+### Added
+
+**Task watchdogs (native, event-driven stall recovery)**
+
+The API client's `createIssue` now accepts an optional `watchdog: { agentId, instructions? }`, and new `setIssueWatchdog`/`getIssueWatchdog`/`deleteIssueWatchdog` methods wrap `PUT/GET/DELETE /issues/:id/watchdog`. Provisioning attaches a watchdog to the CEO Bootstrap Issue (CEO as watchdog agent, with recovery instructions) so initial setup self-recovers if it stalls — best-effort, since a governed CEO hire may still be pending approval (not yet invokable), in which case the upsert fails non-fatally. The `backlog-health` skill instructs the PO/CEO to attach a watchdog to every top-level work issue they create, and `stall-detection` now frames itself as the periodic backstop that also adds a watchdog to any stalled watchdog-less issue it finds.
+
+### Changed
+
+- Default Codex model bumped `gpt-5.5` → `gpt-5.6` (`DEFAULT_CEO_MODEL`); Claude default remains `claude-opus-4-8`.
+- The CEO-setup model field (`StepName.tsx`) is now an optional free-text override with an adapter-aware suggestion datalist — Codex: `gpt-5.6` (+ `sol`/`terra`/`luna`), `gpt-5.5`, `gpt-5.4`; Claude: `claude-opus-4-8`, `claude-fable-5`, `claude-mythos-5`, `claude-sonnet-4-6`. Empty now means "use the adapter-appropriate default", fixing the prior behavior where the Codex default model leaked onto a Claude adapter.
+- Refreshed stale model names in role templates: `roles/ceo/role.meta.json` (`gpt-5.5` → `gpt-5.6`) and `roles/cto/role.meta.json` (`claude-opus-4-6` → `claude-opus-4-8`).
+
+## [0.4.19] - 2026-07-16
+
+### Added
+
+**Paperclip Company Skills Store integration**
+
+Assembly now resolves module skills into deterministic, content-deduplicated Company Skills instead of copying skill markdown into every agent directory. Provisioning upserts those skills by slug before hiring agents, maps the returned stable skill keys to each role's `desiredSkills`, and updates existing agents idempotently. Role-specific variants remain distinct when their content differs, while identical shared skills collapse to one company record. Generated `AGENTS.md` and `BOOTSTRAP.md` files list the runtime-installed skills without instructing the CEO to recreate them.
+
+### Changed
+
+- Bumped `@paperclipai/plugin-sdk` and `@paperclipai/shared` compatibility to `2026.707.0`.
+- The plugin manifest now requires Paperclip `2026.707.0` and declares the `skills.managed` capability.
+- Claude-based CEO provisioning now defaults to `claude-opus-4-8`.
+
+### Fixed
+
+**Issue completion no longer destroys reusable execution workspaces**
+
+Every role heartbeat and the GitHub, PR-review, and stall-recovery workflows previously instructed the finishing agent or merge gate to archive an isolated execution workspace before marking the issue `done`. Archiving immediately removes the worktree and makes the workspace record ineligible for reuse, so later review, follow-up, and dependent runs could resolve a workspace that no longer existed.
+
+Generated companies now preserve execution workspaces after normal completion and reserve retirement for an explicit board/operator action. The templates also clarify that Paperclip's `cleanupEligibleAt` / "Cleanup: Not scheduled" field is metadata rather than an automatic cleanup scheduler. A real-template regression test rejects future unqualified instructions to archive/delete/close workspaces during completion.
+
+**Stall detection now understands Paperclip action paths and diagnostics**
+
+Role heartbeats and PR workflows no longer classify `in_review` plus `executionPolicy: null` as a stall by itself. They preserve valid waits owned by pending issue interactions, approvals, user owners, monitors, wakes, active runs, or recovery issues. The stall-detection routine now uses Paperclip's blocker, wake, subtree, interaction, approval, and recovery APIs to distinguish dependency waits from `in_review_without_action_path`, dependency-ready issues that missed their wake, and completed blockers whose workspace finalization is still pending or failed.
+
+The API client also drops the removed `blockParentUntilDone` create-issue field and supplies Paperclip's required `todo` status when callers omit it.
+
+### Verified
+
+- Audited every route used by the API client against a live Paperclip `2026.707+` OpenAPI document.
+- Exercised Company Skill creation and `desiredSkills` hire payloads through the plugin harness.
+- Covered workspace preservation, interaction-aware review waits, liveness diagnostics, and create-issue schema compatibility with real-template and API regression tests.
+
 ## [0.4.18] - 2026-06-30
 
 ### Added

@@ -24,3 +24,4 @@ Use this only when the current assigned issue/routine is titled like "Auto-assig
 - Do not assign code tasks to non-engineering agents or security-sensitive work without security coverage.
 - Respect budgets, pause/cancel states, approval gates, `blockedByIssueIds`, and executionPolicy.
 - If no suitable match exists, leave the issue unassigned and state the reason in the routine-run comment.
+- **Never archive or retire your own routine-run workspace.** This routine is pure control-plane work (assigning issues via the API); it needs no repository state. When done, mark the routine issue `done` and exit. Do not `PATCH /api/execution-workspaces/{id}` to `archived` and do not remove the worktree your run is using — archiving it mid-run fails the run's workspace validation and breaks the next reuse. Workspace retirement is a board/operator action only.

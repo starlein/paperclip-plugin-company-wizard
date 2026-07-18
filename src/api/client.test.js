@@ -164,7 +164,7 @@ describe('PaperclipClient provisioning helpers', () => {
     });
   });
 
-  it('forwards issue parent and label fields so bootstrap-created subissues stay scoped', async () => {
+  it('forwards current issue fields and defaults the required status to todo', async () => {
     const requests = [];
     globalThis.fetch = async (url, opts = {}) => {
       requests.push({ url, body: JSON.parse(opts.body) });
@@ -179,13 +179,59 @@ describe('PaperclipClient provisioning helpers', () => {
       parentId: 'parent-1',
       projectId: 'project-1',
       labelIds: ['label-1'],
-      status: 'todo',
+      blockParentUntilDone: true,
     });
 
     assert.equal(requests[0].body.parentId, 'parent-1');
     assert.equal(requests[0].body.projectId, 'project-1');
     assert.deepEqual(requests[0].body.labelIds, ['label-1']);
     assert.equal(requests[0].body.status, 'todo');
+    assert.ok(
+      !Object.hasOwn(requests[0].body, 'blockParentUntilDone'),
+      'removed Paperclip fields must not leak into create-issue payloads',
+    );
+  });
+
+  it('forwards a task watchdog on issue create only when an agentId is present', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({ url, body: JSON.parse(opts.body) });
+      return jsonResponse({ id: 'issue-1' }, 201);
+    };
+
+    const client = new PaperclipClient('http://paperclip.test');
+    // With a watchdog
+    await client.createIssue('company-1', {
+      title: 'Bootstrap',
+      watchdog: { agentId: 'ceo-1', instructions: 'recover if stalled' },
+    });
+    assert.deepEqual(requests[0].body.watchdog, {
+      agentId: 'ceo-1',
+      instructions: 'recover if stalled',
+    });
+
+    // Without an agentId — the field is dropped, not sent as an invalid object
+    await client.createIssue('company-1', { title: 'No watchdog', watchdog: {} });
+    assert.ok(
+      !Object.hasOwn(requests[1].body, 'watchdog') || requests[1].body.watchdog === undefined,
+      'watchdog without agentId must not be sent',
+    );
+  });
+
+  it('upserts a task watchdog through PUT /issues/:id/watchdog', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({ url, method: opts.method, body: JSON.parse(opts.body) });
+      return jsonResponse({ id: 'wd-1' });
+    };
+
+    const client = new PaperclipClient('http://paperclip.test');
+    await client.setIssueWatchdog('issue-1', { agentId: 'ceo-1', instructions: 'recover' });
+
+    assert.equal(requests[0].url, 'http://paperclip.test/api/issues/issue-1/watchdog');
+    assert.equal(requests[0].method, 'PUT');
+    assert.equal(requests[0].body.agentId, 'ceo-1');
+    assert.equal(requests[0].body.instructions, 'recover');
   });
 
   it('patches issues through the top-level issue update route', async () => {
@@ -309,5 +355,49 @@ describe('PaperclipClient instance settings helpers', () => {
     assert.equal(requests[0].url, 'http://paperclip.test/api/instance/settings/experimental');
     assert.equal(requests[0].method, 'GET');
     assert.equal(settings.enableIsolatedWorkspaces, true);
+  });
+});
+
+describe('PaperclipClient company skills', () => {
+  it('creates a company skill via POST /companies/:id/skills', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({
+        url: String(url),
+        method: opts.method,
+        body: opts.body ? JSON.parse(opts.body) : null,
+      });
+      return jsonResponse({ id: 'skill-1', key: 'ci-cd', slug: 'ci-cd' }, 201);
+    };
+    const client = new PaperclipClient('http://paperclip.test');
+    const result = await client.createCompanySkill('company-1', {
+      name: 'Ci Cd',
+      slug: 'ci-cd',
+      description: 'ci-cd — primary skill',
+      markdown: '# CI/CD',
+      categories: ['ci-cd'],
+    });
+    assert.equal(result.key, 'ci-cd');
+    assert.equal(requests[0].method, 'POST');
+    assert.ok(requests[0].url.endsWith('/api/companies/company-1/skills'));
+    assert.equal(requests[0].body.slug, 'ci-cd');
+    assert.equal(requests[0].body.markdown, '# CI/CD');
+  });
+
+  it('lists and updates company skills', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({ url: String(url), method: opts.method || 'GET' });
+      if (String(url).endsWith('/skills') && (!opts.method || opts.method === 'GET')) {
+        return jsonResponse([{ id: 'skill-1', key: 'ci-cd', slug: 'ci-cd' }]);
+      }
+      return jsonResponse({ id: 'skill-1', key: 'ci-cd', slug: 'ci-cd' });
+    };
+    const client = new PaperclipClient('http://paperclip.test');
+    const list = await client.listCompanySkills('company-1');
+    assert.equal(list[0].slug, 'ci-cd');
+    await client.updateCompanySkill('company-1', 'skill-1', { markdown: '# new' });
+    assert.equal(requests[1].method, 'PATCH');
+    assert.ok(requests[1].url.endsWith('/api/companies/company-1/skills/skill-1'));
   });
 });

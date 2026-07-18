@@ -29,6 +29,53 @@ describe('assembleCompany integration (real templates)', () => {
     await rm(tmpDir, { recursive: true, force: true });
   });
 
+  it('keeps execution workspaces reusable when issues complete', async () => {
+    const roleEntries = await readdir(join(REAL_TEMPLATES_DIR, 'roles'), { withFileTypes: true });
+    for (const roleEntry of roleEntries.filter((entry) => entry.isDirectory())) {
+      const heartbeat = await readFile(
+        join(REAL_TEMPLATES_DIR, 'roles', roleEntry.name, 'HEARTBEAT.md'),
+        'utf-8',
+      );
+      assert.ok(
+        heartbeat.includes('Preserve execution workspaces across issue completion'),
+        `${roleEntry.name}/HEARTBEAT.md should preserve reusable workspaces`,
+      );
+      assert.ok(
+        heartbeat.includes('/interactions') &&
+          heartbeat.includes('/approvals') &&
+          heartbeat.includes('pending') &&
+          heartbeat.includes('interaction'),
+        `${roleEntry.name}/HEARTBEAT.md should recognize interaction-owned review waits`,
+      );
+    }
+
+    const markdownFiles = (await readdir(REAL_TEMPLATES_DIR, { recursive: true })).filter((file) =>
+      file.endsWith('.md'),
+    );
+    const destructiveInstructions = [];
+    for (const relativePath of markdownFiles) {
+      const content = await readFile(join(REAL_TEMPLATES_DIR, relativePath), 'utf-8');
+      for (const [index, line] of content.split('\n').entries()) {
+        const mentionsWorkspace = /\b(?:workspace|worktree)s?\b/i.test(line);
+        const requestsDestruction =
+          /\b(?:archive|delete)(?:s|d)?\b/i.test(line) ||
+          /\bclose(?:s|d)?\s+(?:an? |the |any )?(?:isolated |execution )?(?:workspace|worktree)s?\b/i.test(
+            line,
+          );
+        const explicitlyForbidsDestruction = /\bdo not\b|\bneither\b/i.test(line);
+        if (mentionsWorkspace && requestsDestruction && !explicitlyForbidsDestruction) {
+          destructiveInstructions.push(`${relativePath}:${index + 1}: ${line}`);
+        }
+      }
+    }
+
+    assert.deepEqual(
+      destructiveInstructions,
+      [],
+      `templates must not retire workspaces during normal issue completion:\n${destructiveInstructions.join('\n')}`,
+    );
+  });
+
   it('assembles quality preset with all expected role directories and files', async () => {
     // Quality preset: roles = product-owner, code-reviewer; modules = github-repo, pr-review, backlog, auto-assign, stall-detection
     const { companyDir, allRoles, initialIssues } = await assembleCompany({
@@ -169,7 +216,7 @@ describe('assembleCompany integration (real templates)', () => {
   });
 
   it('resolves capability ownership correctly across modules', async () => {
-    const { companyDir } = await assembleCompany({
+    const result = await assembleCompany({
       companyName: 'CapResolution',
       moduleNames: ['backlog', 'auto-assign'],
       extraRoleNames: ['product-owner'],
@@ -180,56 +227,64 @@ describe('assembleCompany integration (real templates)', () => {
     // product-owner is first in owners[] for both backlog-health and auto-assign
     // → product-owner should be primary, ceo should be fallback
 
-    const poSkillsDir = join(companyDir, 'agents', 'product-owner', 'skills');
-    const ceoSkillsDir = join(companyDir, 'agents', 'ceo', 'skills');
+    const poSlugs = result.roleSkillSlugs.get('product-owner') ?? [];
+    const ceoSlugs = result.roleSkillSlugs.get('ceo') ?? [];
 
-    assert.ok(await exists(poSkillsDir), 'product-owner should have skills/');
-    assert.ok(await exists(ceoSkillsDir), 'ceo should have skills/');
+    // product-owner gets primary skill slugs
+    assert.ok(poSlugs.includes('auto-assign'), 'PO should have primary auto-assign slug');
+    assert.ok(poSlugs.includes('backlog-health'), 'PO should have primary backlog-health slug');
 
-    const poSkills = await readdir(poSkillsDir);
-    const ceoSkills = await readdir(ceoSkillsDir);
-
-    // product-owner gets primary skills
-    assert.ok(poSkills.includes('auto-assign.md'), 'PO should have primary auto-assign.md');
-    assert.ok(poSkills.includes('backlog-health.md'), 'PO should have primary backlog-health.md');
-
-    // ceo gets fallback skills
+    // ceo gets fallback skill slugs
     assert.ok(
-      ceoSkills.includes('auto-assign.fallback.md'),
-      'CEO should have fallback auto-assign',
+      ceoSlugs.includes('auto-assign-fallback'),
+      'CEO should have fallback auto-assign slug',
     );
     assert.ok(
-      ceoSkills.includes('backlog-health.fallback.md'),
-      'CEO should have fallback backlog-health',
+      ceoSlugs.includes('backlog-health-fallback'),
+      'CEO should have fallback backlog-health slug',
     );
 
     // ceo should NOT have the primary versions of capability skills
-    assert.ok(!ceoSkills.includes('auto-assign.md'), 'CEO should not have primary auto-assign');
+    assert.ok(!ceoSlugs.includes('auto-assign'), 'CEO should not have primary auto-assign slug');
     assert.ok(
-      !ceoSkills.includes('backlog-health.md'),
-      'CEO should not have primary backlog-health',
+      !ceoSlugs.includes('backlog-health'),
+      'CEO should not have primary backlog-health slug',
     );
 
-    // AGENTS.md should reference the installed skills
+    // AGENTS.md should list the installed skills under ## Installed skills
     const poAgentsMd = await readFile(
-      join(companyDir, 'agents', 'product-owner', 'AGENTS.md'),
+      join(result.companyDir, 'agents', 'product-owner', 'AGENTS.md'),
       'utf-8',
     );
-    assert.ok(poAgentsMd.includes('auto-assign.md'), 'PO AGENTS.md should reference auto-assign');
     assert.ok(
-      poAgentsMd.includes('backlog-health.md'),
-      'PO AGENTS.md should reference backlog-health',
+      poAgentsMd.includes('## Installed skills'),
+      'PO AGENTS.md should have ## Installed skills section',
+    );
+    assert.ok(
+      poAgentsMd.includes('Auto Assign') || poAgentsMd.includes('auto-assign'),
+      'PO AGENTS.md should list auto-assign skill',
+    );
+    assert.ok(
+      poAgentsMd.includes('Backlog Health') || poAgentsMd.includes('backlog-health'),
+      'PO AGENTS.md should list backlog-health skill',
     );
 
-    const ceoAgentsMd = await readFile(join(companyDir, 'agents', 'ceo', 'AGENTS.md'), 'utf-8');
+    const ceoAgentsMd = await readFile(
+      join(result.companyDir, 'agents', 'ceo', 'AGENTS.md'),
+      'utf-8',
+    );
     assert.ok(
-      ceoAgentsMd.includes('auto-assign.fallback.md'),
-      'CEO AGENTS.md should reference fallback auto-assign',
+      ceoAgentsMd.includes('## Installed skills'),
+      'CEO AGENTS.md should have ## Installed skills section',
+    );
+    assert.ok(
+      ceoAgentsMd.includes('Auto Assign (fallback)') || ceoAgentsMd.includes('auto-assign'),
+      'CEO AGENTS.md should list the fallback auto-assign skill',
     );
   });
 
   it('ships current Paperclip heartbeat and hiring-governance instructions in real templates', async () => {
-    const { companyDir } = await assembleCompany({
+    const result = await assembleCompany({
       companyName: 'GovernanceTemplateCo',
       moduleNames: [
         'github-repo',
@@ -243,6 +298,7 @@ describe('assembleCompany integration (real templates)', () => {
       outputDir,
       templatesDir: REAL_TEMPLATES_DIR,
     });
+    const { companyDir, companySkills } = result;
 
     const executionContract =
       'Start actionable work in the same heartbeat; do not stop at a plan unless planning was requested.';
@@ -256,26 +312,40 @@ describe('assembleCompany integration (real templates)', () => {
       assert.ok(agentsMd.includes('clear next action'), `${role} should require clear next action`);
     }
 
-    const hiringSkill = await readFile(
-      join(companyDir, 'agents', 'product-owner', 'skills', 'hiring-review.md'),
-      'utf-8',
+    // hiring-review is a capability skill; check emitted markdown content
+    const hiringSkill = companySkills.find((s) => s.slug === 'hiring-review');
+    assert.ok(hiringSkill, 'hiring-review skill should be in companySkills');
+    assert.ok(hiringSkill.markdown.includes('/agent-hires'), 'hiring skill should use agent-hires');
+    assert.ok(hiringSkill.markdown.includes('draft-review checklist'));
+    assert.ok(hiringSkill.markdown.includes('sourceIssueId'));
+    assert.ok(
+      !hiringSkill.markdown.includes('type: "hire"'),
+      'legacy approval type should be gone',
     );
-    assert.ok(hiringSkill.includes('/agent-hires'), 'hiring skill should use agent-hires');
-    assert.ok(hiringSkill.includes('draft-review checklist'));
-    assert.ok(hiringSkill.includes('sourceIssueId'));
-    assert.ok(!hiringSkill.includes('type: "hire"'), 'legacy approval type should be gone');
 
-    for (const rel of [
-      ['product-owner', 'skills', 'auto-assign.md'],
-      ['product-owner', 'skills', 'backlog-health.md'],
-      ['ceo', 'skills', 'stall-detection.md'],
+    // Verify routine-run-scoped skills via companySkills markdown
+    for (const [slug, label] of [
+      ['auto-assign', 'auto-assign (product-owner primary)'],
+      ['backlog-health', 'backlog-health (product-owner primary)'],
+      ['stall-detection', 'stall-detection'],
     ]) {
-      const skill = await readFile(join(companyDir, 'agents', ...rel), 'utf-8');
+      const skill = companySkills.find((s) => s.slug === slug);
+      assert.ok(skill, `${slug} should be in companySkills`);
       assert.ok(
-        !skill.includes('Run this on every heartbeat'),
-        `${rel.join('/')} should be routine-run scoped, not every-heartbeat scoped`,
+        !skill.markdown.includes('Run this on every heartbeat'),
+        `${label} should be routine-run scoped, not every-heartbeat scoped`,
       );
     }
+
+    const stallSkill = companySkills.find((skill) => skill.slug === 'stall-detection');
+    assert.ok(stallSkill.markdown.includes('/diagnostics/blockers'));
+    assert.ok(stallSkill.markdown.includes('/diagnostics/wakes'));
+    assert.ok(stallSkill.markdown.includes('/diagnostics/subtree'));
+    assert.ok(stallSkill.markdown.includes('/interactions'));
+    assert.ok(stallSkill.markdown.includes('/recovery-actions'));
+    assert.ok(stallSkill.markdown.includes('in_review_without_action_path'));
+    assert.ok(stallSkill.markdown.includes('pendingFinalizeBlockerCount'));
+    assert.ok(stallSkill.markdown.includes('WORKSPACE-FINALIZE-PENDING'));
   });
 
   it('real bootstrap instructions use executionPolicy review gates without child-review conflict', async () => {
@@ -294,26 +364,24 @@ describe('assembleCompany integration (real templates)', () => {
   });
 
   it('falls back capability ownership to ceo when product-owner is absent', async () => {
-    const { companyDir, initialIssues } = await assembleCompany({
+    const result = await assembleCompany({
       companyName: 'FallbackCo',
       moduleNames: ['backlog', 'auto-assign'],
       extraRoleNames: [],
       outputDir,
       templatesDir: REAL_TEMPLATES_DIR,
     });
+    const { initialIssues, roleSkillSlugs } = result;
 
     // Without product-owner, ceo is next in owners[] → ceo becomes primary
-    const ceoSkillsDir = join(companyDir, 'agents', 'ceo', 'skills');
-    assert.ok(await exists(ceoSkillsDir), 'ceo should have skills/');
-
-    const ceoSkills = await readdir(ceoSkillsDir);
+    const ceoSlugs = roleSkillSlugs.get('ceo') ?? [];
     assert.ok(
-      ceoSkills.includes('auto-assign.md'),
-      'CEO should have primary auto-assign when PO absent',
+      ceoSlugs.includes('auto-assign'),
+      'CEO should have primary auto-assign slug when PO absent',
     );
     assert.ok(
-      ceoSkills.includes('backlog-health.md'),
-      'CEO should have primary backlog-health when PO absent',
+      ceoSlugs.includes('backlog-health'),
+      'CEO should have primary backlog-health slug when PO absent',
     );
 
     // Backlog task should resolve to ceo
@@ -439,13 +507,14 @@ describe('assembleCompany integration (real templates)', () => {
     // render NO executionPolicy sketch — otherwise the Product Owner approval
     // would auto-close the issue with the PR still open, or a self-stage stalls
     // with 422. The engineer takes the self-merge path instead.
-    const { companyDir } = await assembleCompany({
+    const result = await assembleCompany({
       companyName: 'NoCodeReviewerCo',
       moduleNames: ['github-repo', 'pr-review'],
       extraRoleNames: ['engineer', 'product-owner'],
       outputDir,
       templatesDir: REAL_TEMPLATES_DIR,
     });
+    const { companyDir, companySkills } = result;
 
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
     assert.ok(
@@ -457,20 +526,24 @@ describe('assembleCompany integration (real templates)', () => {
       'no merge-gate stage is rendered without an eligible non-author merge gate',
     );
 
-    // M10: the engineer's installed pr-workflow skill must carry the self-merge
-    // path — agents read this file at runtime, not the module.meta.json string.
-    const prWorkflowSkill = await readFile(
-      join(companyDir, 'agents', 'engineer', 'skills', 'pr-workflow.md'),
-      'utf-8',
+    // M10: the engineer's emitted pr-workflow skill must carry the self-merge
+    // path — agents use this content at runtime via Company Skills.
+    const prWorkflowSkill = companySkills.find((s) => s.slug === 'pr-workflow');
+    assert.ok(prWorkflowSkill, 'pr-workflow skill should be emitted as a company skill');
+    assert.ok(
+      prWorkflowSkill.markdown.includes('gh pr merge'),
+      'emitted engineer pr-workflow skill names the self-merge command',
     );
     assert.ok(
-      prWorkflowSkill.includes('gh pr merge'),
-      'installed engineer pr-workflow skill names the self-merge command',
+      prWorkflowSkill.markdown.toLowerCase().includes('self-merge') ||
+        prWorkflowSkill.markdown.includes('No code-reviewer present'),
+      'emitted engineer pr-workflow skill documents the self-merge path',
     );
     assert.ok(
-      prWorkflowSkill.toLowerCase().includes('self-merge') ||
-        prWorkflowSkill.includes('No code-reviewer present'),
-      'installed engineer pr-workflow skill documents the self-merge path',
+      prWorkflowSkill.markdown.includes('not sufficient evidence') &&
+        prWorkflowSkill.markdown.includes('/interactions') &&
+        prWorkflowSkill.markdown.includes('/recovery-actions'),
+      'emitted engineer pr-workflow diagnoses all review action paths before recovery',
     );
   });
 
@@ -501,35 +574,43 @@ describe('assembleCompany integration (real templates)', () => {
     );
   });
 
-  it('injects skill references into AGENTS.md with correct paths', async () => {
-    const { companyDir } = await assembleCompany({
+  it('emits skill data and lists skills in AGENTS.md Installed skills section', async () => {
+    const result = await assembleCompany({
       companyName: 'SkillRefCo',
       moduleNames: ['github-repo'],
       extraRoleNames: ['engineer'],
       outputDir,
       templatesDir: REAL_TEMPLATES_DIR,
     });
+    const { companyDir, companySkills, roleSkillSlugs } = result;
 
-    // github-repo has an agent-specific skill for engineer; the reference must be
-    // RELATIVE (resolved by the runtime from the AGENTS.md dir), not an absolute
-    // path and not an unresolved $AGENT_HOME placeholder.
+    // github-repo has an agent-specific skill for engineer; it should be emitted
+    // as a company skill rather than written to disk.
+    const gitSkill = companySkills.find((s) => s.slug === 'git-workflow');
+    assert.ok(gitSkill, 'git-workflow should be emitted as a company skill');
+    assert.ok(
+      roleSkillSlugs.get('engineer')?.includes('git-workflow'),
+      'engineer should be assigned the git-workflow slug',
+    );
+
+    // AGENTS.md should list the skill under ## Installed skills (not "Read and follow:")
     const engAgentsMd = await readFile(
       join(companyDir, 'agents', 'engineer', 'AGENTS.md'),
       'utf-8',
     );
     assert.ok(
-      engAgentsMd.includes('Read and follow: `skills/git-workflow.md`'),
-      'engineer AGENTS.md should reference git-workflow skill by relative path',
+      engAgentsMd.includes('## Installed skills'),
+      'engineer AGENTS.md should have ## Installed skills section',
     );
     assert.ok(
       !engAgentsMd.includes(join(companyDir, 'agents', 'engineer', 'skills', 'git-workflow.md')),
       'engineer AGENTS.md should not contain an absolute skill path',
     );
 
-    // Skill file should exist at the referenced location
+    // No skill file on disk — skills are emitted as data only
     assert.ok(
-      await exists(join(companyDir, 'agents', 'engineer', 'skills', 'git-workflow.md')),
-      'engineer skills/git-workflow.md should exist',
+      !(await exists(join(companyDir, 'agents', 'engineer', 'skills', 'git-workflow.md'))),
+      'engineer skills/git-workflow.md should NOT exist on disk (emitted as data)',
     );
   });
 
@@ -643,7 +724,7 @@ describe('assembleCompany integration (real templates)', () => {
   });
 
   it('enriches a real expert role by default', async () => {
-    const { companyDir } = await assembleCompany({
+    const result = await assembleCompany({
       companyName: 'EnrichReal',
       userGoals: [{ title: 'Ship securely', description: '' }],
       moduleNames: ['github-repo', 'security-audit'],
@@ -651,6 +732,7 @@ describe('assembleCompany integration (real templates)', () => {
       outputDir,
       templatesDir: REAL_TEMPLATES_DIR,
     });
+    const { companyDir, companySkills } = result;
 
     const soul = await readFile(
       join(companyDir, 'agents', 'security-engineer', 'SOUL.md'),
@@ -668,14 +750,13 @@ describe('assembleCompany integration (real templates)', () => {
       'security-engineer HEARTBEAT.md gains done-criteria',
     );
 
-    // The security-audit primary skills (owned by security-engineer) gain their output bars.
-    const securityReview = await readFile(
-      join(companyDir, 'agents', 'security-engineer', 'skills', 'security-review.md'),
-      'utf-8',
-    );
+    // The security-audit primary skills (owned by security-engineer) gain their output bars
+    // in the emitted companySkills markdown.
+    const securityReview = companySkills.find((s) => s.slug === 'security-review');
+    assert.ok(securityReview, 'security-review should be in companySkills');
     assert.ok(
-      securityReview.includes('## Output / review bar'),
-      'security-review primary skill gains its output bar',
+      securityReview.markdown.includes('## Output / review bar'),
+      'security-review primary skill gains its output bar in emitted markdown',
     );
 
     // No enrichment fragment leaks as a standalone file.
@@ -805,29 +886,29 @@ describe('assembleCompany integration (real templates)', () => {
     assert.ok(!crSkill.includes('gh pr review'), 'no formal GitHub review with shared credential');
   });
 
-  it('installs the PR-scoped security review skill when a security engineer is present', async () => {
-    const { companyDir } = await assembleCompany({
+  it('emits the PR-scoped security review skill when a security engineer is present', async () => {
+    const result = await assembleCompany({
       companyName: 'SecReviewCo',
       moduleNames: ['github-repo', 'pr-review'],
       extraRoleNames: ['engineer', 'security-engineer'],
       outputDir,
       templatesDir: REAL_TEMPLATES_DIR,
     });
-    const skillPath = join(
-      companyDir,
-      'agents',
-      'security-engineer',
-      'skills',
-      'pr-security-review.md',
+    const { companySkills, roleSkillSlugs } = result;
+
+    // pr-security-review is a non-capability skill for security-engineer
+    const prSecReview = companySkills.find((s) => s.slug === 'pr-security-review');
+    assert.ok(
+      prSecReview,
+      'pr-security-review should be emitted as a company skill when security-engineer is present',
     );
     assert.ok(
-      await exists(skillPath),
-      'pr-security-review.md should be installed for security-engineer',
-    );
-    const content = await readFile(skillPath, 'utf-8');
-    assert.ok(
-      content.toLowerCase().includes('security-relevant'),
+      prSecReview.markdown.toLowerCase().includes('security-relevant'),
       'pr-security-review scopes itself to security-relevant changes',
+    );
+    assert.ok(
+      roleSkillSlugs.get('security-engineer')?.includes('pr-security-review'),
+      'security-engineer should be assigned the pr-security-review slug',
     );
   });
 

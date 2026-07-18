@@ -35,12 +35,12 @@ Run this checklist on every heartbeat. The Paperclip skill is the source of trut
 - Upload or attach user-inspectable outputs as work products/artifacts/documents; local filesystem paths alone are not enough.
 - Use issue documents for long plans, specs, QA reports, security reviews, or hiring drafts; comments should summarize and link.
 - Handoffs should use assignment/status/executionPolicy and a concrete next action. Do not rely on generic @-mentions.
-- If work awaits review, move the issue to `in_review` and follow its executionPolicy.
+- Before leaving an issue in `in_review`, make the next action explicit. Valid paths include an active `executionPolicy` participant, a pending issue interaction or approval, an assigned user owner, a scheduled monitor, an active/queued wake, or a recovery issue. When `executionPolicy` is null, check `GET /api/issues/{id}/interactions` and `GET /api/issues/{id}/approvals`; null policy alone does not mean the issue is stalled. If no path exists, keep or return it to `in_progress` and assign an owner, or create the structured interaction/approval that will resume it.
 
 ## 6. Exit
 
 - Always comment before exiting any issue you touched: status, evidence, blockers, work products, and next action.
-- If the issue used an isolated execution workspace/worktree, close it before final disposition: read `currentExecutionWorkspace.id` from `heartbeat-context`, check `GET /api/execution-workspaces/{id}/close-readiness`, then archive with `PATCH /api/execution-workspaces/{id}` `{ "status": "archived" }` after commits/PRs are merged and the tree is clean. If close-readiness or cleanup is blocked, do not mark `done`; leave the issue `blocked`/`in_review` with the exact cleanup blocker and next owner.
+- Preserve execution workspaces across issue completion — including the workspace your current run is executing in. **Never archive, retire, or delete an execution workspace as part of your own run.** Do not call `PATCH /api/execution-workspaces/{id}` with `{"status":"archived"}`, do not run `git worktree remove`, and do not delete the run branch — not when marking an issue `done`, not at the end of a routine run, and not as a "cleanup" or "tidy up" gesture. Archiving the workspace your run is using deletes its worktree mid-run: the run then fails workspace validation, and the next run that would reuse the workspace breaks. Follow-up, review, dependent work, and later routine runs may reuse the workspace, and Paperclip can restore a missing worktree only while its workspace record stays reusable. Workspace retirement is a board/operator action only, performed when an issue explicitly requests it. `cleanupEligibleAt` / "Cleanup: Not scheduled" is lifecycle metadata, not an automatic cleanup scheduler.
 - If no assigned work, valid approval/review, or routine-run exists, exit cleanly without scanning unrelated unassigned work.
 
 ## Rules

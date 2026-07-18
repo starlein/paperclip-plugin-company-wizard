@@ -25,7 +25,7 @@ Add additional labels if the roadmap calls for them (e.g., `docs`, `design`, `se
 
 ## Backlog Health Check
 
-1. Checkout the assigned backlog/routine issue before mutating the board.
+1. Checkout the assigned backlog/routine issue in Paperclip before mutating the board. This is API-only control-plane work; do not create or enter a repository worktree for the grooming run.
 2. Read the current company goals, roadmap/project context, existing issue documents, and recent decision log entries.
 3. Query existing issues for the relevant project/goal and avoid duplicates.
 4. If the backlog is thin or unclear, create around 3-6 small actionable issues via `POST /api/companies/{companyId}/issues`.
@@ -44,6 +44,8 @@ Add additional labels if the roadmap calls for them (e.g., `docs`, `design`, `se
 - Split into subissues only when each child can be completed independently; avoid splitting tightly coupled implementation across sibling subissues.
 - **Set workspace isolation explicitly at creation.** Top-level issues (no `parentId`) must send `"executionWorkspaceSettings": { "mode": "isolated_workspace" }` so each gets its own worktree/branch. Sub-issues set `parentId` and omit `executionWorkspaceSettings` so they reuse the parent's workspace. Never create a top-level issue without it — otherwise it inherits the workspace of whatever issue you currently have checked out and blocks parallel work.
 - Always attach at least one label to every issue you create.
+- **Attach a task watchdog to every top-level issue you create.** Send `"watchdog": { "agentId": "<CEO agent id>", "instructions": "If this issue's work stalls (runs end without it reaching done, a review is misrouted, or a dependent merge is stranded), re-evaluate and recover: verify blockers and executionPolicy gates, reassign to the right owner with an explicit next action, or escalate. Do not archive or delete any execution workspace." }`. This is native, event-driven stall recovery — Paperclip wakes the watchdog agent when the issue's subtree stops without completing, so you no longer rely only on the periodic stall-detection routine. Use the CEO agent id (resolve it from your `heartbeat-context` or `GET /api/companies/{companyId}/agents`); omit the watchdog only for throwaway sub-issues that reuse a parent's workspace.
 - If the goal is fully decomposed into issues, do not create more. Report status and next review trigger to the CEO/Product Owner.
 - Work products such as roadmap drafts or decomposition tables belong in issue documents/artifacts, not only comments.
 - **Review handoff:** When moving an issue to `in_review`, always assign it to the reviewer. If the issue has an executionPolicy with review stages, Paperclip reassigns automatically. If there is no executionPolicy, PATCH the issue's `assigneeAgentId` to the reviewer before or at the same time as the status change. An issue in `in_review` that is still assigned to the original implementer will stall — no one picks it up. Always reassign on review handoff.
+- **Backlog grooming is intentionally project-detached and must not use a git worktree.** Perform the run through Paperclip APIs only. Setting `projectId` and isolated `executionWorkspaceSettings` on the *work issues you create* is correct; that does not attach the grooming run itself to their project or worktrees. Do not clone, branch, run `git worktree add`, or try to repair the routine by attaching it to a project.

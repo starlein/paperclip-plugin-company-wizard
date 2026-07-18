@@ -15,7 +15,7 @@
 
 ---
 
-> **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for the current Paperclip API (`>=2026.529.0`) with substantial bug fixes. End-to-end company setup is governed through current Paperclip workflows as of v0.4.6.
+> **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for the current Paperclip API (`>=2026.707.0`) with substantial bug fixes. End-to-end company setup is governed through current Paperclip workflows as of v0.4.6.
 
 **Update Company:** If you have provisioned your company before with some older version of this plugin or you have an existing company, since version 0.4.6 you can update your existing company by providing the company ID in the wizard summary page. It will make a soft update of agent instructions and workflow/instruction documents. 
 
@@ -26,16 +26,18 @@
 
 - Bootstrap metadata fields renamed to match the Paperclip API exactly: `parentId`, `assigneeAgentId`, `projectId`, `goalIds`
 - CEO is provisioned with correct `capabilities` metadata so newly created CEOs are no longer saved with empty summaries
-- `@paperclipai/plugin-sdk` and `@paperclipai/shared` declared as `peerDependencies` with minimum version `>=2026.529.0` — the host provides the SDK at runtime (externalized from the bundle)
+- `@paperclipai/plugin-sdk` and `@paperclipai/shared` declared as `peerDependencies` with minimum version `>=2026.707.0` — the host provides the SDK at runtime (externalized from the bundle)
 - `security-engineer` role now maps to the dedicated Paperclip `security` enum value (was `general`)
 
 #### Bootstrap reliability
 
-- **Agents provisioned with complete instructions** — every non-CEO agent is now created by the plugin directly with its full `instructionsBundle` (AGENTS.md + HEARTBEAT/SOUL/TOOLS + skills). Previously the CEO created these agents during bootstrap with only an `instructionsFilePath`, leaving each agent with a bare AGENTS.md and fragile external path references
+- **Agents provisioned with complete instructions and Company Skills** — every non-CEO agent is created directly with its external AGENTS/HEARTBEAT/SOUL/TOOLS instruction bundle, while resolved module skills are installed in Paperclip's Company Skills Store and assigned through `desiredSkills`. Previously the CEO created agents during bootstrap with only an `instructionsFilePath`, leaving each agent with incomplete runtime context.
 - **Routines created directly during provisioning** — Paperclip only allows an agent to create routines assigned to itself, so the CEO could not create routines owned by the Product Owner. The plugin now creates all routines with board authority at provisioning time and pre-creates the main project so every routine — including those owned by non-CEO agents — is linked to it; BOOTSTRAP.md tells the CEO they already exist
 - **Worker agents no longer run always-on heartbeats** — enabling heartbeats on every provisioned agent caused bursts of concurrent runs that crashed the dev server. Only the CEO keeps an always-on heartbeat; all other agents are woken on assignment
 - **Fresh local repos no longer bootstrap with isolated git worktrees** — provisioning a brand-new `local_path` project with an `isolated_workspace` / `git_worktree` policy made worker agents try to branch before the repo existed, so early runs failed and agents flipped to `error`. The isolated policy is now suppressed for fresh local repos (agents work in the shared project workspace during bootstrap). Guarded in `assemble.js` and removed at the source in `StepRepository` and the AI wizard prompts
 - **Workspace isolation follows Paperclip instance settings** — `enableIsolatedWorktrees` is no longer a plugin setting. The wizard reads `enableIsolatedWorkspaces` from the Paperclip instance experimental settings and only applies `isolated_workspace` / `git_worktree` for external repositories when that setting is enabled. Base refs are preserved from project/worktree settings and are no longer rewritten to `main`, `master`, or `origin/*`.
+- **Completed issues preserve reusable execution workspaces** — generated roles no longer archive/delete isolated worktrees while marking work `done`. Paperclip's `cleanupEligibleAt` / "Cleanup: Not scheduled" field is lifecycle metadata, not an active cleanup scheduler; normal cleanup is left to a separate board/operator action so reviews, follow-ups, and dependent issues can safely reuse the workspace record.
+- **Stall recovery follows Paperclip's current liveness model** — generated roles recognize pending interactions, approvals, user owners, monitors, wakes, and recovery issues as valid action paths even when `executionPolicy` is null. Stall-detection routines use blocker/wake/subtree diagnostics before reassigning or changing state.
 - Bootstrap ordering hardened; agent filter bug fixed (v0.3.7)
 
 #### Assembly and template fixes
@@ -800,18 +802,19 @@ Create `templates/presets/<name>/preset.meta.json`:
 
 1. Copies base role files (CEO — the only base role) into `agents/`
 2. Copies selected extra roles into `agents/`
-3. For each module: resolves capability ownership, installs skills, copies docs
+3. For each module: resolves capability ownership, collects deduplicated Company Skills, copies docs
 4. Injects module heartbeat sections into each role's `HEARTBEAT.md`
-5. Generates `BOOTSTRAP.md` with goal, project, agent paths, and initial tasks
+5. Generates `BOOTSTRAP.md` with goal, project, agent paths, Company Skill slugs, and initial tasks
 
 **Provisioning** (Review → Provision step):
 
 1. Connects to Paperclip API (auto-detects `local_trusted` vs authenticated)
 2. Creates a new **company** in Paperclip — or targets an existing one if `existingCompanyId` is set in the review step
 3. Creates **Board Operations** and **Hiring Plan** issues with `decision-log` and `hiring-plan` documents
-4. Submits the **CEO and team agents** through `/agent-hires` with full managed `instructionsBundle` payloads and `sourceIssueId` provenance; pending approvals are logged for board action instead of auto-approved
-5. Creates scheduled routines with board authority and links them to the pre-created main project when needed
-6. Creates a **Bootstrap task** assigned to the CEO
+4. Upserts assembled **Company Skills** in the Skills Store and resolves their stable keys
+5. Submits the **CEO and team agents** through `/agent-hires` with external instruction bundles, `desiredSkills`, and `sourceIssueId` provenance; pending approvals are logged for board action instead of auto-approved
+6. Creates scheduled routines with board authority and links them to the pre-created main project when needed
+7. Creates a **Bootstrap task** assigned to the CEO
 
 The CEO then continues setup on its first heartbeat: approve/confirm any pending hire gates, create goals and initial backlog issues, link pre-created projects to goals when needed, and start normal assigned-work workflows. If provisioning fails after a **new** company is created, the partial company is automatically deleted — existing target companies are never deleted on error.
 

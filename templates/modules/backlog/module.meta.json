@@ -26,7 +26,8 @@
       "assignTo": "capability:backlog-health",
       "schedule": "0 */2 * * *",
       "priority": "medium",
-      "concurrencyPolicy": "skip_if_active"
+      "concurrencyPolicy": "skip_if_active",
+      "useProjectWorkspace": false
     }
   ]
 }

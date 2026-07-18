@@ -95,7 +95,7 @@ Use this flow when the **pr-review module is not active** (no Code Reviewer role
    - Rejected as **non-fast-forward**: `git pull --rebase origin <base-branch>`, re-run checks, push again.
    - Rejected by **branch protection** (PR required): use the PR fallback — feature branch → `git push -u origin <branch-name>` → `gh pr create --base <base-branch> ... --body-file <file>` (register the PR as a work product) → `gh pr merge <N> --merge --delete-branch`. This is the only case where you open a PR.
 7. Confirm it landed: `git log origin/<base-branch> -1` shows your commit.
-8. If the issue uses an isolated execution workspace (worktree), archive it from `heartbeat-context` after the push.
+8. If the issue uses an isolated execution workspace (worktree), leave it reusable after the push. Do not archive/delete it during issue completion; workspace retirement is a separate board/operator action.
 9. **Company-owned CI/CD only** (`ci-cd` module active): if the base CI goes red after your push, fix it immediately (see *Base-branch-red deadlock*). A pre-existing repo check the company never configured is advisory — not a gate.
 
 ## Resolving the default branch
@@ -135,7 +135,7 @@ For a brand-new local repository there is no remote yet, so initialize on `main`
 
 - Never mark an issue as `done` unless at least one new commit exists for that issue's work and has been pushed.
 - Before marking `done`, ensure the working tree is clean (`git status --short` shows no pending changes).
-- If Paperclip created an isolated execution workspace for this issue, close/archive it after the commit/PR has landed and before marking `done`. If cleanup is blocked or fails, leave the issue open with the exact cleanup blocker. If the issue is in the shared project workspace, do not invent isolated-worktree cleanup.
+- If Paperclip created an isolated execution workspace for this issue, preserve it after the commit/PR lands so review, follow-up, or dependent work can reuse it. Do not archive/delete it as part of marking the issue `done`. Paperclip's `cleanupEligibleAt` / "Cleanup: Not scheduled" value does not run cleanup automatically; retirement is a separate board/operator action.
 - If no repository change is required, do not silently close as `done`: add an issue comment explaining why no code change was needed and escalate to the CEO for explicit decision.
 
 ## Branch Safety

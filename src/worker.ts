@@ -19,6 +19,7 @@ import {
   buildWorkerAgentRuntimeConfig,
   normalizeCeoAdapterType,
 } from './logic/ceo-defaults.js';
+import { routineProjectPayload, routineUsesProjectWorkspace } from './logic/routines.js';
 // @ts-ignore
 import {
   collectGoals,
@@ -631,34 +632,69 @@ async function setExternalInstructionsBundle({
 }
 
 /**
- * Preserve existing `paperclipSkillSync.desiredSkills` from an agent's current
- * `adapterConfig` when updating it. The plugin rebuilds `adapterConfig` from scratch
- * (via `buildWorkerAdapterConfig` / `buildCeoAdapterConfig`), which does NOT include
- * `paperclipSkillSync`. Without this merge, individual runtime skill assignments are
- * lost on every update.
- *
- * Merges the existing `paperclipSkillSync` key into `nextAdapterConfig` so the PATCH
- * preserves the agent's skill sync preferences.
+ * Create or update the assembled Company Skills for a company, idempotent by
+ * slug (templates are the source of truth). Returns a slug → key map used to
+ * populate agent `desiredSkills`. Must run BEFORE any agent that references
+ * these skills is hired.
  */
-function preserveExistingSkillSync(
-  existingAgent: any,
-  nextAdapterConfig: Record<string, unknown>,
-): Record<string, unknown> {
-  const existingSync =
-    existingAgent?.adapterConfig &&
-    typeof existingAgent.adapterConfig === 'object' &&
-    'paperclipSkillSync' in (existingAgent.adapterConfig as Record<string, unknown>)
-      ? (existingAgent.adapterConfig as Record<string, unknown>).paperclipSkillSync
-      : undefined;
+async function provisionCompanySkills(
+  client: any,
+  companyId: string,
+  companySkills: Array<{
+    slug: string;
+    name: string;
+    description?: string;
+    markdown: string;
+    categories?: string[];
+  }>,
+  log: (msg: string) => void,
+): Promise<Map<string, string>> {
+  const slugToKey = new Map<string, string>();
+  if (!Array.isArray(companySkills) || companySkills.length === 0) return slugToKey;
 
-  if (!existingSync) {
-    return nextAdapterConfig;
+  let existing: any[] = [];
+  try {
+    const listed = await client.listCompanySkills(companyId);
+    existing = Array.isArray(listed) ? listed : [];
+  } catch (err) {
+    log(
+      `⚠ Could not list existing company skills: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  const bySlug = new Map<string, any>();
+  for (const s of existing) {
+    if (s && typeof s.slug === 'string') bySlug.set(s.slug, s);
   }
 
-  return {
-    ...nextAdapterConfig,
-    paperclipSkillSync: existingSync,
-  };
+  for (const skill of companySkills) {
+    const found = bySlug.get(skill.slug);
+    if (!found) {
+      const created = await client.createCompanySkill(companyId, {
+        name: skill.name,
+        slug: skill.slug,
+        description: skill.description,
+        markdown: skill.markdown,
+        categories: skill.categories,
+      });
+      slugToKey.set(skill.slug, created?.key || created?.slug || skill.slug);
+      log(`✓ Created company skill "${skill.slug}"`);
+      continue;
+    }
+
+    slugToKey.set(skill.slug, found.key || skill.slug);
+    const updates: Record<string, unknown> = {};
+    if ((found.name ?? '') !== skill.name) updates.name = skill.name;
+    if ((found.description ?? '') !== (skill.description ?? '')) {
+      updates.description = skill.description ?? null;
+    }
+    if (Array.isArray(skill.categories)) updates.categories = skill.categories;
+    if ((found.markdown ?? '') !== skill.markdown) updates.markdown = skill.markdown;
+    if (Object.keys(updates).length > 0) {
+      await client.updateCompanySkill(companyId, found.id, updates);
+      log(`✓ Updated company skill "${skill.slug}"`);
+    }
+  }
+  return slugToKey;
 }
 
 function routineTemplateTitle(routine: any): string {
@@ -811,6 +847,7 @@ async function syncExistingCompanyRoutines({
       title,
       description: routine.description || null,
       assigneeAgentId,
+      ...routineProjectPayload(routine, undefined, { sync: true }),
       priority: routine.priority || 'medium',
       status: routine.status || 'active',
       concurrencyPolicy: routine.concurrencyPolicy || 'skip_if_active',
@@ -1688,6 +1725,21 @@ const plugin = definePlugin({
         try {
           allRoleNames = [...(assembleResult.allRoles ?? [])].filter(Boolean).sort();
 
+          log('Provisioning company skills...');
+          const slugToKey = await provisionCompanySkills(
+            client,
+            companyId,
+            assembleResult.companySkills ?? [],
+            log,
+          );
+          const desiredSkillsForRole = (roleName: string): string[] =>
+            (
+              (assembleResult.roleSkillSlugs as Map<string, string[]> | undefined)?.get(roleName) ??
+              []
+            )
+              .map((slug) => slugToKey.get(slug))
+              .filter((key): key is string => Boolean(key));
+
           // Read the wizard manifest (best-effort) for retired-role detection
           if (existingCompanyId) {
             try {
@@ -1813,7 +1865,8 @@ const plugin = definePlugin({
               try {
                 const ceoPatch: Record<string, unknown> = {
                   adapterType,
-                  adapterConfig: preserveExistingSkillSync(existingCeo, adapterConfig),
+                  adapterConfig,
+                  desiredSkills: desiredSkillsForRole('ceo'),
                   runtimeConfig: ceoRuntimeConfig,
                   ...(ceoMetadata
                     ? { metadata: { ...(existingCeo.metadata ?? {}), ...ceoMetadata } }
@@ -1846,6 +1899,7 @@ const plugin = definePlugin({
                 reportsTo: null,
                 adapterType,
                 adapterConfig,
+                desiredSkills: desiredSkillsForRole('ceo'),
                 runtimeConfig: ceoRuntimeConfig,
                 permissions: { canCreateAgents: true },
                 ...(boardOperationsIssue?.id ? { sourceIssueId: boardOperationsIssue.id } : {}),
@@ -1865,6 +1919,7 @@ const plugin = definePlugin({
               reportsTo: null,
               adapterType,
               adapterConfig,
+              desiredSkills: desiredSkillsForRole('ceo'),
               runtimeConfig: ceoRuntimeConfig,
               permissions: { canCreateAgents: true },
               ...(boardOperationsIssue?.id ? { sourceIssueId: boardOperationsIssue.id } : {}),
@@ -1966,7 +2021,8 @@ const plugin = definePlugin({
               try {
                 await client.updateAgent(existingAgent.id, {
                   adapterType,
-                  adapterConfig: preserveExistingSkillSync(existingAgent, roleAdapterConfig),
+                  adapterConfig: roleAdapterConfig,
+                  desiredSkills: desiredSkillsForRole(roleName),
                   runtimeConfig: roleRuntimeConfig,
                   metadata: { ...(existingAgent.metadata ?? {}), ...roleMetadata },
                   ...(!existingAgent.title && roleTitle ? { title: roleTitle } : {}),
@@ -2001,6 +2057,7 @@ const plugin = definePlugin({
               reportsTo: ceoAgentId,
               adapterType,
               adapterConfig: roleAdapterConfig,
+              desiredSkills: desiredSkillsForRole(roleName),
               runtimeConfig: roleRuntimeConfig,
               ...(hiringPlanIssue?.id ? { sourceIssueId: hiringPlanIssue.id } : {}),
             });
@@ -2032,7 +2089,7 @@ const plugin = definePlugin({
             : [];
 
           if (!existingCompanyId) {
-            // Pre-create the main project so every routine can be linked to it.
+            // Pre-create the main project so project-scoped routines can be linked to it.
             // The CEO creates projects during bootstrap, but it can only edit
             // routines assigned to ITSELF — routines owned by other agents (PM,
             // etc.) would otherwise stay project-less forever. The wizard runs
@@ -2041,7 +2098,7 @@ const plugin = definePlugin({
             // still created (project-less) rather than blocking provisioning.
             let mainProjectId: string | undefined;
             const mainProject = assembleResult.mainProject;
-            if (routines.length > 0 && mainProject?.name) {
+            if (routines.some(routineUsesProjectWorkspace) && mainProject?.name) {
               try {
                 const createdProject = await client.createProject(companyId, {
                   name: mainProject.name,
@@ -2076,7 +2133,7 @@ const plugin = definePlugin({
                   title,
                   description: routine.description,
                   assigneeAgentId,
-                  projectId: mainProjectId,
+                  ...routineProjectPayload(routine, mainProjectId),
                   priority: routine.priority || 'medium',
                   concurrencyPolicy: routine.concurrencyPolicy || 'skip_if_active',
                   catchUpPolicy: routine.catchUpPolicy || 'skip_missed',
@@ -2128,6 +2185,31 @@ const plugin = definePlugin({
           });
           bootstrapIssue = issue as { id: string; identifier?: string };
           log(`✓ Bootstrap task created: ${bootstrapIssue.identifier || bootstrapIssue.id}`);
+
+          // Attach a task watchdog so the initial company setup self-recovers if it
+          // stalls. The CEO watches its own bootstrap subtree; if runs go terminal
+          // without the work completing, Paperclip wakes the CEO with these recovery
+          // instructions. Best-effort: in the governed hire flow the CEO may still be
+          // pending approval (not yet invokable), which makes the watchdog upsert fail —
+          // that is non-fatal, so we log and continue (the stall-detection routine still
+          // covers the company).
+          try {
+            await client.setIssueWatchdog(bootstrapIssue.id, {
+              agentId: ceoAgentId,
+              instructions:
+                'Bootstrap/setup stalled. Re-read this issue and BOOTSTRAP.md, then resume: ' +
+                'create any missing goals/issues, link the pre-created projects and routines, ' +
+                'and unblock or reassign whatever stopped. Do not archive or delete any ' +
+                'execution workspace as part of recovery. Leave the issue in a clear final state.',
+            });
+            log('✓ Watchdog attached to bootstrap task (CEO self-recovery).');
+          } catch (wdErr) {
+            log(
+              `⚠ Could not attach bootstrap watchdog (non-fatal — likely CEO pending approval): ${
+                wdErr instanceof Error ? wdErr.message : String(wdErr)
+              }`,
+            );
+          }
         } catch (err) {
           log(`✗ Provisioning failed: ${err instanceof Error ? err.message : String(err)}`);
           if (createdCompany) {
