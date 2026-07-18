@@ -419,6 +419,9 @@ export class PaperclipClient {
   // Upsert a task watchdog on an existing issue. The watching agent must be
   // invokable (active), so callers should treat failures as non-fatal.
   async setIssueWatchdog(issueId, { agentId, instructions } = {}) {
+    if (!agentId) {
+      throw new Error('setIssueWatchdog requires agentId');
+    }
     return this._fetch(`/api/issues/${issueId}/watchdog`, {
       method: 'PUT',
       body: JSON.stringify({
