@@ -15,9 +15,9 @@
 
 ---
 
-> **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for the current Paperclip API (`>=2026.707.0`) with substantial bug fixes. End-to-end company setup is governed through current Paperclip workflows as of v0.4.6.
+> **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for the current Paperclip API (`>=2026.707.0`) with substantial bug fixes. End-to-end company setup is governed through current Paperclip workflows as of v0.4.21.
 
-**Update Company:** If you have provisioned your company before with some older version of this plugin or you have an existing company, since version 0.4.6 you can update your existing company by providing the company ID in the wizard summary page. It will make a soft update of agent instructions and workflow/instruction documents. 
+**Update Company:** If you have provisioned your company before with some older version of this plugin or you have an existing company, since version 0.4.6 you can update your existing company by providing the company ID in the wizard summary page. It will make a soft update of agent instructions and workflow/instruction documents.
 
 <details>
 <summary><strong>What changed vs. upstream</strong></summary>
@@ -38,6 +38,7 @@
 - **Workspace isolation follows Paperclip instance settings** — `enableIsolatedWorktrees` is no longer a plugin setting. The wizard reads `enableIsolatedWorkspaces` from the Paperclip instance experimental settings and only applies `isolated_workspace` / `git_worktree` for external repositories when that setting is enabled. Base refs are preserved from project/worktree settings and are no longer rewritten to `main`, `master`, or `origin/*`.
 - **Completed issues preserve reusable execution workspaces** — generated roles no longer archive/delete isolated worktrees while marking work `done`. Paperclip's `cleanupEligibleAt` / "Cleanup: Not scheduled" field is lifecycle metadata, not an active cleanup scheduler; normal cleanup is left to a separate board/operator action so reviews, follow-ups, and dependent issues can safely reuse the workspace record.
 - **Stall recovery follows Paperclip's current liveness model** — generated roles recognize pending interactions, approvals, user owners, monitors, wakes, and recovery issues as valid action paths even when `executionPolicy` is null. Stall-detection routines use blocker/wake/subtree diagnostics before reassigning or changing state.
+- **Role handoffs protect workspace isolation and review ownership** — Engineers move unrelated fixes and dependency upgrades to separately isolated top-level issues, Product Owners route implementation and codebase audits to Engineering, and Security Engineers require exact-head green CI evidence before resubmitting a CI-only rejection.
 - Bootstrap ordering hardened; agent filter bug fixed (v0.3.7)
 
 #### Assembly and template fixes

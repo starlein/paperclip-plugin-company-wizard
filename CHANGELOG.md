@@ -4,6 +4,21 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.21] - 2026-08-07
+
+### Changed
+
+**Role handoffs and workspace coaching now match current Paperclip guidance**
+
+- Software Engineers keep unrelated follow-up work out of the current issue's isolated workspace. Dependency upgrades and separate fixes are moved to separately isolated top-level issues and kept off the current branch.
+- Product Owners route codebase audits, dependency upgrades, and implementation work to the Software Engineer while reserving the Code Reviewer for explicit non-author review and merge-gate work.
+- Security Engineers re-check every mandatory CI job on the exact reviewed head after a CI-only rejection. They preserve a first-class blocker or bounded monitor until required checks execute green, and only resubmit on new green evidence or an explicit reviewer waiver.
+
+### Verified
+
+- Added real-template assembly regression coverage for the exact Engineer, Product Owner, and Security Engineer instruction contracts.
+- Verified the generated role bundles, plugin tests, logic tests, typecheck, production build, and package/manifest metadata consistency.
+
 ## [0.4.20] - 2026-07-18
 
 ### Fixed
