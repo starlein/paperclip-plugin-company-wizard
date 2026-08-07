@@ -312,6 +312,39 @@ describe('assembleCompany integration (real templates)', () => {
       assert.ok(agentsMd.includes('clear next action'), `${role} should require clear next action`);
     }
 
+    const engineerAgents = await readFile(
+      join(companyDir, 'agents', 'engineer', 'AGENTS.md'),
+      'utf-8',
+    );
+    assert.ok(
+      engineerAgents.includes(
+        "Keep unrelated follow-up work out of the current issue's isolated workspace. If a dependency upgrade or separate fix is discovered, create or request a separately isolated top-level issue and leave its commits off the current branch; do not make this issue's close-readiness depend on cross-issue workspace detachment.",
+      ),
+      'engineer should isolate unrelated follow-up work in a separate top-level issue',
+    );
+
+    const productOwnerAgents = await readFile(
+      join(companyDir, 'agents', 'product-owner', 'AGENTS.md'),
+      'utf-8',
+    );
+    assert.ok(
+      productOwnerAgents.includes(
+        'Codebase audits, dependency upgrades, and implementation work -> assign the Software Engineer; keep the Code Reviewer for explicit non-author review and merge-gate work.',
+      ),
+      'product owner should route implementation work to the engineer and reserve review gates for reviewers',
+    );
+
+    const securityEngineerAgents = await readFile(
+      join(companyDir, 'agents', 'security-engineer', 'AGENTS.md'),
+      'utf-8',
+    );
+    assert.ok(
+      securityEngineerAgents.includes(
+        'After a CI-only review rejection, first re-check every job that the execution policy or reviewer explicitly made mandatory on the exact reviewed head. If any such job has not executed green, do not resubmit: preserve a first-class blocker or bounded monitor with the named owner/action. Resubmit only on new green evidence or an explicit reviewer waiver.',
+      ),
+      'security engineer should require exact-head green evidence before CI-only resubmission',
+    );
+
     // hiring-review is a capability skill; check emitted markdown content
     const hiringSkill = companySkills.find((s) => s.slug === 'hiring-review');
     assert.ok(hiringSkill, 'hiring-review skill should be in companySkills');

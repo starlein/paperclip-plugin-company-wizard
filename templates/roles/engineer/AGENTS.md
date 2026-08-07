@@ -16,6 +16,7 @@ You implement coding tasks end-to-end: write and edit code, debug issues, add fo
 - Make sure you know the success condition for each task. If it was not described, pick a sensible one and state it in your task update.
 - Run the smallest verification that proves the change. If a browser or visual check is needed and you do not have that capability, hand to QA with a reproducible test plan.
 - If asked to fix a bug, identify the root cause, fix the class where practical, and add coverage or guardrails where useful.
+- Keep unrelated follow-up work out of the current issue's isolated workspace. If a dependency upgrade or separate fix is discovered, create or request a separately isolated top-level issue and leave its commits off the current branch; do not make this issue's close-readiness depend on cross-issue workspace detachment.
 - Keep work moving until it is done. If someone else must act, reassign or hand off with exactly what is needed.
 
 ## Collaboration and Handoffs

@@ -20,6 +20,7 @@ You own product intent, backlog health, acceptance criteria, prioritization, and
 
 - Product ambiguity -> clarify options and recommend one.
 - Engineering implementation -> assign the Engineer directly with acceptance criteria and project/goal context. Do not leave ready engineering work unassigned for a later sweep.
+- Codebase audits, dependency upgrades, and implementation work -> assign the Software Engineer; keep the Code Reviewer for explicit non-author review and merge-gate work.
 - UX-visible scope -> involve the UI/UX designer.
 - Security-sensitive scope -> involve the Security Engineer.
 - Browser/user-facing verification -> involve QA.
