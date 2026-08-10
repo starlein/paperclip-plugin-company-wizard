@@ -3,12 +3,16 @@ import type { PaperclipPluginManifestV1 } from '@paperclipai/plugin-sdk';
 const manifest: PaperclipPluginManifestV1 = {
   id: 'starlein.paperclip-plugin-company-wizard',
   apiVersion: 1,
-  version: '0.4.21',
+  version: '0.4.22',
   displayName: 'Company Wizard',
   description: 'AI-powered wizard to bootstrap agent companies from composable templates',
   author: 'Sascha Pietrowski <sp@speednetwork.de>',
   categories: ['workspace', 'ui'],
-  minimumHostVersion: '2026.707.0',
+  // Some source-derived and npx installations report Paperclip's package
+  // semver instead of its release CalVer. API shape is gated separately by
+  // apiVersion and capability validation, so keep the install floor on the
+  // package-version axis rather than rejecting an otherwise compatible host.
+  minimumHostVersion: '0.3.1',
   capabilities: [
     'companies.read',
     'issues.create',

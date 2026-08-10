@@ -15,7 +15,7 @@
 
 ---
 
-> **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for the current Paperclip API (`>=2026.707.0`) with substantial bug fixes. End-to-end company setup is governed through current Paperclip workflows as of v0.4.21.
+> **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for Paperclip plugin API v1 and the current published SDK with substantial bug fixes. End-to-end company setup is governed through current Paperclip workflows as of v0.4.22.
 
 **Update Company:** If you have provisioned your company before with some older version of this plugin or you have an existing company, since version 0.4.6 you can update your existing company by providing the company ID in the wizard summary page. It will make a soft update of agent instructions and workflow/instruction documents.
 
@@ -26,6 +26,7 @@
 
 - Bootstrap metadata fields renamed to match the Paperclip API exactly: `parentId`, `assigneeAgentId`, `projectId`, `goalIds`
 - CEO is provisioned with correct `capabilities` metadata so newly created CEOs are no longer saved with empty summaries
+- The manifest installation floor uses Paperclip's package semver (`>=0.3.1`) rather than the SDK release CalVer, allowing compatible source-derived and `npx paperclipai` hosts that report `0.3.1`; plugin API and declared-capability validation remain the authoritative install-time compatibility checks
 - `@paperclipai/plugin-sdk` and `@paperclipai/shared` declared as `peerDependencies` with minimum version `>=2026.707.0` — the host provides the SDK at runtime (externalized from the bundle)
 - `security-engineer` role now maps to the dedicated Paperclip `security` enum value (was `general`)
 

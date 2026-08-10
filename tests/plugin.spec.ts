@@ -222,6 +222,10 @@ describe("company-wizard", () => {
     expect(props.anthropicApiKey.format).toBe("secret-ref");
   });
 
+  it("uses the npm host package version floor for installation compatibility", () => {
+    expect(manifest.minimumHostVersion).toBe("0.3.1");
+  });
+
   it("creates governance records as unassigned todo issues for existing-company provisioning", async () => {
     const tmp = await mkdtemp(join(tmpdir(), "company-wizard-existing-"));
     const issueBodies: any[] = [];

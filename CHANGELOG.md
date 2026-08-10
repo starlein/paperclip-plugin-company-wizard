@@ -4,6 +4,18 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.22] - 2026-08-10
+
+### Fixed
+
+- Lowered the manifest's host installation floor from SDK release CalVer `2026.707.0` to Paperclip package semver `0.3.1`. Source-derived and `npx paperclipai` installations that report `0.3.1` can now install the plugin; Paperclip still validates plugin API v1 and declared capabilities before activation.
+- Resolved current object-shaped, company-scoped Anthropic Secret bindings while preserving direct-key and legacy-host compatibility.
+- Plugin update preparation now surfaces installed-plugin lookup failures instead of misreporting them as a missing installation.
+
+### Changed
+
+- Updated the shipped Paperclip SDK/shared development contract to stable `2026.722.0`.
+
 ## [0.4.21] - 2026-08-07
 
 ### Changed
