@@ -15,7 +15,7 @@
 
 ---
 
-> **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for Paperclip plugin API v1 and the current published SDK with substantial bug fixes. End-to-end company setup is governed through current Paperclip workflows as of v0.4.23.
+> **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for Paperclip plugin API v1 and the current published SDK with substantial bug fixes. End-to-end company setup is governed through current Paperclip workflows as of v0.5.0.
 
 **Update Company:** If you have provisioned your company before with some older version of this plugin or you have an existing company, since version 0.4.6 you can update your existing company by providing the company ID in the wizard summary page. It will make a soft update of agent instructions and workflow/instruction documents.
 
@@ -53,8 +53,8 @@
 
 #### AI wizard
 
-- Config generation uses `claude-opus-4-8` with `max_tokens: 32768` so a full-spec config is never truncated mid-JSON
-- All Anthropic calls run as background jobs in the worker (start + poll), eliminating the 30 s RPC timeout that previously crashed config generation
+- Choose Anthropic or OpenAI in plugin settings. Anthropic generation uses `claude-opus-5` with adaptive thinking, max effort, and a 65,536-token ceiling; OpenAI/Codex generation uses `gpt-5.6-sol` with high reasoning effort and the same output ceiling.
+- All provider calls run as background jobs in the worker (start + poll), eliminating the 30 s RPC timeout that previously crashed config generation
 - AI wizard now generates domain-specific initial issues from the project brief that lead the bootstrap backlog ahead of generic scaffolding issues
 - Preset roles are defensively merged with AI-selected roles so preset roles are no longer silently dropped
 
@@ -599,7 +599,9 @@ Configure the plugin via **Settings → Plugins → Company Wizard** in the Pape
 | `paperclipUrl` | No | Paperclip instance URL. Defaults to `http://localhost:3100` or `PAPERCLIP_PUBLIC_URL` env var. |
 | `paperclipEmail` | No | Board login email. Required for authenticated (non-`local_trusted`) instances. |
 | `paperclipPassword` | No | Board login password. Stored as a secret ref. |
-| `anthropicApiKey` | No | Anthropic API key for AI wizard mode. Stored as a secret ref. Required to use the AI-powered setup path. |
+| `aiProvider` | No | AI wizard provider: `anthropic` (default) or `openai`. |
+| `anthropicApiKey` | No | Anthropic API key for AI wizard mode. Stored as a governed secret ref. Required when `aiProvider` is `anthropic`. |
+| `openaiApiKey` | No | OpenAI API key for GPT/Codex AI wizard mode. Stored as a governed secret ref. Required when `aiProvider` is `openai`. |
 | `disableBoardApprovalOnNewCompanies` | No | If `true`, the wizard PATCHes new companies to set `requireBoardApprovalForNewAgents=false` during provisioning. Leave `false` to preserve approval-gated hiring. Defaults to `false`. |
 For enriched personas: there is no plugin setting. Template fragments are applied automatically when present.
 

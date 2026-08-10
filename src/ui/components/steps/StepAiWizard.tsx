@@ -305,8 +305,8 @@ export function StepAiWizard() {
     .replace('{{CATALOG}}', buildCatalog())
     .replace('{{CONFIG_FORMAT}}', promptMessages.configFormat);
 
-  // Every Anthropic call goes through the worker's async job model (start + poll).
-  // The host kills any single performAction RPC at 30s; an Opus generation — even a
+  // Every provider call goes through the worker's async job model (start + poll).
+  // The host kills any single performAction RPC at 30s; a frontier-model generation — even a
   // short interview turn, but especially the final full-spec config — can exceed
   // that. Starting a background job and polling means no single RPC ever blocks
   // long enough to time out, so this is used for ALL paths (interview, chat,

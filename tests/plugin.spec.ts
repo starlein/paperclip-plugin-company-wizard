@@ -133,7 +133,12 @@ describe("company-wizard", () => {
       secretId: "22222222-2222-4222-8222-222222222222",
     };
     const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
-      return new Response(JSON.stringify({ content: [{ text: "ok" }] }), {
+      return new Response(JSON.stringify({
+        content: [
+          { type: "thinking", thinking: "internal" },
+          { type: "text", text: "ok" },
+        ],
+      }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
@@ -164,11 +169,159 @@ describe("company-wizard", () => {
 
     const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect((init.headers as Record<string, string>)["x-api-key"]).toBe("resolved-anthropic-key");
+    expect(JSON.parse(String(init.body))).toMatchObject({
+      model: "claude-opus-5",
+      thinking: { type: "adaptive" },
+      output_config: { effort: "max" },
+    });
+  });
+
+  it("uses a governed OpenAI key with GPT-5.6 Sol at high reasoning effort", async () => {
+    const companyId = "11111111-1111-4111-8111-111111111111";
+    const secretRef = {
+      type: "secret_ref",
+      secretId: "33333333-3333-4333-8333-333333333333",
+    };
+    const fetchMock = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ output_text: "openai-ok" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const harness = createTestHarness({
+      manifest,
+      capabilities: manifest.capabilities,
+      config: { aiProvider: "openai", openaiApiKey: secretRef },
+    });
+    const resolveSecret = vi
+      .spyOn(harness.ctx.secrets, "resolve")
+      .mockResolvedValue("resolved-openai-key");
+    await plugin.definition.setup(harness.ctx);
+
+    await expect(harness.performAction("check-ai-config", { companyId })).resolves.toEqual({
+      ok: true,
+      provider: "openai",
+      model: "gpt-5.6-sol",
+    });
+
+    const result = await harness.performAction("ai-chat", {
+      companyId,
+      system: "Build the company.",
+      messages: [{ role: "user", content: "hello" }],
+    }) as { text?: string; error?: string };
+
+    expect(result).toEqual({ text: "openai-ok" });
+    expect(resolveSecret).toHaveBeenCalledWith(secretRef, {
+      companyId,
+      configPath: "openaiApiKey",
+    });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://api.openai.com/v1/responses");
+
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer resolved-openai-key");
+    expect(JSON.parse(String(init.body))).toMatchObject({
+      model: "gpt-5.6-sol",
+      reasoning: { effort: "high" },
+      instructions: "Build the company.",
+      input: [{ role: "user", content: "hello" }],
+    });
+  });
+
+  it("rejects truncated Anthropic generations instead of accepting partial config", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            stop_reason: "max_tokens",
+            content: [{ type: "text", text: "partial config" }],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      ),
+    );
+
+    const harness = createTestHarness({
+      manifest,
+      capabilities: manifest.capabilities,
+      config: { anthropicApiKey: "sk-ant-test" },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    const start = (await harness.performAction("ai-chat", {
+      mode: "start",
+      messages: [{ role: "user", content: "generate" }],
+    })) as { jobId?: string; status?: string };
+    expect(start.status).toBe("pending");
+
+    let result: { status?: string; text?: string; error?: string } = {};
+    for (let i = 0; i < 20; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      result = (await harness.performAction("ai-chat", {
+        mode: "poll",
+        jobId: start.jobId,
+      })) as { status?: string; text?: string; error?: string };
+      if (result.status !== "pending") break;
+    }
+    expect(result).toEqual({
+      status: "error",
+      text: "",
+      error: "Anthropic generation stopped before completion (max_tokens).",
+    });
+  });
+
+  it.each([
+    {
+      caseName: "incomplete response",
+      response: {
+        status: "incomplete",
+        incomplete_details: { reason: "max_output_tokens" },
+        output_text: "partial config",
+      },
+      error: "OpenAI generation stopped before completion (max_output_tokens).",
+    },
+    {
+      caseName: "refusal",
+      response: {
+        status: "completed",
+        output: [{ content: [{ type: "refusal", refusal: "Cannot comply" }] }],
+      },
+      error: "OpenAI refused the generation request.",
+    },
+  ])("rejects an OpenAI $caseName instead of accepting empty or partial config", async ({
+    response,
+    error,
+  }) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify(response), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      ),
+    );
+
+    const harness = createTestHarness({
+      manifest,
+      capabilities: manifest.capabilities,
+      config: { aiProvider: "openai", openaiApiKey: "sk-openai-test" },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    await expect(
+      harness.performAction("ai-chat", {
+        messages: [{ role: "user", content: "generate" }],
+      }),
+    ).resolves.toEqual({ text: "", error });
   });
 
   it("runs ai-chat as an async job (start → poll) for long generations", async () => {
     const fetchMock = vi.fn(async () => {
-      return new Response(JSON.stringify({ content: [{ text: "generated-config" }] }), {
+      return new Response(JSON.stringify({ content: [{ type: "text", text: "generated-config" }] }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
@@ -225,6 +378,19 @@ describe("company-wizard", () => {
   it("allows Paperclip's governed secret binding object in Anthropic config", () => {
     const props = (manifest.instanceConfigSchema as any).properties;
     expect(props.anthropicApiKey.type).toEqual(["string", "object"]);
+  });
+
+  it("exposes OpenAI as a governed AI-wizard provider", () => {
+    const props = (manifest.instanceConfigSchema as any).properties;
+    expect(props.aiProvider).toMatchObject({
+      type: "string",
+      enum: ["anthropic", "openai"],
+      default: "anthropic",
+    });
+    expect(props.openaiApiKey).toMatchObject({
+      type: ["string", "object"],
+      format: "secret-ref",
+    });
   });
 
   it("uses the npm host package version floor for installation compatibility", () => {

@@ -4,6 +4,19 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.0] - 2026-08-10
+
+### Added
+
+- AI company generation can now use a governed OpenAI API key as an alternative to Anthropic. The OpenAI path uses the Responses API with `gpt-5.6-sol` and high reasoning effort.
+- Added an `aiProvider` plugin setting (`anthropic` or `openai`) and an `openaiApiKey` governed Secret field. Existing configurations remain on Anthropic by default.
+
+### Changed
+
+- Anthropic generation now uses `claude-opus-5` with adaptive thinking, max effort, and a 65,536-token output ceiling. Text extraction ignores thinking blocks and returns only final text blocks.
+- Both providers use the existing asynchronous start/poll generation path, keeping API keys and resolved Secret values inside the worker.
+- Incomplete, truncated, empty, or refused provider responses fail the generation job instead of being accepted as a valid company configuration.
+
 ## [0.4.23] - 2026-08-10
 
 ### Fixed

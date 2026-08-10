@@ -210,8 +210,15 @@ type SecretResolverContext = {
   };
 };
 
+const ANTHROPIC_AI_MODEL = 'claude-opus-5';
+const OPENAI_AI_MODEL = 'gpt-5.6-sol';
+
 function isLikelyAnthropicApiKey(value: string): boolean {
   return value.startsWith('sk-ant-');
+}
+
+function isLikelyOpenAiApiKey(value: string): boolean {
+  return value.startsWith('sk-');
 }
 
 async function resolveAnthropicApiKey(
@@ -253,6 +260,41 @@ async function resolveAnthropicApiKey(
   }
 }
 
+async function resolveOpenAiApiKey(
+  ctx: SecretResolverContext,
+  configuredValue: unknown,
+  companyId?: string,
+): Promise<string> {
+  const options = {
+    ...(companyId ? { companyId } : {}),
+    configPath: 'openaiApiKey',
+  };
+
+  if (
+    configuredValue &&
+    typeof configuredValue === 'object' &&
+    (configuredValue as Record<string, unknown>).type === 'secret_ref' &&
+    typeof (configuredValue as Record<string, unknown>).secretId === 'string'
+  ) {
+    return ctx.secrets.resolve(configuredValue as EnvSecretRefBinding, options);
+  }
+
+  if (typeof configuredValue !== 'string') return '';
+  const value = configuredValue.trim();
+  if (!value) return '';
+  if (isLikelyOpenAiApiKey(value)) return value;
+
+  try {
+    const resolved = await ctx.secrets.resolve(value, options);
+    return resolved.trim();
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `OpenAI API key could not be resolved. Re-save the plugin setting with a valid OpenAI API key. ${detail}`,
+    );
+  }
+}
+
 /**
  * Single Anthropic Messages API call. Returns `{ text, error? }` — never throws,
  * so callers (sync and async job modes) can handle failures uniformly.
@@ -271,11 +313,13 @@ async function callAnthropic(
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-opus-4-8',
+        model: ANTHROPIC_AI_MODEL,
         // High ceiling so the wizard's final config — which reproduces the user's
         // full spec in the first goal — is never truncated mid-JSON. This is only
         // an upper bound; generation time tracks the tokens actually produced.
-        max_tokens: 32768,
+        max_tokens: 65536,
+        thinking: { type: 'adaptive' },
+        output_config: { effort: 'max' },
         ...(system ? { system } : {}),
         messages,
       }),
@@ -286,8 +330,87 @@ async function callAnthropic(
       return { text: '', error: `Anthropic API error (${response.status}): ${body}` };
     }
 
-    const data = (await response.json()) as { content?: { text: string }[] };
-    return { text: data.content?.[0]?.text || '' };
+    const data = (await response.json()) as {
+      stop_reason?: string | null;
+      content?: Array<{ type?: string; text?: string }>;
+    };
+    if (
+      data.stop_reason &&
+      data.stop_reason !== 'end_turn' &&
+      data.stop_reason !== 'stop_sequence'
+    ) {
+      return {
+        text: '',
+        error: `Anthropic generation stopped before completion (${data.stop_reason}).`,
+      };
+    }
+    const text =
+      data.content
+        ?.filter((block) => block.type === 'text' && typeof block.text === 'string')
+        .map((block) => block.text)
+        .join('') || '';
+    return text ? { text } : { text: '', error: 'Anthropic returned no text output.' };
+  } catch (err) {
+    return { text: '', error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/** Call OpenAI's Responses API with the current flagship reasoning model. */
+async function callOpenAi(
+  apiKey: string,
+  system: unknown,
+  messages: unknown,
+): Promise<{ text: string; error?: string }> {
+  try {
+    const input = Array.isArray(messages)
+      ? messages.map((message) => {
+          const record = message as Record<string, unknown>;
+          return { role: record.role, content: record.content };
+        })
+      : messages;
+    const response = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: OPENAI_AI_MODEL,
+        reasoning: { effort: 'high' },
+        max_output_tokens: 65536,
+        ...(typeof system === 'string' && system ? { instructions: system } : {}),
+        input,
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      return { text: '', error: `OpenAI API error (${response.status}): ${body}` };
+    }
+
+    const data = (await response.json()) as {
+      status?: string;
+      incomplete_details?: { reason?: string } | null;
+      output_text?: string;
+      output?: Array<{
+        content?: Array<{ type?: string; text?: string; refusal?: string }>;
+      }>;
+    };
+    if (data.status && data.status !== 'completed') {
+      const reason = data.incomplete_details?.reason || data.status;
+      return { text: '', error: `OpenAI generation stopped before completion (${reason}).` };
+    }
+    const content = data.output?.flatMap((item) => item.content ?? []) ?? [];
+    if (content.some((part) => part.type === 'refusal')) {
+      return { text: '', error: 'OpenAI refused the generation request.' };
+    }
+    const text =
+      data.output_text ||
+      content
+        .filter((part) => part.type === 'output_text' && typeof part.text === 'string')
+        .map((part) => part.text)
+        .join('');
+    return text ? { text } : { text: '', error: 'OpenAI returned no text output.' };
   } catch (err) {
     return { text: '', error: err instanceof Error ? err.message : String(err) };
   }
@@ -1489,7 +1612,7 @@ const plugin = definePlugin({
       }
     });
 
-    // AI chat action — proxies messages to the Anthropic API using the configured key.
+    // AI chat action — proxies messages to the configured AI provider using a server-side key.
     // Keeps the API key server-side; the UI never touches it directly.
     // Returns { text, error? } — never throws, so the plugin host doesn't swallow the message in a 502.
     ctx.actions.register('ai-chat', async (params) => {
@@ -1513,15 +1636,26 @@ const plugin = definePlugin({
           return { text: job.text, status: 'done' };
         }
 
-        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, unknown>;
         const companyId = typeof params.companyId === 'string' ? params.companyId : undefined;
-        const apiKey = await resolveAnthropicApiKey(ctx, cfg.anthropicApiKey, companyId);
+        const provider = cfg.aiProvider === 'openai' ? 'openai' : 'anthropic';
+        const apiKey =
+          provider === 'openai'
+            ? await resolveOpenAiApiKey(ctx, cfg.openaiApiKey, companyId)
+            : await resolveAnthropicApiKey(ctx, cfg.anthropicApiKey, companyId);
         if (!apiKey) {
           return {
             text: '',
-            error: 'Anthropic API key not configured. Add it in plugin settings (anthropicApiKey).',
+            error:
+              provider === 'openai'
+                ? 'OpenAI API key not configured. Add it in plugin settings (openaiApiKey).'
+                : 'Anthropic API key not configured. Add it in plugin settings (anthropicApiKey).',
           };
         }
+        const generate = () =>
+          provider === 'openai'
+            ? callOpenAi(apiKey, params.system, params.messages)
+            : callAnthropic(apiKey, params.system, params.messages);
 
         // Start mode: kick off generation in the background and return a job id.
         // The UI polls with { mode: 'poll', jobId }, so a slow generation (e.g. the
@@ -1531,7 +1665,7 @@ const plugin = definePlugin({
           sweepAiChatJobs();
           const jobId = `aichat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
           aiChatJobs.set(jobId, { status: 'pending', createdAt: Date.now() });
-          void callAnthropic(apiKey, params.system, params.messages).then((result) => {
+          void generate().then((result) => {
             aiChatJobs.set(
               jobId,
               result.error
@@ -1543,7 +1677,7 @@ const plugin = definePlugin({
         }
 
         // Synchronous mode (default): short interview turns that finish well within 30s.
-        return await callAnthropic(apiKey, params.system, params.messages);
+        return await generate();
       } catch (err) {
         return { text: '', error: err instanceof Error ? err.message : String(err) };
       }
@@ -1552,16 +1686,27 @@ const plugin = definePlugin({
     // Lightweight config check — UI calls this on mount to show a warning before the user types.
     ctx.actions.register('check-ai-config', async (params) => {
       try {
-        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, unknown>;
         const companyId = typeof params.companyId === 'string' ? params.companyId : undefined;
-        const apiKey = await resolveAnthropicApiKey(ctx, cfg.anthropicApiKey, companyId);
+        const provider = cfg.aiProvider === 'openai' ? 'openai' : 'anthropic';
+        const apiKey =
+          provider === 'openai'
+            ? await resolveOpenAiApiKey(ctx, cfg.openaiApiKey, companyId)
+            : await resolveAnthropicApiKey(ctx, cfg.anthropicApiKey, companyId);
         if (!apiKey) {
           return {
             ok: false,
-            error: 'Anthropic API key not configured. Add it in plugin settings (anthropicApiKey).',
+            error:
+              provider === 'openai'
+                ? 'OpenAI API key not configured. Add it in plugin settings (openaiApiKey).'
+                : 'Anthropic API key not configured. Add it in plugin settings (anthropicApiKey).',
           };
         }
-        return { ok: true };
+        return {
+          ok: true,
+          provider,
+          model: provider === 'openai' ? OPENAI_AI_MODEL : ANTHROPIC_AI_MODEL,
+        };
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) };
       }
