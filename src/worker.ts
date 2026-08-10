@@ -752,15 +752,26 @@ function buildWizardManifest(params: {
 
 const WIZARD_PLUGIN_KEY = 'starlein.paperclip-plugin-company-wizard';
 
-async function findPluginId(client: PaperclipClient): Promise<string | null> {
+/**
+ * Look up the installed plugin record by its manifest key.
+ *
+ * Returns the lookup failure instead of swallowing it — a failed `/api/plugins`
+ * call (auth, network, board access) is a different problem from the plugin
+ * genuinely not being installed, and reporting both as "not found" made the
+ * self-update path undebuggable.
+ */
+async function findPluginId(
+  client: PaperclipClient,
+): Promise<{ pluginId: string | null; error?: string }> {
   try {
     const plugins: any[] = await client._fetch('/api/plugins');
-    const match = Array.isArray(plugins)
-      ? plugins.find((p: any) => p.pluginKey === WIZARD_PLUGIN_KEY)
-      : null;
-    return match?.id ?? null;
-  } catch {
-    return null;
+    if (!Array.isArray(plugins)) {
+      return { pluginId: null, error: '/api/plugins did not return a list of plugins' };
+    }
+    const match = plugins.find((p: any) => p.pluginKey === WIZARD_PLUGIN_KEY);
+    return { pluginId: match?.id ?? null };
+  } catch (err) {
+    return { pluginId: null, error: err instanceof Error ? err.message : String(err) };
   }
 }
 
@@ -1022,8 +1033,8 @@ const plugin = definePlugin({
         const updateAvailable = isNewerVersion(latestVersion, CURRENT_PLUGIN_VERSION);
         const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
         const targetDir = refreshTemplatesCache(cfg);
-        const { client } = await connectSharedClient(cfg);
-        const pluginId = await findPluginId(client);
+        const client = await connectSharedClient(cfg);
+        const { pluginId, error: lookupError } = await findPluginId(client);
 
         if (!pluginId) {
           return {
@@ -1033,7 +1044,9 @@ const plugin = definePlugin({
             updateAvailable,
             templatesUpdated: true,
             templatesTargetDir: targetDir,
-            error: 'Could not find the installed Company Wizard plugin record.',
+            error: lookupError
+              ? `Could not look up the installed Company Wizard plugin record: ${lookupError}`
+              : `Could not find an installed plugin with key '${WIZARD_PLUGIN_KEY}'.`,
           };
         }
 
