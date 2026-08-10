@@ -1,4 +1,5 @@
 import { definePlugin, runWorker } from '@paperclipai/plugin-sdk';
+import type { EnvSecretRefBinding } from '@paperclipai/shared';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -202,7 +203,10 @@ function refreshTemplatesCache(cfg: Record<string, string>, log?: (m: string) =>
 
 type SecretResolverContext = {
   secrets: {
-    resolve(secretRef: string): Promise<string>;
+    resolve(
+      secretRef: string | EnvSecretRefBinding,
+      options?: { companyId?: string; configPath?: string },
+    ): Promise<string>;
   };
 };
 
@@ -213,7 +217,22 @@ function isLikelyAnthropicApiKey(value: string): boolean {
 async function resolveAnthropicApiKey(
   ctx: SecretResolverContext,
   configuredValue: unknown,
+  companyId?: string,
 ): Promise<string> {
+  const options = {
+    ...(companyId ? { companyId } : {}),
+    configPath: 'anthropicApiKey',
+  };
+
+  if (
+    configuredValue &&
+    typeof configuredValue === 'object' &&
+    (configuredValue as Record<string, unknown>).type === 'secret_ref' &&
+    typeof (configuredValue as Record<string, unknown>).secretId === 'string'
+  ) {
+    return ctx.secrets.resolve(configuredValue as EnvSecretRefBinding, options);
+  }
+
   if (typeof configuredValue !== 'string') return '';
   const value = configuredValue.trim();
   if (!value) return '';
@@ -224,7 +243,7 @@ async function resolveAnthropicApiKey(
   try {
     // Backward compatibility: older installs may still have a Paperclip secret
     // reference stored in config instead of the raw key.
-    const resolved = await ctx.secrets.resolve(value);
+    const resolved = await ctx.secrets.resolve(value, options);
     return resolved.trim();
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
@@ -1495,7 +1514,8 @@ const plugin = definePlugin({
         }
 
         const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
-        const apiKey = await resolveAnthropicApiKey(ctx, cfg.anthropicApiKey);
+        const companyId = typeof params.companyId === 'string' ? params.companyId : undefined;
+        const apiKey = await resolveAnthropicApiKey(ctx, cfg.anthropicApiKey, companyId);
         if (!apiKey) {
           return {
             text: '',
@@ -1530,10 +1550,11 @@ const plugin = definePlugin({
     });
 
     // Lightweight config check — UI calls this on mount to show a warning before the user types.
-    ctx.actions.register('check-ai-config', async () => {
+    ctx.actions.register('check-ai-config', async (params) => {
       try {
         const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
-        const apiKey = await resolveAnthropicApiKey(ctx, cfg.anthropicApiKey);
+        const companyId = typeof params.companyId === 'string' ? params.companyId : undefined;
+        const apiKey = await resolveAnthropicApiKey(ctx, cfg.anthropicApiKey, companyId);
         if (!apiKey) {
           return {
             ok: false,

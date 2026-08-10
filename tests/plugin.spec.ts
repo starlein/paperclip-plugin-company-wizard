@@ -126,7 +126,12 @@ describe("company-wizard", () => {
     }
   });
 
-  it("resolves the configured Anthropic secret ref before calling Anthropic", async () => {
+  it("resolves the configured object-shaped Anthropic secret ref before calling Anthropic", async () => {
+    const companyId = "11111111-1111-4111-8111-111111111111";
+    const secretRef = {
+      type: "secret_ref",
+      secretId: "22222222-2222-4222-8222-222222222222",
+    };
     const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
       return new Response(JSON.stringify({ content: [{ text: "ok" }] }), {
         status: 200,
@@ -138,21 +143,27 @@ describe("company-wizard", () => {
     const harness = createTestHarness({
       manifest,
       capabilities: manifest.capabilities,
-      config: { anthropicApiKey: "anthropic-secret-ref" },
+      config: { anthropicApiKey: secretRef },
     });
+    const resolveSecret = vi
+      .spyOn(harness.ctx.secrets, "resolve")
+      .mockResolvedValue("resolved-anthropic-key");
     await plugin.definition.setup(harness.ctx);
 
     const result = await harness.performAction("ai-chat", {
+      companyId,
       messages: [{ role: "user", content: "hello" }],
     }) as { text?: string; error?: string };
 
     expect(result).toEqual({ text: "ok" });
+    expect(resolveSecret).toHaveBeenCalledWith(secretRef, {
+      companyId,
+      configPath: "anthropicApiKey",
+    });
     expect(fetchMock).toHaveBeenCalledOnce();
 
     const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
-    expect((init.headers as Record<string, string>)["x-api-key"]).toBe(
-      "resolved:anthropic-secret-ref",
-    );
+    expect((init.headers as Record<string, string>)["x-api-key"]).toBe("resolved-anthropic-key");
   });
 
   it("runs ai-chat as an async job (start → poll) for long generations", async () => {
@@ -204,6 +215,11 @@ describe("company-wizard", () => {
   it("does not expose an enriched-personas toggle", () => {
     const props = (manifest.instanceConfigSchema as any).properties;
     expect(props.enableEnrichedPersonas).toBeUndefined();
+  });
+
+  it("declares the Anthropic key as a Paperclip secret reference", () => {
+    const props = (manifest.instanceConfigSchema as any).properties;
+    expect(props.anthropicApiKey.format).toBe("secret-ref");
   });
 
   it("creates governance records as unassigned todo issues for existing-company provisioning", async () => {

@@ -47,8 +47,9 @@ const manifest: PaperclipPluginManifestV1 = {
       },
       anthropicApiKey: {
         type: 'string',
+        format: 'secret-ref',
         description:
-          'Anthropic API key for the AI wizard (e.g. sk-ant-...). Required to use the AI-powered company setup path.',
+          'Anthropic API key for the AI wizard. Paste a key or select a saved Paperclip company secret; Paperclip stores pasted values as governed secret references.',
       },
       paperclipUrl: {
         type: 'string',
