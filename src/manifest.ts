@@ -3,7 +3,7 @@ import type { PaperclipPluginManifestV1 } from '@paperclipai/plugin-sdk';
 const manifest: PaperclipPluginManifestV1 = {
   id: 'starlein.paperclip-plugin-company-wizard',
   apiVersion: 1,
-  version: '0.4.22',
+  version: '0.4.23',
   displayName: 'Company Wizard',
   description: 'AI-powered wizard to bootstrap agent companies from composable templates',
   author: 'Sascha Pietrowski <sp@speednetwork.de>',
@@ -50,7 +50,11 @@ const manifest: PaperclipPluginManifestV1 = {
           'GitHub tree URL for template downloads. The default is correct for most setups — only change this if using a custom fork.',
       },
       anthropicApiKey: {
-        type: 'string',
+        // Paperclip's secret picker submits an EnvSecretRefBinding object,
+        // while direct keys and older hosts still submit strings. Keep both
+        // representations schema-valid; the host validates governed bindings
+        // and the worker resolves them before calling Anthropic.
+        type: ['string', 'object'],
         format: 'secret-ref',
         description:
           'Anthropic API key for the AI wizard. Paste a key or select a saved Paperclip company secret; Paperclip stores pasted values as governed secret references.',

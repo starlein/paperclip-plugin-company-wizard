@@ -4,6 +4,12 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.23] - 2026-08-10
+
+### Fixed
+
+- Anthropic configuration now accepts both direct/legacy string keys and Paperclip's object-shaped governed Secret bindings. Selecting a `local_encrypted` company Secret no longer fails the host's `instanceConfigSchema` validation before the binding can be authorized and persisted.
+
 ## [0.4.22] - 2026-08-10
 
 ### Fixed

@@ -222,6 +222,11 @@ describe("company-wizard", () => {
     expect(props.anthropicApiKey.format).toBe("secret-ref");
   });
 
+  it("allows Paperclip's governed secret binding object in Anthropic config", () => {
+    const props = (manifest.instanceConfigSchema as any).properties;
+    expect(props.anthropicApiKey.type).toEqual(["string", "object"]);
+  });
+
   it("uses the npm host package version floor for installation compatibility", () => {
     expect(manifest.minimumHostVersion).toBe("0.3.1");
   });
