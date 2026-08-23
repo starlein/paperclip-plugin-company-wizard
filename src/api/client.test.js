@@ -430,6 +430,18 @@ describe('PaperclipClient company skills', () => {
     assert.ok(requests[3].url.endsWith('/api/companies/company-1/skills/skill-1/files'));
     assert.deepEqual(requests[3].body, { path: 'SKILL.md', content: '# new' });
   });
+
+  it('keeps older supported hosts working when the skill rename route is absent', async () => {
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify({ error: 'not found' }), {
+        status: 404,
+        headers: { 'content-type': 'application/json' },
+      });
+
+    const client = new PaperclipClient('http://paperclip.test');
+    const result = await client.renameCompanySkill('company-1', 'skill-1', { name: 'CI/CD' });
+    assert.equal(result, null);
+  });
 });
 
 describe('latest Paperclip stable request contracts', () => {

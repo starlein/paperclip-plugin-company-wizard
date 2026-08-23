@@ -13,7 +13,7 @@ Use this only when the current assigned issue/routine is titled like "Auto-assig
 3. Query candidate issues using the board's current issue API for unassigned `todo` work, scoped to the relevant project/goal when the routine has one.
 4. Skip issues that are blocked, awaiting approval/review, missing acceptance criteria, or already have active execution state.
 5. Match issue labels, required skills, project context, and priority to agent role/capabilities.
-6. Assign only the next suitable issue that fits owner and review capacity: `PATCH /api/issues/{id}` with `assigneeAgentId` and an assignment comment. Keep later work prioritized but inactive. If a repository is at its PR cap, link the waiting issue to the issues owning those PRs instead of creating a queue-drain issue or polling monitor.
+6. Assign only the next suitable issue that fits owner and review capacity: `PATCH /api/issues/{id}` with `assigneeAgentId` and an assignment comment. Keep later work prioritized but inactive. If a repository is at its PR cap, leave the waiting issue unassigned and record `waiting for repository review capacity`; let the next assignment-driven capacity check release it as soon as one slot opens. Do not model a dynamic WIP cap as `blockedByIssueIds` against every open-PR issue — those blockers are conjunctive and would wait for all PRs to finish.
 7. Leave a routine-run comment summarizing assigned issue ids, skipped issue ids, and gaps needing Product Owner/CEO attention.
 8. Mark the routine-run issue done when complete.
 

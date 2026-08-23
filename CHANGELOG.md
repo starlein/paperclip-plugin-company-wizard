@@ -18,6 +18,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Triggered QA, Security, Product, UI/UX, and DevOps evidence now has an explicit same-issue assignment wake-and-return path before the Code Reviewer gate, matching assignment-driven worker agents.
 - Selecting the `ci-cd` module no longer assumes required checks already exist: exact-head company CI becomes authoritative only after checks run on that head; until then the merge gate runs the complete local gate once.
 - The repo-maintenance preset initially assigns only its first Engineer delivery; later PR-producing work remains unassigned until the backlog owner confirms review capacity.
+- Supported older Paperclip hosts that do not expose the newer Company Skill `/rename` route now keep the existing display name and continue refreshing skill content/metadata instead of aborting provisioning on a 404.
+- Auto-assignment no longer models a dynamic repository PR cap as conjunctive blockers on every open PR; capacity waiters stay unassigned for the next assignment-driven capacity check.
 
 ## [0.5.0] - 2026-08-10
 

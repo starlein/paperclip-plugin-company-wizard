@@ -566,6 +566,16 @@ describe('assembleCompany integration (real templates)', () => {
       !backlogSkill.includes('Attach a task watchdog to every'),
       'backlog creation must not attach a universal task watchdog',
     );
+    const autoAssignSkill = await readFile(
+      join(REAL_TEMPLATES_DIR, 'modules', 'auto-assign', 'skills', 'auto-assign.md'),
+      'utf-8',
+    );
+    assert.ok(
+      autoAssignSkill.includes('leave the waiting issue unassigned') &&
+        autoAssignSkill.includes('blockers are conjunctive') &&
+        !autoAssignSkill.includes('link the waiting issue to the issues owning those PRs'),
+      'dynamic PR capacity must not become an all-open-PR conjunctive dependency',
+    );
     assert.ok(
       backlogSkill.includes('`#0075ca`') && !backlogSkill.includes('`0075ca`'),
       'documented label colors must satisfy the current #RRGGBB validator',

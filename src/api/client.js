@@ -38,7 +38,9 @@ export class PaperclipClient {
     }
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      throw new Error(`${opts.method || 'GET'} ${path} → ${res.status}: ${body}`);
+      const error = new Error(`${opts.method || 'GET'} ${path} → ${res.status}: ${body}`);
+      error.status = res.status;
+      throw error;
     }
     return res.json();
   }
@@ -211,13 +213,21 @@ export class PaperclipClient {
   }
 
   async renameCompanySkill(companyId, skillId, { name, slug } = {}) {
-    return this._fetch(`/api/companies/${companyId}/skills/${skillId}/rename`, {
-      method: 'POST',
-      body: JSON.stringify({
-        name,
-        ...(slug !== undefined ? { slug } : {}),
-      }),
-    });
+    try {
+      return await this._fetch(`/api/companies/${companyId}/skills/${skillId}/rename`, {
+        method: 'POST',
+        body: JSON.stringify({
+          name,
+          ...(slug !== undefined ? { slug } : {}),
+        }),
+      });
+    } catch (error) {
+      // The dedicated rename endpoint was added after the plugin's declared
+      // Paperclip host floor. Older supported hosts keep the existing display
+      // name, but skill content/metadata refresh must continue instead of aborting.
+      if (error?.status === 404) return null;
+      throw error;
+    }
   }
 
   async updateCompanySkillFile(companyId, skillId, { path, content }) {
