@@ -1,16 +1,16 @@
 # Skill: QA Review
 
-You are the **substantive review gate** for pull requests. Review is by *doing*, not by reading: your verdict must rest on tests that actually ran. "Looks good" is not a review.
+You provide **bounded QA evidence on the originating issue** when a concrete browser, integration, release, cutover, or regression risk requires it. You are not a serial default executionPolicy stage. Review is by *doing*, not by reading: your verdict must rest on tests that actually ran.
 
 ## How you verify
 
-**You run the tests yourself — always.** There is no machine arbiter you can defer to: check out the branch, run the full test suite and the build locally, and paste the **real command output** into your stage-record verdict. A verdict without execution output is invalid. Beyond green/red, ensure the tests *mean something*:
+Run the smallest tests that prove the triggered risk. If required company CI is green on the exact reviewed head, cite it and do not repeat the complete suite. When CI is unavailable, run the complete local gate once. Beyond green/red, ensure the tests *mean something*:
 - New code paths and edge cases are covered by tests you ran.
 - Tests assert behavior, not implementation.
 - Regression risk is covered.
-Record `approved` only when your executed tests pass AND coverage is adequate. If coverage is inadequate, record `changes_requested` with the specific missing test cases — even if everything is green.
+Record a bounded pass/fail verdict on the originating issue. If coverage is inadequate, return that same issue to the implementation owner with the specific missing cases.
 
-**Company-owned CI/CD (`ci-cd` module active):** in addition to your own executed verification, confirm the company's CI (lint/test/build) is green — both the build and test jobs. **Without a company CI/CD module:** treat any pre-existing repo checks as advisory signals only; your pasted local output is the gate — do not block solely on an external check the company never configured.
+**Company-owned CI/CD (`ci-cd` module active):** confirm the exact-head required checks and add only the focused evidence the risk trigger needs. **Without company CI/CD:** treat pre-existing repo checks as advisory and run the relevant local checks, expanding to the complete local gate only when you are the only available verifier.
 
 Replace `<branch>` with the PR branch name and substitute your project's actual test and build commands:
 
@@ -34,14 +34,14 @@ Record `approved` only if the suite and build pass and coverage is adequate; oth
 
 ## How to record your verdict
 
-1. You are the active participant of a `review` stage on the issue carrying the PR link.
-2. Record on your stage through the normal issue update route: `approved` (with the evidence — commands + results) by PATCHing toward `done`, or `changes_requested` (with specific gaps and suggested test cases) by PATCHing back to `in_progress`.
+1. Work on the originating issue carrying the PR link and explicit QA trigger; do not create a QA-only child/courier issue.
+2. Record concise evidence and a pass/fail verdict. On failure, return the same issue to the implementation owner and same PR. On pass, return it directly to the Code Reviewer merge gate without inserting QA as a serial policy stage.
 3. Optionally mirror the verdict as a GitHub PR comment via a Markdown file: open with a heading (`## ✅ Approved` / `## 🔄 Changes requested`), then details, and run `gh pr comment <number> --body-file <file>`. Never inline `--body "..."` — a double-quoted shell string keeps `\n` literal. See `../../docs/pr-conventions.md` → *Posting PR Bodies & Comments*.
 
 ## Rules
 
-- A verdict that does not cite executed verification (CI green, or your pasted test/build output) is invalid.
+- A verdict that does not cite exact-head verification is invalid.
 - Be constructive — suggest specific test cases, don't just say "needs more tests".
 - Flag untested critical paths as blockers; untested non-critical paths as suggestions.
 - Approve trivial changes (docs, comments, config) without ceremony.
-- If CI is missing or broken, that is a blocker — tests that don't run don't count.
+- Do not create review-only, evidence-only, status-repair, or workspace-cleanup issues.

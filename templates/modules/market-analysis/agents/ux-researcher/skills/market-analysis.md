@@ -12,7 +12,7 @@ You own market research with a focus on user needs and behavior. This is your co
    - **Positioning**: Where the biggest user need gaps are
    - **Risks**: Adoption barriers, user switching costs, behavioral resistance
 3. Create follow-up issues for deeper research if needed:
-   - `POST /api/companies/{companyId}/issues` for user interview plans, usability benchmarks. Include the active `projectId` (and `goalId` / `parentId` when applicable). For top-level issues (no `parentId`), also include `"executionWorkspaceSettings": { "mode": "isolated_workspace" }` so each gets its own worktree; subissues set `parentId` and omit it.
+   - `POST /api/companies/{companyId}/issues` for user interview plans or usability benchmarks. Include `projectId` plus `goalId` / `parentId` when applicable, and set `executionWorkspaceSettings: { "mode": "isolated_workspace" }` on top-level issues and subissues by default. Reuse only when explicitly required via `inheritExecutionWorkspaceFromIssueId`.
 4. Share findings by updating the assigned issue/document and assigning concrete follow-up actions to the Product Owner and CEO when needed; do not rely on generic @-mentions.
 
 ## Rules

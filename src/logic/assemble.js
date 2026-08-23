@@ -378,8 +378,9 @@ export async function assembleCompany({
   // Render a resolved reviewGate as an executionPolicy sketch for BOOTSTRAP.md.
   // The CEO/Engineer resolves each role name to its agentId when setting the
   // policy on the issue (same role→agentId resolution as `assigneeAgentId`).
-  // The merge-gate stage carries the hard precondition: CI-green when the ci-cd
-  // module is selected, otherwise running the tests/build and pasting the output.
+  // The merge-gate stage carries the hard precondition: exact-head CI-green when
+  // the ci-cd module is selected, otherwise running the local gate once and
+  // recording its output. Green CI should not trigger a duplicate full local gate.
   const hasCi = moduleNames.includes('ci-cd');
   const renderReviewGate = (gate) => {
     const stages = [];
@@ -393,8 +394,8 @@ export async function assembleCompany({
     }
     if (gate.mergeGate) {
       const gatePrecondition = hasCi
-        ? 'CI must be green before merge'
-        : 'no CI configured — run the test suite/build and paste the output before merge';
+        ? 'verify exact-head required company CI is green; run only the smallest focused risk check before merge'
+        : 'no CI configured — run the complete local test/lint/typecheck/build gate once and record the output before merge';
       stages.push(
         `  - stage ${stages.length + 1} (approval) → assign ${JSON.stringify(gate.mergeGate)}  — merge gate (non-author): ${gatePrecondition}; merge the PR, then record approved to close`,
       );
@@ -403,7 +404,8 @@ export async function assembleCompany({
       `- **executionPolicy** (set when creating this issue; resolve each role to its agentId):\n` +
       `${stages.join('\n')}\n` +
       `  - never assign the issue's executor/author to any stage — Paperclip excludes the original executor, so a self-stage has no eligible participant and the issue stalls (422); the merge gate must be a non-author\n` +
-      `  - every verdict must cite executed verification (commands + results); "looks good" without evidence is not a valid verdict\n\n`
+      `  - keep corrections on the originating issue, branch, and PR; technical defects return to the implementation owner, never to the board user\n` +
+      `  - every verdict must cite exact-head verification; "looks good" without evidence is not a valid verdict\n\n`
     );
   };
 
@@ -1393,12 +1395,12 @@ export async function assembleCompany({
     bootstrap += `- Subtasks must include explicit \`parentId\` and explicit \`projectId\` matching the parent project unless an explicit override is required.\n`;
     bootstrap += `- Parent/subissue status is not implicitly coupled (no automatic status bounce).\n`;
     bootstrap += `- Do not reopen \`done\` parent/subissues without an explicit reason in a comment.\n`;
-    bootstrap += `- Do not reuse parent workspaces for subissues unless explicitly requested.\n`;
+    bootstrap += `- Top-level issues and subissues use \`executionWorkspaceSettings: { "mode": "isolated_workspace" }\` by default. \`parentId\` is hierarchy, not workspace consent. Reuse another issue's checkout only when explicitly required via \`inheritExecutionWorkspaceFromIssueId\`.\n`;
     if (moduleNames.includes('pr-review')) {
       const ciClause = hasCi
-        ? 'CI (lint/test/build) must be green before the merge gate merges — this is the hard gate and cannot be skipped'
-        : 'no CI is configured, so the merge-gate agent must run the test suite/build and paste the real output into the merge-gate verdict before merging — this is the hard gate';
-      bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`. The substantive gate is execution, not opinion: ${ciClause}. Stages, in order: a \`review\` stage for QA when present (test adequacy / running the tests), a \`review\` stage for the Security Engineer **only when the change is security-relevant** (auth, secrets, input boundaries, crypto, dependencies, infra exposure), an \`approval\` stage for the Product Owner when present (intent/scope), then a final \`approval\` merge-gate stage for the **Code Reviewer** (a non-author who satisfies the hard gate above, merges the PR, then records approval to close the issue). **Never list the issue's executor/author as a participant in any stage** — Paperclip excludes the original executor from review/approval, so a stage whose only participant is the author has no eligible participant and the issue stalls in \`in_review\` (422 No eligible approval participant); this is why the merge gate is the Code Reviewer (a non-author), not the engineer who wrote the code. The merge gate must be last so the Product Owner's approval does not auto-close the issue with the PR still open. When no Code Reviewer is on the team, do not set executionPolicy stages at all — use the PR-Self-Merge path (the engineer opens the PR and merges via \`gh pr merge <N> --merge\`); other review roles may leave advisory comments but do not block. Other domain reviewers may add advisory, non-blocking comments but do not gate the merge. Every verdict must cite executed verification. Resolve each role to its agentId. Model review stages in executionPolicy rather than child issues or @-mentions.\n`;
+        ? 'required company CI must be green on the exact reviewed head; the merge gate verifies those checks and runs only the smallest focused risk check instead of duplicating the complete suite'
+        : 'no CI is configured, so the merge-gate agent runs the complete local lint/test/typecheck/build gate once and records the real output';
+      bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`. The default policy has exactly one \`approval\` stage: the **Code Reviewer** as non-author merge gate. ${ciClause}. Product acceptance is defined before implementation. QA, Security, UX, Product, and DevOps provide bounded evidence on the originating issue only for a concrete risk trigger or unresolved decision; they are not serial default stages. Keep implementation, corrections, evidence, and merge on one originating issue, branch, and PR. Technical defects, stale bases, merge conflicts, and missing tests return to the implementation owner with one precise action; never assign the board user as an execution participant. Board involvement is reserved for irreducible product, legal, licensing, or residual-risk acceptance through a first-class interaction/approval. The Code Reviewer merges the PR before recording approval, so the issue cannot become \`done\` with an open PR. Never list the executor/author as a participant — Paperclip excludes the author and an author-only stage stalls. When no Code Reviewer is present, set no executionPolicy stages and use PR Self-Merge mode. Do not create review-only, evidence-only, queue-drain, or workspace-cleanup child issues.\n`;
     }
     bootstrap += `\n`;
   }

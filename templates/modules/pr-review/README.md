@@ -1,12 +1,12 @@
 # Module: pr-review
 
-Adds a PR-based review workflow with dedicated reviewer roles.
+Adds a lean PR-based review workflow with one default non-author merge gate and risk-triggered specialist evidence.
 
 ## What it adds
 
-- **Core roles**: Product Owner (approval) and Code Reviewer (final merge gate — a non-author who lands the PR)
-- **Extended roles** *(when present)*: QA (substantive review), Security Engineer (security-relevant review), UI/UX/DevOps advisory or domain review when explicitly configured
-- **Shared docs**: `docs/pr-conventions.md` — PR format, review workflow, merge rules
+- **Core role**: Code Reviewer (the sole default executionPolicy stage and non-author merge gate)
+- **Extended roles** *(when present)*: Product Owner defines acceptance before implementation; QA, Security, UI/UX, and DevOps provide bounded evidence only for recorded risk triggers
+- **Shared docs**: `docs/pr-conventions.md` and binding `docs/lean-delivery.md`
 - **Engineer skill**: Feature-branch + PR workflow (overrides direct-to-base-ref from `github-repo`)
 - **Reviewer skills**: Review checklists for each reviewer role, plus the Code Reviewer's merge-gate skill
 
@@ -19,17 +19,15 @@ Adds a PR-based review workflow with dedicated reviewer roles.
 1. Engineer resolves the project/worktree base ref first from `heartbeat-context` / project workspace metadata and uses it exactly as configured
 2. Engineer creates a feature branch (`<prefix>-<N>/<short-description>`) from that base
 3. Engineer opens a PR with Conventional Commits title, issue reference, and the matching base branch
-4. Engineer sets the originating issue's `executionPolicy`: review stages for QA/domain reviewers as needed, an approval stage for the Product Owner, and a final Code Reviewer merge-gate approval stage (roles resolved to agentIds); the PR link is added as an issue comment. The engineer never lists themselves as a participant — Paperclip excludes the issue's executor from every stage.
-5. QA reviews with executed evidence when present
-6. Security Engineer reviews security-relevant changes when present
-7. Product Owner reviews for intent alignment, scope discipline, acceptance criteria
-8. Domain reviewers (UI/UX/DevOps) may add advisory PR comments unless explicitly added as executionPolicy participants
-9. DevOps reviews infrastructure impact when explicitly added as a stage
-10. The Code Reviewer (the non-author merge gate) merges when all stages are approved (no `changes_requested` outstanding), confirms the PR landed on the correct base, leaves any isolated execution workspace reusable, and only then records the final approval / closes the issue
+4. Engineer sets exactly one `executionPolicy` approval stage: the Code Reviewer merge gate. The author is never a participant.
+5. Product acceptance was already frozen before implementation. Triggered QA, Security, UI/UX, Product, or DevOps work records one bounded verdict on the originating issue; specialists are not a serial chain.
+6. The Code Reviewer verifies the exact head/base and required company CI. Green CI is authoritative, so only a focused risk check is added; the complete local gate runs once only when CI is unavailable.
+7. Corrections return to the implementation owner on the same issue, branch, and PR. Technical defects never route to the board user.
+8. The Code Reviewer merges, confirms the target base, leaves workspace lifecycle to Paperclip, then records approval / closes the issue.
 
 ## Handover mechanism
 
-The issue's native `executionPolicy` (`review`/`approval` stages). Each reviewer is the active participant of a stage and records an `approved` / `changes_requested` decision through the normal issue update route; Paperclip stores the reviewer/approver audit trail on the issue (`reviewed_by` / `approved_by` metadata where exposed). The decision may be mirrored as a GitHub PR comment. Do not create separate review subissues, and **do not model the merge as a standalone "Code review and merge PR #N" issue that is `blockedBy` the review issues** — it adds a second wake transition and can leave a green PR waiting after reviews finish. The merge gate is the **last `executionPolicy` stage on the same implementation issue**, which advances in place. If a reviewer doesn't wake, or a merge issue stays blocked after becoming dependency-ready, the CEO's stall-detection (if enabled) will use Paperclip's blocker/wake diagnostics and PR-queue reconciliation to recover it.
+The issue's native `executionPolicy` contains one Code Reviewer approval stage. Specialist evidence, CI repair, merge-conflict repair, and corrections stay on the same originating issue and PR. Do not create separate review, evidence, merge, queue-drain, status-repair, or workspace-cleanup subissues. Board interactions are reserved for irreducible product, legal, licensing, or residual-risk decisions.
 
 ## Best for
 

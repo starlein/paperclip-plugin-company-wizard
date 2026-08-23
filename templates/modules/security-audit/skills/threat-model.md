@@ -12,7 +12,7 @@ You own threat modeling for the project. This identifies security risks before t
    - **Risk ratings**: Likelihood x Impact = Risk (Critical/High/Medium/Low)
    - **Mitigations**: Recommended controls for each threat
 3. Create follow-up issues for Critical and High risks:
-   - `POST /api/companies/{companyId}/issues` with specific remediation tasks. Include the active `projectId` (and `goalId` / `parentId` when applicable). For top-level issues (no `parentId`), also include `"executionWorkspaceSettings": { "mode": "isolated_workspace" }` so each gets its own worktree; subissues set `parentId` and omit it.
+   - `POST /api/companies/{companyId}/issues` with specific remediation tasks. Include `projectId` plus `goalId` / `parentId` when applicable, and set `executionWorkspaceSettings: { "mode": "isolated_workspace" }` on top-level issues and subissues by default. Reuse only when explicitly required via `inheritExecutionWorkspaceFromIssueId`.
 4. Record summary in your daily notes
 
 ## Rules

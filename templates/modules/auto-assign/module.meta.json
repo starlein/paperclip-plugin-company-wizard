@@ -17,7 +17,7 @@
   "routines": [
     {
       "title": "Auto-assign unassigned issues",
-      "description": "Safety-net routine-run checklist (primary assignment happens at backlog grooming, so this usually finds nothing): review any still-unassigned todo issues, assign each actionable item to its best-fit available agent based on role/workload — clear out all stragglers, not one at a time — record evidence and next actions on the routine issue, then exit.",
+      "description": "Safety-net routine-run checklist: review still-unassigned todo issues plus active implementation/review capacity, assign only the next actionable item that fits the default one-active-issue-per-agent and two-open-PRs-per-repository WIP limits, keep later roadmap work inactive, record evidence and next actions on the routine issue, then exit.",
       "assignTo": "capability:auto-assign",
       "schedule": "0 */4 * * *",
       "priority": "medium",

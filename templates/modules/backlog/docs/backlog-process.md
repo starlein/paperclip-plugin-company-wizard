@@ -10,8 +10,8 @@ Goal → Roadmap → Issues → Assignment → Execution → Done
 
 1. **Goal decomposition** — The backlog owner breaks the company goal into milestones, then milestones into actionable issues.
 2. **Issue creation** — New issues enter the backlog via `POST /api/companies/{companyId}/issues` with `title`, `description`, `priority`, `projectId`, `goalId`, and `labelIds`. Top-level backlog issues must always include the active roadmap `projectId`. They must also set workspace isolation explicitly — see **Workspace Isolation** below.
-3. **Pipeline health** — The backlog owner monitors the ready assigned queue. When fewer than about 8 actionable ready issues remain across the active delivery roles, the next small batch is generated from the roadmap.
-4. **Assignment** — Issues are assigned at creation to the best-fit owner. Engineering-ready issues go directly to the Software Engineer (or matching delivery role) so assignment wakeups start work immediately. Leave an issue unassigned only when no suitable owner exists.
+3. **Pipeline health** — The backlog owner monitors active implementation and review capacity, not a large ready queue. Default to at most two open implementation PRs per repository and one active implementation issue per delivery agent unless company policy declares a stricter limit.
+4. **Assignment** — Assign the next best-fit issue only when its owner and review path have capacity. Keep additional roadmap work prioritized but inactive; do not manufacture assigned queues that outrun review and merge capacity.
 5. **Execution** — Agents check out assigned issues, work them, and hand off deliberately for review or completion.
 
 ## Issue Quality
@@ -40,9 +40,10 @@ state.
   `"executionWorkspaceSettings": { "mode": "isolated_workspace" }` in the create body. This
   gives the issue its own worktree and branch.
 - **Sub-issue** (part of a larger parent task): set `"parentId": "<parent-issue-id>"` and
-  do **not** send `executionWorkspaceSettings`. The sub-issue deliberately reuses the
-  parent's workspace (the parent cannot be completed/cleaned up while its sub-issues are
-  still open, so sharing is safe and intended).
+  also send `"executionWorkspaceSettings": { "mode": "isolated_workspace" }` by default.
+  Hierarchy does not imply checkout sharing. Only when the task explicitly requires the
+  same code change should you send `inheritExecutionWorkspaceFromIssueId` with the source
+  issue's internal id and omit conflicting workspace settings.
 
 **Never** create a top-level issue without `executionWorkspaceSettings`. Doing so makes it
 inherit the creator's currently checked-out workspace and blocks parallel execution.
@@ -83,10 +84,10 @@ Re-prioritize when milestones shift or new information arrives. Don't let low-pr
 
 ## Backlog Health Indicators
 
-- **Healthy**: about 8 ready assigned issues across active delivery roles, covering the next logical chunk of work
-- **Thin**: fewer than 4 ready assigned issues — generate and assign more soon
-- **Empty**: no ready assigned issues — engineers will idle. Generate and assign immediately.
-- **Bloated**: 20+ ready issues — stop creating, focus on prioritization and cleanup
+- **Healthy**: each available delivery agent has at most one active implementation issue and each repository stays within its review/PR WIP limit
+- **Thin**: capacity is genuinely free and no acceptance-ready next issue exists — prepare and assign one small next issue
+- **At capacity**: two open implementation PRs (default) or the company-declared cap — stop assigning PR-producing work and drain review/merge first
+- **Bloated**: assigned work exceeds owner/reviewer capacity — stop creating, unqueue speculative work, and preserve priority on the roadmap
 
 ## Coordination
 
@@ -96,4 +97,4 @@ Re-prioritize when milestones shift or new information arrives. Don't let low-pr
 
 ## Review Handoff
 
-When an issue is ready for review (moving to `in_review`), it must be assigned to the reviewer. If an executionPolicy with review stages is configured, Paperclip reassigns automatically. Otherwise, the person moving the issue must PATCH `assigneeAgentId` to the reviewer. An issue in `in_review` that is still assigned to the original implementer will stall — no one picks it up. Always reassign on review handoff.
+Move an issue to `in_review` only when a runtime-recognized action path exists: an active non-author `executionPolicy` stage or a first-class human interaction/approval. Paperclip reassigns automatically for an executionPolicy stage. Agent reassignment by itself is not a valid no-policy review path; without a recognized path, keep the issue `in_progress` for a concrete handoff or complete the direct/self-merge flow.

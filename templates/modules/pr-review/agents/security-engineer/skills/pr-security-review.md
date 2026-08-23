@@ -1,6 +1,6 @@
 # Skill: PR Security Review
 
-You review a **specific PR's diff** for security-relevant changes. You are added as a `review` stage **only when the change touches** authentication, authorization, secrets, input boundaries, cryptography, dependencies, or infrastructure exposure — i.e. when it is security-relevant. (For broader threat modeling, see your `security-review` skill from the security-audit module, if present.)
+You review a **specific PR's diff** only when the originating issue records a concrete security trigger: authentication, authorization, tenant/data scope, secrets, input boundaries, cryptography, dependencies, infrastructure exposure, or sensitive egress. You provide one bounded advisory verdict on the originating issue; you are not a serial default executionPolicy stage.
 
 Review is by *probing*, not by reading. Your verdict must state what you actually checked.
 
@@ -15,9 +15,9 @@ Review is by *probing*, not by reading. Your verdict must state what you actuall
 
 ## How to record your verdict
 
-1. You are the active participant of a `review` stage on the issue carrying the PR link.
+1. Work on the originating issue carrying the PR link and recorded security trigger. Do not create a security-review child/courier issue.
 2. State **what you probed and how** (e.g. "checked the new `/upload` endpoint for path traversal with `../` inputs; validated the content-type allowlist"). A verdict without concrete checks is invalid.
-3. Record the stage decision through the normal issue update route: `approved` by PATCHing the issue toward `done` with the checks performed, or `changes_requested` by PATCHing back to `in_progress` with the specific finding, impact, and remediation.
+3. Record one bounded pass/fail verdict. Blocking in-scope findings return the same issue directly to the implementation owner on the same branch and PR. A pass returns directly to the Code Reviewer merge gate; specialists do not hand the issue to one another.
 4. Optionally mirror as a GitHub PR comment via a Markdown file (`## ✅ Approved` / `## 🔄 Changes requested`), run `gh pr comment <number> --body-file <file>`. Never inline `--body "..."`. See `../../docs/pr-conventions.md` → *Posting PR Bodies & Comments*.
 
 ## Rules
@@ -25,3 +25,4 @@ Review is by *probing*, not by reading. Your verdict must state what you actuall
 - Block on exploitable issues (injection, auth bypass, secret exposure). Suggest on defense-in-depth hardening.
 - Be specific: name the input, the path, the impact. "Looks secure" is not a review.
 - If the change is not actually security-relevant, say so briefly and approve — don't manufacture findings.
+- Create a follow-up only for independently deliverable, non-blocking work outside the current acceptance criteria. Never create review-only, evidence-only, or workspace-cleanup issues.
