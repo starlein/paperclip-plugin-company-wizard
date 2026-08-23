@@ -46,6 +46,8 @@ Treat `GET /api/issues/{id}/diagnostics/blockers` as authoritative. When `readin
 
 If `readiness.pendingFinalizeBlockerCount` is non-zero, a blocker may be `done` but still carry `workspace_finalize_pending`, so the dependency is not ready yet. A recent finalization is a valid wait. If finalization remains stale or the corresponding `issue_blockers_resolved` wake is `skipped`/`failed`, flag `WORKSPACE-FINALIZE-PENDING`, attach the blocker and wake diagnostics, and escalate the blocker/finalization failure to the CEO or board operator. Do not force the downstream issue active and do not archive/delete the blocker workspace as a workaround.
 
+A `cancelled` blocker does **not** resolve a dependency. Remove that blocker relation from every dependent when the dependency is no longer required, or replace it with the issue that now owns the work. Do not force a dependent active while diagnostics still list the cancelled blocker as unresolved.
+
 1. If dependency-ready with no active/queued wake or recovery action, flag it in the routine-run summary as `DEPENDENCY-READY-BUT-BLOCKED`.
 2. Leave a structured comment with blocker readiness and wake-diagnostic evidence.
 3. Reactivate it with `PATCH /api/issues/{id}` `{"status":"in_progress"}`, then assign the correct owner with an explicit next action. For a merge-gate issue, the next action is to verify the PR base and verification gate, merge, leave the execution workspace reusable, and mark `done`.

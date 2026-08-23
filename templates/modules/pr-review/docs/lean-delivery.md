@@ -2,7 +2,7 @@
 
 This contract is binding whenever the `pr-review` module is active.
 
-1. **One origin issue, one implementation owner, one PR.** Keep implementation, verification, corrections, CI repair, merge-conflict repair, and merge evidence on the originating issue and existing branch/PR.
+1. **One origin issue, one implementation owner, one PR.** Work only on explicitly assigned, acceptance-ready issues; do not self-claim unassigned work. Keep implementation, verification, corrections, CI repair, merge-conflict repair, and merge evidence on the originating issue and existing branch/PR.
 2. **Product before code.** Freeze outcome and acceptance criteria before assignment. Product Owner is not a routine post-code stage; request one same-issue decision only for unresolved scope, release, legal, licensing, or residual-risk acceptance.
 3. **Exactly one default executionPolicy stage.** Use the non-author Code Reviewer as the sole default approval/merge gate. QA, Security, UX, Product, and DevOps provide bounded evidence only when a concrete trigger applies; they are not a serial chain.
 4. **No handoff ping-pong.** A specialist finding returns directly to the same implementation owner and PR. Specialists do not hand the issue to one another, and resolved evidence is not replayed after every correction.
@@ -12,3 +12,4 @@ This contract is binding whenever the `pr-review` module is active.
 8. **No issue factories.** Do not create review-only, evidence-only, queue-drain, status-repair, summary, watchdog, or workspace-cleanup wrapper issues. Create a follow-up only for independently deliverable, non-blocking work outside current acceptance criteria.
 9. **Bounded WIP.** Default to at most two open implementation PRs per repository and one active implementation issue per delivery agent unless company policy is stricter. At capacity, stop new PR-producing assignment and use first-class blocker relations to the issues owning the in-flight PRs; do not poll them with monitors.
 10. **Decision record.** Every handoff comment names the full `owner/repo#number`, exact head/base, checks, decision, next owner, and next action. A bare PR number is not globally unique.
+11. **Verify effective state.** Approval, custodian attestation, or configuration text authorizes verification but is not proof that access or a capability works. Before closure, probe from the intended consumer runtime and re-read the final remote PR head; recheck previously resolved findings against that effective state.

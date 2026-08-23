@@ -530,6 +530,24 @@ describe('assembleCompany integration (real templates)', () => {
       join(REAL_TEMPLATES_DIR, 'modules', 'pr-review', 'docs', 'lean-delivery.md'),
       'utf-8',
     );
+    const stallDetection = await readFile(
+      join(
+        REAL_TEMPLATES_DIR,
+        'modules',
+        'stall-detection',
+        'agents',
+        'ceo',
+        'skills',
+        'stall-detection.md',
+      ),
+      'utf-8',
+    );
+    const repoMaintenance = JSON.parse(
+      await readFile(
+        join(REAL_TEMPLATES_DIR, 'presets', 'repo-maintenance', 'preset.meta.json'),
+        'utf-8',
+      ),
+    );
 
     assert.ok(
       backlogMeta.issues[0].description.includes('at most two open implementation PRs'),
@@ -561,6 +579,35 @@ describe('assembleCompany integration (real templates)', () => {
       leanDelivery.includes('Exactly one default executionPolicy stage') &&
         leanDelivery.includes('Agent reassignment alone is not a no-policy review path'),
       'shared lean-delivery contract overrides stale serial/no-policy handoff habits',
+    );
+    assert.ok(
+      leanDelivery.includes('do not self-claim unassigned work') &&
+        leanDelivery.includes('probe from the intended consumer runtime'),
+      'shared contract requires explicit assignment and effective-state verification',
+    );
+    assert.ok(
+      stallDetection.includes('A `cancelled` blocker does **not** resolve a dependency'),
+      'stall recovery must remove or replace cancelled blocker relations',
+    );
+    assert.ok(
+      repoMaintenance.issues.every((issue) => issue.assignTo !== 'user'),
+      'automatable repository setup is not assigned to the board user',
+    );
+    assert.ok(
+      repoMaintenance.issues.some(
+        (issue) =>
+          issue.title === 'Reconcile open pull request ownership' &&
+          issue.description.includes('Do not review or merge multiple PRs from this setup issue'),
+      ),
+      'repository maintenance reconciles PR ownership without a multi-PR wrapper',
+    );
+    assert.ok(
+      repoMaintenance.issues.some(
+        (issue) =>
+          issue.title === 'Implement the highest-priority codebase health fix' &&
+          issue.description.includes('one branch/PR'),
+      ),
+      'health cleanup remains one originating issue and one PR',
     );
   });
 
