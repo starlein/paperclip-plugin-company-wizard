@@ -609,6 +609,31 @@ describe('assembleCompany integration (real templates)', () => {
       ),
       'health cleanup remains one originating issue and one PR',
     );
+    assert.deepEqual(
+      repoMaintenance.issues
+        .filter((issue) => issue.assignTo === 'engineer')
+        .map((issue) => issue.title),
+      ['Audit codebase and document architecture'],
+      'repo maintenance wakes the Engineer for only the first implementation slot',
+    );
+    assert.ok(
+      repoMaintenance.issues
+        .filter((issue) =>
+          [
+            'Run initial dependency audit',
+            'Configure PR workflow and branch protection',
+            'Document or establish release process',
+            'Implement the highest-priority codebase health fix',
+          ].includes(issue.title),
+        )
+        .every(
+          (issue) =>
+            issue.assignTo == null &&
+            issue.description.toLowerCase().includes('unassigned') &&
+            issue.description.toLowerCase().includes('capacity'),
+        ),
+      'later PR-producing maintenance issues remain unassigned until review capacity is free',
+    );
   });
 
   it('pr-review setup issue documents self-merge fallback when no code-reviewer present', async () => {
@@ -895,7 +920,7 @@ describe('assembleCompany integration (real templates)', () => {
     assert.ok(!roleFiles.includes('DONE.md'), 'DONE.md must not leak as a file');
   });
 
-  it('renders a CI-green hard gate in BOOTSTRAP when ci-cd is active', async () => {
+  it('uses exact-head CI only after checks exist and otherwise renders a local fallback', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'CiGateCo',
       userGoals: [{ title: 'Ship it', description: 'Build and launch' }],
@@ -906,8 +931,10 @@ describe('assembleCompany integration (real templates)', () => {
     });
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
     assert.ok(
-      bootstrap.includes('verify exact-head required company CI is green'),
-      'CI mode should require exact-head green checks without duplicating the full suite',
+      bootstrap.includes('if required company CI checks actually exist') &&
+        bootstrap.includes('until those checks exist on this head') &&
+        bootstrap.includes('complete local test/lint/typecheck/build gate once'),
+      'selecting ci-cd must not suppress the local gate before exact-head checks actually exist',
     );
     assert.ok(
       bootstrap.includes('"looks good" without evidence is not a valid verdict'),
@@ -978,6 +1005,47 @@ describe('assembleCompany integration (real templates)', () => {
       'a verdict must cite exact-head evidence',
     );
     assert.ok(!qaSkill.includes('gh pr review'), 'no formal GitHub review with shared credential');
+  });
+
+  it('triggered specialist evidence has an assignment wake-and-return path before review', async () => {
+    const prWorkflow = await readFile(
+      join(
+        REAL_TEMPLATES_DIR,
+        'modules',
+        'pr-review',
+        'agents',
+        'engineer',
+        'skills',
+        'pr-workflow.md',
+      ),
+      'utf-8',
+    );
+    assert.ok(
+      prWorkflow.includes('Assignment is the wake signal') &&
+        prWorkflow.includes('always reassigns the originating issue to the implementation owner') &&
+        prWorkflow.indexOf('Resolve triggered specialist evidence') <
+          prWorkflow.indexOf("Set the originating issue's `executionPolicy`"),
+      'the Engineer must wake specialists on the same issue and receive it back before opening the gate',
+    );
+
+    const specialistSkills = [
+      ['qa', 'qa-review.md'],
+      ['product-owner', 'product-review.md'],
+      ['security-engineer', 'pr-security-review.md'],
+      ['ux-researcher', 'ux-review.md'],
+      ['devops', 'infra-review.md'],
+      ['ui-designer', 'design-review.md'],
+    ];
+    for (const [role, file] of specialistSkills) {
+      const skill = await readFile(
+        join(REAL_TEMPLATES_DIR, 'modules', 'pr-review', 'agents', role, 'skills', file),
+        'utf-8',
+      );
+      assert.ok(
+        skill.toLowerCase().includes('reassign') && skill.includes('implementation owner'),
+        `${role} must return the assigned originating issue to the implementation owner`,
+      );
+    }
   });
 
   it('retained QA heartbeat and public docs follow the lean review flow', async () => {

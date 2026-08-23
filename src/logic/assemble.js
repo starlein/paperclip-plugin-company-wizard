@@ -378,9 +378,10 @@ export async function assembleCompany({
   // Render a resolved reviewGate as an executionPolicy sketch for BOOTSTRAP.md.
   // The CEO/Engineer resolves each role name to its agentId when setting the
   // policy on the issue (same role→agentId resolution as `assigneeAgentId`).
-  // The merge-gate stage carries the hard precondition: exact-head CI-green when
-  // the ci-cd module is selected, otherwise running the local gate once and
-  // recording its output. Green CI should not trigger a duplicate full local gate.
+  // The merge-gate stage uses exact-head CI only after the required company checks
+  // actually exist and have run on the reviewed head. Selecting the ci-cd module
+  // alone is not evidence that bootstrap has created a working workflow yet, so
+  // the complete local gate remains the runtime fallback until those checks exist.
   const hasCi = moduleNames.includes('ci-cd');
   const renderReviewGate = (gate) => {
     const stages = [];
@@ -394,7 +395,7 @@ export async function assembleCompany({
     }
     if (gate.mergeGate) {
       const gatePrecondition = hasCi
-        ? 'verify exact-head required company CI is green; run only the smallest focused risk check before merge'
+        ? 'if required company CI checks actually exist and ran on this exact head, verify they are green and run only the smallest focused risk check; until those checks exist on this head, run the complete local test/lint/typecheck/build gate once and record the output'
         : 'no CI configured — run the complete local test/lint/typecheck/build gate once and record the output before merge';
       stages.push(
         `  - stage ${stages.length + 1} (approval) → assign ${JSON.stringify(gate.mergeGate)}  — merge gate (non-author): ${gatePrecondition}; merge the PR, then record approved to close`,
@@ -1399,7 +1400,7 @@ export async function assembleCompany({
     bootstrap += `- Top-level issues and subissues use \`executionWorkspaceSettings: { "mode": "isolated_workspace" }\` by default. \`parentId\` is hierarchy, not workspace consent. Reuse another issue's checkout only when explicitly required via \`inheritExecutionWorkspaceFromIssueId\`.\n`;
     if (moduleNames.includes('pr-review')) {
       const ciClause = hasCi
-        ? 'required company CI must be green on the exact reviewed head; the merge gate verifies those checks and runs only the smallest focused risk check instead of duplicating the complete suite'
+        ? 'when required company CI checks actually exist and ran on the exact reviewed head, the merge gate verifies they are green and runs only the smallest focused risk check; until those checks exist on that head, it runs the complete local lint/test/typecheck/build gate once and records the real output'
         : 'no CI is configured, so the merge-gate agent runs the complete local lint/test/typecheck/build gate once and records the real output';
       bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`. The default policy has exactly one \`approval\` stage: the **Code Reviewer** as non-author merge gate. ${ciClause}. Product acceptance is defined before implementation. QA, Security, UX, Product, and DevOps provide bounded evidence on the originating issue only for a concrete risk trigger or unresolved decision; they are not serial default stages. Keep implementation, corrections, evidence, and merge on one originating issue, branch, and PR. Technical defects, stale bases, merge conflicts, and missing tests return to the implementation owner with one precise action; never assign the board user as an execution participant. Board involvement is reserved for irreducible product, legal, licensing, or residual-risk acceptance through a first-class interaction/approval. The Code Reviewer merges the PR before recording approval, so the issue cannot become \`done\` with an open PR. Never list the executor/author as a participant — Paperclip excludes the author and an author-only stage stalls. When no Code Reviewer is present, set no executionPolicy stages and use PR Self-Merge mode. Do not create review-only, evidence-only, queue-drain, or workspace-cleanup child issues.\n`;
     }

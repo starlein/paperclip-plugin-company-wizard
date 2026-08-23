@@ -35,7 +35,7 @@ Record `approved` only if the suite and build pass and coverage is adequate; oth
 ## How to record your verdict
 
 1. Work on the originating issue carrying the PR link and explicit QA trigger; do not create a QA-only child/courier issue.
-2. Record concise evidence and a pass/fail verdict. On failure, return the same issue to the implementation owner and same PR. On pass, return it directly to the Code Reviewer merge gate without inserting QA as a serial policy stage.
+2. Record concise evidence and a pass/fail verdict, then reassign the same originating issue to the implementation owner in the same heartbeat. On failure, name the exact correction required on the same PR. On pass, the implementation owner opens the Code Reviewer merge gate (or takes the documented self-merge path); QA is never inserted as a serial policy stage.
 3. Optionally mirror the verdict as a GitHub PR comment via a Markdown file: open with a heading (`## ✅ Approved` / `## 🔄 Changes requested`), then details, and run `gh pr comment <number> --body-file <file>`. Never inline `--body "..."` — a double-quoted shell string keeps `\n` literal. See `../../docs/pr-conventions.md` → *Posting PR Bodies & Comments*.
 
 ## Rules

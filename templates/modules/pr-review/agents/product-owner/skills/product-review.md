@@ -15,9 +15,9 @@ You define product intent and acceptance **before implementation**. You return a
 
 1. Review the originating issue and PR only when a concrete product trigger is recorded. Do not create a product-review child/courier issue.
 2. Record one decision tied to acceptance criteria:
-   - **accepted** when the change matches the frozen outcome; return directly to the Code Reviewer
+   - **accepted** when the change matches the frozen outcome; return the same issue to the implementation owner so they can open the Code Reviewer gate
    - **changes required** when a concrete criterion is unmet; return the same issue to the implementation owner and same PR
-3. Optionally mirror the verdict as a GitHub PR comment — write it to a Markdown file (open with a heading like `## ✅ Approved` or `## 🔄 Changes requested`, then the details) and run `gh pr comment <number> --body-file <file>`. Never use inline `--body "..."`: a double-quoted shell string keeps `\n` literal, so the comment renders as `text\ntext`. See `../../docs/pr-conventions.md` → *Posting PR Bodies & Comments*.
+3. Reassign the same originating issue to the implementation owner in the same heartbeat. Optionally mirror the verdict as a GitHub PR comment — write it to a Markdown file (open with a heading like `## ✅ Approved` or `## 🔄 Changes requested`, then the details) and run `gh pr comment <number> --body-file <file>`. Never use inline `--body "..."`: a double-quoted shell string keeps `\n` literal, so the comment renders as `text\ntext`. See `../../docs/pr-conventions.md` → *Posting PR Bodies & Comments*.
 
 ## Rules
 

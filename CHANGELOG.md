@@ -15,6 +15,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Existing Company Skill content now updates through `PATCH /companies/:companyId/skills/:skillId/files` with `path: "SKILL.md"`, and display-name changes use the dedicated `/rename` endpoint. Newer Paperclip versions no longer silently discard `markdown` and `name` sent to the metadata-only skill PATCH route.
 - Project provisioning and generated bootstrap instructions now always include the required `executionWorkspacePolicy.enabled` boolean whenever a project execution policy is present.
+- Triggered QA, Security, Product, UI/UX, and DevOps evidence now has an explicit same-issue assignment wake-and-return path before the Code Reviewer gate, matching assignment-driven worker agents.
+- Selecting the `ci-cd` module no longer assumes required checks already exist: exact-head company CI becomes authoritative only after checks run on that head; until then the merge gate runs the complete local gate once.
+- The repo-maintenance preset initially assigns only its first Engineer delivery; later PR-producing work remains unassigned until the backlog owner confirms review capacity.
 
 ## [0.5.0] - 2026-08-10
 

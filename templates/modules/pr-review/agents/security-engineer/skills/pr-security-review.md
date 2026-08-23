@@ -17,7 +17,7 @@ Review is by *probing*, not by reading. Your verdict must state what you actuall
 
 1. Work on the originating issue carrying the PR link and recorded security trigger. Do not create a security-review child/courier issue.
 2. State **what you probed and how** (e.g. "checked the new `/upload` endpoint for path traversal with `../` inputs; validated the content-type allowlist"). A verdict without concrete checks is invalid.
-3. Record one bounded pass/fail verdict. Blocking in-scope findings return the same issue directly to the implementation owner on the same branch and PR. A pass returns directly to the Code Reviewer merge gate; specialists do not hand the issue to one another.
+3. Record one bounded pass/fail verdict, then reassign the same originating issue to the implementation owner in the same heartbeat. Blocking in-scope findings name the exact correction required on the same branch and PR; a pass lets the implementation owner open the Code Reviewer gate. Specialists do not hand the issue to one another.
 4. Optionally mirror as a GitHub PR comment via a Markdown file (`## ✅ Approved` / `## 🔄 Changes requested`), run `gh pr comment <number> --body-file <file>`. Never inline `--body "..."`. See `../../docs/pr-conventions.md` → *Posting PR Bodies & Comments*.
 
 ## Rules
