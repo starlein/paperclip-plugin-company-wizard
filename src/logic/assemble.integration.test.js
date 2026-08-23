@@ -1058,6 +1058,43 @@ describe('assembleCompany integration (real templates)', () => {
     }
   });
 
+  it('retained base roles do not contradict CI, WIP, acceptance, or remediation policy', async () => {
+    const codeReviewer = await readFile(
+      join(REAL_TEMPLATES_DIR, 'roles', 'code-reviewer', 'AGENTS.md'),
+      'utf-8',
+    );
+    assert.ok(
+      codeReviewer.includes('required company CI checks actually exist') &&
+        codeReviewer.includes('green exact-head CI is the authoritative complete gate') &&
+        codeReviewer.includes('complete local lint/test/typecheck/build gate once') &&
+        !codeReviewer.includes('always run and paste your own lint/test/build output'),
+      'Code Reviewer uses exact-head CI with a focused check and a complete-local fallback',
+    );
+
+    const engineer = await readFile(
+      join(REAL_TEMPLATES_DIR, 'roles', 'engineer', 'AGENTS.md'),
+      'utf-8',
+    );
+    assert.ok(
+      engineer.includes('Do not self-claim unassigned work') &&
+        engineer.includes('repository review/PR capacity') &&
+        engineer.includes('do not invent a sensible outcome') &&
+        !engineer.includes('pick a sensible one'),
+      'Engineer base policy honors WIP capacity and acceptance preflight',
+    );
+
+    const securityEngineer = await readFile(
+      join(REAL_TEMPLATES_DIR, 'roles', 'security-engineer', 'AGENTS.md'),
+      'utf-8',
+    );
+    assert.ok(
+      securityEngineer.includes('originating issue, branch, and PR') &&
+        securityEngineer.includes('independently deliverable, non-blocking work') &&
+        !securityEngineer.includes('Create remediation issues for material findings'),
+      'Security blocking remediation remains on the originating delivery',
+    );
+  });
+
   it('retained QA heartbeat and public docs follow the lean review flow', async () => {
     const qaHeartbeat = await readFile(
       join(REAL_TEMPLATES_DIR, 'roles', 'qa', 'HEARTBEAT.md'),
