@@ -980,6 +980,54 @@ describe('assembleCompany integration (real templates)', () => {
     assert.ok(!qaSkill.includes('gh pr review'), 'no formal GitHub review with shared credential');
   });
 
+  it('retained QA heartbeat and public docs follow the lean review flow', async () => {
+    const qaHeartbeat = await readFile(
+      join(REAL_TEMPLATES_DIR, 'roles', 'qa', 'HEARTBEAT.md'),
+      'utf-8',
+    );
+    const prWorkflow = await readFile(
+      join(
+        REAL_TEMPLATES_DIR,
+        'modules',
+        'pr-review',
+        'agents',
+        'engineer',
+        'skills',
+        'pr-workflow.md',
+      ),
+      'utf-8',
+    );
+    const publicReadme = await readFile(resolve(REAL_TEMPLATES_DIR, '..', 'README.md'), 'utf-8');
+
+    assert.ok(
+      qaHeartbeat.includes('Never mark the originating implementation issue `done`') &&
+        qaHeartbeat.includes('sole Code Reviewer stage'),
+      'QA cannot close the originating PR issue or advance the merge-gate stage',
+    );
+    assert.ok(
+      qaHeartbeat.includes('Standalone QA deliverable'),
+      'standalone QA work retains a legitimate completion path',
+    );
+    assert.ok(
+      prWorkflow.indexOf('## Acceptance Preflight') < prWorkflow.indexOf('## Feature Branch Flow'),
+      'acceptance is checked before branch creation and implementation',
+    );
+    assert.ok(
+      prWorkflow.includes('assign it to the Product Owner for clarification') &&
+        prWorkflow.includes('CEO backlog-owner fallback'),
+      'ambiguous acceptance has a pre-code Product Owner/CEO route',
+    );
+    assert.ok(
+      publicReadme.includes('exactly one default stage') &&
+        publicReadme.includes('they are not serial executionPolicy stages'),
+      'public documentation describes the sole Code Reviewer stage',
+    );
+    assert.ok(
+      !publicReadme.includes('a `review` stage for QA when present'),
+      'public documentation no longer advertises the old serial chain',
+    );
+  });
+
   it('code review skill is the non-author merge gate that lands the PR', async () => {
     const crSkill = await readFile(
       join(

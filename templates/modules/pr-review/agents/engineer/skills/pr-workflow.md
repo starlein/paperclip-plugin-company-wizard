@@ -2,6 +2,13 @@
 
 When this skill is active, you work in feature branches and open PRs instead of committing directly to the base ref. Follow the conventions in `../../docs/pr-conventions.md` in the project root.
 
+## Acceptance Preflight — before branch or implementation
+
+1. Read the originating issue's outcome and acceptance criteria before creating a branch or changing code.
+2. Proceed only when the intended result is concrete and objectively testable. Do not invent a “sensible” success condition for missing or ambiguous product intent.
+3. If acceptance is missing or ambiguous and a Product Owner is present, stop before implementation, comment the exact unresolved decision on the same issue, and assign it to the Product Owner for clarification. The Product Owner updates/finalizes acceptance criteria and returns the same issue to the implementation owner; this is a pre-code handoff, not a post-code executionPolicy stage.
+4. If no Product Owner is present, route acceptance clarification to the CEO backlog-owner fallback. Use a first-class board interaction only when the remaining choice genuinely requires human product, legal, licensing, or residual-risk authority. Do not create a clarification child/courier issue.
+
 ## Feature Branch Flow
 
 1. Resolve the project/worktree base ref from the issue's `heartbeat-context` / project workspace metadata before branching. Use the configured `repoRef`, `defaultRef`, or `executionWorkspacePolicy.workspaceStrategy.baseRef` exactly as Paperclip provides it. Never guess from your shell's current branch and never rewrite the configured ref to `main`, `master`, or `origin/*`. If no base ref is configured anywhere, use the repository's actual default branch — whatever `origin/HEAD` points at, regardless of name (`main`/`master`/`trunk`/…); fall back to `main` then `master` only if the remote advertises no default HEAD. See `../../docs/git-workflow.md` → *Resolving the default branch*. Never hard-code `main`.
@@ -29,7 +36,7 @@ When this skill is active, you work in feature branches and open PRs instead of 
    ```
    `title` and `url` are required (`url` must be the full PR URL). If the issue runs in an isolated worktree, also pass `"executionWorkspaceId"` from `heartbeat-context`. When the PR later merges, update it with `PATCH /api/work-products/{id}` and `"status": "merged"`.
 9. **Only if a code-reviewer is present on the team:** Set the originating issue's `executionPolicy` to exactly one `approval` stage with the Code Reviewer as the non-author merge gate. **Set the stage before moving the issue to `in_review` (step 10) — changing stages after review begins is not supported.** If no code-reviewer is assigned, skip steps 9–11 and use the self-merge path at step 12. A policy without an eligible non-author merge gate stalls permanently.
-   - Product acceptance criteria are settled before implementation. Product Owner is not a routine post-code stage; ask for one same-issue decision only when scope or acceptance is genuinely unresolved.
+   - Product acceptance criteria were settled by the Acceptance Preflight before implementation. Product Owner is not a routine post-code stage; if a genuinely new scope decision emerges, return to the same preflight on the originating issue.
    - QA, Security, UI/UX, and DevOps provide bounded evidence on the originating issue only when a concrete risk trigger applies. They are not serial executionPolicy stages and do not hand the issue to one another.
    - The **Code Reviewer** is the only default stage and the merge owner. It verifies the exact PR head, required CI, and focused risk evidence, merges the PR, then records `approved` to close the issue.
    - **Never list yourself (the issue's executor) as a participant in any stage.** Paperclip excludes the original executor to prevent self-review; a stage whose only participant is you has no eligible participant and the issue stalls in `in_review` forever (`422 No eligible approval participant is configured for this issue`).
