@@ -20,7 +20,7 @@ git fetch origin && git checkout <branch>
 <the project's build command>  # e.g. pnpm build
 ```
 
-Record `approved` only if the suite and build pass and coverage is adequate; otherwise `changes_requested` with the failing output and the gaps.
+Record a bounded `pass` comment only if the triggered checks pass and coverage is adequate; otherwise record a bounded `fail` comment with the failing output and gaps. These are evidence comments on the originating issue, not `approved` / `changes_requested` executionPolicy verdicts; QA then reassigns the issue as described below.
 
 ## Review checklist
 

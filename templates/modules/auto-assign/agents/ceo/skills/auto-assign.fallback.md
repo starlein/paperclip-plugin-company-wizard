@@ -18,7 +18,7 @@ On your heartbeat, after handling your own assignments:
 ## Rules
 
 - This is a safety net behind backlog grooming's direct assignment. Let the PO own assignment.
-- Respect implementation and review WIP. At capacity, leave work inactive and use first-class blocker relations to the issues owning in-flight PRs rather than a polling monitor.
+- Respect implementation and review WIP. At capacity, leave later work unassigned and record `waiting for repository review capacity`; let the next assignment-driven capacity check release it when one slot opens. Do not model a dynamic WIP cap as blockers on every in-flight PR issue — those relations are conjunctive and would wait for all PRs to finish.
 - Do not run this from normal heartbeats.
 - Do not self-assign random unassigned work.
 - If no suitable match exists, leave the issue unassigned and state the reason in the routine-run comment.

@@ -570,11 +570,29 @@ describe('assembleCompany integration (real templates)', () => {
       join(REAL_TEMPLATES_DIR, 'modules', 'auto-assign', 'skills', 'auto-assign.md'),
       'utf-8',
     );
+    const autoAssignFallback = await readFile(
+      join(
+        REAL_TEMPLATES_DIR,
+        'modules',
+        'auto-assign',
+        'agents',
+        'ceo',
+        'skills',
+        'auto-assign.fallback.md',
+      ),
+      'utf-8',
+    );
     assert.ok(
       autoAssignSkill.includes('leave the waiting issue unassigned') &&
         autoAssignSkill.includes('blockers are conjunctive') &&
         !autoAssignSkill.includes('link the waiting issue to the issues owning those PRs'),
       'dynamic PR capacity must not become an all-open-PR conjunctive dependency',
+    );
+    assert.ok(
+      autoAssignFallback.includes('leave later work unassigned') &&
+        autoAssignFallback.includes('relations are conjunctive') &&
+        !autoAssignFallback.includes('blocker relations to the issues owning in-flight PRs'),
+      'CEO fallback follows the same non-conjunctive capacity wait',
     );
     assert.ok(
       backlogSkill.includes('`#0075ca`') && !backlogSkill.includes('`0075ca`'),
@@ -594,6 +612,13 @@ describe('assembleCompany integration (real templates)', () => {
       leanDelivery.includes('do not self-claim unassigned work') &&
         leanDelivery.includes('probe from the intended consumer runtime'),
       'shared contract requires explicit assignment and effective-state verification',
+    );
+    assert.ok(
+      leanDelivery.includes('Inherited BASE-BRANCH-RED is the narrow exception') &&
+        leanDelivery.includes('separately owned baseline-restore issue, branch, and PR') &&
+        leanDelivery.includes('leave later work unassigned') &&
+        !leanDelivery.includes('blocker relations to the issues owning the in-flight PRs'),
+      'shared contract isolates inherited baseline repair and avoids conjunctive capacity blockers',
     );
     assert.ok(
       stallDetection.includes('A `cancelled` blocker does **not** resolve a dependency'),
@@ -1013,6 +1038,13 @@ describe('assembleCompany integration (real templates)', () => {
     assert.ok(
       qaSkill.toLowerCase().includes('exact-head verification'),
       'a verdict must cite exact-head evidence',
+    );
+    assert.ok(
+      qaSkill.includes('bounded `pass` comment') &&
+        qaSkill.includes('bounded `fail` comment') &&
+        !qaSkill.includes('Record `approved`') &&
+        !qaSkill.includes('otherwise `changes_requested`'),
+      'QA records evidence comments rather than executionPolicy stage verdicts',
     );
     assert.ok(!qaSkill.includes('gh pr review'), 'no formal GitHub review with shared credential');
   });

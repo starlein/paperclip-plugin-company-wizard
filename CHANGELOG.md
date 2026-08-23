@@ -21,6 +21,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Supported older Paperclip hosts that do not expose the newer Company Skill `/rename` route now keep the existing display name and continue refreshing skill content/metadata instead of aborting provisioning on a 404.
 - Auto-assignment no longer models a dynamic repository PR cap as conjunctive blockers on every open PR; capacity waiters stay unassigned for the next assignment-driven capacity check.
 - Retained Code Reviewer, Engineer, and Security Engineer role instructions now match the lean module contracts: exact-head CI avoids duplicate full gates, Engineers do not self-claim past WIP capacity or invent acceptance, and blocking security remediation stays on the originating issue and PR.
+- QA evidence uses bounded pass/fail comments rather than executionPolicy verdicts; CEO fallback assignment follows the same non-conjunctive capacity wait as the primary skill; and inherited base-branch CI repair is explicitly isolated to one separately owned baseline-restore issue and PR.
 
 ## [0.5.0] - 2026-08-10
 
