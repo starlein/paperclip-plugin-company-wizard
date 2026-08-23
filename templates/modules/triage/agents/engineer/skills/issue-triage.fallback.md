@@ -9,7 +9,7 @@ The Product Owner primarily owns issue triage. You are the engineering fallback:
 3. For each technical issue:
    - Reproduce or inspect enough to classify it as bug, feature, question, duplicate, invalid, or needs-info.
    - Apply labels and priority based on user impact and technical severity.
-   - Create Paperclip issues for actionable bugs or engineering work. Top-level Paperclip issues should include `executionWorkspaceSettings: { "mode": "isolated_workspace" }`; subissues set `parentId` and omit workspace settings.
+   - Create Paperclip issues for actionable bugs or engineering work. Top-level issues and subissues include `executionWorkspaceSettings: { "mode": "isolated_workspace" }` by default; explicit same-change reuse uses `inheritExecutionWorkspaceFromIssueId`.
    - Ask concise follow-up questions when reproduction details are missing.
 4. Leave product-priority and roadmap tradeoffs for the Product Owner or CEO.
 

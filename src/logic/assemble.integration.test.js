@@ -491,17 +491,17 @@ describe('assembleCompany integration (real templates)', () => {
     }
   });
 
-  it('pr-review gates on QA + executed verification, not a reading-only code reviewer', async () => {
+  it('pr-review defaults to one non-author Code Reviewer stage', async () => {
     const meta = JSON.parse(
       await readFile(join(REAL_TEMPLATES_DIR, 'modules', 'pr-review', 'module.meta.json'), 'utf-8'),
     );
     const gate = meta.issues[0].reviewGate;
-    assert.deepEqual(gate.reviewers, ['qa'], 'QA is the substantive review stage');
-    assert.equal(gate.approver, 'product-owner');
+    assert.equal(gate.reviewers, undefined, 'QA is bounded evidence, not a default stage');
+    assert.equal(gate.approver, undefined, 'Product acceptance happens before implementation');
     assert.equal(gate.mergeGate, 'code-reviewer', 'the non-author Code Reviewer is the merge gate');
     assert.ok(
-      !gate.reviewers.includes('code-reviewer'),
-      'code-reviewer is the merge gate, not a blocking review stage',
+      meta.issues[0].description.includes('not serial stages'),
+      'specialists are explicitly non-serial',
     );
     assert.notEqual(
       gate.mergeGate,
@@ -510,7 +510,164 @@ describe('assembleCompany integration (real templates)', () => {
     );
     assert.ok(
       meta.activatesWithRoles.includes('security-engineer'),
-      'security-engineer can activate pr-review for the conditional security stage',
+      'security-engineer can activate pr-review for bounded security evidence',
+    );
+  });
+
+  it('backlog templates enforce bounded WIP and explicit subissue isolation', async () => {
+    const backlogMeta = JSON.parse(
+      await readFile(join(REAL_TEMPLATES_DIR, 'modules', 'backlog', 'module.meta.json'), 'utf-8'),
+    );
+    const backlogSkill = await readFile(
+      join(REAL_TEMPLATES_DIR, 'modules', 'backlog', 'skills', 'backlog-health.md'),
+      'utf-8',
+    );
+    const bootstrapInstructions = await readFile(
+      join(REAL_TEMPLATES_DIR, 'bootstrap-instructions.md'),
+      'utf-8',
+    );
+    const leanDelivery = await readFile(
+      join(REAL_TEMPLATES_DIR, 'modules', 'pr-review', 'docs', 'lean-delivery.md'),
+      'utf-8',
+    );
+    const stallDetection = await readFile(
+      join(
+        REAL_TEMPLATES_DIR,
+        'modules',
+        'stall-detection',
+        'agents',
+        'ceo',
+        'skills',
+        'stall-detection.md',
+      ),
+      'utf-8',
+    );
+    const repoMaintenance = JSON.parse(
+      await readFile(
+        join(REAL_TEMPLATES_DIR, 'presets', 'repo-maintenance', 'preset.meta.json'),
+        'utf-8',
+      ),
+    );
+
+    assert.ok(
+      backlogMeta.issues[0].description.includes('at most two open implementation PRs'),
+      'seed backlog must respect the default repository PR cap',
+    );
+    assert.ok(
+      backlogMeta.routines[0].description.includes('create at most the next 1-3'),
+      'grooming creates a bounded next batch rather than an eight-item assigned queue',
+    );
+    assert.ok(
+      backlogSkill.includes('including subissues') &&
+        backlogSkill.includes('inheritExecutionWorkspaceFromIssueId'),
+      'subissues default to isolated workspaces and reuse is explicit',
+    );
+    assert.ok(
+      !backlogSkill.includes('Attach a task watchdog to every'),
+      'backlog creation must not attach a universal task watchdog',
+    );
+    const autoAssignSkill = await readFile(
+      join(REAL_TEMPLATES_DIR, 'modules', 'auto-assign', 'skills', 'auto-assign.md'),
+      'utf-8',
+    );
+    const autoAssignFallback = await readFile(
+      join(
+        REAL_TEMPLATES_DIR,
+        'modules',
+        'auto-assign',
+        'agents',
+        'ceo',
+        'skills',
+        'auto-assign.fallback.md',
+      ),
+      'utf-8',
+    );
+    assert.ok(
+      autoAssignSkill.includes('leave the waiting issue unassigned') &&
+        autoAssignSkill.includes('blockers are conjunctive') &&
+        !autoAssignSkill.includes('link the waiting issue to the issues owning those PRs'),
+      'dynamic PR capacity must not become an all-open-PR conjunctive dependency',
+    );
+    assert.ok(
+      autoAssignFallback.includes('leave later work unassigned') &&
+        autoAssignFallback.includes('relations are conjunctive') &&
+        !autoAssignFallback.includes('blocker relations to the issues owning in-flight PRs'),
+      'CEO fallback follows the same non-conjunctive capacity wait',
+    );
+    assert.ok(
+      backlogSkill.includes('`#0075ca`') && !backlogSkill.includes('`0075ca`'),
+      'documented label colors must satisfy the current #RRGGBB validator',
+    );
+    assert.ok(
+      bootstrapInstructions.includes('including subtasks') &&
+        bootstrapInstructions.includes('inheritExecutionWorkspaceFromIssueId'),
+      'bootstrap applies the same explicit-isolation contract',
+    );
+    assert.ok(
+      leanDelivery.includes('Exactly one default executionPolicy stage') &&
+        leanDelivery.includes('Agent reassignment alone is not a no-policy review path'),
+      'shared lean-delivery contract overrides stale serial/no-policy handoff habits',
+    );
+    assert.ok(
+      leanDelivery.includes('do not self-claim unassigned work') &&
+        leanDelivery.includes('probe from the intended consumer runtime'),
+      'shared contract requires explicit assignment and effective-state verification',
+    );
+    assert.ok(
+      leanDelivery.includes('Inherited BASE-BRANCH-RED is the narrow exception') &&
+        leanDelivery.includes('separately owned baseline-restore issue, branch, and PR') &&
+        leanDelivery.includes('leave later work unassigned') &&
+        !leanDelivery.includes('blocker relations to the issues owning the in-flight PRs'),
+      'shared contract isolates inherited baseline repair and avoids conjunctive capacity blockers',
+    );
+    assert.ok(
+      stallDetection.includes('A `cancelled` blocker does **not** resolve a dependency'),
+      'stall recovery must remove or replace cancelled blocker relations',
+    );
+    assert.ok(
+      repoMaintenance.issues.every((issue) => issue.assignTo !== 'user'),
+      'automatable repository setup is not assigned to the board user',
+    );
+    assert.ok(
+      repoMaintenance.issues.some(
+        (issue) =>
+          issue.title === 'Reconcile open pull request ownership' &&
+          issue.description.includes('Do not review or merge multiple PRs from this setup issue'),
+      ),
+      'repository maintenance reconciles PR ownership without a multi-PR wrapper',
+    );
+    assert.ok(
+      repoMaintenance.issues.some(
+        (issue) =>
+          issue.title === 'Implement the highest-priority codebase health fix' &&
+          issue.description.includes('one branch/PR'),
+      ),
+      'health cleanup remains one originating issue and one PR',
+    );
+    assert.deepEqual(
+      repoMaintenance.issues
+        .filter((issue) => issue.assignTo === 'engineer')
+        .map((issue) => issue.title),
+      ['Audit codebase and document architecture'],
+      'repo maintenance wakes the Engineer for only the first implementation slot',
+    );
+    assert.ok(
+      repoMaintenance.issues
+        .filter((issue) =>
+          [
+            'Run initial dependency audit',
+            'Configure PR workflow and branch protection',
+            'Document or establish release process',
+            'Implement the highest-priority codebase health fix',
+          ].includes(issue.title),
+        )
+        .every(
+          (issue) =>
+            issue.assignTo == null &&
+            issue.description.toLowerCase().includes('unassigned') &&
+            issue.description.toLowerCase().includes('capacity'),
+        ),
+      'later PR-producing maintenance issues remain unassigned until review capacity is free',
     );
   });
 
@@ -798,7 +955,7 @@ describe('assembleCompany integration (real templates)', () => {
     assert.ok(!roleFiles.includes('DONE.md'), 'DONE.md must not leak as a file');
   });
 
-  it('renders a CI-green hard gate in BOOTSTRAP when ci-cd is active', async () => {
+  it('uses exact-head CI only after checks exist and otherwise renders a local fallback', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'CiGateCo',
       userGoals: [{ title: 'Ship it', description: 'Build and launch' }],
@@ -809,8 +966,10 @@ describe('assembleCompany integration (real templates)', () => {
     });
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
     assert.ok(
-      bootstrap.includes('CI must be green before merge'),
-      'CI mode should state CI-green as the hard merge-gate precondition',
+      bootstrap.includes('if required company CI checks actually exist') &&
+        bootstrap.includes('until those checks exist on this head') &&
+        bootstrap.includes('complete local test/lint/typecheck/build gate once'),
+      'selecting ci-cd must not suppress the local gate before exact-head checks actually exist',
     );
     assert.ok(
       bootstrap.includes('"looks good" without evidence is not a valid verdict'),
@@ -858,36 +1017,162 @@ describe('assembleCompany integration (real templates)', () => {
       'guardrail forbids assigning the issue executor/author to a stage',
     );
     assert.ok(
-      bootstrap.includes('only when the change is security-relevant'),
-      'guardrail makes the security stage conditional',
+      bootstrap.includes('bounded evidence') && bootstrap.includes('not serial default stages'),
+      'guardrail makes specialist evidence conditional and non-serial',
     );
-    // M9: verify the rendered executionPolicy stages appear in the correct order
-    // (QA review → Product Owner approval → Code Reviewer merge gate).
+    // The live-proven default is one non-author Code Reviewer stage.
     const qaStageIdx = bootstrap.indexOf('(review) → assign "qa"');
     const poStageIdx = bootstrap.indexOf('(approval) → assign "product-owner"');
     const mergeStageIdx = bootstrap.indexOf('(approval) → assign "code-reviewer"');
-    assert.ok(qaStageIdx > -1, 'QA review stage is rendered');
-    assert.ok(poStageIdx > -1, 'Product Owner approval stage is rendered');
+    assert.equal(qaStageIdx, -1, 'QA is not rendered as a default stage');
+    assert.equal(poStageIdx, -1, 'Product Owner is not rendered as a post-code stage');
     assert.ok(mergeStageIdx > -1, 'Code Reviewer merge-gate stage is rendered');
-    assert.ok(poStageIdx > qaStageIdx, 'Product Owner approval renders after QA review');
-    assert.ok(
-      mergeStageIdx > poStageIdx,
-      'Code Reviewer merge gate renders after the Product Owner',
-    );
   });
 
-  it('QA review skill is the substantive gate with an evidence requirement', async () => {
+  it('QA review skill is bounded evidence rather than a serial gate', async () => {
     const qaSkill = await readFile(
       join(REAL_TEMPLATES_DIR, 'modules', 'pr-review', 'agents', 'qa', 'skills', 'qa-review.md'),
       'utf-8',
     );
-    assert.ok(qaSkill.includes('substantive review gate'), 'QA framed as the gate');
+    assert.ok(qaSkill.includes('bounded QA evidence'), 'QA framed as bounded evidence');
     assert.ok(
-      qaSkill.toLowerCase().includes('without execution output is invalid') ||
-        qaSkill.toLowerCase().includes('without executed verification'),
-      'a verdict without executed evidence must be invalid',
+      qaSkill.toLowerCase().includes('exact-head verification'),
+      'a verdict must cite exact-head evidence',
+    );
+    assert.ok(
+      qaSkill.includes('bounded `pass` comment') &&
+        qaSkill.includes('bounded `fail` comment') &&
+        !qaSkill.includes('Record `approved`') &&
+        !qaSkill.includes('otherwise `changes_requested`'),
+      'QA records evidence comments rather than executionPolicy stage verdicts',
     );
     assert.ok(!qaSkill.includes('gh pr review'), 'no formal GitHub review with shared credential');
+  });
+
+  it('triggered specialist evidence has an assignment wake-and-return path before review', async () => {
+    const prWorkflow = await readFile(
+      join(
+        REAL_TEMPLATES_DIR,
+        'modules',
+        'pr-review',
+        'agents',
+        'engineer',
+        'skills',
+        'pr-workflow.md',
+      ),
+      'utf-8',
+    );
+    assert.ok(
+      prWorkflow.includes('Assignment is the wake signal') &&
+        prWorkflow.includes('always reassigns the originating issue to the implementation owner') &&
+        prWorkflow.indexOf('Resolve triggered specialist evidence') <
+          prWorkflow.indexOf("Set the originating issue's `executionPolicy`"),
+      'the Engineer must wake specialists on the same issue and receive it back before opening the gate',
+    );
+
+    const specialistSkills = [
+      ['qa', 'qa-review.md'],
+      ['product-owner', 'product-review.md'],
+      ['security-engineer', 'pr-security-review.md'],
+      ['ux-researcher', 'ux-review.md'],
+      ['devops', 'infra-review.md'],
+      ['ui-designer', 'design-review.md'],
+    ];
+    for (const [role, file] of specialistSkills) {
+      const skill = await readFile(
+        join(REAL_TEMPLATES_DIR, 'modules', 'pr-review', 'agents', role, 'skills', file),
+        'utf-8',
+      );
+      assert.ok(
+        skill.toLowerCase().includes('reassign') && skill.includes('implementation owner'),
+        `${role} must return the assigned originating issue to the implementation owner`,
+      );
+    }
+  });
+
+  it('retained base roles do not contradict CI, WIP, acceptance, or remediation policy', async () => {
+    const codeReviewer = await readFile(
+      join(REAL_TEMPLATES_DIR, 'roles', 'code-reviewer', 'AGENTS.md'),
+      'utf-8',
+    );
+    assert.ok(
+      codeReviewer.includes('required company CI checks actually exist') &&
+        codeReviewer.includes('green exact-head CI is the authoritative complete gate') &&
+        codeReviewer.includes('complete local lint/test/typecheck/build gate once') &&
+        !codeReviewer.includes('always run and paste your own lint/test/build output'),
+      'Code Reviewer uses exact-head CI with a focused check and a complete-local fallback',
+    );
+
+    const engineer = await readFile(
+      join(REAL_TEMPLATES_DIR, 'roles', 'engineer', 'AGENTS.md'),
+      'utf-8',
+    );
+    assert.ok(
+      engineer.includes('Do not self-claim unassigned work') &&
+        engineer.includes('repository review/PR capacity') &&
+        engineer.includes('do not invent a sensible outcome') &&
+        !engineer.includes('pick a sensible one'),
+      'Engineer base policy honors WIP capacity and acceptance preflight',
+    );
+
+    const securityEngineer = await readFile(
+      join(REAL_TEMPLATES_DIR, 'roles', 'security-engineer', 'AGENTS.md'),
+      'utf-8',
+    );
+    assert.ok(
+      securityEngineer.includes('originating issue, branch, and PR') &&
+        securityEngineer.includes('independently deliverable, non-blocking work') &&
+        !securityEngineer.includes('Create remediation issues for material findings'),
+      'Security blocking remediation remains on the originating delivery',
+    );
+  });
+
+  it('retained QA heartbeat and public docs follow the lean review flow', async () => {
+    const qaHeartbeat = await readFile(
+      join(REAL_TEMPLATES_DIR, 'roles', 'qa', 'HEARTBEAT.md'),
+      'utf-8',
+    );
+    const prWorkflow = await readFile(
+      join(
+        REAL_TEMPLATES_DIR,
+        'modules',
+        'pr-review',
+        'agents',
+        'engineer',
+        'skills',
+        'pr-workflow.md',
+      ),
+      'utf-8',
+    );
+    const publicReadme = await readFile(resolve(REAL_TEMPLATES_DIR, '..', 'README.md'), 'utf-8');
+
+    assert.ok(
+      qaHeartbeat.includes('Never mark the originating implementation issue `done`') &&
+        qaHeartbeat.includes('sole Code Reviewer stage'),
+      'QA cannot close the originating PR issue or advance the merge-gate stage',
+    );
+    assert.ok(
+      qaHeartbeat.includes('Standalone QA deliverable'),
+      'standalone QA work retains a legitimate completion path',
+    );
+    assert.ok(
+      prWorkflow.indexOf('## Acceptance Preflight') < prWorkflow.indexOf('## Feature Branch Flow'),
+      'acceptance is checked before branch creation and implementation',
+    );
+    assert.ok(
+      prWorkflow.includes('assign it to the Product Owner for clarification') &&
+        prWorkflow.includes('CEO backlog-owner fallback'),
+      'ambiguous acceptance has a pre-code Product Owner/CEO route',
+    );
+    assert.ok(
+      publicReadme.includes('exactly one default stage') &&
+        publicReadme.includes('they are not serial executionPolicy stages'),
+      'public documentation describes the sole Code Reviewer stage',
+    );
+    assert.ok(
+      !publicReadme.includes('a `review` stage for QA when present'),
+      'public documentation no longer advertises the old serial chain',
+    );
   });
 
   it('code review skill is the non-author merge gate that lands the PR', async () => {

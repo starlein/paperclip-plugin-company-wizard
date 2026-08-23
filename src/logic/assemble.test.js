@@ -869,6 +869,7 @@ describe('assembleCompany', () => {
     assert.ok(projectBlock.includes('**workspace.repoUrl**: https://github.com/example/app'));
     assert.ok(projectBlock.includes('**workspace.repoRef**: origin/main'));
     assert.ok(projectBlock.includes('**workspace.defaultRef**: origin/main'));
+    assert.ok(projectBlock.includes('**executionWorkspacePolicy.enabled**: true'));
     assert.ok(
       projectBlock.includes('**executionWorkspacePolicy.defaultMode**: isolated_workspace'),
     );
@@ -890,6 +891,7 @@ describe('assembleCompany', () => {
     assert.ok(bootstrap.includes('sourceType: "git_repo"'));
     assert.ok(bootstrap.includes('repoUrl: "https://github.com/example/app"'));
     assert.ok(bootstrap.includes('repoRef: "origin/main"'));
+    assert.ok(bootstrap.includes('executionWorkspacePolicy.enabled: true'));
     // External repo is cloned into the company's projects dir.
     assert.ok(/cwd: "[^"]*\/projects\/App"/.test(bootstrap));
   });
@@ -962,6 +964,7 @@ describe('assembleCompany', () => {
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
     const projectBlock = bootstrap.split('### app')[1].split('## Agents')[0];
     assert.ok(!projectBlock.includes('executionWorkspacePolicy.defaultMode'));
+    assert.ok(!projectBlock.includes('executionWorkspacePolicy.enabled'));
   });
 
   it('synthesizes isolated worktree policy from project ref only when the instance setting is on', async () => {
@@ -989,6 +992,7 @@ describe('assembleCompany', () => {
 
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
     const projectBlock = bootstrap.split('### app')[1].split('## Agents')[0];
+    assert.ok(projectBlock.includes('**executionWorkspacePolicy.enabled**: true'));
     assert.ok(
       projectBlock.includes('**executionWorkspacePolicy.defaultMode**: isolated_workspace'),
     );

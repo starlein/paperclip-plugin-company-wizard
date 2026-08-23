@@ -4,6 +4,25 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Changed
+
+- Updated the development and contract-test baseline from `@paperclipai/plugin-sdk` / `@paperclipai/shared` `2026.722.0` to the latest stable `2026.817.0`. The plugin remains API v1 compatible with hosts from the existing `2026.707.0` peer floor onward.
+- Added current-stable schema contract tests for company, goal, project, issue, governed agent hire, routine/trigger, Company Skill, and plugin-manifest payloads.
+
+### Fixed
+
+- Existing Company Skill content now updates through `PATCH /companies/:companyId/skills/:skillId/files` with `path: "SKILL.md"`, and display-name changes use the dedicated `/rename` endpoint. Newer Paperclip versions no longer silently discard `markdown` and `name` sent to the metadata-only skill PATCH route.
+- Project provisioning and generated bootstrap instructions now always include the required `executionWorkspacePolicy.enabled` boolean whenever a project execution policy is present.
+- Triggered QA, Security, Product, UI/UX, and DevOps evidence now has an explicit same-issue assignment wake-and-return path before the Code Reviewer gate, matching assignment-driven worker agents.
+- Selecting the `ci-cd` module no longer assumes required checks already exist: exact-head company CI becomes authoritative only after checks run on that head; until then the merge gate runs the complete local gate once.
+- The repo-maintenance preset initially assigns only its first Engineer delivery; later PR-producing work remains unassigned until the backlog owner confirms review capacity.
+- Supported older Paperclip hosts that do not expose the newer Company Skill `/rename` route now keep the existing display name and continue refreshing skill content/metadata instead of aborting provisioning on a 404.
+- Auto-assignment no longer models a dynamic repository PR cap as conjunctive blockers on every open PR; capacity waiters stay unassigned for the next assignment-driven capacity check.
+- Retained Code Reviewer, Engineer, and Security Engineer role instructions now match the lean module contracts: exact-head CI avoids duplicate full gates, Engineers do not self-claim past WIP capacity or invent acceptance, and blocking security remediation stays on the originating issue and PR.
+- QA evidence uses bounded pass/fail comments rather than executionPolicy verdicts; CEO fallback assignment follows the same non-conjunctive capacity wait as the primary skill; and inherited base-branch CI repair is explicitly isolated to one separately owned baseline-restore issue and PR.
+
 ## [0.5.0] - 2026-08-10
 
 ### Added

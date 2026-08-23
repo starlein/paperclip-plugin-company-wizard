@@ -28,11 +28,11 @@ importers:
         version: 3.5.0
     devDependencies:
       '@paperclipai/plugin-sdk':
-        specifier: 2026.722.0
-        version: 2026.722.0(react@19.2.4)
+        specifier: 2026.817.0
+        version: 2026.817.0(react@19.2.4)
       '@paperclipai/shared':
-        specifier: 2026.722.0
-        version: 2026.722.0
+        specifier: 2026.817.0
+        version: 2026.817.0
       '@rollup/plugin-node-resolve':
         specifier: ^16.0.1
         version: 16.0.3(rollup@4.59.0)
@@ -269,8 +269,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@paperclipai/plugin-sdk@2026.722.0':
-    resolution: {integrity: sha512-2rMJCBo8ZAouuMsapdaY4/l+oHmrXKHW/k/HfPOLCxFng7+g04c5JhoFq+/ptGfNcW3kXzs34y7brviDCml06Q==}
+  '@paperclipai/plugin-sdk@2026.817.0':
+    resolution: {integrity: sha512-2rUxMmP019009OhSZuoYxM/TXIPrnyZt5aIhmh2/ZeJ/axMvjaWpBJvxxqlvCOJ7BWb0mxx9C5qBAcgD0cAlCw==}
     hasBin: true
     peerDependencies:
       react: '>=18'
@@ -278,8 +278,8 @@ packages:
       react:
         optional: true
 
-  '@paperclipai/shared@2026.722.0':
-    resolution: {integrity: sha512-JciI6EbtNwHSeoyN5ZkshwqpyfIluyO46JHp8I7pPCvpJ7Uv7MSZEBs3lKXdXLadFEN6qzfwNmf39xjIFC8isA==}
+  '@paperclipai/shared@2026.817.0':
+    resolution: {integrity: sha512-PtZJjZe3l0THbbTi+gv7eCX4H04Ul4N0gPM9BdKiowCypTAMsa6E8uyvugegFEdWC6PdN51abSY5P4utxA2Lbw==}
 
   '@rollup/plugin-node-resolve@16.0.3':
     resolution: {integrity: sha512-lUYM3UBGuM93CnMPG1YocWu7X802BrNF3jW2zny5gQyLQgRFJhV1Sq0Zi74+dh/6NBx1DxFC4b4GXg9wUCG5Qg==}
@@ -1403,14 +1403,14 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@paperclipai/plugin-sdk@2026.722.0(react@19.2.4)':
+  '@paperclipai/plugin-sdk@2026.817.0(react@19.2.4)':
     dependencies:
-      '@paperclipai/shared': 2026.722.0
+      '@paperclipai/shared': 2026.817.0
       zod: 3.25.76
     optionalDependencies:
       react: 19.2.4
 
-  '@paperclipai/shared@2026.722.0':
+  '@paperclipai/shared@2026.817.0':
     dependencies:
       zod: 3.25.76
 

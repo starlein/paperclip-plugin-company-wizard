@@ -38,7 +38,9 @@ export class PaperclipClient {
     }
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      throw new Error(`${opts.method || 'GET'} ${path} → ${res.status}: ${body}`);
+      const error = new Error(`${opts.method || 'GET'} ${path} → ${res.status}: ${body}`);
+      error.status = res.status;
+      throw error;
     }
     return res.json();
   }
@@ -210,6 +212,31 @@ export class PaperclipClient {
     });
   }
 
+  async renameCompanySkill(companyId, skillId, { name, slug } = {}) {
+    try {
+      return await this._fetch(`/api/companies/${companyId}/skills/${skillId}/rename`, {
+        method: 'POST',
+        body: JSON.stringify({
+          name,
+          ...(slug !== undefined ? { slug } : {}),
+        }),
+      });
+    } catch (error) {
+      // The dedicated rename endpoint was added after the plugin's declared
+      // Paperclip host floor. Older supported hosts keep the existing display
+      // name, but skill content/metadata refresh must continue instead of aborting.
+      if (error?.status === 404) return null;
+      throw error;
+    }
+  }
+
+  async updateCompanySkillFile(companyId, skillId, { path, content }) {
+    return this._fetch(`/api/companies/${companyId}/skills/${skillId}/files`, {
+      method: 'PATCH',
+      body: JSON.stringify({ path, content }),
+    });
+  }
+
   async listAgents(companyId) {
     return this._fetch(`/api/companies/${companyId}/agents`, { method: 'GET' });
   }
@@ -330,6 +357,13 @@ export class PaperclipClient {
       typeof workspace === 'string'
         ? { sourceType: 'local_path', cwd: workspace, isPrimary: true }
         : workspace || undefined;
+    const executionWorkspacePolicyPayload =
+      executionWorkspacePolicy && typeof executionWorkspacePolicy === 'object'
+        ? {
+            ...executionWorkspacePolicy,
+            enabled: executionWorkspacePolicy.enabled ?? true,
+          }
+        : undefined;
     return this._fetch(`/api/companies/${companyId}/projects`, {
       method: 'POST',
       body: JSON.stringify({
@@ -337,7 +371,9 @@ export class PaperclipClient {
         description: description || null,
         ...(goalIds?.length ? { goalIds } : {}),
         workspace: workspacePayload,
-        ...(executionWorkspacePolicy ? { executionWorkspacePolicy } : {}),
+        ...(executionWorkspacePolicyPayload
+          ? { executionWorkspacePolicy: executionWorkspacePolicyPayload }
+          : {}),
       }),
     });
   }

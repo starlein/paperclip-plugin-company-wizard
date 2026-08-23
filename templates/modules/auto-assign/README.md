@@ -4,7 +4,7 @@ Adds a low-frequency safety net for issue assignment. Primary dispatch happens a
 
 ## What it adds
 
-- **Product Owner skill**: Safety-net assignment check — assigns any still-unassigned backlog items to the best-fit available agent.
+- **Product Owner skill**: Safety-net assignment check — assigns only the next item that fits implementation and review capacity.
 - **CEO fallback skill**: Steps in when the PO is absent or stalled.
 
 ## How it works
@@ -13,7 +13,7 @@ Primary assignment happens during backlog grooming: the Product Owner creates is
 
 1. Are there unassigned issues in `todo` status?
 2. Do those issues have enough acceptance criteria and no unresolved blockers?
-3. If yes: assign every suitable straggler to the best-fit available role in one pass — do not drip-feed one issue per routine run.
+3. If yes and capacity is free: assign only the next suitable item. Default WIP is one active implementation issue per delivery agent and two open implementation PRs per repository; keep later work inactive.
 
 ## Best for
 

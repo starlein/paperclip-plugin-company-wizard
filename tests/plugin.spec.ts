@@ -4,14 +4,19 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createTestHarness } from "@paperclipai/plugin-sdk/testing";
+import { pluginManifestV1Schema } from "@paperclipai/shared";
 import manifest from "../src/manifest.js";
-import plugin, { prepareLocalProjectWorkspace } from "../src/worker.js";
+import plugin, { prepareLocalProjectWorkspace, provisionCompanySkills } from "../src/worker.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe("company-wizard", () => {
+  it("ships a manifest accepted by the latest stable Paperclip schema", () => {
+    expect(() => pluginManifestV1Schema.parse(manifest)).not.toThrow();
+  });
+
   it("registers templates data handler", async () => {
     const harness = createTestHarness({ manifest, capabilities: manifest.capabilities });
     await plugin.definition.setup(harness.ctx);
@@ -592,5 +597,55 @@ describe("company-wizard", () => {
     } finally {
       await rm(tmp, { recursive: true, force: true });
     }
+  });
+
+  it("updates existing Company Skills through current file, rename, and metadata routes", async () => {
+    const calls: Array<[string, unknown]> = [];
+    const client = {
+      async listCompanySkills() {
+        return [
+          {
+            id: "skill-1",
+            key: "company/ci-cd",
+            slug: "ci-cd",
+            name: "Old CI",
+            description: "old",
+            markdown: "# Old CI",
+            categories: ["old"],
+          },
+        ];
+      },
+      async updateCompanySkillFile(_companyId: string, _skillId: string, body: unknown) {
+        calls.push(["file", body]);
+      },
+      async renameCompanySkill(_companyId: string, _skillId: string, body: unknown) {
+        calls.push(["rename", body]);
+      },
+      async updateCompanySkill(_companyId: string, _skillId: string, body: unknown) {
+        calls.push(["metadata", body]);
+      },
+    };
+
+    const keys = await provisionCompanySkills(
+      client,
+      "company-1",
+      [
+        {
+          slug: "ci-cd",
+          name: "CI/CD",
+          description: "current",
+          markdown: "# CI/CD",
+          categories: ["delivery"],
+        },
+      ],
+      () => undefined,
+    );
+
+    expect(keys.get("ci-cd")).toBe("company/ci-cd");
+    expect(calls).toEqual([
+      ["file", { path: "SKILL.md", content: "# CI/CD" }],
+      ["rename", { name: "CI/CD" }],
+      ["metadata", { description: "current", categories: ["delivery"] }],
+    ]);
   });
 });

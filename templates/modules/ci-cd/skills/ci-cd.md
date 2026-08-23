@@ -35,3 +35,5 @@ When assigned a "CI pipeline health check" routine-run issue:
 - Pin action versions to full SHAs, not tags, for security.
 - Never store secrets in workflow files — use GitHub Secrets or equivalent.
 - If CI breaks the default branch, fix it immediately — a red default branch blocks everyone.
+- Repair CI, stale bases, conflicts, branch protection, packaging, and deployment mechanics on the existing originating issue and PR. Do not open a replacement PR or a queue-drain/release-wrapper issue to escape an operational blocker.
+- Do not poll ordinary Paperclip review stages, PR-capacity waits, or workspace cleanup. Rely on their owner/blocker/wake path. Use a bounded external-service monitor only for a named transition such as a running CI job, no more often than every 15 minutes unless the issue defines a tighter SLA, with attempt/timeout bounds and comments only on state changes or the terminal checkpoint.

@@ -16,7 +16,7 @@ You own competitive intelligence. This is a living analysis — profiles evolve 
    - **Gaps and opportunities**: Where competitors are weak and we can win
    - **Threats**: Where competitors are strong and we need to defend
 3. Create follow-up issues for strategic decisions informed by competitive insights:
-   - `POST /api/companies/{companyId}/issues` with specific recommendations. Include the active `projectId` (and `goalId` / `parentId` when applicable). For top-level issues (no `parentId`), also include `"executionWorkspaceSettings": { "mode": "isolated_workspace" }` so each gets its own worktree; subissues set `parentId` and omit it.
+   - `POST /api/companies/{companyId}/issues` with specific recommendations. Include `projectId` plus `goalId` / `parentId` when applicable, and set `executionWorkspaceSettings: { "mode": "isolated_workspace" }` on top-level issues and subissues by default. Reuse only when explicitly required via `inheritExecutionWorkspaceFromIssueId`.
 4. Record summary in your daily notes
 
 ## Rules

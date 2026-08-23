@@ -41,13 +41,13 @@
           "id": "initial-sweep",
           "title": "Initial Sweep",
           "level": "team",
-          "description": "Process all existing open PRs and issues, run first dependency audit and codebase health pass. Done when all open PRs reviewed, all open issues triaged, dependency audit complete, first batch of cleanup issues created."
+          "description": "Establish bounded maintenance flow for existing PRs and issues, run the first dependency audit, and complete one highest-priority codebase health fix. Done when every open PR has an originating issue/owner/next action, the repository is within its PR WIP cap or excess work has explicit blockers, triage policy is documented, and one focused cleanup PR has completed the normal gate."
         },
         {
           "id": "steady-state",
           "title": "Steady State",
           "level": "team",
-          "description": "Ongoing maintenance loop — agents handle PRs, issues, and health on every heartbeat. Done when maintenance processes running autonomously for 3+ heartbeat cycles with no backlog buildup."
+          "description": "Ongoing maintenance is assignment- and wake-driven: agents handle owned PRs, reports, and health checks without scanning unrelated queues on every heartbeat. Done when bounded routines and explicit owners keep the repository within its delivery WIP limit."
         }
       ]
     }
@@ -61,45 +61,41 @@
     },
     {
       "title": "Run initial dependency audit",
-      "description": "Audit all dependencies for outdated versions and known vulnerabilities. Document in ../../docs/DEPENDENCY-AUDIT.md. Apply safe patch updates.",
-      "priority": "high",
-      "assignTo": "engineer"
+      "description": "Audit all dependencies for outdated versions and known vulnerabilities. Document in ../../docs/DEPENDENCY-AUDIT.md. Apply safe patch updates. Keep this issue unassigned until the initial codebase-audit PR has left the repository's open-PR WIP and the backlog owner explicitly releases the next implementation slot within review capacity.",
+      "priority": "high"
     },
     {
       "title": "Configure PR workflow and branch protection",
-      "description": "Configure the PR workflow and set up branch protection on the default branch. Branch protection must require a PR before merging (no direct pushes to the base branch — set enforce_admins: true so the shared admin account cannot bypass the PR rule), but must NOT require GitHub-native approving reviews — all agents share one GitHub account and cannot formally approve their own PRs; the review gate lives in Paperclip's executionPolicy, not in GitHub. Use the exact gh api heredoc command from the git-workflow skill → Branch Protection Setup: `gh api repos/{owner}/{repo}/branches/{base}/protection --method PUT --input - <<'EOF'` with payload {\"required_status_checks\": null, \"enforce_admins\": true, \"required_pull_request_reviews\": {\"required_approving_review_count\": 0, \"dismiss_stale_reviews\": false}, \"restrictions\": null}. With required_approving_review_count: 0 the shared account can still open a PR and merge it with zero approvals, so the self-merge flow keeps working. Document PR conventions in ../../docs/pr-conventions.md.",
-      "priority": "high",
-      "assignTo": "engineer"
+      "description": "Configure the PR workflow and set up branch protection on the default branch. Branch protection must require a PR before merging (no direct pushes to the base branch — set enforce_admins: true so the shared admin account cannot bypass the PR rule), but must NOT require GitHub-native approving reviews — all agents share one GitHub account and cannot formally approve their own PRs; the review gate lives in Paperclip's executionPolicy, not in GitHub. Use the exact gh api heredoc command from the git-workflow skill → Branch Protection Setup: `gh api repos/{owner}/{repo}/branches/{base}/protection --method PUT --input - <<'EOF'` with payload {\"required_status_checks\": null, \"enforce_admins\": true, \"required_pull_request_reviews\": {\"required_approving_review_count\": 0, \"dismiss_stale_reviews\": false}, \"restrictions\": null}. With required_approving_review_count: 0 the shared account can still open a PR and merge it with zero approvals, so the self-merge flow keeps working. Document PR conventions in ../../docs/pr-conventions.md. Keep this issue unassigned until the backlog owner explicitly releases it within repository review capacity.",
+      "priority": "high"
     },
     {
       "title": "Set up issue labels and triage workflow",
       "description": "Create GitHub labels for issue classification (bug, feature, enhancement, question, duplicate, invalid) and priority levels (P0-P3). Document the triage process.",
       "priority": "medium",
-      "assignTo": "user"
+      "assignTo": "product-owner"
     },
     {
       "title": "Document or establish release process",
-      "description": "Review current release workflow. If none exists, establish semver + changelog. Document in ../../docs/RELEASE-PROCESS.md.",
-      "priority": "medium",
-      "assignTo": "engineer"
+      "description": "Review current release workflow. If none exists, establish semver + changelog. Document in ../../docs/RELEASE-PROCESS.md. Keep this issue unassigned until the backlog owner explicitly releases it within repository review capacity.",
+      "priority": "medium"
     },
     {
-      "title": "Review all open pull requests",
-      "description": "Fetch all open PRs on the GitHub repo. Review each for correctness, security, and style. Approve and merge those that pass, request changes on those that don't.",
+      "title": "Reconcile open pull request ownership",
+      "description": "Inventory open PRs only in the configured project repository. Identify each as owner/repo#number and ensure it has exactly one originating Paperclip issue, implementation owner, current head/base/check evidence, and next gate. Do not review or merge multiple PRs from this setup issue, create replacement PRs, or create queue-drain wrappers. Route work on each existing PR to its own originating issue; stop new PR-producing assignment when the repository is at the default two-PR WIP cap.",
       "priority": "high",
-      "assignTo": "engineer"
+      "assignTo": "devops"
     },
     {
-      "title": "Triage all open GitHub issues",
-      "description": "Review all open issues. Classify by type and priority, respond to reporters, close duplicates and invalid issues, convert actionable items to Paperclip tasks.",
+      "title": "Establish triage policy and process the next report",
+      "description": "Document the classification and priority policy, then triage only the highest-priority unprocessed GitHub report in the configured repository. Create at most one Paperclip issue when it represents independently deliverable work with acceptance criteria and available delivery capacity; do not bulk-convert the issue tracker.",
       "priority": "high",
-      "assignTo": "engineer"
+      "assignTo": "product-owner"
     },
     {
-      "title": "First codebase health pass",
-      "description": "Based on the codebase audit, execute the highest-priority cleanup tasks: remove dead code, fix inconsistencies, simplify overly complex areas. Create PRs for each fix.",
-      "priority": "medium",
-      "assignTo": "engineer"
+      "title": "Implement the highest-priority codebase health fix",
+      "description": "After the codebase audit has completed and repository review capacity is free, the backlog owner assigns this issue for exactly one independently deliverable finding. Implement it on this originating issue and one branch/PR, run focused verification, and send it through the normal Code Reviewer gate. Keep this issue unassigned until that capacity check; leave later findings prioritized but inactive until delivery capacity is free.",
+      "priority": "medium"
     }
   ]
 }

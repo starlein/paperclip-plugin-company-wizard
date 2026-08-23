@@ -64,6 +64,8 @@ export interface ProjectWorkspaceConfig {
 }
 
 export interface ProjectExecutionWorkspacePolicy {
+  enabled?: boolean;
+  sharedWorkspaceConcurrency?: 'auto' | 'serialize' | 'allow' | string;
   defaultMode?:
     | 'shared_workspace'
     | 'isolated_workspace'

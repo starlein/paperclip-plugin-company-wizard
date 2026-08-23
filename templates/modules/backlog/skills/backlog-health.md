@@ -15,11 +15,11 @@ Before creating your first batch of issues, set up labels for the company:
 
 | Label | Color | Use for |
 |:------|:------|:--------|
-| feature | `0075ca` | New user-facing capability |
-| bug | `d73a4a` | Defects and regressions |
-| chore | `7057ff` | Refactoring, cleanup, dependency updates |
-| spike | `006b75` | Research or investigation with a time-box |
-| blocked | `e4e669` | Cannot proceed, needs unblocking |
+| feature | `#0075ca` | New user-facing capability |
+| bug | `#d73a4a` | Defects and regressions |
+| chore | `#7057ff` | Refactoring, cleanup, dependency updates |
+| spike | `#006b75` | Research or investigation with a time-box |
+| blocked | `#e4e669` | Cannot proceed, needs unblocking |
 
 Add additional labels if the roadmap calls for them (e.g., `docs`, `design`, `security`). Pick distinct hex colors.
 
@@ -28,13 +28,14 @@ Add additional labels if the roadmap calls for them (e.g., `docs`, `design`, `se
 1. Checkout the assigned backlog/routine issue in Paperclip before mutating the board. This is API-only control-plane work; do not create or enter a repository worktree for the grooming run.
 2. Read the current company goals, roadmap/project context, existing issue documents, and recent decision log entries.
 3. Query existing issues for the relevant project/goal and avoid duplicates.
-4. If the backlog is thin or unclear, create around 3-6 small actionable issues via `POST /api/companies/{companyId}/issues`.
-5. Each issue must include: `title`, acceptance-oriented `description`, `priority`, `projectId`, `goalId` when known, and `labelIds`.
-6. Set workspace isolation explicitly on every issue you create (see Rules): top-level issues send `"executionWorkspaceSettings": { "mode": "isolated_workspace" }`; sub-issues set `parentId` and omit it.
-7. Use `blockedByIssueIds` for real dependencies instead of free-text blockers.
-8. Assign each issue to the best-fit available agent as you create it — engineer-actionable work with clear acceptance criteria goes to the Software Engineer (or the matching role). Direct push-assignment is the primary dispatch path; the assigned queue is the buffer, so do **not** stockpile a pool of unassigned ready work. Leave an issue unassigned only when no suitable owner exists — the low-frequency auto-assign safety net will catch those.
-9. Record generated issue ids and rationale in the routine issue comment; use issue documents for long plans.
-10. Mark the routine-run issue done when complete.
+4. Check delivery capacity before creating work: open implementation PRs per repository, active implementation issues per agent, and the current review owner. Default WIP is at most two open implementation PRs per repository and one active implementation issue per delivery agent unless company policy says otherwise.
+5. If capacity is genuinely free and the next work is unclear, create only the next 1-3 small actionable issues via `POST /api/companies/{companyId}/issues`.
+6. Each issue must include: `title`, acceptance-oriented `description`, `priority`, `projectId`, `goalId` when known, and `labelIds`.
+7. Set workspace isolation explicitly on every implementation issue, including subissues (see Rules).
+8. Use `blockedByIssueIds` for real dependencies instead of free-text blockers. Capacity waits point to the issues owning the in-flight PRs; never poll them with a monitor.
+9. Assign only work that fits current owner and review capacity. Keep later roadmap items prioritized but inactive instead of stockpiling an assigned queue.
+10. Record generated/assigned issue ids, current WIP evidence, and rationale in the routine issue comment; use issue documents for long plans.
+11. Mark the routine-run issue done when complete.
 
 ## Rules
 
@@ -42,10 +43,10 @@ Add additional labels if the roadmap calls for them (e.g., `docs`, `design`, `se
 - Do not create top-level backlog issues with `projectId: null` when a project exists.
 - Keep issues small and actionable. Each should be completable, tested, and reviewed independently.
 - Split into subissues only when each child can be completed independently; avoid splitting tightly coupled implementation across sibling subissues.
-- **Set workspace isolation explicitly at creation.** Top-level issues (no `parentId`) must send `"executionWorkspaceSettings": { "mode": "isolated_workspace" }` so each gets its own worktree/branch. Sub-issues set `parentId` and omit `executionWorkspaceSettings` so they reuse the parent's workspace. Never create a top-level issue without it — otherwise it inherits the workspace of whatever issue you currently have checked out and blocks parallel work.
+- **Set workspace isolation explicitly at creation.** Top-level issues and subissues must send `"executionWorkspaceSettings": { "mode": "isolated_workspace" }` by default so each gets its own worktree/branch. `parentId` is hierarchy, not workspace consent. Reuse another issue's checkout only when explicitly required by the task, using `inheritExecutionWorkspaceFromIssueId` with the source issue's internal id.
 - Always attach at least one label to every issue you create.
-- **Attach a task watchdog to every top-level issue you create.** Send `"watchdog": { "agentId": "<CEO agent id>", "instructions": "If this issue's work stalls (runs end without it reaching done, a review is misrouted, or a dependent merge is stranded), re-evaluate and recover: verify blockers and executionPolicy gates, reassign to the right owner with an explicit next action, or escalate. Do not archive or delete any execution workspace." }`. This is native, event-driven stall recovery — Paperclip wakes the watchdog agent when the issue's subtree stops without completing, so you no longer rely only on the periodic stall-detection routine. Use the CEO agent id (resolve it from your `heartbeat-context` or `GET /api/companies/{companyId}/agents`); omit the watchdog only for throwaway sub-issues that reuse a parent's workspace.
+- Do not attach a universal task watchdog or create watchdog/queue-drain wrapper issues. Use the issue's real owner, first-class blockers, executionPolicy, interactions, and normal wake paths. Add a watchdog only when the issue explicitly documents a bounded recovery requirement that those paths cannot cover.
 - If the goal is fully decomposed into issues, do not create more. Report status and next review trigger to the CEO/Product Owner.
 - Work products such as roadmap drafts or decomposition tables belong in issue documents/artifacts, not only comments.
-- **Review handoff:** When moving an issue to `in_review`, always assign it to the reviewer. If the issue has an executionPolicy with review stages, Paperclip reassigns automatically. If there is no executionPolicy, PATCH the issue's `assigneeAgentId` to the reviewer before or at the same time as the status change. An issue in `in_review` that is still assigned to the original implementer will stall — no one picks it up. Always reassign on review handoff.
+- **Review handoff:** Use `in_review` only with a runtime-recognized path: an active non-author `executionPolicy` stage or a first-class human interaction/approval. Agent reassignment alone is not a valid no-policy review path. Without such a path, keep the issue `in_progress` for a concrete agent handoff or finish the direct/self-merge flow.
 - **Backlog grooming is intentionally project-detached and must not use a git worktree.** Perform the run through Paperclip APIs only. Setting `projectId` and isolated `executionWorkspaceSettings` on the *work issues you create* is correct; that does not attach the grooming run itself to their project or worktrees. Do not clone, branch, run `git worktree add`, or try to repair the routine by attaching it to a project.
