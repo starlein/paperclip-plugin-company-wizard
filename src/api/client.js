@@ -210,6 +210,23 @@ export class PaperclipClient {
     });
   }
 
+  async renameCompanySkill(companyId, skillId, { name, slug } = {}) {
+    return this._fetch(`/api/companies/${companyId}/skills/${skillId}/rename`, {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        ...(slug !== undefined ? { slug } : {}),
+      }),
+    });
+  }
+
+  async updateCompanySkillFile(companyId, skillId, { path, content }) {
+    return this._fetch(`/api/companies/${companyId}/skills/${skillId}/files`, {
+      method: 'PATCH',
+      body: JSON.stringify({ path, content }),
+    });
+  }
+
   async listAgents(companyId) {
     return this._fetch(`/api/companies/${companyId}/agents`, { method: 'GET' });
   }
@@ -330,6 +347,13 @@ export class PaperclipClient {
       typeof workspace === 'string'
         ? { sourceType: 'local_path', cwd: workspace, isPrimary: true }
         : workspace || undefined;
+    const executionWorkspacePolicyPayload =
+      executionWorkspacePolicy && typeof executionWorkspacePolicy === 'object'
+        ? {
+            ...executionWorkspacePolicy,
+            enabled: executionWorkspacePolicy.enabled ?? true,
+          }
+        : undefined;
     return this._fetch(`/api/companies/${companyId}/projects`, {
       method: 'POST',
       body: JSON.stringify({
@@ -337,7 +361,9 @@ export class PaperclipClient {
         description: description || null,
         ...(goalIds?.length ? { goalIds } : {}),
         workspace: workspacePayload,
-        ...(executionWorkspacePolicy ? { executionWorkspacePolicy } : {}),
+        ...(executionWorkspacePolicyPayload
+          ? { executionWorkspacePolicy: executionWorkspacePolicyPayload }
+          : {}),
       }),
     });
   }

@@ -53,8 +53,8 @@
     "tailwind-merge": "^3.4.1"
   },
   "devDependencies": {
-    "@paperclipai/plugin-sdk": "2026.722.0",
-    "@paperclipai/shared": "2026.722.0",
+    "@paperclipai/plugin-sdk": "2026.817.0",
+    "@paperclipai/shared": "2026.817.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-typescript": "^12.1.2",
     "@tailwindcss/postcss": "^4.0.7",

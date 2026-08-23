@@ -1181,13 +1181,14 @@ export async function assembleCompany({
       }
       return { ...policy, enabled: policy.enabled ?? true, workspaceStrategy };
     }
-    return policy;
+    return { ...policy, enabled: policy.enabled ?? true };
   };
 
   const renderExecutionPolicyMetaFields = (proj, workspace) => {
     const policy = effectiveExecutionPolicy(proj, workspace);
     if (!policy) return [];
     const rows = [];
+    rows.push(['executionWorkspacePolicy.enabled', policy.enabled ?? true]);
     if (policy.defaultMode) rows.push(['executionWorkspacePolicy.defaultMode', policy.defaultMode]);
     const strategy = policy.workspaceStrategy;
     if (strategy && typeof strategy === 'object') {
@@ -1445,8 +1446,8 @@ export async function assembleCompany({
     const goalLinks =
       proj.goals?.length > 0 ? `, goalIds → [${proj.goals.map((g) => `"${g}"`).join(', ')}]` : '';
     const activePolicy = effectiveExecutionPolicy(proj, workspace);
-    const policy = activePolicy?.defaultMode
-      ? `, executionWorkspacePolicy.defaultMode: "${activePolicy.defaultMode}"`
+    const policy = activePolicy
+      ? `, executionWorkspacePolicy.enabled: ${activePolicy.enabled ?? true}${activePolicy.defaultMode ? `, executionWorkspacePolicy.defaultMode: "${activePolicy.defaultMode}"` : ''}`
       : '';
     if (idx === 0 && mainProjectPreCreated) {
       const goalLinkInstruction = goalLinks

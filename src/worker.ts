@@ -779,7 +779,7 @@ async function setExternalInstructionsBundle({
  * populate agent `desiredSkills`. Must run BEFORE any agent that references
  * these skills is hired.
  */
-async function provisionCompanySkills(
+export async function provisionCompanySkills(
   client: any,
   companyId: string,
   companySkills: Array<{
@@ -824,15 +824,28 @@ async function provisionCompanySkills(
     }
 
     slugToKey.set(skill.slug, found.key || skill.slug);
+    let updated = false;
+    if ((found.markdown ?? '') !== skill.markdown) {
+      await client.updateCompanySkillFile(companyId, found.id, {
+        path: 'SKILL.md',
+        content: skill.markdown,
+      });
+      updated = true;
+    }
+    if ((found.name ?? '') !== skill.name) {
+      await client.renameCompanySkill(companyId, found.id, { name: skill.name });
+      updated = true;
+    }
     const updates: Record<string, unknown> = {};
-    if ((found.name ?? '') !== skill.name) updates.name = skill.name;
     if ((found.description ?? '') !== (skill.description ?? '')) {
       updates.description = skill.description ?? null;
     }
     if (Array.isArray(skill.categories)) updates.categories = skill.categories;
-    if ((found.markdown ?? '') !== skill.markdown) updates.markdown = skill.markdown;
     if (Object.keys(updates).length > 0) {
       await client.updateCompanySkill(companyId, found.id, updates);
+      updated = true;
+    }
+    if (updated) {
       log(`✓ Updated company skill "${skill.slug}"`);
     }
   }

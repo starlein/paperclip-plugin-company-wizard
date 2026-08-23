@@ -4,6 +4,18 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Changed
+
+- Updated the development and contract-test baseline from `@paperclipai/plugin-sdk` / `@paperclipai/shared` `2026.722.0` to the latest stable `2026.817.0`. The plugin remains API v1 compatible with hosts from the existing `2026.707.0` peer floor onward.
+- Added current-stable schema contract tests for company, goal, project, issue, governed agent hire, routine/trigger, Company Skill, and plugin-manifest payloads.
+
+### Fixed
+
+- Existing Company Skill content now updates through `PATCH /companies/:companyId/skills/:skillId/files` with `path: "SKILL.md"`, and display-name changes use the dedicated `/rename` endpoint. Newer Paperclip versions no longer silently discard `markdown` and `name` sent to the metadata-only skill PATCH route.
+- Project provisioning and generated bootstrap instructions now always include the required `executionWorkspacePolicy.enabled` boolean whenever a project execution policy is present.
+
 ## [0.5.0] - 2026-08-10
 
 ### Added
