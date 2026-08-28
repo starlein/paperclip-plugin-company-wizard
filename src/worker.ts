@@ -1612,6 +1612,84 @@ const plugin = definePlugin({
       }
     });
 
+    // List the company's pending `hire_agent` approvals. Governed hires leave the
+    // agent created but NOT invokable until the board decides, so a freshly
+    // provisioned company cannot run its bootstrap heartbeat (and the bootstrap
+    // watchdog cannot attach) while these are outstanding. Returns { approvals }
+    // or { error } — never throws.
+    ctx.actions.register('list-pending-hires', async (params) => {
+      try {
+        const companyId =
+          typeof (params as any)?.companyId === 'string' ? (params as any).companyId : '';
+        if (!companyId) return { error: 'companyId is required' };
+        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+        const client = await connectSharedClient(cfg);
+        const approvals = await client.listApprovals(companyId, { status: 'pending' });
+        const normalized = (Array.isArray(approvals) ? approvals : [])
+          .filter((a: any) => a && typeof a.id === 'string' && a.type === 'hire_agent')
+          .map((a: any) => ({
+            id: a.id as string,
+            // The payload shape is owned by the server and redacted on read; surface
+            // the agent name when present and fall back to the id so the row is never
+            // blank.
+            name:
+              (typeof a.payload?.name === 'string' && a.payload.name) ||
+              (typeof a.payload?.agentName === 'string' && a.payload.agentName) ||
+              (typeof a.payload?.role === 'string' && a.payload.role) ||
+              '',
+            createdAt: typeof a.createdAt === 'string' ? a.createdAt : '',
+          }));
+        return { approvals: normalized };
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : String(err) };
+      }
+    });
+
+    // Approve pending hires from the wizard. This is an explicit, user-initiated
+    // board action — the wizard never auto-approves during provisioning, so the
+    // company's governance setting keeps its meaning. Approving here only saves the
+    // operator a trip to the board UI for the hires this run just requested.
+    ctx.actions.register('approve-pending-hires', async (params) => {
+      try {
+        const companyId =
+          typeof (params as any)?.companyId === 'string' ? (params as any).companyId : '';
+        if (!companyId) return { error: 'companyId is required' };
+        const requested = Array.isArray((params as any)?.approvalIds)
+          ? ((params as any).approvalIds as unknown[]).filter(
+              (id): id is string => typeof id === 'string' && id.length > 0,
+            )
+          : null;
+
+        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+        const client = await connectSharedClient(cfg);
+
+        // Re-read the pending set instead of trusting the caller: ids from an older
+        // render may already be decided, and we must never approve a non-hire
+        // approval the wizard did not create.
+        const approvals = await client.listApprovals(companyId, { status: 'pending' });
+        const pendingHireIds = (Array.isArray(approvals) ? approvals : [])
+          .filter((a: any) => a && typeof a.id === 'string' && a.type === 'hire_agent')
+          .map((a: any) => a.id as string);
+        const targets = requested
+          ? pendingHireIds.filter((id) => requested.includes(id))
+          : pendingHireIds;
+
+        const approved: string[] = [];
+        const failed: { id: string; error: string }[] = [];
+        for (const id of targets) {
+          try {
+            await client.approveApproval(id, { decisionNote: 'Approved from Company Wizard.' });
+            approved.push(id);
+          } catch (err) {
+            failed.push({ id, error: err instanceof Error ? err.message : String(err) });
+          }
+        }
+        return { approved, failed, remaining: pendingHireIds.length - approved.length };
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : String(err) };
+      }
+    });
+
     // AI chat action — proxies messages to the configured AI provider using a server-side key.
     // Keeps the API key server-side; the UI never touches it directly.
     // Returns { text, error? } — never throws, so the plugin host doesn't swallow the message in a 502.

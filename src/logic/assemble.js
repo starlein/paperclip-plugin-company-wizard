@@ -1146,28 +1146,63 @@ export async function assembleCompany({
   //    a real base ref already exists.
   const isFreshLocalRepo = (workspace) => workspace?.sourceType !== 'git_repo';
 
+  // Concurrency guard for the shared project workspace. Paperclip's `auto` only
+  // serializes runs on non-local environments (Kubernetes/sandbox); on a local
+  // driver it lets every agent run enter the SAME working tree at once, where they
+  // collide on git index and branch state. `serialize` defers a run while another
+  // holds the workspace. The deferral is bounded by holder liveness (60-120s
+  // backoff), not by an attempt counter, so a deferred run never starves — it
+  // resumes once the holder finishes.
+  const DEFAULT_SHARED_WORKSPACE_CONCURRENCY = 'serialize';
+
+  const withSharedWorkspaceConcurrency = (policy) => ({
+    ...policy,
+    sharedWorkspaceConcurrency:
+      policy.sharedWorkspaceConcurrency || DEFAULT_SHARED_WORKSPACE_CONCURRENCY,
+  });
+
+  // The policy emitted when isolated worktrees are not in play. Previously the
+  // wizard emitted no policy at all and let the server fall back to
+  // shared_workspace/auto; making the shared mode explicit is what lets us set the
+  // concurrency guard. A per-issue `executionWorkspaceSettings` still wins over
+  // this — Paperclip resolves the issue mode before consulting the project policy —
+  // so the backlog skill can keep giving top-level issues their own worktree.
+  const sharedWorkspacePolicy = (policy) => {
+    const base = policy && typeof policy === 'object' ? { ...policy } : {};
+    // A git_worktree strategy is meaningless in shared mode (Paperclip strips it
+    // from the agent config anyway); drop it rather than sending a contradiction.
+    delete base.workspaceStrategy;
+    return withSharedWorkspaceConcurrency({
+      ...base,
+      enabled: true,
+      defaultMode: 'shared_workspace',
+      allowIssueOverride: true,
+    });
+  };
+
   const effectiveExecutionPolicy = (proj, workspace) => {
     const policy = proj?.executionWorkspacePolicy;
     const canUseIsolatedWorktrees = enableIsolatedWorktrees && !isFreshLocalRepo(workspace);
     if (!policy || typeof policy !== 'object') {
-      if (!canUseIsolatedWorktrees) return null;
+      if (!canUseIsolatedWorktrees) return sharedWorkspacePolicy(null);
       const baseRef = normalizeExecutionBaseRef(null, workspace?.defaultRef || workspace?.repoRef);
-      return {
+      return withSharedWorkspaceConcurrency({
         enabled: true,
         defaultMode: 'isolated_workspace',
         workspaceStrategy: {
           type: 'git_worktree',
           ...(baseRef ? { baseRef } : {}),
         },
-      };
+      });
     }
     if (policy.defaultMode === 'isolated_workspace') {
-      if (!canUseIsolatedWorktrees) return null;
+      if (!canUseIsolatedWorktrees) return sharedWorkspacePolicy(policy);
 
       const strategy = policy.workspaceStrategy;
       if (!strategy || typeof strategy !== 'object')
-        return { ...policy, enabled: policy.enabled ?? true };
-      if (strategy.type !== 'git_worktree') return { ...policy, enabled: policy.enabled ?? true };
+        return withSharedWorkspaceConcurrency({ ...policy, enabled: policy.enabled ?? true });
+      if (strategy.type !== 'git_worktree')
+        return withSharedWorkspaceConcurrency({ ...policy, enabled: policy.enabled ?? true });
 
       const workspaceStrategy = { ...strategy };
       const resolvedBaseRef = normalizeExecutionBaseRef(
@@ -1177,9 +1212,17 @@ export async function assembleCompany({
       if (resolvedBaseRef) {
         workspaceStrategy.baseRef = resolvedBaseRef;
       }
-      return { ...policy, enabled: policy.enabled ?? true, workspaceStrategy };
+      return withSharedWorkspaceConcurrency({
+        ...policy,
+        enabled: policy.enabled ?? true,
+        workspaceStrategy,
+      });
     }
-    return policy;
+    // Any other explicit policy (e.g. one that only pins the concurrency guard).
+    // `enabled` is required by Paperclip's project-policy schema — a policy sent
+    // without it is rejected with a 400 — so default it here rather than forwarding
+    // a partial object verbatim.
+    return withSharedWorkspaceConcurrency({ ...policy, enabled: policy.enabled ?? true });
   };
 
   const renderExecutionPolicyMetaFields = (proj, workspace) => {
@@ -1187,6 +1230,11 @@ export async function assembleCompany({
     if (!policy) return [];
     const rows = [];
     if (policy.defaultMode) rows.push(['executionWorkspacePolicy.defaultMode', policy.defaultMode]);
+    if (policy.sharedWorkspaceConcurrency)
+      rows.push([
+        'executionWorkspacePolicy.sharedWorkspaceConcurrency',
+        policy.sharedWorkspaceConcurrency,
+      ]);
     const strategy = policy.workspaceStrategy;
     if (strategy && typeof strategy === 'object') {
       if (strategy.type)
@@ -1214,8 +1262,9 @@ export async function assembleCompany({
       : `When you later enable the project policy, first set the project/worktree base ref to the branch Paperclip should branch from.`;
     return (
       `> **Enable isolated worktrees once the repo exists.** This instance has isolated ` +
-      `worktrees enabled, but this project starts as a fresh local repository, so the ` +
-      `\`executionWorkspacePolicy\` is intentionally omitted now — worktrees need an existing ` +
+      `worktrees enabled, but this project starts as a fresh local repository, so the project ` +
+      `is provisioned with a shared-workspace policy for now and the isolated \`git_worktree\` ` +
+      `mode is intentionally deferred — worktrees need an existing ` +
       `base ref and would fail on the first run. After the initial commit exists on the configured ` +
       `base branch, switch this project to isolated worktrees in Project settings. ${refHint} ` +
       `Until then agents share the project workspace; do not flip it before the repo has its first commit.\n\n`
@@ -1443,8 +1492,14 @@ export async function assembleCompany({
     const goalLinks =
       proj.goals?.length > 0 ? `, goalIds → [${proj.goals.map((g) => `"${g}"`).join(', ')}]` : '';
     const activePolicy = effectiveExecutionPolicy(proj, workspace);
+    // Carry the concurrency guard too: a project the CEO creates without it falls
+    // back to Paperclip's `auto`, which does not serialize on a local driver — every
+    // agent run would then enter the same working tree at once.
     const policy = activePolicy?.defaultMode
-      ? `, executionWorkspacePolicy.defaultMode: "${activePolicy.defaultMode}"`
+      ? `, executionWorkspacePolicy.defaultMode: "${activePolicy.defaultMode}"` +
+        (activePolicy.sharedWorkspaceConcurrency
+          ? `, executionWorkspacePolicy.sharedWorkspaceConcurrency: "${activePolicy.sharedWorkspaceConcurrency}"`
+          : '')
       : '';
     if (idx === 0 && mainProjectPreCreated) {
       const goalLinkInstruction = goalLinks

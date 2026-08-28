@@ -4,6 +4,35 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.3] - 2026-08-28
+
+### Added
+
+**Pending hires can be approved from the wizard's final step.**
+
+Governed `/agent-hires` requests leave the agent created but *not invokable* until the board decides. Until now the wizard only logged the approval ids and told the operator to go find them in the board UI — so a freshly provisioned company sat unable to run its bootstrap heartbeat, and the bootstrap watchdog attach failed for the same reason. The Done step now lists the pending hires and offers an "Approve all hires" action.
+
+This does not weaken governance: provisioning still **never** auto-approves, the company's approval policy keeps its meaning, and approving is an explicit click by the operator — who is the board member holding that authority anyway. The `approve-pending-hires` action re-reads the pending set server-side and intersects it with any requested ids, so it can only ever approve `hire_agent` approvals; a caller cannot use it to resolve a budget or strategy approval.
+
+New API-client methods `listApprovals(companyId, { status })` and `approveApproval(approvalId, { decisionNote })`, plus the `list-pending-hires` and `approve-pending-hires` worker actions.
+
+## [0.5.2] - 2026-08-28
+
+### Added
+
+**Shared project workspaces are now provisioned with a concurrency guard.**
+
+Projects are provisioned with an explicit `executionWorkspacePolicy` carrying `sharedWorkspaceConcurrency: "serialize"`. Previously the wizard emitted no policy at all whenever isolated worktrees were not in play and let the server fall back to `shared_workspace` with `auto` concurrency — and `auto` only serializes runs on non-local environments. On a local driver that meant every agent run entered the *same* working tree at once and collided on git index and branch state. With `serialize`, a run defers while another holds the workspace; the deferral is bounded by holder liveness (60–120 s backoff), not by an attempt counter, so a deferred run resumes rather than starving.
+
+The guard is applied on every resolution path (shared, isolated, and the deferred-isolation path for fresh local repos) and is carried into the project-creation step the CEO follows in BOOTSTRAP.md, so CEO-created projects do not silently fall back to `auto`. A project that pins its own `sharedWorkspaceConcurrency` keeps it.
+
+Per-issue isolation is unaffected: Paperclip resolves an issue's `executionWorkspaceSettings.mode` before consulting the project policy, so the `backlog-health` guidance to give every top-level issue its own worktree still wins. `backlog-process.md` now explains the interplay — serialization protects git state, but only isolation buys parallelism.
+
+### Fixed
+
+- A project policy that set only some fields (for example just `sharedWorkspaceConcurrency`) was forwarded verbatim without `enabled`, which Paperclip's project-policy schema requires — the project creation would have failed with a 400. Every resolution path now defaults `enabled` to `true`.
+- Corrected the deferred-isolation note in BOOTSTRAP.md, which claimed `executionWorkspacePolicy` was "intentionally omitted" for fresh local repos. A shared-workspace policy is now emitted; what is deferred is the isolated `git_worktree` mode.
+
 ## [0.5.1] - 2026-08-28
 
 Compatibility review against Paperclip as of 2026-08-26. No API breakage was found: all 30 REST endpoints used by `src/api/client.js`, all 22 endpoints taught to agents in templates, every `paperclipRole` value, the declared manifest capabilities, and the agent-hire/issue/routine/project/skill payloads all still validate against the current server. The changes below correct staleness that accumulated since the last review.

@@ -27,6 +27,8 @@ After `pnpm build`, reload the plugin in the Paperclip UI. No reinstall required
 - `ai-chat` — Proxies messages to the Anthropic API using the configured key. Returns `{ text, error? }` — never throws.
 - `check-ai-config` — Lightweight check that `anthropicApiKey` is configured. Called by the AI wizard on mount to show a warning banner.
 - `refresh-templates` — Deletes cached templates dir and re-downloads from GitHub. Triggered by the "Update templates" button on the onboarding screen.
+- `list-pending-hires` — Lists the company's pending `hire_agent` approvals. Used by the Done step; other approval types are filtered out.
+- `approve-pending-hires` — Approves pending hires as an explicit board action from the Done step. Re-reads the pending set server-side and intersects it with any requested ids, so it can only ever approve `hire_agent` approvals. Provisioning itself still **never** auto-approves.
 
 All worker actions return errors as `{ error }` instead of throwing, so the plugin host never swallows messages in generic 502 responses.
 
@@ -120,6 +122,19 @@ Enabled by default when templates provide fragments. The plugin no longer expose
 ### Paperclip API Flow (start-provision)
 
 Connects to Paperclip API (auto-detects auth mode). Resolves the target company: creates a new one (with `companyDescription`) or, when `existingCompanyId` is passed, loads it via `getCompany` (existing-company runs skip company creation and skip cleanup on error). Creates Board Operations and Hiring Plan issues, writes `decision-log` and `hiring-plan` documents. **Provisions Company Skills** — each skill from `companySkills` is upserted into the Skills Store before any agents are hired. Then provisions CEO/team agents via governed `/agent-hires` requests with full managed `instructionsBundle` payloads, `sourceIssueId` provenance, and `desiredSkills` set deterministically per role from `roleSkillSlugs` (replacing the old `preserveExistingSkillSync` approach). Pending approval ids are logged for board action and are not auto-approved. Scheduled routines are created with board authority, then a Bootstrap Issue is created for the CEO (description = BOOTSTRAP.md content, title uses the resolved company name). A **task watchdog** is then attached to the Bootstrap Issue (CEO as watchdog agent, with recovery instructions) so the initial setup self-recovers if it stalls — best-effort, since in the governed hire flow the CEO may still be pending approval (not yet invokable), in which case the upsert fails non-fatally and provisioning continues. The CEO then reads the bootstrap issue and creates remaining goals/issues and links pre-created projects as described in BOOTSTRAP.md.
+
+### Execution Workspace Policy
+
+`effectiveExecutionPolicy()` in `assemble.js` resolves the `executionWorkspacePolicy` sent with the project (and rendered into BOOTSTRAP.md). It **always returns a policy** — the wizard no longer lets the server fall back to an implicit default:
+
+- Isolated `git_worktree` mode only when the instance experimental setting `enableIsolatedWorkspaces` is on **and** the project is an existing external repo (`sourceType: "git_repo"`). A fresh local repo defers isolation (no base ref exists yet on first run).
+- Otherwise an explicit `shared_workspace` policy.
+
+Every branch carries `sharedWorkspaceConcurrency: "serialize"` unless the project pins its own value. Paperclip's `auto` only serializes non-local environments, so on a local driver it would let every agent run enter the *same* working tree concurrently and collide on git state. The deferral is bounded by holder liveness (60–120 s backoff), not an attempt counter, so a deferred run never starves.
+
+`enabled` is required by Paperclip's `projectExecutionWorkspacePolicySchema` (which is `.strict()` — unknown keys are a 400). Never forward a partial policy verbatim; every return path defaults `enabled` to `true`.
+
+A per-issue `executionWorkspaceSettings.mode` always wins over the project policy (Paperclip resolves the issue mode first), so the `backlog-health` skill can keep giving top-level issues their own worktree regardless of the project setting.
 
 ### Task Watchdogs
 

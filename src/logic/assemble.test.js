@@ -961,7 +961,19 @@ describe('assembleCompany', () => {
 
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
     const projectBlock = bootstrap.split('### app')[1].split('## Agents')[0];
-    assert.ok(!projectBlock.includes('executionWorkspacePolicy.defaultMode'));
+    // Isolation must not leak in when the instance setting is off ...
+    assert.ok(
+      !projectBlock.includes('isolated_workspace'),
+      'isolated workspace policy must not be rendered when the instance setting is off',
+    );
+    assert.ok(!projectBlock.includes('workspaceStrategy'));
+    // ... but the project still gets an explicit shared-workspace policy carrying the
+    // concurrency guard, so parallel agent runs serialize instead of colliding in the
+    // one working tree they all share.
+    assert.ok(projectBlock.includes('**executionWorkspacePolicy.defaultMode**: shared_workspace'));
+    assert.ok(
+      projectBlock.includes('**executionWorkspacePolicy.sharedWorkspaceConcurrency**: serialize'),
+    );
   });
 
   it('synthesizes isolated worktree policy from project ref only when the instance setting is on', async () => {
@@ -1000,6 +1012,79 @@ describe('assembleCompany', () => {
         '**executionWorkspacePolicy.workspaceStrategy.baseRef**: release/2026-q2',
       ),
     );
+    // Sub-issues deliberately reuse their parent's workspace, so even the isolated
+    // policy carries the concurrency guard for the runs that do share one.
+    assert.ok(
+      projectBlock.includes('**executionWorkspacePolicy.sharedWorkspaceConcurrency**: serialize'),
+    );
+  });
+
+  it('lets a project override the default shared-workspace concurrency guard', async () => {
+    const { companyDir, mainProject } = await assembleCompany({
+      companyName: 'ConcurrencyOverrideCo',
+      userProjects: [
+        {
+          name: 'app',
+          description: '',
+          goals: [],
+          workspace: { sourceType: 'local_path', isPrimary: true },
+          executionWorkspacePolicy: { sharedWorkspaceConcurrency: 'allow' },
+        },
+      ],
+      moduleNames: [],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    const projectBlock = bootstrap.split('### app')[1] || '';
+    assert.ok(
+      projectBlock.includes('**executionWorkspacePolicy.sharedWorkspaceConcurrency**: allow'),
+      'an explicit concurrency setting must win over the serialize default',
+    );
+    // `enabled` is required by Paperclip's project-policy schema; a partial policy
+    // forwarded without it is rejected with a 400 at project creation.
+    assert.equal(mainProject?.executionWorkspacePolicy?.enabled, true);
+    assert.equal(mainProject?.executionWorkspacePolicy?.sharedWorkspaceConcurrency, 'allow');
+  });
+
+  it('always sends a schema-valid project policy (enabled is required by Paperclip)', async () => {
+    for (const [label, isolated, workspace] of [
+      ['shared/local', false, { sourceType: 'local_path', isPrimary: true }],
+      [
+        'shared/ext-repo',
+        false,
+        { sourceType: 'git_repo', repoUrl: 'https://x/y', repoRef: 'main' },
+      ],
+      [
+        'isolated/ext-repo',
+        true,
+        { sourceType: 'git_repo', repoUrl: 'https://x/y', defaultRef: 'main' },
+      ],
+      [
+        'deferred/fresh-local',
+        true,
+        { sourceType: 'local_path', defaultRef: 'main', isPrimary: true },
+      ],
+    ]) {
+      const { mainProject } = await assembleCompany({
+        companyName: 'PolicyShapeCo',
+        userProjects: [{ name: 'app', description: '', goals: [], workspace }],
+        moduleNames: [],
+        extraRoleNames: [],
+        enableIsolatedWorktrees: isolated,
+        outputDir,
+        templatesDir,
+      });
+      const policy = mainProject?.executionWorkspacePolicy;
+      assert.equal(policy?.enabled, true, `${label}: enabled must be set`);
+      assert.equal(
+        policy?.sharedWorkspaceConcurrency,
+        'serialize',
+        `${label}: concurrency guard must be set`,
+      );
+    }
   });
 
   it('suppresses isolated worktree policy for a fresh local git repository', async () => {
@@ -1042,16 +1127,23 @@ describe('assembleCompany', () => {
     // The isolated git_worktree policy must be stripped for fresh local repos
     // so agents work in the shared project workspace during bootstrap.
     assert.ok(
-      !projectBlock.includes('**executionWorkspacePolicy.defaultMode**'),
+      !projectBlock.includes('isolated_workspace'),
       'isolated workspace policy must not be rendered for a fresh local repo',
     );
     assert.ok(
       !projectBlock.includes('git_worktree'),
       'git_worktree strategy must not be rendered for a fresh local repo',
     );
-    // The provisioning step for the project must not carry the policy either.
+    // It is replaced by an explicit shared-workspace policy: every agent works in
+    // the one project workspace during bootstrap, so their runs must serialize
+    // rather than collide on the same git index.
+    assert.ok(projectBlock.includes('**executionWorkspacePolicy.defaultMode**: shared_workspace'));
+    assert.ok(
+      projectBlock.includes('**executionWorkspacePolicy.sharedWorkspaceConcurrency**: serialize'),
+    );
+    // The provisioning step for the project must not carry an isolated policy either.
     const provisioningBlock = bootstrap.split('## Provisioning Steps')[1] || '';
-    assert.ok(!provisioningBlock.includes('executionWorkspacePolicy.defaultMode'));
+    assert.ok(!provisioningBlock.includes('isolated_workspace'));
   });
 
   it('preserves a real custom setupCommand and seeds one when missing', async () => {
