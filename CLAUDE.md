@@ -121,6 +121,19 @@ Enabled by default when templates provide fragments. The plugin no longer expose
 
 Connects to Paperclip API (auto-detects auth mode). Resolves the target company: creates a new one (with `companyDescription`) or, when `existingCompanyId` is passed, loads it via `getCompany` (existing-company runs skip company creation and skip cleanup on error). Creates Board Operations and Hiring Plan issues, writes `decision-log` and `hiring-plan` documents. **Provisions Company Skills** — each skill from `companySkills` is upserted into the Skills Store before any agents are hired. Then provisions CEO/team agents via governed `/agent-hires` requests with full managed `instructionsBundle` payloads, `sourceIssueId` provenance, and `desiredSkills` set deterministically per role from `roleSkillSlugs` (replacing the old `preserveExistingSkillSync` approach). Pending approval ids are logged for board action and are not auto-approved. Scheduled routines are created with board authority, then a Bootstrap Issue is created for the CEO (description = BOOTSTRAP.md content, title uses the resolved company name). A **task watchdog** is then attached to the Bootstrap Issue (CEO as watchdog agent, with recovery instructions) so the initial setup self-recovers if it stalls — best-effort, since in the governed hire flow the CEO may still be pending approval (not yet invokable), in which case the upsert fails non-fatally and provisioning continues. The CEO then reads the bootstrap issue and creates remaining goals/issues and links pre-created projects as described in BOOTSTRAP.md.
 
+### Execution Workspace Policy
+
+`effectiveExecutionPolicy()` in `assemble.js` resolves the `executionWorkspacePolicy` sent with the project (and rendered into BOOTSTRAP.md). It **always returns a policy** — the wizard no longer lets the server fall back to an implicit default:
+
+- Isolated `git_worktree` mode only when the instance experimental setting `enableIsolatedWorkspaces` is on **and** the project is an existing external repo (`sourceType: "git_repo"`). A fresh local repo defers isolation (no base ref exists yet on first run).
+- Otherwise an explicit `shared_workspace` policy.
+
+Every branch carries `sharedWorkspaceConcurrency: "serialize"` unless the project pins its own value. Paperclip's `auto` only serializes non-local environments, so on a local driver it would let every agent run enter the *same* working tree concurrently and collide on git state. The deferral is bounded by holder liveness (60–120 s backoff), not an attempt counter, so a deferred run never starves.
+
+`enabled` is required by Paperclip's `projectExecutionWorkspacePolicySchema` (which is `.strict()` — unknown keys are a 400). Never forward a partial policy verbatim; every return path defaults `enabled` to `true`.
+
+A per-issue `executionWorkspaceSettings.mode` always wins over the project policy (Paperclip resolves the issue mode first), so the `backlog-health` skill can keep giving top-level issues their own worktree regardless of the project setting.
+
 ### Task Watchdogs
 
 Watchdogs are Paperclip's native, event-driven stall recovery: `watchdog: { agentId, instructions }` on an issue names an agent that Paperclip wakes the moment the issue's subtree stops without completing. The wizard attaches one to the Bootstrap Issue (see above), and the `backlog-health` skill instructs the PO/CEO to attach a watchdog to every top-level work issue they create — this targets the exact stall classes (misrouted reviews, stranded merge issues) the periodic `stall-detection` routine backstops. The watchdog agent must be invokable, so plugin-side attachment is always best-effort. Do NOT hand-write recovery flows that archive/delete the run workspace (see workspace-lifecycle hardening in role `HEARTBEAT.md` files).

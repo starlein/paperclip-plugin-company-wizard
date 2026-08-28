@@ -47,6 +47,16 @@ state.
 **Never** create a top-level issue without `executionWorkspaceSettings`. Doing so makes it
 inherit the creator's currently checked-out workspace and blocks parallel execution.
 
+### Why this still matters when the project shares one workspace
+
+The Company Wizard provisions projects with `sharedWorkspaceConcurrency: "serialize"`, so
+runs that *do* land on the shared project workspace queue behind each other instead of
+writing into the same working tree at once. That protects git state, but it does not buy
+you parallelism: a serialized run waits (roughly a minute per retry) until the current
+holder finishes. Declaring `isolated_workspace` on top-level issues is what actually lets
+work proceed in parallel. A per-issue setting always wins over the project policy, so this
+declaration works regardless of how the project is configured.
+
 Example top-level create body:
 
 ```json
