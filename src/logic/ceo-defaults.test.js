@@ -14,9 +14,9 @@ import {
 } from './ceo-defaults.js';
 
 describe('CEO provisioning defaults', () => {
-  it('defaults new CEOs to Codex GPT-5.6 high thinking with one heartbeat run', () => {
+  it('defaults new CEOs to Codex GPT-5.6 Sol high thinking with one heartbeat run', () => {
     assert.equal(DEFAULT_CEO_ADAPTER_TYPE, 'codex_local');
-    assert.equal(DEFAULT_CEO_MODEL, 'gpt-5.6');
+    assert.equal(DEFAULT_CEO_MODEL, 'gpt-5.6-sol');
     assert.equal(DEFAULT_CEO_THINKING_LEVEL, 'high');
     assert.equal(DEFAULT_CEO_MAX_CONCURRENT_RUNS, 1);
 
@@ -25,7 +25,7 @@ describe('CEO provisioning defaults', () => {
       buildCeoAdapterConfig({ userCeoAdapter: {}, companyDir: '/paperclip/companies/Dialer' }),
       {
         cwd: '/paperclip/companies/Dialer',
-        model: 'gpt-5.6',
+        model: 'gpt-5.6-sol',
         modelReasoningEffort: 'high',
         thinkingLevel: 'high',
         dangerouslyBypassApprovalsAndSandbox: true,
@@ -56,7 +56,7 @@ describe('CEO provisioning defaults', () => {
       }),
       {
         cwd: '/paperclip/companies/Dialer',
-        model: 'gpt-5.6',
+        model: 'gpt-5.6-sol',
         dangerouslyBypassApprovalsAndSandbox: true,
       },
     );
@@ -71,7 +71,7 @@ describe('CEO provisioning defaults', () => {
       }),
       {
         cwd: '/paperclip/companies/Dialer',
-        model: 'gpt-5.6',
+        model: 'gpt-5.6-sol',
         modelReasoningEffort: 'high',
         thinkingLevel: 'high',
         dangerouslyBypassApprovalsAndSandbox: true,
@@ -90,7 +90,7 @@ describe('CEO provisioning defaults', () => {
       }),
       {
         cwd: '/paperclip/companies/Dialer',
-        model: 'gpt-5.6',
+        model: 'gpt-5.6-sol',
         dangerouslyBypassApprovalsAndSandbox: true,
       },
     );
@@ -105,7 +105,7 @@ describe('CEO provisioning defaults', () => {
       }),
       {
         cwd: '/paperclip/companies/Dialer',
-        model: 'gpt-5.6',
+        model: 'gpt-5.6-sol',
         modelReasoningEffort: 'high',
         thinkingLevel: 'high',
         dangerouslyBypassApprovalsAndSandbox: true,

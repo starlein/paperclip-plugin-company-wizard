@@ -1192,7 +1192,7 @@ describe('assembleCompany', () => {
       title: 'Software Engineer',
       paperclipRole: 'engineer',
       description: 'Implements features and fixes bugs.',
-      adapter: { model: 'gpt-5.6', effort: 'high' },
+      adapter: { model: 'gpt-5.6-sol', effort: 'high' },
     });
 
     const { companyDir } = await assembleCompany({
@@ -1211,7 +1211,7 @@ describe('assembleCompany', () => {
     assert.ok(engineerBlock.includes('**capabilities**: Implements features and fixes bugs.'));
     assert.ok(engineerBlock.includes('**adapterType**: codex_local'));
     assert.ok(engineerBlock.includes('**adapterConfig.cwd**:'));
-    assert.ok(engineerBlock.includes('**adapterConfig.model**: gpt-5.6'));
+    assert.ok(engineerBlock.includes('**adapterConfig.model**: gpt-5.6-sol'));
     assert.ok(engineerBlock.includes('**adapterConfig.modelReasoningEffort**: high'));
     assert.ok(engineerBlock.includes('**runtimeConfig.heartbeat.maxConcurrentRuns**: 1'));
   });
