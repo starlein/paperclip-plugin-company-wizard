@@ -4,6 +4,18 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.3] - 2026-08-28
+
+### Added
+
+**Pending hires can be approved from the wizard's final step.**
+
+Governed `/agent-hires` requests leave the agent created but *not invokable* until the board decides. Until now the wizard only logged the approval ids and told the operator to go find them in the board UI — so a freshly provisioned company sat unable to run its bootstrap heartbeat, and the bootstrap watchdog attach failed for the same reason. The Done step now lists the pending hires and offers an "Approve all hires" action.
+
+This does not weaken governance: provisioning still **never** auto-approves, the company's approval policy keeps its meaning, and approving is an explicit click by the operator — who is the board member holding that authority anyway. The `approve-pending-hires` action re-reads the pending set server-side and intersects it with any requested ids, so it can only ever approve `hire_agent` approvals; a caller cannot use it to resolve a budget or strategy approval.
+
+New API-client methods `listApprovals(companyId, { status })` and `approveApproval(approvalId, { decisionNote })`, plus the `list-pending-hires` and `approve-pending-hires` worker actions.
+
 ## [0.5.2] - 2026-08-28
 
 ### Added

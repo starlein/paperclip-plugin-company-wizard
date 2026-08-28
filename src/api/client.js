@@ -210,6 +210,26 @@ export class PaperclipClient {
     });
   }
 
+  /**
+   * Board approvals. Governed `/agent-hires` requests land here as `hire_agent`
+   * approvals; until they are decided the agent exists but is not invokable.
+   */
+  async listApprovals(companyId, { status } = {}) {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    const query = params.toString();
+    return this._fetch(`/api/companies/${companyId}/approvals${query ? `?${query}` : ''}`, {
+      method: 'GET',
+    });
+  }
+
+  async approveApproval(approvalId, { decisionNote } = {}) {
+    return this._fetch(`/api/approvals/${approvalId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(decisionNote ? { decisionNote } : {}),
+    });
+  }
+
   async listAgents(companyId) {
     return this._fetch(`/api/companies/${companyId}/agents`, { method: 'GET' });
   }

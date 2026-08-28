@@ -511,6 +511,102 @@ describe("company-wizard", () => {
     ]);
   });
 
+  it("lists only pending hire_agent approvals", async () => {
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes("/approvals")) {
+        return new Response(
+          JSON.stringify([
+            { id: "ap-hire", type: "hire_agent", status: "pending", payload: { name: "CEO" } },
+            { id: "ap-budget", type: "budget_override_required", status: "pending", payload: {} },
+          ]),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const harness = createTestHarness({
+      manifest,
+      capabilities: manifest.capabilities,
+      config: { paperclipUrl: "http://approvals.test" },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    const result = (await harness.performAction("list-pending-hires", {
+      companyId: "company-a",
+    })) as { approvals?: Array<{ id: string; name: string }>; error?: string };
+
+    expect(result.error).toBeUndefined();
+    expect(result.approvals?.map((a) => a.id)).toEqual(["ap-hire"]);
+    expect(result.approvals?.[0]?.name).toBe("CEO");
+  });
+
+  it("approves only hire_agent approvals and never other pending approval types", async () => {
+    const approveCalls: string[] = [];
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/approve")) {
+        approveCalls.push(url);
+        return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (url.includes("/approvals")) {
+        return new Response(
+          JSON.stringify([
+            { id: "ap-hire-1", type: "hire_agent", status: "pending", payload: { name: "CEO" } },
+            { id: "ap-hire-2", type: "hire_agent", status: "pending", payload: { name: "QA" } },
+            { id: "ap-budget", type: "budget_override_required", status: "pending", payload: {} },
+          ]),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const harness = createTestHarness({
+      manifest,
+      capabilities: manifest.capabilities,
+      config: { paperclipUrl: "http://approvals.test" },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    // A caller asking for the budget approval must not get it approved: the action
+    // re-reads the pending set and intersects, so only hire_agent ids survive.
+    const result = (await harness.performAction("approve-pending-hires", {
+      companyId: "company-a",
+      approvalIds: ["ap-hire-1", "ap-budget"],
+    })) as { approved?: string[]; failed?: unknown[]; error?: string };
+
+    expect(result.error).toBeUndefined();
+    expect(result.approved).toEqual(["ap-hire-1"]);
+    expect(approveCalls).toHaveLength(1);
+    expect(approveCalls[0]).toContain("/api/approvals/ap-hire-1/approve");
+    expect(approveCalls.join(" ")).not.toContain("ap-budget");
+  });
+
+  it("requires a companyId before touching approvals", async () => {
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const harness = createTestHarness({
+      manifest,
+      capabilities: manifest.capabilities,
+      config: { paperclipUrl: "http://approvals.test" },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    const listed = (await harness.performAction("list-pending-hires", {})) as { error?: string };
+    const approved = (await harness.performAction("approve-pending-hires", {})) as {
+      error?: string;
+    };
+
+    expect(listed.error).toBe("companyId is required");
+    expect(approved.error).toBe("companyId is required");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("reports healthy", async () => {
     const health = await plugin.definition.onHealth!();
     expect(health.status).toBe("ok");

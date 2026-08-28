@@ -218,6 +218,42 @@ describe('PaperclipClient provisioning helpers', () => {
     );
   });
 
+  it('lists approvals with a status filter and approves through the board route', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({ url, method: opts.method, body: opts.body ? JSON.parse(opts.body) : null });
+      return jsonResponse([{ id: 'ap-1', type: 'hire_agent', status: 'pending' }]);
+    };
+
+    const client = new PaperclipClient('http://paperclip.test');
+    await client.listApprovals('company-1', { status: 'pending' });
+    assert.equal(
+      requests[0].url,
+      'http://paperclip.test/api/companies/company-1/approvals?status=pending',
+    );
+
+    await client.approveApproval('ap-1', { decisionNote: 'ok' });
+    assert.equal(requests[1].url, 'http://paperclip.test/api/approvals/ap-1/approve');
+    assert.equal(requests[1].method, 'POST');
+    assert.equal(requests[1].body.decisionNote, 'ok');
+
+    // No note → an empty body, never `{"decisionNote": undefined}`.
+    await client.approveApproval('ap-2');
+    assert.deepEqual(requests[2].body, {});
+  });
+
+  it('omits the approvals query string when no status filter is given', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({ url, method: opts.method });
+      return jsonResponse([]);
+    };
+
+    const client = new PaperclipClient('http://paperclip.test');
+    await client.listApprovals('company-1');
+    assert.equal(requests[0].url, 'http://paperclip.test/api/companies/company-1/approvals');
+  });
+
   it('upserts a task watchdog through PUT /issues/:id/watchdog', async () => {
     const requests = [];
     globalThis.fetch = async (url, opts = {}) => {

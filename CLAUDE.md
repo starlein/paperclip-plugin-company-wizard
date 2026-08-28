@@ -27,6 +27,8 @@ After `pnpm build`, reload the plugin in the Paperclip UI. No reinstall required
 - `ai-chat` — Proxies messages to the Anthropic API using the configured key. Returns `{ text, error? }` — never throws.
 - `check-ai-config` — Lightweight check that `anthropicApiKey` is configured. Called by the AI wizard on mount to show a warning banner.
 - `refresh-templates` — Deletes cached templates dir and re-downloads from GitHub. Triggered by the "Update templates" button on the onboarding screen.
+- `list-pending-hires` — Lists the company's pending `hire_agent` approvals. Used by the Done step; other approval types are filtered out.
+- `approve-pending-hires` — Approves pending hires as an explicit board action from the Done step. Re-reads the pending set server-side and intersects it with any requested ids, so it can only ever approve `hire_agent` approvals. Provisioning itself still **never** auto-approves.
 
 All worker actions return errors as `{ error }` instead of throwing, so the plugin host never swallows messages in generic 502 responses.
 
