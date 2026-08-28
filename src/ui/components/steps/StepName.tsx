@@ -5,6 +5,9 @@ import { toPascalCase } from '../../lib/utils';
 import { useCallback, useState } from 'react';
 import { ChevronDown, ChevronRight, Settings2 } from 'lucide-react';
 
+// Mirrors Paperclip's built-in AGENT_ADAPTER_TYPES. Adapter type is an open string
+// server-side (external adapters may register their own), so this list is a
+// convenience picker rather than an exhaustive constraint.
 const ADAPTER_TYPES = [
   { value: 'claude_local', label: 'Claude Code', desc: 'Local Claude agent' },
   { value: 'codex_local', label: 'Codex', desc: 'Local Codex agent' },
@@ -12,14 +15,29 @@ const ADAPTER_TYPES = [
   { value: 'cursor', label: 'Cursor', desc: 'Cursor IDE agent' },
   { value: 'openclaw_gateway', label: 'OpenClaw', desc: 'OpenClaw gateway' },
   { value: 'hermes_local', label: 'Hermes', desc: 'Local Hermes agent' },
+  { value: 'gemini_local', label: 'Gemini', desc: 'Local Gemini agent' },
+  { value: 'grok_local', label: 'Grok', desc: 'Local Grok agent' },
+  { value: 'kimi_local', label: 'Kimi', desc: 'Local Kimi agent' },
+  { value: 'pi_local', label: 'Pi', desc: 'Local Pi agent' },
 ];
 
 // Model suggestions per adapter. The field stays free-text (any model id works);
 // these just power the dropdown datalist and the placeholder. First entry is the
 // adapter's default (resolved in buildCeoAdapterConfig when the field is left empty).
 const MODEL_SUGGESTIONS: Record<string, string[]> = {
-  codex_local: ['gpt-5.6', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5', 'gpt-5.4'],
-  claude_local: ['claude-opus-4-8', 'claude-fable-5', 'claude-mythos-5', 'claude-sonnet-4-6'],
+  // `gpt-5.6-sol` is Codex's own default for the 5.6 family. The bare `gpt-5.6`
+  // alias is deliberately omitted: it has no published model metadata, so Codex
+  // warns and falls back to generic context limits (Paperclip rewrites it for
+  // legacy agents, but new companies should not be provisioned onto it).
+  codex_local: ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5', 'gpt-5.4'],
+  claude_local: [
+    'claude-opus-4-8',
+    'claude-opus-5',
+    'claude-sonnet-5',
+    'claude-fable-5',
+    'claude-mythos-5',
+    'claude-sonnet-4-6',
+  ],
 };
 
 function modelSuggestionsFor(adapterType: string): string[] {
@@ -153,7 +171,7 @@ export function StepName() {
               <p className="text-xs text-muted-foreground">
                 Leave empty for the adapter default (
                 {modelSuggestionsFor(state.ceoAdapter.type)[0] || 'adapter default'}). Codex:
-                gpt-5.6 (+ sol/terra/luna). Claude: opus-4-8, fable-5, mythos-5.
+                gpt-5.6-sol/terra/luna. Claude: opus-4-8, opus-5, sonnet-5, fable-5, mythos-5.
               </p>
             </div>
           </div>
