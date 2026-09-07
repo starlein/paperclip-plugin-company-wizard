@@ -24,6 +24,7 @@ Consolidates the useful changes from PRs #44, #46 and #47 on a fresh branch from
 - Company Skill slug collisions no longer overwrite imported/catalog skills; only canonical editable company-managed skills are refreshed, and listing failures stop provisioning rather than creating duplicates.
 - Review recovery uses actual execution-state ownership, managed worktree branch identity is preserved, required repository CI/protection is not disabled, and Product Owner handoffs do not close open-PR work prematurely.
 - Production build command is portable across Windows and Unix. Added worker, schema, template-matrix, project-update, approval/bootstrap, and state-persistence regressions.
+- Removed unused `esbuild-postcss-plugin` and refreshed affected development-tool dependencies (Vitest, esbuild, PostCSS and their transitive parsers/glob utilities). Documented and tested Node 24.11+ to match the published Paperclip SDK/shared host runtime requirement.
 
 - Review instructions distinguish standard executionPolicy verdicts from lean advisory assignment handoffs. Capacity waits no longer become conjunctive dependencies in backlog/stall recovery, and CEO fallbacks run only on assigned planning/routine work.
 - Review stages omit the issue's author, pending/failed required CI cannot be bypassed using local results, and baseline repair is explicitly assigned separately from the feature issue.

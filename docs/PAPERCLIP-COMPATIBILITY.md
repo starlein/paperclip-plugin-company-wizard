@@ -4,11 +4,21 @@ Reviewed on 2026-09-07 against [Paperclip source `856813ba3a083f23694b8554104b3e
 
 The plugin does not vendor, modify, or deploy Paperclip itself. Its runtime SDK remains provided by the host.
 
+The published SDK and shared package both require **Node 24.11+**; their worker/manifest bundler targets Node 24. Use that runtime for a supported Paperclip host. A root `engines` gate is intentionally omitted so existing Node 20/22 build/release workflows remain installable under pnpm 10. Those workflows are supplemental compatibility signals, not proof of a supported Paperclip host runtime; migrating them to Node 24 requires workflow-edit authority.
+
 ## Tested package contracts
 
 - Stable SDK/shared: `2026.831.1` (pinned development dependencies; peer floor `>=2026.831.1`).
 - Latest published canary SDK/shared checked separately: `2026.906.0-canary.5`.
 - Validation: TypeScript, production bundle, worker/action tests, assembly/template matrix, and shared-schema payload tests. These are source/contract and mocked integration checks, not a live deployed Paperclip database/browser acceptance test.
+
+### Development-dependency remediation
+
+Outcome: **fixed installed dependency advisories**. The original audit reported 19 advisories (1 critical, 9 high, 7 moderate, 2 low), all in development/build dependencies; production-only audit was already clean. The repository's configured tests use `vitest run` without a UI server, and its build uses PostCSS/esbuild against local files, not their HTTP servers. No deployed-plugin exploit was established.
+
+The narrow fix removes unused `esbuild-postcss-plugin`, updates Vitest within 3.x and PostCSS within 8.x, moves esbuild to patched 0.28.x, and refreshes affected transitive Vite/glob/parser packages. `pnpm-workspace.yaml` limits the esbuild override to Vite and preserves the existing dependency-build allowlist and Paperclip release-age exceptions. No application authentication, approval or runtime control is weakened.
+
+Reproduction substitute: the same full `pnpm audit --json` went from 19 advisories to **zero**; the lockfile contains no reported vulnerable versions or unused plugin chain. This proves dependency removal/update, not a live exploit reproduction. Alternate transitive paths (not only direct dependencies) are included in the audit. `pnpm install --frozen-lockfile`, TypeScript, production build, 72 worker/action tests and 199 logic/API tests pass on Node 24.11.0, preserving normal build and provisioning behavior. The existing tests serve as controls; no artificial exploit fixture was needed for a dependency-version remediation.
 
 API version 1 and declared capability checks remain enabled. There is deliberately no numeric `minimumHostVersion`: this source snapshot's `server/src/index.ts` does not pass `hostVersion` to `createApp`, while `server/src/app.ts` passes `"0.0.0"` to the plugin loader by default. A numeric release floor would reject current source-derived hosts. Older API implementations are not thereby supported; unsupported REST operations surface errors rather than silently downgrading governance.
 

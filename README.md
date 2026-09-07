@@ -7,7 +7,7 @@
     <a href="https://www.npmjs.com/package/@starlein/paperclip-plugin-company-wizard"><img src="https://img.shields.io/npm/v/@starlein/paperclip-plugin-company-wizard?color=cb3837&label=npm" alt="npm version"></a>
     <a href="https://github.com/starlein/paperclip-plugin-company-wizard/actions/workflows/ci.yml"><img src="https://github.com/starlein/paperclip-plugin-company-wizard/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License"></a>
-    <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen" alt="Node.js"></a>
+    <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D24.11-brightgreen" alt="Node.js"></a>
   </p>
 <hr>
   <img src="https://raw.githubusercontent.com/starlein/paperclip-plugin-company-wizard/main/docs/GIF-Screencast-Paperclip-Plugin-Company-Wizard.gif" alt="Screencast Paperclip Plugin Company Wizard" height="240">
@@ -18,6 +18,8 @@
 > **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for Paperclip plugin API v1 and the current published SDK with substantial bug fixes. End-to-end company setup is governed through current Paperclip workflows as of v0.5.0.
 
 **Version 0.6.1:** consolidates PRs #44, #46 and #47 with current Paperclip source compatibility, run-scoped hire approvals, explicit bootstrap start, and corrected workflow/workspace safety. See [compatibility notes](docs/PAPERCLIP-COMPATIBILITY.md).
+
+Requires Node **24.11+**, matching the current Paperclip SDK/shared runtime requirement.
 
 **Update Company:** select an existing company to refresh its agent instructions, documents, skills, routines, and live project execution policies. Preview shows policy changes; existing workspace paths, explicit operator policies, and goal links are preserved. Partial failures never delete an existing company.
 
