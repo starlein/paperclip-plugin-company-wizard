@@ -34,10 +34,12 @@ Add more labels as the project evolves (e.g., `docs`, `design`, `security`). Pic
 
 ## Backlog Snapshot
 
-_Summary of current backlog health. Update on each heartbeat cycle._
+_Summary of current backlog health. Update during an assigned backlog-planning or grooming run._
 
-- **Active implementation issues:** _(count by owner; default maximum one per delivery agent)_
-- **Open implementation PRs:** _(count by repository; default maximum two)_
+Capacity follows company policy. If `docs/lean-delivery.md` exists, apply its WIP limits; otherwise no lean cap is implied.
+
+- **Active implementation issues:** _(count by owner against the selected capacity policy)_
+- **Open implementation PRs:** _(count by repository against the selected capacity policy)_
 - **Prioritized inactive issues:** _(next roadmap work waiting for genuine delivery capacity)_
 - **In-progress issues:** _(count)_
 - **Health:** _(healthy / thin / empty / bloated — see ../../docs/backlog-process.md)_

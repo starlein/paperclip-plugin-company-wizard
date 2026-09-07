@@ -599,15 +599,15 @@ describe("company-wizard", () => {
     }
   });
 
-  it("updates existing Company Skills through current file, rename, and metadata routes", async () => {
+  it.each([true, false])("preserves disambiguated Company Skill slugs during updates (rename supported=%s)", async (renameSupported) => {
     const calls: Array<[string, unknown]> = [];
     const client = {
       async listCompanySkills() {
         return [
           {
             id: "skill-1",
-            key: "company/ci-cd",
-            slug: "ci-cd",
+            key: "company/ci-cd-engineer",
+            slug: "ci-cd-engineer",
             name: "Old CI",
             description: "old",
             markdown: "# Old CI",
@@ -620,6 +620,9 @@ describe("company-wizard", () => {
       },
       async renameCompanySkill(_companyId: string, _skillId: string, body: unknown) {
         calls.push(["rename", body]);
+        return renameSupported
+          ? { key: "canonical/ci-cd-engineer", slug: "ci-cd-engineer" }
+          : null;
       },
       async updateCompanySkill(_companyId: string, _skillId: string, body: unknown) {
         calls.push(["metadata", body]);
@@ -631,7 +634,7 @@ describe("company-wizard", () => {
       "company-1",
       [
         {
-          slug: "ci-cd",
+          slug: "ci-cd-engineer",
           name: "CI/CD",
           description: "current",
           markdown: "# CI/CD",
@@ -641,10 +644,12 @@ describe("company-wizard", () => {
       () => undefined,
     );
 
-    expect(keys.get("ci-cd")).toBe("company/ci-cd");
+    expect(keys.get("ci-cd-engineer")).toBe(
+      renameSupported ? "canonical/ci-cd-engineer" : "company/ci-cd-engineer",
+    );
     expect(calls).toEqual([
       ["file", { path: "SKILL.md", content: "# CI/CD" }],
-      ["rename", { name: "CI/CD" }],
+      ["rename", { name: "CI/CD", slug: "ci-cd-engineer" }],
       ["metadata", { description: "current", categories: ["delivery"] }],
     ]);
   });

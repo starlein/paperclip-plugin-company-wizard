@@ -833,10 +833,14 @@ export async function provisionCompanySkills(
       updated = true;
     }
     if ((found.name ?? '') !== skill.name) {
-      const renamed = await client.renameCompanySkill(companyId, found.id, { name: skill.name });
+      const renamed = await client.renameCompanySkill(companyId, found.id, {
+        name: skill.name,
+        slug: found.slug,
+      });
       if (renamed == null) {
         log(`! Paperclip host does not support Company Skill rename; kept "${found.name}"`);
       } else {
+        slugToKey.set(skill.slug, renamed.key || renamed.slug || found.key || skill.slug);
         updated = true;
       }
     }

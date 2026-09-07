@@ -16,6 +16,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Review instructions distinguish standard executionPolicy verdicts from lean advisory assignment handoffs. Capacity waits no longer become conjunctive dependencies in backlog/stall recovery, and CEO fallbacks run only on assigned planning/routine work.
 - Review stages omit the issue's author, pending/failed required CI cannot be bypassed using local results, and baseline repair is explicitly assigned separately from the feature issue.
+- Company Skill display-name refreshes preserve existing slugs and use the rename response's key for agent skill assignments, including role-disambiguated skills. The backlog snapshot also respects optional lean capacity instead of imposing it when deselected.
 - Existing Company Skill content now updates through `PATCH /companies/:companyId/skills/:skillId/files` with `path: "SKILL.md"`, and display-name changes use the dedicated `/rename` endpoint. Newer Paperclip versions no longer silently discard `markdown` and `name` sent to the metadata-only skill PATCH route.
 - Project provisioning and generated bootstrap instructions now always include the required `executionWorkspacePolicy.enabled` boolean whenever a project execution policy is present.
 - Triggered QA, Security, Product, UI/UX, and DevOps evidence now has an explicit same-issue assignment wake-and-return path before the Code Reviewer gate, matching assignment-driven worker agents.

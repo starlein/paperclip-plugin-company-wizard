@@ -608,6 +608,13 @@ describe('assembleCompany integration (real templates)', () => {
             ),
           );
           assert.equal(bootstrap.includes('Default WIP is one active implementation issue'), lean);
+          const backlogTemplate = await readFile(
+            join(result.companyDir, 'docs', 'backlog-template.md'),
+            'utf-8',
+          );
+          assert.ok(backlogTemplate.includes('If `docs/lean-delivery.md` exists'));
+          assert.ok(backlogTemplate.includes('otherwise no lean cap is implied'));
+          assert.ok(!backlogTemplate.includes('default maximum'));
           assert.ok(
             bootstrap.includes(ci ? 'until those checks exist on this head' : 'no CI configured') ||
               !reviewer,
