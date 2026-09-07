@@ -840,7 +840,10 @@ export async function provisionCompanySkills(
       if (renamed == null) {
         log(`! Paperclip host does not support Company Skill rename; kept "${found.name}"`);
       } else {
-        slugToKey.set(skill.slug, renamed.key || renamed.slug || found.key || skill.slug);
+        slugToKey.set(
+          skill.slug,
+          renamed.skill?.key || renamed.skill?.slug || found.key || skill.slug,
+        );
         updated = true;
       }
     }

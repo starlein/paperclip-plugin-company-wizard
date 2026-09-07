@@ -621,7 +621,7 @@ describe("company-wizard", () => {
       async renameCompanySkill(_companyId: string, _skillId: string, body: unknown) {
         calls.push(["rename", body]);
         return renameSupported
-          ? { key: "canonical/ci-cd-engineer", slug: "ci-cd-engineer" }
+          ? { skill: { key: "canonical/ci-cd-engineer", slug: "ci-cd-engineer" } }
           : null;
       },
       async updateCompanySkill(_companyId: string, _skillId: string, body: unknown) {
