@@ -7,7 +7,7 @@
   "paperclipRole": "ceo",
   "description": "Strategic leader. Sets goals, delegates work, manages approvals.",
   "adapter": {
-    "model": "gpt-5.6",
+    "model": "gpt-5.6-sol",
     "effort": "high",
     "thinkingLevel": "high"
   }

@@ -8,7 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- Updated the development and contract-test baseline from `@paperclipai/plugin-sdk` / `@paperclipai/shared` `2026.722.0` to the latest stable `2026.817.0`. The plugin remains API v1 compatible with hosts from the existing `2026.707.0` peer floor onward.
+- Contract tests use the `@paperclipai/plugin-sdk` / `@paperclipai/shared` `2026.824.1` baseline from v0.5.1. The plugin remains API v1 compatible with hosts from the existing `2026.707.0` peer floor onward.
 - Added current-stable schema contract tests for company, goal, project, issue, governed agent hire, routine/trigger, Company Skill, and plugin-manifest payloads.
 
 ### Fixed
@@ -22,6 +22,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Auto-assignment no longer models a dynamic repository PR cap as conjunctive blockers on every open PR; capacity waiters stay unassigned for the next assignment-driven capacity check.
 - Retained Code Reviewer, Engineer, and Security Engineer role instructions now match the lean module contracts: exact-head CI avoids duplicate full gates, Engineers do not self-claim past WIP capacity or invent acceptance, and blocking security remediation stays on the originating issue and PR.
 - QA evidence uses bounded pass/fail comments rather than executionPolicy verdicts; CEO fallback assignment follows the same non-conjunctive capacity wait as the primary skill; and inherited base-branch CI repair is explicitly isolated to one separately owned baseline-restore issue and PR.
+
+## [0.5.1] - 2026-08-28
+
+Compatibility review against Paperclip as of 2026-08-26. No API breakage was found: all 30 REST endpoints used by `src/api/client.js`, all 22 endpoints taught to agents in templates, every `paperclipRole` value, the declared manifest capabilities, and the agent-hire/issue/routine/project/skill payloads all still validate against the current server. The changes below correct staleness that accumulated since the last review.
+
+### Changed
+
+- **Codex model default is now `gpt-5.6-sol` instead of the bare `gpt-5.6` alias** (`DEFAULT_CEO_MODEL`, `roles/ceo/role.meta.json`, and the CEO-setup suggestion list). OpenAI publishes no model metadata for the bare slug, so the Codex CLI warns (`Model metadata for gpt-5.6 not found`) and falls back to generic context-window limits. Paperclip's `codex_local` adapter still rewrites the alias for legacy agents, but new companies are no longer provisioned onto it. This also matches the OpenAI company-generation path, which already used `gpt-5.6-sol`.
+- Added `claude-opus-5` and `claude-sonnet-5` to the Claude model suggestions; both ship in Paperclip's `claude_local` adapter and the plugin already advertises Opus 5 for AI company generation.
+- Added the `gemini_local`, `grok_local`, `kimi_local`, and `pi_local` adapters to the CEO-setup picker, which had drifted behind Paperclip's built-in `AGENT_ADAPTER_TYPES`.
+- Bumped `@paperclipai/plugin-sdk` and `@paperclipai/shared` from `2026.722.0` to `2026.824.1`. The host-method surface diff is purely additive (9 new methods, none removed), and typecheck, build, and both test suites pass unchanged.
+
+### Fixed
+
+- **`stall-detection` no longer races Paperclip's own review-path recovery.** Paperclip now maintains the `in_review` review path as an invariant and queues an `issue_review_path_lost` wake to repair it. The skill records that as `WAITING-REVIEW-PATH-RECOVERY` and stands down, intervening only when the recovery is absent or has itself gone stale.
+- **`stall-detection` no longer retries denied cross-issue repairs.** Paperclip contains cross-issue agent writes, so a `403 ... outside this actor's authorization boundary` is final. The skill now records the denial and escalates to the responsible human in the same pass instead of looping on a call that cannot succeed.
 
 ## [0.5.0] - 2026-08-10
 

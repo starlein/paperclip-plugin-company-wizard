@@ -127,7 +127,11 @@ Watchdogs are Paperclip's native, event-driven stall recovery: `watchdog: { agen
 
 ### Model Defaults
 
-Codex CEO/team default is `gpt-5.6` (`DEFAULT_CEO_MODEL`); Claude default is `claude-opus-4-8` (`DEFAULT_CLAUDE_CEO_MODEL`). In the UI (`StepName.tsx`) the model field is an optional free-text override with an adapter-aware suggestion datalist — Codex: `gpt-5.6` (+ `sol`/`terra`/`luna`), `gpt-5.5`, `gpt-5.4`; Claude: `claude-opus-4-8`, `claude-fable-5`, `claude-mythos-5`, `claude-sonnet-4-6`. Empty means "use the adapter-appropriate default" (resolved in `buildCeoAdapterConfig`).
+Codex CEO/team default is `gpt-5.6-sol` (`DEFAULT_CEO_MODEL`); Claude default is `claude-opus-4-8` (`DEFAULT_CLAUDE_CEO_MODEL`). In the UI (`StepName.tsx`) the model field is an optional free-text override with an adapter-aware suggestion datalist — Codex: `gpt-5.6-sol`/`terra`/`luna`, `gpt-5.5`, `gpt-5.4`; Claude: `claude-opus-4-8`, `claude-opus-5`, `claude-sonnet-5`, `claude-fable-5`, `claude-mythos-5`, `claude-sonnet-4-6`. Empty means "use the adapter-appropriate default" (resolved in `buildCeoAdapterConfig`).
+
+Use the concrete `gpt-5.6-sol` slug, not the bare `gpt-5.6` alias: OpenAI publishes no model metadata for the bare slug, so the Codex CLI warns (`Model metadata for gpt-5.6 not found`) and falls back to generic context-window limits. Paperclip's `codex_local` adapter rewrites the bare alias for legacy agents (`CODEX_LOCAL_MODEL_ALIASES`), but new companies should never be provisioned onto it.
+
+`ADAPTER_TYPES` in `StepName.tsx` mirrors Paperclip's built-in `AGENT_ADAPTER_TYPES`. Adapter type is an open string server-side (external adapters may register their own), so the list is a convenience picker, not a constraint.
 
 Optional setting `disableBoardApprovalOnNewCompanies` (default `false`): when `true`, new companies are PATCHed to `requireBoardApprovalForNewAgents=false` right after creation for legacy fully-autonomous bootstrap behavior. Ignored for existing-company runs.
 

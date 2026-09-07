@@ -1,5 +1,10 @@
 export const DEFAULT_CEO_ADAPTER_TYPE = 'codex_local';
-export const DEFAULT_CEO_MODEL = 'gpt-5.6';
+// Use the concrete `gpt-5.6-sol` slug rather than the bare `gpt-5.6` alias. OpenAI
+// publishes no model metadata for the bare slug, so Codex warns ("Model metadata for
+// `gpt-5.6` not found") and falls back to generic context-window limits. Paperclip's
+// codex_local adapter still rewrites the bare alias for legacy agents, but new
+// companies should be provisioned on the slug the Codex CLI actually knows.
+export const DEFAULT_CEO_MODEL = 'gpt-5.6-sol';
 export const DEFAULT_CEO_THINKING_LEVEL = 'high';
 // Worker (non-CEO) agents default to 'auto' reasoning effort — let the model decide
 // per task instead of pinning a flat level. A role can still set an explicit level

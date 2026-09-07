@@ -1,5 +1,5 @@
 export const DEFAULT_CEO_ADAPTER_TYPE: 'codex_local';
-export const DEFAULT_CEO_MODEL: 'gpt-5.6';
+export const DEFAULT_CEO_MODEL: 'gpt-5.6-sol';
 export const DEFAULT_CEO_THINKING_LEVEL: 'high';
 export const DEFAULT_WORKER_THINKING_LEVEL: 'medium';
 export const DEFAULT_CEO_MAX_CONCURRENT_RUNS: 1;
