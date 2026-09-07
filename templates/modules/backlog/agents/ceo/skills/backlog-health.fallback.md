@@ -17,7 +17,7 @@ On your heartbeat, after handling assignments:
 ## Rules
 
 - This is a safety net, not your primary job. Let the PO own it.
-- Only create/assign issues when implementation and review capacity are genuinely free. Default WIP is one active implementation issue per delivery agent and two open implementation PRs per repository.
+- Assign acceptance-ready work to available owners. Open PR count is advisory and must not freeze independent implementation; keep every PR tied to an owner and next action.
 - Keep it minimal — just enough to unblock, not a full grooming session.
 - **Review handoff:** Use `in_review` only with a non-author executionPolicy stage or a first-class human interaction/approval. Agent reassignment alone is not a valid no-policy review path; otherwise keep the issue `in_progress` for the concrete handoff or finish direct/self-merge delivery.
 - Backlog grooming is intentionally project-detached and must remain API-only. Do not create or enter a git worktree for the grooming run, and do not attach the routine itself to a project. Setting `projectId` and isolated `executionWorkspaceSettings` on the work issues you create is still required and does not change the grooming run's workspace behavior.

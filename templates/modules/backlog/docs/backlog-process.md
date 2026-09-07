@@ -10,8 +10,8 @@ Goal → Roadmap → Issues → Assignment → Execution → Done
 
 1. **Goal decomposition** — The backlog owner breaks the company goal into milestones, then milestones into actionable issues.
 2. **Issue creation** — New issues enter the backlog via `POST /api/companies/{companyId}/issues` with `title`, `description`, `priority`, `projectId`, `goalId`, and `labelIds`. Top-level backlog issues must always include the active roadmap `projectId`. They must also set workspace isolation explicitly — see **Workspace Isolation** below.
-3. **Pipeline health** — The backlog owner monitors active implementation and review capacity, not a large ready queue. Default to at most two open implementation PRs per repository and one active implementation issue per delivery agent unless company policy declares a stricter limit.
-4. **Assignment** — Assign the next best-fit issue only when its owner and review path have capacity. Keep additional roadmap work prioritized but inactive; do not manufacture assigned queues that outrun review and merge capacity.
+3. **Pipeline health** — The backlog owner monitors implementation and review ownership. Open PR count is a queue-health signal, not a hard cap on independent work.
+4. **Assignment** — Assign acceptance-ready issues to available owners. Keep every open PR tied to a named owner and next action, and prioritize stale/conflicting PR repair without freezing unrelated implementation.
 5. **Execution** — Agents check out assigned issues, work them, and hand off deliberately for review or completion.
 
 ## Issue Quality
@@ -84,10 +84,10 @@ Re-prioritize when milestones shift or new information arrives. Don't let low-pr
 
 ## Backlog Health Indicators
 
-- **Healthy**: each available delivery agent has at most one active implementation issue and each repository stays within its review/PR WIP limit
-- **Thin**: capacity is genuinely free and no acceptance-ready next issue exists — prepare and assign one small next issue
-- **At capacity**: two open implementation PRs (default) or the company-declared cap — stop assigning PR-producing work and drain review/merge first
-- **Bloated**: assigned work exceeds owner/reviewer capacity — stop creating, unqueue speculative work, and preserve priority on the roadmap
+- **Healthy**: active work and open PRs have named owners, current heads, and concrete next actions
+- **Thin**: available agents have no acceptance-ready work — prepare and assign a small next issue
+- **Needs queue attention**: stale, conflicting, red, or ownerless PRs exist — route repairs while independent implementation continues
+- **Bloated**: work lacks owners or actionable acceptance criteria — consolidate or reprioritize it without imposing a numeric repository cap
 
 ## Coordination
 

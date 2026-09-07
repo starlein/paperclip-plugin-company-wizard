@@ -6,7 +6,7 @@ Adds a lean PR-based review workflow with one default non-author merge gate and 
 
 - **Core role**: Code Reviewer (the sole default executionPolicy stage and non-author merge gate)
 - **Extended roles** *(when present)*: Product Owner defines acceptance before implementation; QA, Security, UI/UX, and DevOps provide bounded evidence only for recorded risk triggers
-- **Shared docs**: `docs/pr-conventions.md` and binding `docs/lean-delivery.md`
+- **Shared docs**: `docs/pr-conventions.md` and `docs/lean-delivery.md` (delivery workflow; no numeric PR cap)
 - **Engineer skill**: Feature-branch + PR workflow (overrides direct-to-base-ref from `github-repo`)
 - **Reviewer skills**: Review checklists for each reviewer role, plus the Code Reviewer's merge-gate skill
 

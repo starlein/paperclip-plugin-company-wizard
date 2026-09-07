@@ -13,7 +13,7 @@ Primary assignment happens during backlog grooming: the Product Owner creates is
 
 1. Are there unassigned issues in `todo` status?
 2. Do those issues have enough acceptance criteria and no unresolved blockers?
-3. If yes and capacity is free: assign only the next suitable item. Default WIP is one active implementation issue per delivery agent and two open implementation PRs per repository; keep later work inactive.
+3. If yes: assign suitable items to available owners. Open PR count is advisory, not an assignment cap; keep every PR tied to an owner and next action.
 
 ## Best for
 

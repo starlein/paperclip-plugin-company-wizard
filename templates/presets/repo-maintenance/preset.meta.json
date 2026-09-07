@@ -47,7 +47,7 @@
           "id": "steady-state",
           "title": "Steady State",
           "level": "team",
-          "description": "Ongoing maintenance is assignment- and wake-driven: agents handle owned PRs, reports, and health checks without scanning unrelated queues on every heartbeat. Done when bounded routines and explicit owners keep the repository within its delivery WIP limit."
+          "description": "Ongoing maintenance is assignment- and wake-driven: agents handle owned PRs, reports, and health checks without scanning unrelated queues on every heartbeat. Done when bounded routines and explicit owners keep every open PR tied to a concrete next action without a numeric repository cap."
         }
       ]
     }
@@ -77,12 +77,12 @@
     },
     {
       "title": "Document or establish release process",
-      "description": "Review current release workflow. If none exists, establish semver + changelog. Document in ../../docs/RELEASE-PROCESS.md. Keep this issue unassigned until the backlog owner explicitly releases it within repository review capacity.",
+      "description": "Review current release workflow. If none exists, establish semver + changelog. Document in ../../docs/RELEASE-PROCESS.md. Assign it when acceptance criteria and an owner are ready; open PR count is not a release cap.",
       "priority": "medium"
     },
     {
       "title": "Reconcile open pull request ownership",
-      "description": "Inventory open PRs only in the configured project repository. Identify each as owner/repo#number and ensure it has exactly one originating Paperclip issue, implementation owner, current head/base/check evidence, and next gate. Do not review or merge multiple PRs from this setup issue, create replacement PRs, or create queue-drain wrappers. Route work on each existing PR to its own originating issue; stop new PR-producing assignment when the repository is at the default two-PR WIP cap.",
+      "description": "Inventory open PRs only in the configured project repository. Identify each as owner/repo#number and ensure it has exactly one originating Paperclip issue, implementation owner, current head/base/check evidence, and next gate. Do not review or merge multiple PRs from this setup issue, create replacement PRs, or create queue-drain wrappers. Route work on each existing PR to its own originating issue without freezing independent implementation based on PR count.",
       "priority": "high",
       "assignTo": "devops"
     },
@@ -94,7 +94,7 @@
     },
     {
       "title": "Implement the highest-priority codebase health fix",
-      "description": "After the codebase audit has completed and repository review capacity is free, the backlog owner assigns this issue for exactly one independently deliverable finding. Implement it on this originating issue and one branch/PR, run focused verification, and send it through the normal Code Reviewer gate. Keep this issue unassigned until that capacity check; leave later findings prioritized but inactive until delivery capacity is free.",
+      "description": "After the codebase audit has completed, the backlog owner assigns this issue for exactly one independently deliverable finding. Implement it on this originating issue and one branch/PR, run focused verification, and send it through the normal Code Reviewer gate. Open PR count is advisory and does not block assignment of this independent work.",
       "priority": "medium"
     }
   ]

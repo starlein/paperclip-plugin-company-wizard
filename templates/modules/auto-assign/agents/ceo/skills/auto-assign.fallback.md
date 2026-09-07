@@ -7,9 +7,9 @@ Primary assignment happens at backlog grooming — issues are assigned to the be
 On your heartbeat, after handling your own assignments:
 
 1. Confirm this is the active routine-run issue and checkout it before mutating the board.
-2. Query unassigned ready issues plus active implementation issues and open implementation PRs. Default WIP is one active implementation issue per delivery agent and two open implementation PRs per repository.
+2. Query unassigned ready issues plus active implementation issues and open implementation PRs. Treat PR count as a queue-health signal, not a hard assignment limit.
 3. If unassigned issues are available AND the Product Owner hasn't acted recently:
-   - Assign only the next suitable issue that fits owner and review capacity: `PATCH /api/issues/{id}` with `assigneeAgentId` and an assignment comment.
+   - Assign suitable acceptance-ready issues to available owners: `PATCH /api/issues/{id}` with `assigneeAgentId` and an assignment comment.
    - Keep later roadmap work prioritized but inactive; a safety net must not manufacture a queue that outruns the merge gate.
 4. If the Product Owner is active, skip this step.
 5. Leave a routine-run comment summarizing assigned issue ids and skipped issue ids.
@@ -18,7 +18,7 @@ On your heartbeat, after handling your own assignments:
 ## Rules
 
 - This is a safety net behind backlog grooming's direct assignment. Let the PO own assignment.
-- Respect implementation and review WIP. At capacity, leave later work unassigned and record `waiting for repository review capacity`; let the next assignment-driven capacity check release it when one slot opens. Do not model a dynamic WIP cap as blockers on every in-flight PR issue — those relations are conjunctive and would wait for all PRs to finish.
+- Treat implementation and review load as advisory scheduling input. Do not leave acceptance-ready work unassigned solely because other PRs are open, and never model open-PR count as blocker relations.
 - Do not run this from normal heartbeats.
 - Do not self-assign random unassigned work.
 - If no suitable match exists, leave the issue unassigned and state the reason in the routine-run comment.

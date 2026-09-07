@@ -9,11 +9,11 @@ Use this only when the current assigned issue/routine is titled like "Auto-assig
 ## Assignment Check
 
 1. Confirm this is the active routine-run issue and checkout it before mutating the board.
-2. Query available agents and current delivery capacity: active implementation issues per agent plus open implementation PRs per repository. Default WIP is at most one active implementation issue per delivery agent and two open implementation PRs per repository unless company policy says otherwise.
+2. Query available agents and current delivery ownership: active implementation issues per agent plus open implementation PRs per repository. Open PR count is advisory and must not freeze independent acceptance-ready work.
 3. Query candidate issues using the board's current issue API for unassigned `todo` work, scoped to the relevant project/goal when the routine has one.
 4. Skip issues that are blocked, awaiting approval/review, missing acceptance criteria, or already have active execution state.
 5. Match issue labels, required skills, project context, and priority to agent role/capabilities.
-6. Assign only the next suitable issue that fits owner and review capacity: `PATCH /api/issues/{id}` with `assigneeAgentId` and an assignment comment. Keep later work prioritized but inactive. If a repository is at its PR cap, leave the waiting issue unassigned and record `waiting for repository review capacity`; let the next assignment-driven capacity check release it as soon as one slot opens. Do not model a dynamic WIP cap as `blockedByIssueIds` against every open-PR issue — those blockers are conjunctive and would wait for all PRs to finish.
+6. Assign suitable acceptance-ready issues to available owners: `PATCH /api/issues/{id}` with `assigneeAgentId` and an assignment comment. Do not leave work unassigned solely because a repository already has open PRs, and never model open-PR count as `blockedByIssueIds`.
 7. Leave a routine-run comment summarizing assigned issue ids, skipped issue ids, and gaps needing Product Owner/CEO attention.
 8. Mark the routine-run issue done when complete.
 

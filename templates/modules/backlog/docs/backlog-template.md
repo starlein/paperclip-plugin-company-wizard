@@ -36,8 +36,8 @@ Add more labels as the project evolves (e.g., `docs`, `design`, `security`). Pic
 
 _Summary of current backlog health. Update on each heartbeat cycle._
 
-- **Active implementation issues:** _(count by owner; default maximum one per delivery agent)_
-- **Open implementation PRs:** _(count by repository; default maximum two)_
+- **Active implementation issues:** _(count by owner; include next action)_
+- **Open implementation PRs:** _(count by repository; include owner and merge state)_
 - **Prioritized inactive issues:** _(next roadmap work waiting for genuine delivery capacity)_
 - **In-progress issues:** _(count)_
 - **Health:** _(healthy / thin / empty / bloated — see ../../docs/backlog-process.md)_

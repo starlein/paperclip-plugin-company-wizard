@@ -58,7 +58,7 @@ A `cancelled` blocker does **not** resolve a dependency. Remove that blocker rel
 When `github-repo` is active, reconcile each configured project repository's open PRs against their originating Paperclip issues. Resolve repositories only from project metadata/workspace origin and identify every PR as `owner/repo#number`.
 
 1. List open PRs and compare each with its originating issue, exact head/base, required CI, merge state, owner, and next gate.
-2. Default WIP is at most two open implementation PRs per repository. At or above the cap, stop new PR-producing assignment and make waiting issues depend on the issues owning the open PRs; never create a queue-drain issue or polling monitor.
+2. Open PR count is a queue-health signal, not a hard WIP cap. Keep independent acceptance-ready work moving while routing stale, conflicting, red, or ownerless PRs to their existing owners; never create dependencies merely because other PRs are open.
 3. Route CI/runner failures, stale bases, conflicts, branch protection, packaging, deployment, and release mechanics on the **existing originating issue and PR** to the operational owner. Never open a replacement PR to escape a blocker.
 4. A `done` issue with an open PR is an invariant violation. Reopen/route the originating issue when work remains, or close the obsolete PR with evidence. Do not create a separate merge, status, evidence, or cleanup issue.
 5. Detect base-branch-red before blaming feature diffs. Restore the base through one explicitly owned baseline fix, then rebase and drain existing PRs.

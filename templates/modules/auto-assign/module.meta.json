@@ -17,7 +17,7 @@
   "routines": [
     {
       "title": "Auto-assign unassigned issues",
-      "description": "Safety-net routine-run checklist: review still-unassigned todo issues plus active implementation/review capacity, assign only the next actionable item that fits the default one-active-issue-per-agent and two-open-PRs-per-repository WIP limits, keep later roadmap work inactive, record evidence and next actions on the routine issue, then exit.",
+      "description": "Safety-net routine-run checklist: review still-unassigned todo issues plus active implementation/review ownership, assign acceptance-ready work to available agents, keep every open PR tied to an owner and next action, record evidence and next actions on the routine issue, then exit. Open PR count is advisory, not an assignment cap.",
       "assignTo": "capability:auto-assign",
       "schedule": "0 */4 * * *",
       "priority": "medium",

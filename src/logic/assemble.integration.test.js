@@ -514,7 +514,7 @@ describe('assembleCompany integration (real templates)', () => {
     );
   });
 
-  it('backlog templates enforce bounded WIP and explicit subissue isolation', async () => {
+  it('backlog templates allow parallel delivery and enforce explicit subissue isolation', async () => {
     const backlogMeta = JSON.parse(
       await readFile(join(REAL_TEMPLATES_DIR, 'modules', 'backlog', 'module.meta.json'), 'utf-8'),
     );
@@ -550,12 +550,14 @@ describe('assembleCompany integration (real templates)', () => {
     );
 
     assert.ok(
-      backlogMeta.issues[0].description.includes('at most two open implementation PRs'),
-      'seed backlog must respect the default repository PR cap',
+      backlogMeta.issues[0].description.includes('Open PR count is advisory') &&
+        !backlogMeta.issues[0].description.includes('at most two open implementation PRs'),
+      'seed backlog must not impose a numeric repository PR cap',
     );
     assert.ok(
-      backlogMeta.routines[0].description.includes('create at most the next 1-3'),
-      'grooming creates a bounded next batch rather than an eight-item assigned queue',
+      backlogMeta.routines[0].description.includes('create the next 1-3') &&
+        backlogMeta.routines[0].description.includes('not an assignment cap'),
+      'grooming creates a focused next batch without a repository PR freeze',
     );
     assert.ok(
       backlogSkill.includes('including subissues') &&
@@ -583,16 +585,16 @@ describe('assembleCompany integration (real templates)', () => {
       'utf-8',
     );
     assert.ok(
-      autoAssignSkill.includes('leave the waiting issue unassigned') &&
-        autoAssignSkill.includes('blockers are conjunctive') &&
-        !autoAssignSkill.includes('link the waiting issue to the issues owning those PRs'),
-      'dynamic PR capacity must not become an all-open-PR conjunctive dependency',
+      autoAssignSkill.includes('Do not leave work unassigned solely') &&
+        autoAssignSkill.includes('never model open-PR count as `blockedByIssueIds`') &&
+        !autoAssignSkill.includes('waiting for repository review capacity'),
+      'open PR count must not block assignment or become an issue dependency',
     );
     assert.ok(
-      autoAssignFallback.includes('leave later work unassigned') &&
-        autoAssignFallback.includes('relations are conjunctive') &&
-        !autoAssignFallback.includes('blocker relations to the issues owning in-flight PRs'),
-      'CEO fallback follows the same non-conjunctive capacity wait',
+      autoAssignFallback.includes('Do not leave acceptance-ready work unassigned solely') &&
+        autoAssignFallback.includes('never model open-PR count as blocker relations') &&
+        !autoAssignFallback.includes('waiting for repository review capacity'),
+      'CEO fallback follows the same no-cap assignment rule',
     );
     assert.ok(
       backlogSkill.includes('`#0075ca`') && !backlogSkill.includes('`0075ca`'),
@@ -606,7 +608,7 @@ describe('assembleCompany integration (real templates)', () => {
     assert.ok(
       leanDelivery.includes('Exactly one default executionPolicy stage') &&
         leanDelivery.includes('Agent reassignment alone is not a no-policy review path'),
-      'shared lean-delivery contract overrides stale serial/no-policy handoff habits',
+      'shared delivery workflow overrides stale serial/no-policy handoff habits',
     );
     assert.ok(
       leanDelivery.includes('do not self-claim unassigned work') &&
@@ -616,9 +618,9 @@ describe('assembleCompany integration (real templates)', () => {
     assert.ok(
       leanDelivery.includes('Inherited BASE-BRANCH-RED is the narrow exception') &&
         leanDelivery.includes('separately owned baseline-restore issue, branch, and PR') &&
-        leanDelivery.includes('leave later work unassigned') &&
-        !leanDelivery.includes('blocker relations to the issues owning the in-flight PRs'),
-      'shared contract isolates inherited baseline repair and avoids conjunctive capacity blockers',
+        leanDelivery.includes('Open PR count is advisory') &&
+        !leanDelivery.includes('at most two open implementation PRs'),
+      'shared workflow isolates inherited baseline repair without a numeric PR cap',
     );
     assert.ok(
       stallDetection.includes('A `cancelled` blocker does **not** resolve a dependency'),
@@ -663,11 +665,10 @@ describe('assembleCompany integration (real templates)', () => {
         )
         .every(
           (issue) =>
-            issue.assignTo == null &&
-            issue.description.toLowerCase().includes('unassigned') &&
-            issue.description.toLowerCase().includes('capacity'),
+            !issue.description.toLowerCase().includes('review capacity is free') &&
+            !issue.description.toLowerCase().includes('wip cap'),
         ),
-      'later PR-producing maintenance issues remain unassigned until review capacity is free',
+      'maintenance work is not withheld by a repository PR-capacity gate',
     );
   });
 
@@ -1090,7 +1091,7 @@ describe('assembleCompany integration (real templates)', () => {
     }
   });
 
-  it('retained base roles do not contradict CI, WIP, acceptance, or remediation policy', async () => {
+  it('retained base roles do not contradict CI, delivery, acceptance, or remediation policy', async () => {
     const codeReviewer = await readFile(
       join(REAL_TEMPLATES_DIR, 'roles', 'code-reviewer', 'AGENTS.md'),
       'utf-8',
