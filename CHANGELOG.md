@@ -4,6 +4,27 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.2] - 2026-09-07
+
+Follow-up review of the 0.6.1 consolidation against Paperclip source `3fb4b65f9d974d8687db8a060f20ec66b6071a79` (upstream master through 2026-09-06). Fixes two template defects that silently dropped provisioned routines and a set of instruction/doc drifts left by the Skills Store migration.
+
+### Fixed
+
+- Routines in the `dependency-management` and `release-management` modules declared `concurrencyPolicy: "forbid"`, which is not in Paperclip's `createRoutineSchema` enum (`coalesce_if_active` | `always_enqueue` | `skip_if_active`). The create/sync call was rejected with a 400 and swallowed as a warning, so both routines — and their cron triggers — were never created, in the `repo-maintenance` preset and any manual selection of those modules. Both now declare `skip_if_active`, and `routineConcurrencyPolicy()` maps the legacy spelling (and any unknown value) before the payload is sent, so a custom template source cannot lose a routine the same way.
+- The same two routines were keyed by the legacy `name` field, which the BOOTSTRAP.md renderer did not read: the CEO's bootstrap issue listed them as `### undefined`. Templates now use `title`, and both the renderer and provisioning resolve the title through the shared `routineTitle()` helper.
+- Heartbeat sections and role/skill instructions still pointed at `skills/<name>.md` files. Assembly stopped writing `agents/<role>/skills/` when skills moved to the Skills Store, so those paths did not exist. They now name the installed skill by slug (`auto-assign`, `auto-assign-fallback`, `backlog-health`, `backlog-health-fallback`, `stall-detection`, `git-workflow`, `pr-workflow`).
+- Skill markdown, module docs, and module/preset issue text referenced shared docs as `../../docs/<file>.md`, which only resolves from `{company}/agents/<role>/`. They now use `docs/<file>.md`, relative to the agent's working directory (the company dir). `roles/*/AGENTS.md` and the generated "Shared Documentation" list keep the file-relative form, which is correct there.
+- Review-gate instructions quoted the wrong 422. An author-only stage fails when Paperclip selects the participant — `No eligible <review|approval> participant is configured for this issue` — and the PATCH is refused, so the issue never enters `in_review`. `Only the active reviewer or approver can advance the current execution stage` is the separate error for a non-participant advancing a pending stage. Corrected in `pr-conventions.md` and the engineer/QA heartbeats.
+- Checkout guidance said `expectedStatuses` was used "when the API supports" it. `checkoutIssueSchema` requires both `agentId` and a non-empty `expectedStatuses`; all 17 role heartbeats now show the required request body.
+- `docs/PAPERCLIP-COMPATIBILITY.md` explained the omitted `minimumHostVersion` with a `hostVersion` default of `"0.0.0"`. `app.ts` passes `opts.hostVersion ?? serverVersion`, resolved from `git describe`, a stamped build version, then the server package version; the real reason a numeric floor is unsafe is that packaged installs report that package version (`0.3.1`) against CalVer releases.
+
+### Changed
+
+- Review-round limits are now documented where agents act on them: after 3 consecutive agent-initiated `changes_requested` rounds on one stage (`DEFAULT_MAX_REVIEW_ROUNDS`, overridable per policy via `executionPolicy.maxReviewRounds`), Paperclip keeps the stage pending and hands it to the issue's responsible/creating human; a human decision resets the counter. Added to `pr-workflow`, `code-review`, and `pr-conventions.md`.
+- Model suggestions track the current adapter catalogs: Codex gains `gpt-6-astra` and drops `gpt-5.5`, which the adapter catalog does not publish; Claude gains `claude-fable-5-1`. Defaults (`gpt-5.6-sol`, `claude-opus-4-8`) are unchanged, and the field stays free text.
+- `effectiveExecutionPolicy()` no longer computes an unreachable isolated-worktree condition for existing projects (they return earlier with their stored policy). Behavior is unchanged: only a new project on an existing external repo can start isolated.
+- New `src/logic/routines.js` helpers (`routineTitle`, `routineConcurrencyPolicy`, `ROUTINE_CONCURRENCY_POLICIES`) are shared by assembly and provisioning, with `tests/templates-contract.spec.ts` validating every shipped module/preset routine, issue, goal, and dependency against the enums Paperclip accepts.
+
 ## [0.6.1] - 2026-09-07
 
 Consolidates the useful changes from PRs #44, #46 and #47 on a fresh branch from main. Compatibility reviewed against Paperclip source `856813ba3a083f23694b8554104b3e50abcb1363` (2026-09-06).

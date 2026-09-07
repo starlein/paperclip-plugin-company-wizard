@@ -24,11 +24,11 @@
   ],
   "routines": [
     {
-      "name": "Dependency audit",
+      "title": "Dependency audit",
       "description": "Scan for new vulnerabilities and outdated packages, apply safe patch updates.",
       "assignTo": "capability:dependency-audit",
       "schedule": "0 2 * * 1",
-      "concurrencyPolicy": "forbid"
+      "concurrencyPolicy": "skip_if_active"
     }
   ]
 }

@@ -24,7 +24,12 @@ import {
   buildWorkerAgentRuntimeConfig,
   normalizeCeoAdapterType,
 } from './logic/ceo-defaults.js';
-import { routineProjectPayload, routineUsesProjectWorkspace } from './logic/routines.js';
+import {
+  routineConcurrencyPolicy,
+  routineProjectPayload,
+  routineTitle,
+  routineUsesProjectWorkspace,
+} from './logic/routines.js';
 // @ts-ignore
 import {
   collectGoals,
@@ -883,11 +888,9 @@ export async function provisionCompanySkills(
   return slugToKey;
 }
 
-function routineTemplateTitle(routine: any): string {
-  if (typeof routine?.title === 'string' && routine.title.trim()) return routine.title.trim();
-  if (typeof routine?.name === 'string' && routine.name.trim()) return routine.name.trim();
-  return '';
-}
+// Shared with the BOOTSTRAP.md renderer so provisioning and the CEO's bootstrap
+// instructions always name the same routine.
+const routineTemplateTitle = (routine: any): string => routineTitle(routine);
 
 export interface WizardManifest {
   pluginVersion: string;
@@ -1098,7 +1101,7 @@ export async function syncExistingCompanyRoutines({
       }),
       priority: routine.priority || 'medium',
       status: routine.status || 'active',
-      concurrencyPolicy: routine.concurrencyPolicy || 'skip_if_active',
+      concurrencyPolicy: routineConcurrencyPolicy(routine),
       catchUpPolicy: routine.catchUpPolicy || 'skip_missed',
     };
 
@@ -2613,7 +2616,7 @@ const plugin = definePlugin({
                   assigneeAgentId,
                   ...routineProjectPayload(routine, mainProjectId),
                   priority: routine.priority || 'medium',
-                  concurrencyPolicy: routine.concurrencyPolicy || 'skip_if_active',
+                  concurrencyPolicy: routineConcurrencyPolicy(routine),
                   catchUpPolicy: routine.catchUpPolicy || 'skip_missed',
                 });
                 if (routine.schedule && createdRoutine?.id) {

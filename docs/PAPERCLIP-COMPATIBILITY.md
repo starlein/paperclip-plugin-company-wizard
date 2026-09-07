@@ -1,6 +1,8 @@
-# Paperclip compatibility — Company Wizard 0.6.1
+# Paperclip compatibility — Company Wizard 0.6.2
 
 Reviewed on 2026-09-07 against [Paperclip source `856813ba3a083f23694b8554104b3e50abcb1363`](https://github.com/paperclipai/paperclip/tree/856813ba3a083f23694b8554104b3e50abcb1363), the current master snapshot at review time (2026-09-06).
+
+**0.6.2 re-review (2026-09-07).** The 0.6.1 claims below were re-verified line by line against the local Paperclip checkout at `3fb4b65f9d974d8687db8a060f20ec66b6071a79` ("merge upstream master through 2026-09-06"). Approval, hire, watchdog, workspace-policy, Company Skill, and REST-shape claims held. The defects found were on the plugin side and are fixed in 0.6.2: an invalid routine `concurrencyPolicy`, a routine title read from a key the renderer ignored, instruction paths left behind by the Skills Store migration, a misquoted review-gate 422, undocumented review-round escalation, a stale checkout contract, and the host-floor rationale corrected below. See `CHANGELOG.md` for the full list.
 
 The plugin does not vendor, modify, or deploy Paperclip itself. Its runtime SDK remains provided by the host.
 
@@ -20,11 +22,11 @@ The narrow fix removes unused `esbuild-postcss-plugin`, updates Vitest within 3.
 
 Reproduction substitute: the same full `pnpm audit --json` went from 19 advisories to **zero**; the lockfile contains no reported vulnerable versions or unused plugin chain. This proves dependency removal/update, not a live exploit reproduction. Alternate transitive paths (not only direct dependencies) are included in the audit. `pnpm install --frozen-lockfile`, TypeScript, production build, 72 worker/action tests and 199 logic/API tests pass on Node 24.11.0, preserving normal build and provisioning behavior. The existing tests serve as controls; no artificial exploit fixture was needed for a dependency-version remediation.
 
-API version 1 and declared capability checks remain enabled. There is deliberately no numeric `minimumHostVersion`: this source snapshot's `server/src/index.ts` does not pass `hostVersion` to `createApp`, while `server/src/app.ts` passes `"0.0.0"` to the plugin loader by default. A numeric release floor would reject current source-derived hosts. Older API implementations are not thereby supported; unsupported REST operations surface errors rather than silently downgrading governance.
+API version 1 and declared capability checks remain enabled. There is deliberately no numeric `minimumHostVersion`. `server/src/app.ts` hands the plugin loader `opts.hostVersion ?? serverVersion`, and `server/src/version.ts` resolves `serverVersion` from `git describe`, then a stamped build version, then the server package version — `"0.0.0"` only as a last-resort fallback. A packaged install therefore reports the server package version (`0.3.1` in this snapshot), which `plugin-loader.ts` would compare with `compareSemver` against any CalVer floor and reject, even though the host is current. Older API implementations are not thereby supported; unsupported REST operations surface errors rather than silently downgrading governance.
 
 ## Source-aligned behavior
 
-| Area | 0.6.1 behavior | Source contract |
+| Area | 0.6.2 behavior | Source contract |
 | --- | --- | --- |
 | Project policies | Required `enabled`, full schema fields, explicit concurrency defaults; preserve existing IDs, goal links and operator settings | `packages/shared/src/validators/project.ts`; `server/src/routes/projects.ts` |
 | Workspace enforcement | Feature-gated; preserve disabled policies and explicit issue/operator overrides | `server/src/services/execution-workspace-policy.ts`; `server/src/services/heartbeat.ts` |
@@ -34,6 +36,9 @@ API version 1 and declared capability checks remain enabled. There is deliberate
 | Wizard state | Company-scoped SDK `ctx.state`, not nonexistent `/plugins/:id/company-settings/:companyId` | Plugin SDK state contract; `server/src/services/plugin-state-store.ts` |
 | Review recovery | Active stage/return assignee, not the currently reassigned reviewer, determines author-only blockage | `server/src/services/issue-execution-policy.ts` |
 | Managed worktrees | Preserve assigned branch identity and reusable workspace records; no cleanup shortcut or `--delete-branch` merge | `server/src/services/heartbeat.ts`; `server/src/routes/execution-workspaces.ts` |
+| Routines | Title accepts the legacy `name` key; `concurrencyPolicy` is normalized to the accepted enum before create/sync, so a bad template value degrades instead of losing the routine | `packages/shared/src/validators/routine.ts`; `server/src/routes/routines.ts` |
+| Review gates | An author-only stage fails participant selection (`No eligible <review\|approval> participant is configured for this issue`); after 3 agent rounds the stage escalates to the responsible/creating human | `server/src/services/issue-execution-policy.ts` |
+| Agent instructions | Skills are named by Skills Store slug, and shared docs are referenced as `docs/<file>.md` from the agent working directory; only `AGENTS.md` uses the file-relative `../../docs/` form | `packages/adapters/claude-local/src/server/skills.ts`; assembled `agents/<role>/AGENTS.md` |
 
 ### Concurrency is conditional
 
@@ -52,7 +57,7 @@ Official/default templates now come from the installed plugin release. A configu
 
 ## Operator acceptance checklist
 
-1. Install the 0.6.1 package in a current Paperclip host and reload the plugin.
+1. Install the 0.6.2 package in a current Paperclip host and reload the plugin.
 2. Preview an existing company with multiple projects. Check IDs, goal links, workspace paths, policy opt-outs and newly added routine project links.
 3. Provision a disposable company with board-gated hires. Confirm only this run's hires appear, approve a subset, refresh, then explicitly start bootstrap after the CEO is approved.
 4. Confirm actual shared-run deferral with the instance feature and project policy enabled; confirm disabled/explicit override behavior separately.

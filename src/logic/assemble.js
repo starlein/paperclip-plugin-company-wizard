@@ -16,7 +16,7 @@ import {
   DEFAULT_CEO_HEARTBEAT_INTERVAL_SEC,
 } from './ceo-defaults.js';
 import { skillSlug, humanizeSkillName, buildCompanySkillSet } from './resolve.js';
-import { routineUsesProjectWorkspace } from './routines.js';
+import { routineConcurrencyPolicy, routineTitle, routineUsesProjectWorkspace } from './routines.js';
 import {
   normalizeExecutionWorkspacePolicy,
   executionWorkspacePolicyFields,
@@ -1207,16 +1207,17 @@ export async function assembleCompany({
 
   const effectiveExecutionPolicy = (proj, workspace) => {
     const policy = normalizeExecutionWorkspacePolicy(proj?.executionWorkspacePolicy);
-    const canUseIsolatedWorktrees =
-      enableIsolatedWorktrees &&
-      (workspace?.sourceType === 'git_repo' ||
-        (workspace?.sourceType === 'local_path' && Boolean(proj?.id)));
     // The instance switch controls enforcement, not stored configuration. Keep
     // existing project modes/strategies so toggling it back on restores intent.
+    // An existing project (it has an id) always returns here with its own stored
+    // policy, so everything below only ever runs for a project this run creates.
     if (proj?.id)
       return withSharedWorkspaceConcurrency(
         policy ? { ...policy, enabled: policy.enabled ?? true } : sharedWorkspacePolicy(null),
       );
+    // New projects can only be isolated when they point at an existing external
+    // repo: a fresh local repo has no base ref to branch a worktree from yet.
+    const canUseIsolatedWorktrees = enableIsolatedWorktrees && workspace?.sourceType === 'git_repo';
     if (!policy) {
       if (!canUseIsolatedWorktrees) return sharedWorkspacePolicy(null);
       const baseRef = normalizeExecutionBaseRef(null, workspace?.defaultRef || workspace?.repoRef);
@@ -1499,12 +1500,12 @@ export async function assembleCompany({
     bootstrap += `## Routines\n\n`;
     bootstrap += `> **The Company Wizard has already created the routines listed below** (with board authority, so each could be assigned to its owning agent). Do NOT recreate them. Note: an agent may only create routines assigned to itself, so never try to create another agent's routine.\n\n`;
     for (const routine of initialRoutines) {
-      bootstrap += `### ${routine.title}\n\n`;
+      bootstrap += `### ${routineTitle(routine)}\n\n`;
       bootstrap += renderMeta([
         ['assigneeAgentId', routine.assignTo ? `→ "${routine.assignTo}"` : undefined],
         ['schedule', routine.schedule],
         ['priority', routine.priority || 'medium'],
-        ['concurrencyPolicy', routine.concurrencyPolicy || 'skip_if_active'],
+        ['concurrencyPolicy', routineConcurrencyPolicy(routine)],
         [
           'projectId',
           routineUsesProjectWorkspace(routine)

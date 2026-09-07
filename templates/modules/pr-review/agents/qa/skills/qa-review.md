@@ -36,7 +36,7 @@ Record a bounded `pass` comment only if the checks pass and coverage is adequate
 
 1. Work on the originating issue carrying the PR link and either an active QA stage (standard mode) or explicit QA trigger (lean mode); do not create a QA-only child/courier issue.
 2. **Standard active QA stage:** record `approved` or `changes_requested` with exact-head evidence through the executionPolicy and let Paperclip route the next action. Do not manually reassign or close the issue. **Lean/advisory handoff:** record concise evidence and a pass/fail verdict, then reassign the same originating issue to the implementation owner in the same heartbeat. On failure, name the exact correction required on the same PR. On pass, the implementation owner opens the Code Reviewer merge gate (or takes the documented self-merge path); QA is never inserted as a serial policy stage in lean delivery.
-3. Optionally mirror the verdict as a GitHub PR comment via a Markdown file: open with a heading (`## ✅ Approved` / `## 🔄 Changes requested`), then details, and run `gh pr comment <number> --body-file <file>`. Never inline `--body "..."` — a double-quoted shell string keeps `\n` literal. See `../../docs/pr-conventions.md` → *Posting PR Bodies & Comments*.
+3. Optionally mirror the verdict as a GitHub PR comment via a Markdown file: open with a heading (`## ✅ Approved` / `## 🔄 Changes requested`), then details, and run `gh pr comment <number> --body-file <file>`. Never inline `--body "..."` — a double-quoted shell string keeps `\n` literal. See `docs/pr-conventions.md` → *Posting PR Bodies & Comments*.
 
 ## Rules
 

@@ -17,7 +17,7 @@
 
 > **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for Paperclip plugin API v1 and the current published SDK with substantial bug fixes. End-to-end company setup is governed through current Paperclip workflows as of v0.5.0.
 
-**Version 0.6.1:** consolidates PRs #44, #46 and #47 with current Paperclip source compatibility, run-scoped hire approvals, explicit bootstrap start, and corrected workflow/workspace safety. See [compatibility notes](docs/PAPERCLIP-COMPATIBILITY.md).
+**Version 0.6.2:** re-reviewed against Paperclip master through 2026-09-06. Fixes routines that were silently rejected (invalid `concurrencyPolicy`) or rendered as `undefined` in the bootstrap issue, repoints instructions at Skills Store slugs and working-directory doc paths, and corrects the review-gate error/round-cap guidance. 0.6.1 consolidated PRs #44, #46 and #47 with run-scoped hire approvals and explicit bootstrap start. See [compatibility notes](docs/PAPERCLIP-COMPATIBILITY.md).
 
 Requires Node **24.11+**, matching the current Paperclip SDK/shared runtime requirement.
 

@@ -3,7 +3,7 @@
 ## Done
 
 - Shared skills system — deduplicate primary skills, role-specific overrides only when genuinely different
-- 26 modules: vision-workshop, market-analysis, hiring-review, tech-stack, architecture-plan, github-repo, pr-review, backlog, auto-assign, stall-detection, brand-identity, user-testing, ci-cd, monitoring, competitive-intel, documentation, security-audit, accessibility, website-relaunch, build-api, launch-mvp, codebase-onboarding, triage, dependency-management, release-management, game-design
+- 27 modules: vision-workshop, market-analysis, hiring-review, tech-stack, architecture-plan, github-repo, pr-review, lean-delivery, backlog, auto-assign, stall-detection, brand-identity, user-testing, ci-cd, monitoring, competitive-intel, documentation, security-audit, accessibility, website-relaunch, build-api, launch-mvp, codebase-onboarding, triage, dependency-management, release-management, game-design
 - 16 optional roles: product-owner, engineer, code-reviewer, ui-designer, ux-researcher, cto, cmo, devops, qa, technical-writer, security-engineer, customer-success, game-designer, level-designer, game-artist, audio-designer
 - 15 presets: fast, quality, rad, startup, research, full, secure, gtm, content, launch-mvp, build-api, website-relaunch, repo-maintenance, build-game, launch-pack
 - Template catalogue in README
@@ -76,6 +76,8 @@
 - Removed optional provisioning telemetry (was added then withdrawn)
 - Agent persona enrichment (default on when fragments exist) — domain lenses in `SOUL.md` for expert roles, output/review bars on module primary skills, and done-criteria in `HEARTBEAT.md`. Injected from `LENSES.md`/`DONE.md`/`<skill>.bar.md` fragments at assembly time; fragments never ship as standalone files.
 - Substantive PR review (new default, v0.3.24) — the `pr-review` merge gate is now executed verification instead of a reading-only `code-reviewer` verdict: CI-green when `ci-cd` is active, otherwise the Engineer runs the tests/build and pastes the output on the merge-gate stage. QA is the substantive blocking reviewer (`reviewGate.reviewers: ["qa"]`, two-mode `qa-review.md` with an evidence requirement); the Code Reviewer is advisory/non-blocking (`code-review.md` + base role files reframed, no GitHub-native `gh pr review`); the Security Engineer is wired into `activatesWithRoles` with a new conditional `pr-security-review.md`. `renderReviewGate` and the BOOTSTRAP guardrail render the CI/no-CI precondition and an evidence-required note.
+
+- Shipped-template contract tests — `tests/templates-contract.spec.ts` validates every module/preset routine, issue, goal and dependency against the enums Paperclip's validators accept
 
 ## In Progress
 
