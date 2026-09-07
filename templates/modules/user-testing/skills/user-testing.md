@@ -16,7 +16,7 @@ You own usability evaluations and user testing. This ensures the product meets r
    - **Major**: Significant friction or confusion
    - **Minor**: Cosmetic or low-impact usability issues
 6. Create follow-up issues for critical and major findings:
-   - `POST /api/companies/{companyId}/issues` with finding details and reproduction steps. Include the active `projectId` (and `goalId` / `parentId` when applicable). For top-level issues (no `parentId`), also include `"executionWorkspaceSettings": { "mode": "isolated_workspace" }` so each gets its own worktree; subissues set `parentId` and omit it.
+   - `POST /api/companies/{companyId}/issues` with finding details and reproduction steps. Include `projectId` plus `goalId` / `parentId` when applicable, and set `executionWorkspaceSettings: { "mode": "isolated_workspace" }` for top-level repository implementation issues and subissues when the instance feature, project policy, and initialized repository support isolation. Otherwise follow the rendered project policy and avoid concurrent shared-checkout writes. Reuse only when explicitly required via `inheritExecutionWorkspaceFromIssueId`; keep API-only work project-detached.
 7. Record summary in your daily notes
 
 ## Rules

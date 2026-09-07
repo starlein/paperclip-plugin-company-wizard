@@ -4,13 +4,13 @@ Primary assignment happens at backlog grooming — issues are assigned to the be
 
 ## Assignment Check (Fallback)
 
-On your heartbeat, after handling your own assignments:
+Only on an explicitly assigned auto-assignment routine issue:
 
 1. Confirm this is the active routine-run issue and checkout it before mutating the board.
-2. Query unassigned ready issues: `GET /api/companies/{companyId}/issues?status=todo` (filter for unassigned).
+2. Query unassigned ready issues plus active implementation issues and open implementation PRs. Treat PR count as a queue-health signal, not a hard assignment limit.
 3. If unassigned issues are available AND the Product Owner hasn't acted recently:
-   - Assign every suitable still-unassigned issue to its best-fit available agent (an agent may hold a short queue): `PATCH /api/issues/{id}` with `assigneeAgentId` and an assignment comment.
-   - Clear stragglers in one pass instead of drip-feeding one issue per run.
+   - Assign suitable acceptance-ready issues to available owners: `PATCH /api/issues/{id}` with `assigneeAgentId` and an assignment comment.
+   - Keep later roadmap work prioritized but inactive; a safety net must not manufacture a queue that outruns the merge gate.
 4. If the Product Owner is active, skip this step.
 5. Leave a routine-run comment summarizing assigned issue ids and skipped issue ids.
 6. Mark the routine-run issue done when complete.
@@ -18,7 +18,7 @@ On your heartbeat, after handling your own assignments:
 ## Rules
 
 - This is a safety net behind backlog grooming's direct assignment. Let the PO own assignment.
-- Clear stragglers in one pass instead of drip-feeding one issue per run.
+- Treat implementation and review load as advisory scheduling input. Do not leave acceptance-ready work unassigned solely because other PRs are open, and never model open-PR count as blocker relations.
 - Do not run this from normal heartbeats.
 - Do not self-assign random unassigned work.
 - If no suitable match exists, leave the issue unassigned and state the reason in the routine-run comment.

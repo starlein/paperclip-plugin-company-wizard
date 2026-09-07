@@ -10,6 +10,8 @@ Given a natural language description of what the user wants to build, you select
 
 {{MODULE_CATALOG}}
 
+`lean-delivery` is opt-in: include it only when the user explicitly requests lean delivery or its single-gate review policy. Open PR count is advisory in either mode, not a numeric assignment cap. Otherwise leave it unselected. When selected, include its `pr-review` and `github-repo` dependencies.
+
 ## Available Optional Roles (can be added on top of preset)
 
 {{ROLE_CATALOG}}

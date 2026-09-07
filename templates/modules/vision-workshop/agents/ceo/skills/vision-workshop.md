@@ -12,7 +12,7 @@ You own the company vision. Refine the initial goal into a strategic foundation 
    - **Strategic milestones**: Ordered list of milestones that lead to the vision
    - **Non-goals**: What the company explicitly does NOT do (prevents scope creep)
 3. Create issues for the first milestone's deliverables:
-   - `POST /api/companies/{companyId}/issues` with milestone context. Include the active `projectId` (and `goalId` / `parentId` when applicable). For top-level issues (no `parentId`), also include `"executionWorkspaceSettings": { "mode": "isolated_workspace" }` so each gets its own worktree; subissues set `parentId` and omit it.
+   - `POST /api/companies/{companyId}/issues` with milestone context. Include `projectId` plus `goalId` / `parentId` when applicable, and set `executionWorkspaceSettings: { "mode": "isolated_workspace" }` for top-level repository implementation issues and subissues when the instance feature, project policy, and initialized repository support isolation. Otherwise follow the rendered project policy and avoid concurrent shared-checkout writes. Reuse only when explicitly required via `inheritExecutionWorkspaceFromIssueId`; keep API-only work project-detached.
 4. Share the vision doc with the team via daily notes
 
 ## Rules

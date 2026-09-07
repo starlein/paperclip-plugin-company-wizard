@@ -1,18 +1,23 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { execFileSync } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { createTestHarness } from "@paperclipai/plugin-sdk/testing";
-import manifest from "../src/manifest.js";
-import plugin, { prepareLocalProjectWorkspace } from "../src/worker.js";
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { execFileSync } from 'node:child_process';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createTestHarness } from '@paperclipai/plugin-sdk/testing';
+import { pluginManifestV1Schema } from '@paperclipai/shared';
+import manifest from '../src/manifest.js';
+import plugin, { prepareLocalProjectWorkspace, provisionCompanySkills } from '../src/worker.js';
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("company-wizard", () => {
-  it("registers templates data handler", async () => {
+describe('company-wizard', () => {
+  it('ships a manifest accepted by the latest stable Paperclip schema', () => {
+    expect(() => pluginManifestV1Schema.parse(manifest)).not.toThrow();
+  });
+
+  it('registers templates data handler', async () => {
     const harness = createTestHarness({ manifest, capabilities: manifest.capabilities });
     await plugin.definition.setup(harness.ctx);
 
@@ -21,12 +26,12 @@ describe("company-wizard", () => {
       modules: Array<{ issues?: unknown[]; tasks?: unknown[] }>;
       roles: unknown[];
       loadErrors?: string[];
-    }>("templates");
+    }>('templates');
 
     // Templates may be empty if templates dir doesn't exist in test env, but handler should respond
-    expect(data).toHaveProperty("presets");
-    expect(data).toHaveProperty("modules");
-    expect(data).toHaveProperty("roles");
+    expect(data).toHaveProperty('presets');
+    expect(data).toHaveProperty('modules');
+    expect(data).toHaveProperty('roles');
     expect(Array.isArray(data.loadErrors ?? [])).toBe(true);
 
     // Compatibility guarantee: modules exposing issues should also expose tasks for older UI callers.
@@ -36,30 +41,32 @@ describe("company-wizard", () => {
     }
   });
 
-  it("registers start-provision action", async () => {
+  it('registers start-provision action', async () => {
     const harness = createTestHarness({ manifest, capabilities: manifest.capabilities });
     await plugin.definition.setup(harness.ctx);
 
     // Should return graceful error without a companyName (no longer throws)
-    const result = await harness.performAction("start-provision", {}) as { error?: string };
-    expect(result.error).toBe("companyName is required");
+    const result = (await harness.performAction('start-provision', {})) as { error?: string };
+    expect(result.error).toBe('companyName is required');
   });
 
-  it("reports available plugin updates", async () => {
-    const [major, minor, patch] = manifest.version.split(".").map((part) => Number.parseInt(part, 10));
+  it('reports available plugin updates', async () => {
+    const [major, minor, patch] = manifest.version
+      .split('.')
+      .map((part) => Number.parseInt(part, 10));
     const newerVersion = `${major}.${minor}.${patch + 1}`;
     const fetchMock = vi.fn(async () => {
       return new Response(JSON.stringify({ version: newerVersion }), {
         status: 200,
-        headers: { "content-type": "application/json" },
+        headers: { 'content-type': 'application/json' },
       });
     });
-    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal('fetch', fetchMock);
 
     const harness = createTestHarness({ manifest, capabilities: manifest.capabilities });
     await plugin.definition.setup(harness.ctx);
 
-    const result = (await harness.performAction("check-update", {})) as {
+    const result = (await harness.performAction('check-update', {})) as {
       ok?: boolean;
       currentVersion?: string;
       latestVersion?: string;
@@ -71,22 +78,22 @@ describe("company-wizard", () => {
     expect(result.currentVersion).toBe(manifest.version);
     expect(result.latestVersion).toBe(newerVersion);
     expect(result.updateAvailable).toBe(true);
-    expect(result.url).toContain("npmjs.com/package/@starlein/paperclip-plugin-company-wizard");
+    expect(result.url).toContain('npmjs.com/package/@starlein/paperclip-plugin-company-wizard');
   });
 
-  it("does not report an update when the installed plugin is current", async () => {
+  it('does not report an update when the installed plugin is current', async () => {
     const fetchMock = vi.fn(async () => {
       return new Response(JSON.stringify({ version: manifest.version }), {
         status: 200,
-        headers: { "content-type": "application/json" },
+        headers: { 'content-type': 'application/json' },
       });
     });
-    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal('fetch', fetchMock);
 
     const harness = createTestHarness({ manifest, capabilities: manifest.capabilities });
     await plugin.definition.setup(harness.ctx);
 
-    const result = (await harness.performAction("check-update", {})) as {
+    const result = (await harness.performAction('check-update', {})) as {
       ok?: boolean;
       currentVersion?: string;
       latestVersion?: string;
@@ -99,26 +106,26 @@ describe("company-wizard", () => {
     expect(result.updateAvailable).toBe(false);
   });
 
-  it("prepares fresh local project workspaces before provisioning", async () => {
-    const root = await mkdtemp(join(tmpdir(), "company-wizard-workspace-"));
-    const companyDir = join(root, "FlowBoard");
-    const projectDir = join(companyDir, "projects", "FlowBoard");
+  it('prepares fresh local project workspaces before provisioning', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'company-wizard-workspace-'));
+    const companyDir = join(root, 'FlowBoard');
+    const projectDir = join(companyDir, 'projects', 'FlowBoard');
 
     try {
       prepareLocalProjectWorkspace(
         {
-          name: "FlowBoard",
+          name: 'FlowBoard',
           workspace: {
-            sourceType: "local_path",
+            sourceType: 'local_path',
             cwd: projectDir,
-            defaultRef: "main",
+            defaultRef: 'main',
           },
         },
         companyDir,
       );
 
-      const head = execFileSync("git", ["-C", projectDir, "rev-parse", "--verify", "main"], {
-        encoding: "utf-8",
+      const head = execFileSync('git', ['-C', projectDir, 'rev-parse', '--verify', 'main'], {
+        encoding: 'utf-8',
       }).trim();
       expect(head).toMatch(/^[a-f0-9]{40}$/);
     } finally {
@@ -126,24 +133,27 @@ describe("company-wizard", () => {
     }
   });
 
-  it("resolves the configured object-shaped Anthropic secret ref before calling Anthropic", async () => {
-    const companyId = "11111111-1111-4111-8111-111111111111";
+  it('resolves the configured object-shaped Anthropic secret ref before calling Anthropic', async () => {
+    const companyId = '11111111-1111-4111-8111-111111111111';
     const secretRef = {
-      type: "secret_ref",
-      secretId: "22222222-2222-4222-8222-222222222222",
+      type: 'secret_ref',
+      secretId: '22222222-2222-4222-8222-222222222222',
     };
     const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
-      return new Response(JSON.stringify({
-        content: [
-          { type: "thinking", thinking: "internal" },
-          { type: "text", text: "ok" },
-        ],
-      }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          content: [
+            { type: 'thinking', thinking: 'internal' },
+            { type: 'text', text: 'ok' },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        },
+      );
     });
-    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal('fetch', fetchMock);
 
     const harness = createTestHarness({
       manifest,
@@ -151,322 +161,334 @@ describe("company-wizard", () => {
       config: { anthropicApiKey: secretRef },
     });
     const resolveSecret = vi
-      .spyOn(harness.ctx.secrets, "resolve")
-      .mockResolvedValue("resolved-anthropic-key");
+      .spyOn(harness.ctx.secrets, 'resolve')
+      .mockResolvedValue('resolved-anthropic-key');
     await plugin.definition.setup(harness.ctx);
 
-    const result = await harness.performAction("ai-chat", {
+    const result = (await harness.performAction('ai-chat', {
       companyId,
-      messages: [{ role: "user", content: "hello" }],
-    }) as { text?: string; error?: string };
+      messages: [{ role: 'user', content: 'hello' }],
+    })) as { text?: string; error?: string };
 
-    expect(result).toEqual({ text: "ok" });
+    expect(result).toEqual({ text: 'ok' });
     expect(resolveSecret).toHaveBeenCalledWith(secretRef, {
       companyId,
-      configPath: "anthropicApiKey",
+      configPath: 'anthropicApiKey',
     });
     expect(fetchMock).toHaveBeenCalledOnce();
 
     const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
-    expect((init.headers as Record<string, string>)["x-api-key"]).toBe("resolved-anthropic-key");
+    expect((init.headers as Record<string, string>)['x-api-key']).toBe('resolved-anthropic-key');
     expect(JSON.parse(String(init.body))).toMatchObject({
-      model: "claude-opus-5",
-      thinking: { type: "adaptive" },
-      output_config: { effort: "max" },
+      model: 'claude-opus-5',
+      thinking: { type: 'adaptive' },
+      output_config: { effort: 'max' },
     });
   });
 
-  it("uses a governed OpenAI key with GPT-5.6 Sol at high reasoning effort", async () => {
-    const companyId = "11111111-1111-4111-8111-111111111111";
+  it('uses a governed OpenAI key with GPT-5.6 Sol at high reasoning effort', async () => {
+    const companyId = '11111111-1111-4111-8111-111111111111';
     const secretRef = {
-      type: "secret_ref",
-      secretId: "33333333-3333-4333-8333-333333333333",
+      type: 'secret_ref',
+      secretId: '33333333-3333-4333-8333-333333333333',
     };
     const fetchMock = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => {
-      return new Response(JSON.stringify({ output_text: "openai-ok" }), {
+      return new Response(JSON.stringify({ output_text: 'openai-ok' }), {
         status: 200,
-        headers: { "content-type": "application/json" },
+        headers: { 'content-type': 'application/json' },
       });
     });
-    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal('fetch', fetchMock);
 
     const harness = createTestHarness({
       manifest,
       capabilities: manifest.capabilities,
-      config: { aiProvider: "openai", openaiApiKey: secretRef },
+      config: { aiProvider: 'openai', openaiApiKey: secretRef },
     });
     const resolveSecret = vi
-      .spyOn(harness.ctx.secrets, "resolve")
-      .mockResolvedValue("resolved-openai-key");
+      .spyOn(harness.ctx.secrets, 'resolve')
+      .mockResolvedValue('resolved-openai-key');
     await plugin.definition.setup(harness.ctx);
 
-    await expect(harness.performAction("check-ai-config", { companyId })).resolves.toEqual({
+    await expect(harness.performAction('check-ai-config', { companyId })).resolves.toEqual({
       ok: true,
-      provider: "openai",
-      model: "gpt-5.6-sol",
+      provider: 'openai',
+      model: 'gpt-5.6-sol',
     });
 
-    const result = await harness.performAction("ai-chat", {
+    const result = (await harness.performAction('ai-chat', {
       companyId,
-      system: "Build the company.",
-      messages: [{ role: "user", content: "hello" }],
-    }) as { text?: string; error?: string };
+      system: 'Build the company.',
+      messages: [{ role: 'user', content: 'hello' }],
+    })) as { text?: string; error?: string };
 
-    expect(result).toEqual({ text: "openai-ok" });
+    expect(result).toEqual({ text: 'openai-ok' });
     expect(resolveSecret).toHaveBeenCalledWith(secretRef, {
       companyId,
-      configPath: "openaiApiKey",
+      configPath: 'openaiApiKey',
     });
     expect(fetchMock).toHaveBeenCalledOnce();
-    expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://api.openai.com/v1/responses");
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe('https://api.openai.com/v1/responses');
 
     const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
-    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer resolved-openai-key");
+    expect((init.headers as Record<string, string>).Authorization).toBe(
+      'Bearer resolved-openai-key',
+    );
     expect(JSON.parse(String(init.body))).toMatchObject({
-      model: "gpt-5.6-sol",
-      reasoning: { effort: "high" },
-      instructions: "Build the company.",
-      input: [{ role: "user", content: "hello" }],
+      model: 'gpt-5.6-sol',
+      reasoning: { effort: 'high' },
+      instructions: 'Build the company.',
+      input: [{ role: 'user', content: 'hello' }],
     });
   });
 
-  it("rejects truncated Anthropic generations instead of accepting partial config", async () => {
+  it('rejects truncated Anthropic generations instead of accepting partial config', async () => {
     vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify({
-            stop_reason: "max_tokens",
-            content: [{ type: "text", text: "partial config" }],
-          }),
-          { status: 200, headers: { "content-type": "application/json" } },
-        ),
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              stop_reason: 'max_tokens',
+              content: [{ type: 'text', text: 'partial config' }],
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
       ),
     );
 
     const harness = createTestHarness({
       manifest,
       capabilities: manifest.capabilities,
-      config: { anthropicApiKey: "sk-ant-test" },
+      config: { anthropicApiKey: 'sk-ant-test' },
     });
     await plugin.definition.setup(harness.ctx);
 
-    const start = (await harness.performAction("ai-chat", {
-      mode: "start",
-      messages: [{ role: "user", content: "generate" }],
+    const start = (await harness.performAction('ai-chat', {
+      mode: 'start',
+      messages: [{ role: 'user', content: 'generate' }],
     })) as { jobId?: string; status?: string };
-    expect(start.status).toBe("pending");
+    expect(start.status).toBe('pending');
 
     let result: { status?: string; text?: string; error?: string } = {};
     for (let i = 0; i < 20; i++) {
       await new Promise((resolve) => setTimeout(resolve, 0));
-      result = (await harness.performAction("ai-chat", {
-        mode: "poll",
+      result = (await harness.performAction('ai-chat', {
+        mode: 'poll',
         jobId: start.jobId,
       })) as { status?: string; text?: string; error?: string };
-      if (result.status !== "pending") break;
+      if (result.status !== 'pending') break;
     }
     expect(result).toEqual({
-      status: "error",
-      text: "",
-      error: "Anthropic generation stopped before completion (max_tokens).",
+      status: 'error',
+      text: '',
+      error: 'Anthropic generation stopped before completion (max_tokens).',
     });
   });
 
   it.each([
     {
-      caseName: "incomplete response",
+      caseName: 'incomplete response',
       response: {
-        status: "incomplete",
-        incomplete_details: { reason: "max_output_tokens" },
-        output_text: "partial config",
+        status: 'incomplete',
+        incomplete_details: { reason: 'max_output_tokens' },
+        output_text: 'partial config',
       },
-      error: "OpenAI generation stopped before completion (max_output_tokens).",
+      error: 'OpenAI generation stopped before completion (max_output_tokens).',
     },
     {
-      caseName: "refusal",
+      caseName: 'refusal',
       response: {
-        status: "completed",
-        output: [{ content: [{ type: "refusal", refusal: "Cannot comply" }] }],
+        status: 'completed',
+        output: [{ content: [{ type: 'refusal', refusal: 'Cannot comply' }] }],
       },
-      error: "OpenAI refused the generation request.",
+      error: 'OpenAI refused the generation request.',
     },
-  ])("rejects an OpenAI $caseName instead of accepting empty or partial config", async ({
-    response,
-    error,
-  }) => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        new Response(JSON.stringify(response), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
-      ),
-    );
+  ])(
+    'rejects an OpenAI $caseName instead of accepting empty or partial config',
+    async ({ response, error }) => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(
+          async () =>
+            new Response(JSON.stringify(response), {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            }),
+        ),
+      );
 
-    const harness = createTestHarness({
-      manifest,
-      capabilities: manifest.capabilities,
-      config: { aiProvider: "openai", openaiApiKey: "sk-openai-test" },
-    });
-    await plugin.definition.setup(harness.ctx);
-
-    await expect(
-      harness.performAction("ai-chat", {
-        messages: [{ role: "user", content: "generate" }],
-      }),
-    ).resolves.toEqual({ text: "", error });
-  });
-
-  it("runs ai-chat as an async job (start → poll) for long generations", async () => {
-    const fetchMock = vi.fn(async () => {
-      return new Response(JSON.stringify({ content: [{ type: "text", text: "generated-config" }] }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
+      const harness = createTestHarness({
+        manifest,
+        capabilities: manifest.capabilities,
+        config: { aiProvider: 'openai', openaiApiKey: 'sk-openai-test' },
       });
+      await plugin.definition.setup(harness.ctx);
+
+      await expect(
+        harness.performAction('ai-chat', {
+          messages: [{ role: 'user', content: 'generate' }],
+        }),
+      ).resolves.toEqual({ text: '', error });
+    },
+  );
+
+  it('runs ai-chat as an async job (start → poll) for long generations', async () => {
+    const fetchMock = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({ content: [{ type: 'text', text: 'generated-config' }] }),
+        {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        },
+      );
     });
-    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal('fetch', fetchMock);
 
     const harness = createTestHarness({
       manifest,
       capabilities: manifest.capabilities,
-      config: { anthropicApiKey: "anthropic-secret-ref" },
+      config: { anthropicApiKey: 'anthropic-secret-ref' },
     });
     await plugin.definition.setup(harness.ctx);
 
-    const start = (await harness.performAction("ai-chat", {
-      mode: "start",
-      messages: [{ role: "user", content: "generate" }],
+    const start = (await harness.performAction('ai-chat', {
+      mode: 'start',
+      messages: [{ role: 'user', content: 'generate' }],
     })) as { jobId?: string; status?: string };
 
-    expect(typeof start.jobId).toBe("string");
-    expect(start.status).toBe("pending");
+    expect(typeof start.jobId).toBe('string');
+    expect(start.status).toBe('pending');
 
     // Poll until the background generation resolves.
     let result: { status?: string; text?: string; error?: string } = {};
     for (let i = 0; i < 20; i++) {
       await new Promise((r) => setTimeout(r, 0));
-      result = (await harness.performAction("ai-chat", {
-        mode: "poll",
+      result = (await harness.performAction('ai-chat', {
+        mode: 'poll',
         jobId: start.jobId,
       })) as { status?: string; text?: string; error?: string };
-      if (result.status !== "pending") break;
+      if (result.status !== 'pending') break;
     }
 
-    expect(result.status).toBe("done");
-    expect(result.text).toBe("generated-config");
+    expect(result.status).toBe('done');
+    expect(result.text).toBe('generated-config');
 
     // The job is consumed after a terminal poll — a second poll reports it gone.
-    const second = (await harness.performAction("ai-chat", {
-      mode: "poll",
+    const second = (await harness.performAction('ai-chat', {
+      mode: 'poll',
       jobId: start.jobId,
     })) as { status?: string };
-    expect(second.status).toBe("error");
+    expect(second.status).toBe('error');
   });
 
-  it("does not expose an enriched-personas toggle", () => {
+  it('does not expose an enriched-personas toggle', () => {
     const props = (manifest.instanceConfigSchema as any).properties;
     expect(props.enableEnrichedPersonas).toBeUndefined();
   });
 
-  it("declares the Anthropic key as a Paperclip secret reference", () => {
+  it('declares the Anthropic key as a Paperclip secret reference', () => {
     const props = (manifest.instanceConfigSchema as any).properties;
-    expect(props.anthropicApiKey.format).toBe("secret-ref");
+    expect(props.anthropicApiKey.format).toBe('secret-ref');
   });
 
   it("allows Paperclip's governed secret binding object in Anthropic config", () => {
     const props = (manifest.instanceConfigSchema as any).properties;
-    expect(props.anthropicApiKey.type).toEqual(["string", "object"]);
+    expect(props.anthropicApiKey.type).toEqual(['string', 'object']);
   });
 
-  it("exposes OpenAI as a governed AI-wizard provider", () => {
+  it('exposes OpenAI as a governed AI-wizard provider', () => {
     const props = (manifest.instanceConfigSchema as any).properties;
     expect(props.aiProvider).toMatchObject({
-      type: "string",
-      enum: ["anthropic", "openai"],
-      default: "anthropic",
+      type: 'string',
+      enum: ['anthropic', 'openai'],
+      default: 'anthropic',
     });
     expect(props.openaiApiKey).toMatchObject({
-      type: ["string", "object"],
-      format: "secret-ref",
+      type: ['string', 'object'],
+      format: 'secret-ref',
     });
   });
 
-  it("uses the npm host package version floor for installation compatibility", () => {
-    expect(manifest.minimumHostVersion).toBe("0.3.1");
+  it('does not reject current source hosts whose plugin loader reports version 0.0.0', () => {
+    expect(manifest.minimumHostVersion).toBeUndefined();
   });
 
-  it("creates governance records as unassigned todo issues for existing-company provisioning", async () => {
-    const tmp = await mkdtemp(join(tmpdir(), "company-wizard-existing-"));
+  it('creates governance records as unassigned todo issues for existing-company provisioning', async () => {
+    const tmp = await mkdtemp(join(tmpdir(), 'company-wizard-existing-'));
     const issueBodies: any[] = [];
 
     const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input);
-      const method = init?.method || "GET";
+      const method = init?.method || 'GET';
 
-      if (url.endsWith("/api/companies") && method === "GET") {
+      if (url.endsWith('/api/companies') && method === 'GET') {
         return new Response(JSON.stringify([]), {
           status: 200,
-          headers: { "content-type": "application/json" },
+          headers: { 'content-type': 'application/json' },
         });
       }
-      if (url.endsWith("/api/instance/settings/experimental") && method === "GET") {
+      if (url.endsWith('/api/instance/settings/experimental') && method === 'GET') {
         return new Response(JSON.stringify({ enableIsolatedWorkspaces: false }), {
           status: 200,
-          headers: { "content-type": "application/json" },
+          headers: { 'content-type': 'application/json' },
         });
       }
-      if (url.endsWith("/api/companies/company-existing") && method === "GET") {
-        return new Response(JSON.stringify({ id: "company-existing", name: "Onboarding" }), {
+      if (url.endsWith('/api/companies/company-existing') && method === 'GET') {
+        return new Response(JSON.stringify({ id: 'company-existing', name: 'Onboarding' }), {
           status: 200,
-          headers: { "content-type": "application/json" },
+          headers: { 'content-type': 'application/json' },
         });
       }
-      if (url.endsWith("/api/companies/company-existing/issues") && method === "POST") {
-        const body = JSON.parse(String(init?.body || "{}"));
+      if (url.endsWith('/api/companies/company-existing/projects') && method === 'GET') {
+        return new Response(JSON.stringify([]), {
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (url.endsWith('/api/companies/company-existing/issues') && method === 'POST') {
+        const body = JSON.parse(String(init?.body || '{}'));
         issueBodies.push(body);
         return new Response(
           JSON.stringify({
-            id: body.title === "Board Operations" ? "issue-board" : "issue-hiring",
-            identifier: body.title === "Board Operations" ? "ONB-1" : "ONB-2",
+            id: body.title === 'Board Operations' ? 'issue-board' : 'issue-hiring',
+            identifier: body.title === 'Board Operations' ? 'ONB-1' : 'ONB-2',
           }),
-          { status: 201, headers: { "content-type": "application/json" } },
+          { status: 201, headers: { 'content-type': 'application/json' } },
         );
       }
-      if (url.includes("/api/issues/") && url.includes("/documents/") && method === "PUT") {
+      if (url.includes('/api/issues/') && url.includes('/documents/') && method === 'PUT') {
         return new Response(JSON.stringify({ ok: true }), {
           status: 200,
-          headers: { "content-type": "application/json" },
+          headers: { 'content-type': 'application/json' },
         });
       }
 
-      return new Response(JSON.stringify({ error: "stop after governance records" }), {
+      return new Response(JSON.stringify({ error: 'stop after governance records' }), {
         status: 500,
-        headers: { "content-type": "application/json" },
+        headers: { 'content-type': 'application/json' },
       });
     });
-    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal('fetch', fetchMock);
 
     try {
       const harness = createTestHarness({
         manifest,
         capabilities: manifest.capabilities,
-        config: { companiesDir: tmp, paperclipUrl: "http://paperclip.test" },
+        config: { companiesDir: tmp, paperclipUrl: 'http://paperclip.test' },
       });
       await plugin.definition.setup(harness.ctx);
 
-      await harness.performAction("start-provision", {
-        companyName: "Onboarding",
-        existingCompanyId: "company-existing",
+      await harness.performAction('start-provision', {
+        companyName: 'Onboarding',
+        existingCompanyId: 'company-existing',
         selectedModules: [],
         selectedRoles: [],
       });
 
       expect(issueBodies).toHaveLength(2);
-      expect(issueBodies.map((body) => body.title)).toEqual(["Board Operations", "Hiring Plan"]);
+      expect(issueBodies.map((body) => body.title)).toEqual(['Board Operations', 'Hiring Plan']);
       for (const body of issueBodies) {
-        expect(body.status).toBe("todo");
+        expect(body.status).toBe('todo');
         expect(body.assigneeAgentId).toBeUndefined();
         expect(body.assigneeUserId).toBeUndefined();
       }
@@ -475,122 +497,336 @@ describe("company-wizard", () => {
     }
   });
 
-  it("lists companies for the update dropdown", async () => {
+  it('lists companies for the update dropdown', async () => {
     const fetchMock = vi.fn(async (input: string | URL | Request) => {
       const url = String(input);
-      if (url.endsWith("/api/companies")) {
+      if (url.endsWith('/api/companies')) {
         return new Response(
           JSON.stringify([
-            { id: "company-a", name: "Acme", description: "First" },
-            { id: "company-b", name: "Globex" },
-            { id: null, name: "ignored" },
+            { id: 'company-a', name: 'Acme', description: 'First' },
+            { id: 'company-b', name: 'Globex' },
+            { id: null, name: 'ignored' },
           ]),
-          { status: 200, headers: { "content-type": "application/json" } },
+          { status: 200, headers: { 'content-type': 'application/json' } },
         );
       }
-      return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+      return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
     });
-    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal('fetch', fetchMock);
 
     const harness = createTestHarness({
       manifest,
       capabilities: manifest.capabilities,
-      config: { paperclipUrl: "http://list-companies.test" },
+      config: { paperclipUrl: 'http://list-companies.test' },
     });
     await plugin.definition.setup(harness.ctx);
 
-    const result = (await harness.performAction("list-companies", {})) as {
+    const result = (await harness.performAction('list-companies', {})) as {
       companies?: Array<{ id: string; name: string; description: string }>;
       error?: string;
     };
 
     expect(result.error).toBeUndefined();
     expect(result.companies).toEqual([
-      { id: "company-a", name: "Acme", description: "First" },
-      { id: "company-b", name: "Globex", description: "" },
+      { id: 'company-a', name: 'Acme', description: 'First' },
+      { id: 'company-b', name: 'Globex', description: '' },
     ]);
   });
 
-  it("reports healthy", async () => {
-    const health = await plugin.definition.onHealth!();
-    expect(health.status).toBe("ok");
+  it('lists only pending hire_agent approvals', async () => {
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes('/approvals')) {
+        return new Response(
+          JSON.stringify([
+            {
+              id: 'ap-hire',
+              companyId: 'company-a',
+              type: 'hire_agent',
+              status: 'pending',
+              payload: { name: 'CEO' },
+            },
+            {
+              id: 'ap-budget',
+              companyId: 'company-a',
+              type: 'budget_override_required',
+              status: 'pending',
+              payload: {},
+            },
+          ]),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      }
+      return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const harness = createTestHarness({
+      manifest,
+      capabilities: manifest.capabilities,
+      config: { paperclipUrl: 'http://approvals.test' },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    const result = (await harness.performAction('list-pending-hires', {
+      companyId: 'company-a',
+      approvalIds: ['ap-hire', 'ap-budget'],
+    })) as { approvals?: Array<{ id: string; name: string }>; error?: string };
+
+    expect(result.error).toBeUndefined();
+    expect(result.approvals?.map((a) => a.id)).toEqual(['ap-hire']);
+    expect(result.approvals?.[0]?.name).toBe('CEO');
   });
 
-  it("provisions Company Skills and passes desiredSkills on hire", async () => {
-    const tmp = await mkdtemp(join(tmpdir(), "company-wizard-skills-"));
-    const templatesPath = join(tmp, "templates");
+  it('approves only hire_agent approvals and never other pending approval types', async () => {
+    const approveCalls: string[] = [];
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes('/approve')) {
+        approveCalls.push(url);
+        return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url.includes('/approvals')) {
+        return new Response(
+          JSON.stringify([
+            {
+              id: 'ap-hire-1',
+              companyId: 'company-a',
+              type: 'hire_agent',
+              status: 'pending',
+              payload: { name: 'CEO' },
+            },
+            {
+              id: 'ap-hire-2',
+              companyId: 'company-a',
+              type: 'hire_agent',
+              status: 'pending',
+              payload: { name: 'QA' },
+            },
+            {
+              id: 'ap-budget',
+              companyId: 'company-a',
+              type: 'budget_override_required',
+              status: 'pending',
+              payload: {},
+            },
+          ]),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      }
+      return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+    });
+    vi.stubGlobal('fetch', fetchMock);
 
-    for (const role of ["ceo", "engineer"]) {
-      const roleDir = join(templatesPath, "roles", role);
+    const harness = createTestHarness({
+      manifest,
+      capabilities: manifest.capabilities,
+      config: { paperclipUrl: 'http://approvals.test' },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    // A caller asking for the budget approval must not get it approved: the action
+    // re-reads the pending set and intersects, so only hire_agent ids survive.
+    const result = (await harness.performAction('approve-pending-hires', {
+      companyId: 'company-a',
+      approvalIds: ['ap-hire-1', 'ap-budget'],
+    })) as { approved?: string[]; failed?: unknown[]; error?: string };
+
+    expect(result.error).toBeUndefined();
+    expect(result.approved).toEqual(['ap-hire-1']);
+    expect(approveCalls).toHaveLength(1);
+    expect(approveCalls[0]).toContain('/api/approvals/ap-hire-1/approve');
+    expect(approveCalls.join(' ')).not.toContain('ap-budget');
+  });
+
+  it('requires a companyId before touching approvals', async () => {
+    const fetchMock = vi.fn(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const harness = createTestHarness({
+      manifest,
+      capabilities: manifest.capabilities,
+      config: { paperclipUrl: 'http://approvals.test' },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    const listed = (await harness.performAction('list-pending-hires', {})) as { error?: string };
+    const approved = (await harness.performAction('approve-pending-hires', {})) as {
+      error?: string;
+    };
+
+    expect(listed.error).toBe('companyId is required');
+    expect(approved.error).toBe('companyId is required');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('reports healthy', async () => {
+    const health = await plugin.definition.onHealth!();
+    expect(health.status).toBe('ok');
+  });
+
+  it('provisions Company Skills and passes desiredSkills on hire', async () => {
+    const tmp = await mkdtemp(join(tmpdir(), 'company-wizard-skills-'));
+    const templatesPath = join(tmp, 'templates');
+
+    for (const role of ['ceo', 'engineer']) {
+      const roleDir = join(templatesPath, 'roles', role);
       await mkdir(roleDir, { recursive: true });
       await writeFile(
-        join(roleDir, "role.meta.json"),
-        JSON.stringify({ name: role, base: role === "ceo" }),
+        join(roleDir, 'role.meta.json'),
+        JSON.stringify({ name: role, base: role === 'ceo' }),
       );
-      await writeFile(join(roleDir, "AGENTS.md"), `# ${role}\n\n## Skills\n`);
-      await writeFile(join(roleDir, "SOUL.md"), `# ${role} soul\n`);
+      await writeFile(join(roleDir, 'AGENTS.md'), `# ${role}\n\n## Skills\n`);
+      await writeFile(join(roleDir, 'SOUL.md'), `# ${role} soul\n`);
     }
-    const modDir = join(templatesPath, "modules", "ci-cd");
-    await mkdir(join(modDir, "skills"), { recursive: true });
+    const modDir = join(templatesPath, 'modules', 'ci-cd');
+    await mkdir(join(modDir, 'skills'), { recursive: true });
     await writeFile(
-      join(modDir, "module.meta.json"),
-      JSON.stringify({ name: "ci-cd", capabilities: [{ skill: "ci-cd", owners: ["engineer"] }] }),
+      join(modDir, 'module.meta.json'),
+      JSON.stringify({ name: 'ci-cd', capabilities: [{ skill: 'ci-cd', owners: ['engineer'] }] }),
     );
-    await writeFile(join(modDir, "skills", "ci-cd.md"), "# CI/CD\n");
+    await writeFile(join(modDir, 'skills', 'ci-cd.md'), '# CI/CD\n');
 
     const skillCreateBodies: any[] = [];
     const hireBodies: any[] = [];
     const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input);
-      const method = init?.method || "GET";
+      const method = init?.method || 'GET';
       const json = (body: unknown, status = 200) =>
-        new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+        new Response(JSON.stringify(body), {
+          status,
+          headers: { 'content-type': 'application/json' },
+        });
 
-      if (url.endsWith("/api/companies") && method === "GET") return json([]);
-      if (url.endsWith("/api/instance/settings/experimental")) return json({ enableIsolatedWorkspaces: false });
-      if (url.endsWith("/api/companies") && method === "POST") return json({ id: "co-1", name: "Acme" }, 201);
-      if (url.endsWith("/api/companies/co-1/skills") && method === "GET") return json([]);
-      if (url.endsWith("/api/companies/co-1/skills") && method === "POST") {
-        const body = JSON.parse(String(init?.body || "{}"));
+      if (url.endsWith('/api/companies') && method === 'GET') return json([]);
+      if (url.endsWith('/api/instance/settings/experimental'))
+        return json({ enableIsolatedWorkspaces: false });
+      if (url.endsWith('/api/companies') && method === 'POST')
+        return json({ id: 'co-1', name: 'Acme' }, 201);
+      if (url.endsWith('/api/companies/co-1/skills') && method === 'GET') return json([]);
+      if (url.endsWith('/api/companies/co-1/skills') && method === 'POST') {
+        const body = JSON.parse(String(init?.body || '{}'));
         skillCreateBodies.push(body);
         return json({ id: `skill-${body.slug}`, key: `key-${body.slug}`, slug: body.slug }, 201);
       }
-      if (url.endsWith("/api/companies/co-1/issues") && method === "POST") {
-        const body = JSON.parse(String(init?.body || "{}"));
-        return json({ id: body.title === "Board Operations" ? "issue-board" : "issue-hiring" }, 201);
+      if (url.endsWith('/api/companies/co-1/issues') && method === 'POST') {
+        const body = JSON.parse(String(init?.body || '{}'));
+        return json(
+          {
+            id: body.title.startsWith('Bootstrap ')
+              ? 'issue-bootstrap'
+              : body.title === 'Board Operations'
+                ? 'issue-board'
+                : 'issue-hiring',
+          },
+          201,
+        );
       }
-      if (url.includes("/documents/") && method === "PUT") return json({ ok: true });
-      if (url.endsWith("/api/companies/co-1/agent-hires") && method === "POST") {
-        hireBodies.push(JSON.parse(String(init?.body || "{}")));
-        return json({ agent: { id: `agent-${hireBodies.length}` } }, 201);
+      if (url.includes('/documents/') && method === 'PUT') return json({ ok: true });
+      if (url.endsWith('/api/companies/co-1/agent-hires') && method === 'POST') {
+        hireBodies.push(JSON.parse(String(init?.body || '{}')));
+        return json(
+          {
+            agent: { id: `agent-${hireBodies.length}`, status: 'pending_approval' },
+            approval: { id: `approval-${hireBodies.length}` },
+          },
+          201,
+        );
       }
       // Generic success for anything else the flow touches (bundle files, routines, etc.)
-      return json({ ok: true, id: "x", key: "x", slug: "x" });
+      return json({ ok: true, id: 'x', key: 'x', slug: 'x' });
     });
-    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal('fetch', fetchMock);
 
     try {
       const harness = createTestHarness({
         manifest,
         capabilities: manifest.capabilities,
-        config: { companiesDir: tmp, templatesPath, paperclipUrl: "http://paperclip.test" },
+        config: { companiesDir: tmp, templatesPath, paperclipUrl: 'http://paperclip.test' },
       });
       await plugin.definition.setup(harness.ctx);
 
-      await harness.performAction("start-provision", {
-        companyName: "Acme",
-        selectedModules: ["ci-cd"],
-        selectedRoles: ["engineer"],
-      });
+      const result = (await harness.performAction('start-provision', {
+        companyName: 'Acme',
+        selectedModules: ['ci-cd'],
+        selectedRoles: ['engineer'],
+      })) as { error?: string; pendingApprovalIds?: string[]; bootstrapIssueId?: string };
+
+      expect(result.error).toBeUndefined();
+      expect(result.pendingApprovalIds).toEqual(['approval-1', 'approval-2']);
+      expect(result.bootstrapIssueId).toBe('issue-bootstrap');
+      expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/approve'))).toBe(false);
 
       // A Company Skill was created for the module capability.
-      expect(skillCreateBodies.map((b) => b.slug)).toContain("ci-cd");
+      expect(skillCreateBodies.map((b) => b.slug)).toContain('ci-cd');
       // The engineer hire carried the skill key in desiredSkills.
-      const engineerHire = hireBodies.find((b) => b.role === "general" || b.title === "Engineer" || b.name === "Engineer");
+      const engineerHire = hireBodies.find(
+        (b) => b.role === 'general' || b.title === 'Engineer' || b.name === 'Engineer',
+      );
       expect(engineerHire).toBeTruthy();
-      expect(engineerHire.desiredSkills).toContain("key-ci-cd");
+      expect(engineerHire.desiredSkills).toContain('key-ci-cd');
     } finally {
       await rm(tmp, { recursive: true, force: true });
     }
   });
+
+  it.each([true, false])(
+    'preserves disambiguated Company Skill slugs during updates (rename supported=%s)',
+    async (renameSupported) => {
+      const calls: Array<[string, unknown]> = [];
+      const client = {
+        async listCompanySkills() {
+          return [
+            {
+              id: 'skill-1',
+              key: 'company/company-1/ci-cd-engineer',
+              metadata: { sourceKind: 'managed_local' },
+              editable: true,
+              slug: 'ci-cd-engineer',
+              name: 'Old CI',
+              description: 'old',
+              markdown: '# Old CI',
+              categories: ['old'],
+            },
+          ];
+        },
+        async updateCompanySkillFile(_companyId: string, _skillId: string, body: unknown) {
+          calls.push(['file', body]);
+        },
+        async renameCompanySkill(_companyId: string, _skillId: string, body: unknown) {
+          calls.push(['rename', body]);
+          return renameSupported
+            ? { skill: { key: 'canonical/ci-cd-engineer', slug: 'ci-cd-engineer' } }
+            : null;
+        },
+        async updateCompanySkill(_companyId: string, _skillId: string, body: unknown) {
+          calls.push(['metadata', body]);
+        },
+      };
+
+      const keys = await provisionCompanySkills(
+        client,
+        'company-1',
+        [
+          {
+            slug: 'ci-cd-engineer',
+            name: 'CI/CD',
+            description: 'current',
+            markdown: '# CI/CD',
+            categories: ['delivery'],
+          },
+        ],
+        () => undefined,
+      );
+
+      expect(keys.get('ci-cd-engineer')).toBe(
+        renameSupported ? 'canonical/ci-cd-engineer' : 'company/company-1/ci-cd-engineer',
+      );
+      expect(calls).toEqual([
+        ['file', { path: 'SKILL.md', content: '# CI/CD' }],
+        ['rename', { name: 'CI/CD', slug: 'ci-cd-engineer' }],
+        ['metadata', { description: 'current', categories: ['delivery'] }],
+      ]);
+    },
+  );
 });

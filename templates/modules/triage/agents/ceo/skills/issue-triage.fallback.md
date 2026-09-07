@@ -8,7 +8,7 @@ The Product Owner or Engineer primarily owns issue triage. You are the fallback 
 2. If issues are piling up without responses:
    - Classify each as bug, feature, question, or invalid
    - Respond with a brief acknowledgment
-   - Create Paperclip tasks for actionable items with priority set. When creating Paperclip issues from triaged GitHub items, include `executionWorkspaceSettings: { mode: 'isolated_workspace' }` in the issue creation payload.
+   - Create Paperclip tasks for actionable items with priority set. When creating Paperclip issues from triaged GitHub items, include `executionWorkspaceSettings: { mode: 'isolated_workspace' }` for repository implementation only when the instance feature, project policy, and initialized repository support isolation; otherwise follow the rendered project policy and avoid concurrent shared-checkout writes. Keep API-only work project-detached.
    - Close duplicates and invalid issues with explanation
 3. If the Product Owner or Engineer is active and triaging, skip this entirely.
 

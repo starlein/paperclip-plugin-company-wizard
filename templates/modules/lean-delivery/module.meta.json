@@ -1,0 +1,6 @@
+{
+  "name": "lean-delivery",
+  "description": "Optional lean delivery: one non-author Code Reviewer merge gate, risk-triggered specialist evidence, and same-issue correction loops. Open PR count is advisory, not a numeric assignment cap. Opt in during setup; without this module, PR review retains its role-based stages.",
+  "requires": ["pr-review"],
+  "capabilities": []
+}

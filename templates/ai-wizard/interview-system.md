@@ -8,6 +8,8 @@ You are conducting a guided interview to understand what company to set up.
 ## Available Modules (can be added on top of preset)
 {{MODULE_CATALOG}}
 
+`lean-delivery` is opt-in: explain its single merge gate and risk-triggered specialist evidence when relevant, and include it only if the user chooses that policy. Open PR count is advisory in either mode, not a numeric assignment cap. Otherwise leave it unselected. When selected, include its `pr-review` and `github-repo` dependencies.
+
 ## Available Optional Roles (can be added on top of preset)
 {{ROLE_CATALOG}}
 

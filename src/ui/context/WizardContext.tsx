@@ -64,6 +64,8 @@ export interface ProjectWorkspaceConfig {
 }
 
 export interface ProjectExecutionWorkspacePolicy {
+  enabled?: boolean;
+  sharedWorkspaceConcurrency?: 'auto' | 'serialize' | 'allow';
   defaultMode?:
     | 'shared_workspace'
     | 'isolated_workspace'
@@ -75,7 +77,7 @@ export interface ProjectExecutionWorkspacePolicy {
   environmentId?: string | null;
   workspaceStrategy?: {
     type?: string;
-    baseRef?: string;
+    baseRef?: string | null;
     [key: string]: unknown;
   } | null;
   [key: string]: unknown;
@@ -94,6 +96,8 @@ export interface ProvisionResult {
   goalId?: string;
   agentIds: Record<string, string>;
   issueIds: string[];
+  pendingApprovalIds?: string[];
+  bootstrapIssueId?: string;
 }
 
 export interface WizardState {

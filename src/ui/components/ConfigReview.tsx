@@ -607,6 +607,7 @@ export function ConfigReview() {
     setPreviewError(null);
     try {
       const result = (await previewFilesAction({
+        existingCompanyId: state.existingCompanyId || undefined,
         companyName: state.companyName || 'Preview',
         presetName: state.presetName,
         selectedModules: state.selectedModules,
@@ -626,6 +627,7 @@ export function ConfigReview() {
       setLoadingFiles(false);
     }
   }, [
+    state.existingCompanyId,
     state.companyName,
     state.presetName,
     state.selectedModules,

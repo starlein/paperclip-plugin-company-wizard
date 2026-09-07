@@ -26,7 +26,10 @@ After `pnpm build`, reload the plugin in the Paperclip UI. No reinstall required
 - `check-auth` — Validates Paperclip API credentials early (used by the summary step).
 - `ai-chat` — Proxies messages to the Anthropic API using the configured key. Returns `{ text, error? }` — never throws.
 - `check-ai-config` — Lightweight check that `anthropicApiKey` is configured. Called by the AI wizard on mount to show a warning banner.
-- `refresh-templates` — Deletes cached templates dir and re-downloads from GitHub. Triggered by the "Update templates" button on the onboarding screen.
+- `refresh-templates` — Official default uses bundled release templates; custom remote sources refresh atomically into URL-specific caches. Explicit local paths are never overwritten. Provisioning does not silently refresh after preview.
+- `list-pending-hires` — Requires run approval IDs; filters live pending `hire_agent` records by company, type, and ID.
+- `approve-pending-hires` — Requires explicit selected IDs and re-reads live approvals before board-authorized approval. Provisioning never auto-approves.
+- `start-bootstrap` — Explicit issue-bound, idempotent CEO wake after checking company, assignee, status, and invokability; restores an absent watchdog best-effort.
 
 All worker actions return errors as `{ error }` instead of throwing, so the plugin host never swallows messages in generic 502 responses.
 
@@ -70,7 +73,9 @@ templates/
     └── messages.json
 ```
 
-**Current counts**: 15 presets, 26 modules, 16 optional roles (CEO is the only base role).
+**Current counts**: 15 presets, 27 modules, 16 optional roles (CEO is the only base role).
+
+**Optional lean delivery**: `lean-delivery` requires `pr-review` (and transitively `github-repo`) and is not included in built-in presets. It adds `docs/lean-delivery.md`, one non-author Code Reviewer gate, and risk-triggered evidence. Queue counts are advisory, not fixed gates. Standard review retains role-based stages; actual blockers and explicit operator capacity policies apply in both modes.
 
 ### Skill Resolution
 
@@ -121,9 +126,22 @@ Enabled by default when templates provide fragments. The plugin no longer expose
 
 Connects to Paperclip API (auto-detects auth mode). Resolves the target company: creates a new one (with `companyDescription`) or, when `existingCompanyId` is passed, loads it via `getCompany` (existing-company runs skip company creation and skip cleanup on error). Creates Board Operations and Hiring Plan issues, writes `decision-log` and `hiring-plan` documents. **Provisions Company Skills** — each skill from `companySkills` is upserted into the Skills Store before any agents are hired. Then provisions CEO/team agents via governed `/agent-hires` requests with full managed `instructionsBundle` payloads, `sourceIssueId` provenance, and `desiredSkills` set deterministically per role from `roleSkillSlugs` (replacing the old `preserveExistingSkillSync` approach). Pending approval ids are logged for board action and are not auto-approved. Scheduled routines are created with board authority, then a Bootstrap Issue is created for the CEO (description = BOOTSTRAP.md content, title uses the resolved company name). A **task watchdog** is then attached to the Bootstrap Issue (CEO as watchdog agent, with recovery instructions) so the initial setup self-recovers if it stalls — best-effort, since in the governed hire flow the CEO may still be pending approval (not yet invokable), in which case the upsert fails non-fatally and provisioning continues. The CEO then reads the bootstrap issue and creates remaining goals/issues and links pre-created projects as described in BOOTSTRAP.md.
 
+### Execution Workspace Policy
+
+`effectiveExecutionPolicy()` in `assemble.js` resolves the `executionWorkspacePolicy` sent with the project (and rendered into BOOTSTRAP.md). It **always returns a policy** — the wizard no longer lets the server fall back to an implicit default:
+
+- Isolated `git_worktree` mode only when the instance experimental setting `enableIsolatedWorkspaces` is on **and** the project is an existing external repo (`sourceType: "git_repo"`). A fresh local repo defers isolation (no base ref exists yet on first run).
+- Otherwise an explicit `shared_workspace` policy.
+
+Every branch carries `sharedWorkspaceConcurrency: "serialize"` unless the project pins its own value. Paperclip's `auto` only serializes non-local environments, so on a local driver it would let every agent run enter the *same* working tree concurrently and collide on git state. The deferral is bounded by holder liveness (60–120 s backoff), not an attempt counter, so a deferred run never starves.
+
+`enabled` is required by Paperclip's `projectExecutionWorkspacePolicySchema` (which is `.strict()` — unknown keys are a 400). Never forward a partial policy verbatim; every return path defaults `enabled` to `true`.
+
+Current Paperclip ignores workspace policies/settings when `enableIsolatedWorkspaces` is off. Project serialization also requires `enabled: true`; explicit issue concurrency/mode settings take precedence. Preserve operator opt-outs and never claim that storing `serialize` alone guarantees enforcement.
+
 ### Task Watchdogs
 
-Watchdogs are Paperclip's native, event-driven stall recovery: `watchdog: { agentId, instructions }` on an issue names an agent that Paperclip wakes the moment the issue's subtree stops without completing. The wizard attaches one to the Bootstrap Issue (see above), and the `backlog-health` skill instructs the PO/CEO to attach a watchdog to every top-level work issue they create — this targets the exact stall classes (misrouted reviews, stranded merge issues) the periodic `stall-detection` routine backstops. The watchdog agent must be invokable, so plugin-side attachment is always best-effort. Do NOT hand-write recovery flows that archive/delete the run workspace (see workspace-lifecycle hardening in role `HEARTBEAT.md` files).
+Watchdogs are native event-driven stall recovery. The wizard attaches one to bootstrap best-effort and retries an absent watchdog on explicit startup after hire approval; existing operator watchdogs are preserved. Generated workflows attach bounded recovery only where appropriate. The watchdog agent must be invokable. Never archive/delete reusable execution workspaces as a recovery shortcut.
 
 ### Model Defaults
 
@@ -133,7 +151,7 @@ Use the concrete `gpt-5.6-sol` slug, not the bare `gpt-5.6` alias: OpenAI publis
 
 `ADAPTER_TYPES` in `StepName.tsx` mirrors Paperclip's built-in `AGENT_ADAPTER_TYPES`. Adapter type is an open string server-side (external adapters may register their own), so the list is a convenience picker, not a constraint.
 
-Optional setting `disableBoardApprovalOnNewCompanies` (default `false`): when `true`, new companies are PATCHed to `requireBoardApprovalForNewAgents=false` right after creation for legacy fully-autonomous bootstrap behavior. Ignored for existing-company runs.
+The wizard never changes `requireBoardApprovalForNewAgents`. Pending approvals remain explicit board decisions.
 
 ## Test Suites
 

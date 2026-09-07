@@ -1,6 +1,8 @@
 import { definePlugin, runWorker } from '@paperclipai/plugin-sdk';
+import type { PluginStateClient } from '@paperclipai/plugin-sdk';
 import type { EnvSecretRefBinding } from '@paperclipai/shared';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -8,6 +10,8 @@ import { fileURLToPath } from 'node:url';
 import manifest from './manifest.js';
 // @ts-ignore — plain JS modules, bundled by esbuild
 import { assembleCompany, toPascalCase } from './logic/assemble.js';
+// @ts-ignore — plain JS modules, bundled by esbuild
+import { resolveExistingProjects, projectPolicyChanges } from './logic/existing-projects.js';
 // @ts-ignore — plain JS module, bundled by esbuild
 import { isNewerVersion } from './logic/version.js';
 // @ts-ignore
@@ -130,45 +134,29 @@ function isDockerLayout(): boolean {
 /**
  * Resolve (and if needed, create) the templates directory.
  * Resolution order:
- *  1. cfg.templatesPath if set → use it; auto-download if missing.
- *  2. Docker detection: ~/plugin-templates when ~/instances exists.
- *  3. Default: ~/.paperclip/plugin-templates → auto-download if missing.
- *  4. Bundled templates (dist/../templates) as last resort.
+ * Explicit local templates are operator-owned. The official default uses the
+ * bundled release, never an older shared cache or a moving main branch.
+ * A custom repo URL opts into the Docker/home cache and remote refresh.
  */
-async function ensureTemplatesDir(cfg: Record<string, string>): Promise<string> {
+export async function ensureTemplatesDir(cfg: Record<string, string>): Promise<string> {
   const repoUrl = cfg.templatesRepoUrl || DEFAULT_TEMPLATES_REPO_URL;
 
   if (cfg.templatesPath) {
     if (fs.existsSync(cfg.templatesPath)) return cfg.templatesPath;
-    downloadTemplatesFromGithub(cfg.templatesPath, repoUrl);
-    return cfg.templatesPath;
+    throw new Error(`Configured templatesPath does not exist: ${cfg.templatesPath}`);
   }
 
-  // Docker detection: prefer ~/plugin-templates when ~/instances exists (Docker layout)
-  if (isDockerLayout()) {
-    const dockerTemplatesDir = path.join(os.homedir(), 'plugin-templates');
-    if (fs.existsSync(dockerTemplatesDir)) return dockerTemplatesDir;
-    try {
-      downloadTemplatesFromGithub(dockerTemplatesDir, repoUrl);
-      return dockerTemplatesDir;
-    } catch {
-      // Fall through to home-dir default
-    }
-  }
-
-  const defaultDir = path.join(os.homedir(), '.paperclip', 'plugin-templates');
-
-  if (fs.existsSync(defaultDir)) return defaultDir;
-
-  try {
-    downloadTemplatesFromGithub(defaultDir, repoUrl);
-    return defaultDir;
-  } catch {
+  if (!cfg.templatesRepoUrl || cfg.templatesRepoUrl === DEFAULT_TEMPLATES_REPO_URL) {
     if (fs.existsSync(BUNDLED_TEMPLATES_DIR)) return BUNDLED_TEMPLATES_DIR;
     throw new Error(
-      'Templates not found and download failed. Configure templatesPath or templatesRepoUrl in plugin settings.',
+      'Bundled templates are missing. Reinstall Company Wizard or configure templatesPath.',
     );
   }
+
+  const cacheDir = resolveTemplatesCacheDir(cfg);
+  if (fs.existsSync(cacheDir)) return cacheDir;
+  // A custom source must never silently fall back to unrelated official files.
+  return refreshTemplatesCache(cfg);
 }
 
 /**
@@ -180,8 +168,13 @@ async function ensureTemplatesDir(cfg: Record<string, string>): Promise<string> 
  */
 function resolveTemplatesCacheDir(cfg: Record<string, string>): string {
   if (cfg.templatesPath) return cfg.templatesPath;
-  if (isDockerLayout()) return path.join(os.homedir(), 'plugin-templates');
-  return path.join(os.homedir(), '.paperclip', 'plugin-templates');
+  const sourceKey = createHash('sha256')
+    .update(cfg.templatesRepoUrl || DEFAULT_TEMPLATES_REPO_URL)
+    .digest('hex')
+    .slice(0, 24);
+  const cacheName = `company-wizard-templates-${sourceKey}`;
+  if (isDockerLayout()) return path.join(os.homedir(), cacheName);
+  return path.join(os.homedir(), '.paperclip', cacheName);
 }
 
 /**
@@ -191,12 +184,38 @@ function resolveTemplatesCacheDir(cfg: Record<string, string>): string {
  * back to the existing cache.
  */
 function refreshTemplatesCache(cfg: Record<string, string>, log?: (m: string) => void): string {
+  if (cfg.templatesPath) {
+    if (!fs.existsSync(cfg.templatesPath))
+      throw new Error(`Configured templatesPath does not exist: ${cfg.templatesPath}`);
+    log?.('Using operator-managed templatesPath; no files overwritten.');
+    return cfg.templatesPath;
+  }
+  if (!cfg.templatesRepoUrl || cfg.templatesRepoUrl === DEFAULT_TEMPLATES_REPO_URL) {
+    if (!fs.existsSync(BUNDLED_TEMPLATES_DIR))
+      throw new Error('Bundled templates are missing. Reinstall Company Wizard.');
+    log?.(`Using bundled Company Wizard ${CURRENT_PLUGIN_VERSION} templates.`);
+    return BUNDLED_TEMPLATES_DIR;
+  }
   const repoUrl = cfg.templatesRepoUrl || DEFAULT_TEMPLATES_REPO_URL;
   const targetDir = resolveTemplatesCacheDir(cfg);
-  if (fs.existsSync(targetDir)) {
-    fs.rmSync(targetDir, { recursive: true, force: true });
+  // Download before replacing the cache: a network failure must leave the last
+  // usable templates intact. Never use the configured local path as a cache.
+  fs.mkdirSync(path.dirname(targetDir), { recursive: true });
+  const stagingDir = fs.mkdtempSync(`${targetDir}-refresh-`);
+  const backupDir = `${stagingDir}-previous`;
+  try {
+    downloadTemplatesFromGithub(stagingDir, repoUrl);
+    if (fs.existsSync(targetDir)) fs.renameSync(targetDir, backupDir);
+    try {
+      fs.renameSync(stagingDir, targetDir);
+    } catch (error) {
+      if (fs.existsSync(backupDir)) fs.renameSync(backupDir, targetDir);
+      throw error;
+    }
+    if (fs.existsSync(backupDir)) fs.rmSync(backupDir, { recursive: true, force: true });
+  } finally {
+    if (fs.existsSync(stagingDir)) fs.rmSync(stagingDir, { recursive: true, force: true });
   }
-  downloadTemplatesFromGithub(targetDir, repoUrl);
   log?.(`✓ Refreshed templates cache from ${repoUrl} → ${targetDir}`);
   return targetDir;
 }
@@ -779,7 +798,7 @@ async function setExternalInstructionsBundle({
  * populate agent `desiredSkills`. Must run BEFORE any agent that references
  * these skills is hired.
  */
-async function provisionCompanySkills(
+export async function provisionCompanySkills(
   client: any,
   companyId: string,
   companySkills: Array<{
@@ -794,18 +813,19 @@ async function provisionCompanySkills(
   const slugToKey = new Map<string, string>();
   if (!Array.isArray(companySkills) || companySkills.length === 0) return slugToKey;
 
-  let existing: any[] = [];
-  try {
-    const listed = await client.listCompanySkills(companyId);
-    existing = Array.isArray(listed) ? listed : [];
-  } catch (err) {
-    log(
-      `⚠ Could not list existing company skills: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
+  const existing = await client.listCompanySkills(companyId);
+  if (!Array.isArray(existing)) throw new Error('Paperclip returned an invalid company skill list');
   const bySlug = new Map<string, any>();
   for (const s of existing) {
-    if (s && typeof s.slug === 'string') bySlug.set(s.slug, s);
+    // Slugs are not unique across catalog, repo-scanned and company skills.
+    // Never overwrite an imported or read-only skill just because its slug matches.
+    if (
+      s?.key === `company/${companyId}/${s.slug}` &&
+      s?.metadata?.sourceKind === 'managed_local' &&
+      s.editable !== false
+    ) {
+      bySlug.set(s.slug, s);
+    }
   }
 
   for (const skill of companySkills) {
@@ -824,15 +844,39 @@ async function provisionCompanySkills(
     }
 
     slugToKey.set(skill.slug, found.key || skill.slug);
+    let updated = false;
+    if ((found.markdown ?? '') !== skill.markdown) {
+      await client.updateCompanySkillFile(companyId, found.id, {
+        path: 'SKILL.md',
+        content: skill.markdown,
+      });
+      updated = true;
+    }
+    if ((found.name ?? '') !== skill.name) {
+      const renamed = await client.renameCompanySkill(companyId, found.id, {
+        name: skill.name,
+        slug: found.slug,
+      });
+      if (renamed == null) {
+        log(`! Paperclip host does not support Company Skill rename; kept "${found.name}"`);
+      } else {
+        slugToKey.set(
+          skill.slug,
+          renamed.skill?.key || renamed.skill?.slug || found.key || skill.slug,
+        );
+        updated = true;
+      }
+    }
     const updates: Record<string, unknown> = {};
-    if ((found.name ?? '') !== skill.name) updates.name = skill.name;
     if ((found.description ?? '') !== (skill.description ?? '')) {
       updates.description = skill.description ?? null;
     }
     if (Array.isArray(skill.categories)) updates.categories = skill.categories;
-    if ((found.markdown ?? '') !== skill.markdown) updates.markdown = skill.markdown;
     if (Object.keys(updates).length > 0) {
       await client.updateCompanySkill(companyId, found.id, updates);
+      updated = true;
+    }
+    if (updated) {
       log(`✓ Updated company skill "${skill.slug}"`);
     }
   }
@@ -845,7 +889,7 @@ function routineTemplateTitle(routine: any): string {
   return '';
 }
 
-interface WizardManifest {
+export interface WizardManifest {
   pluginVersion: string;
   preset: string | null;
   modules: string[];
@@ -853,6 +897,50 @@ interface WizardManifest {
   generatedFilePaths: Record<string, string[]>;
   routineTitles: string[];
   updatedAt: string;
+}
+
+function wizardManifestKey(companyId: string) {
+  if (!companyId.trim()) throw new Error('Company ID is required for wizard manifest state.');
+  return {
+    scopeKind: 'company' as const,
+    scopeId: companyId,
+    namespace: 'company-wizard',
+    stateKey: 'wizard-manifest',
+  };
+}
+
+/** The SDK namespaces state by this plugin; no plugin lookup or settings PUT is needed. */
+export async function readWizardManifest(
+  state: PluginStateClient,
+  companyId: string,
+): Promise<WizardManifest | null> {
+  const value = await state.get(wizardManifestKey(companyId));
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const stringList = (entry: unknown): entry is string[] =>
+    Array.isArray(entry) && entry.every((item) => typeof item === 'string');
+  if (
+    typeof record.pluginVersion !== 'string' ||
+    (record.preset !== null && typeof record.preset !== 'string') ||
+    !stringList(record.modules) ||
+    !stringList(record.roles) ||
+    !stringList(record.routineTitles) ||
+    typeof record.updatedAt !== 'string' ||
+    !record.generatedFilePaths ||
+    typeof record.generatedFilePaths !== 'object' ||
+    Array.isArray(record.generatedFilePaths) ||
+    !Object.values(record.generatedFilePaths).every(stringList)
+  )
+    return null;
+  return record as unknown as WizardManifest;
+}
+
+export async function saveWizardManifest(
+  state: PluginStateClient,
+  companyId: string,
+  wizardManifest: WizardManifest,
+): Promise<void> {
+  await state.set(wizardManifestKey(companyId), wizardManifest);
 }
 
 function buildWizardManifest(params: {
@@ -955,12 +1043,13 @@ async function syncRoutineTrigger({
   }
 }
 
-async function syncExistingCompanyRoutines({
+export async function syncExistingCompanyRoutines({
   client,
   companyId,
   routines,
   ceoAgentId,
   teamAgentIds,
+  mainProjectId,
   log,
 }: {
   client: any;
@@ -968,6 +1057,7 @@ async function syncExistingCompanyRoutines({
   routines: any[];
   ceoAgentId: string;
   teamAgentIds: Record<string, string>;
+  mainProjectId?: string;
   log: (m: string) => void;
 }) {
   if (!Array.isArray(routines) || routines.length === 0) return;
@@ -996,18 +1086,22 @@ async function syncExistingCompanyRoutines({
     const role = routine.assignTo;
     const assigneeAgentId =
       !role || role === 'ceo' ? ceoAgentId : (teamAgentIds[role] ?? ceoAgentId);
+    const existing = byTitle.get(title.toLowerCase());
     const payload = {
       title,
       description: routine.description || null,
       assigneeAgentId,
-      ...routineProjectPayload(routine, undefined, { sync: true }),
+      // Existing project-scoped routines keep their operator-selected project;
+      // newly added routines need the selected live project at creation time.
+      ...routineProjectPayload(routine, existing?.id ? undefined : mainProjectId, {
+        sync: Boolean(existing?.id),
+      }),
       priority: routine.priority || 'medium',
       status: routine.status || 'active',
       concurrencyPolicy: routine.concurrencyPolicy || 'skip_if_active',
       catchUpPolicy: routine.catchUpPolicy || 'skip_missed',
     };
 
-    const existing = byTitle.get(title.toLowerCase());
     try {
       if (existing?.id) {
         await client.updateRoutine(existing.id, payload);
@@ -1249,13 +1343,25 @@ const plugin = definePlugin({
           : params.goal
             ? [params.goal]
             : [];
-        const previewProjects: any[] = Array.isArray(params.projects)
+        let previewProjects: any[] = Array.isArray(params.projects)
           ? (params.projects as any[])
           : [];
         const previewIssues: any[] = Array.isArray(params.issues) ? (params.issues as any[]) : [];
 
+        const existingCompanyId =
+          typeof params.existingCompanyId === 'string' ? params.existingCompanyId.trim() : '';
+        if (existingCompanyId) {
+          const client = await connectSharedClient(cfg);
+          previewProjects = resolveExistingProjects(
+            existingCompanyId,
+            await client.listProjects(existingCompanyId),
+            previewProjects,
+          );
+        }
+
         const result = await assembleCompany({
           companyName,
+          existingCompanyId,
           userGoals: previewGoals,
           userProjects: previewProjects,
           moduleNames: effectiveModules,
@@ -1356,13 +1462,19 @@ const plugin = definePlugin({
           : params.goal
             ? [params.goal]
             : [];
-        const previewProjects: any[] = Array.isArray(params.projects)
+        let previewProjects: any[] = Array.isArray(params.projects)
           ? (params.projects as any[])
           : [];
         const previewIssues: any[] = Array.isArray(params.issues) ? (params.issues as any[]) : [];
 
+        const client = await connectSharedClient(cfg);
+        const liveProjects = await client.listProjects(existingCompanyId);
+        previewProjects = resolveExistingProjects(existingCompanyId, liveProjects, previewProjects);
+        const enableIsolatedWorktrees = await resolveEnableIsolatedWorkspacesFromInstance(cfg);
+
         const assembleResult = await assembleCompany({
           companyName,
+          existingCompanyId,
           userGoals: previewGoals,
           userProjects: previewProjects,
           moduleNames: effectiveModules,
@@ -1372,7 +1484,7 @@ const plugin = definePlugin({
           presetIssues: presetBootstrapData.issues,
           presetRoutines: presetBootstrapData.routines,
           presetLabels: presetBootstrapData.labels,
-          enableIsolatedWorktrees: await resolveEnableIsolatedWorkspacesFromInstance(cfg),
+          enableIsolatedWorktrees,
           enableEnrichedPersonas: true,
           outputDir: tmpDir,
           templatesDir,
@@ -1396,8 +1508,6 @@ const plugin = definePlugin({
         countFiles(assembleResult.companyDir);
 
         // Connect to Paperclip API to read existing data
-        const client = await connectSharedClient(cfg);
-
         const company = await client.getCompany(existingCompanyId);
         const existingAgents = await client.listAgents(existingCompanyId);
         const existingRoutines = await client.listRoutines(existingCompanyId);
@@ -1405,17 +1515,7 @@ const plugin = definePlugin({
         // Read the wizard manifest (best-effort) for better retired-role detection
         let existingManifest: WizardManifest | null = null;
         try {
-          const pluginId = await findPluginId(client);
-          if (pluginId) {
-            const settings = await client._fetch(
-              `/api/plugins/${pluginId}/company-settings/${existingCompanyId}`,
-            );
-            const manifestData =
-              settings?.settingsJson?.wizardManifest ?? settings?.settings_json?.wizardManifest;
-            if (manifestData && typeof manifestData === 'object') {
-              existingManifest = manifestData as WizardManifest;
-            }
-          }
+          existingManifest = await readWizardManifest(ctx.state, existingCompanyId);
         } catch {
           // Manifest read failure is non-fatal — preview still works without it
         }
@@ -1566,6 +1666,8 @@ const plugin = definePlugin({
             routines,
             desiredSkillsPreserved,
             plannedFiles,
+            projectPolicies: projectPolicyChanges(liveProjects, assembleResult.projects),
+            workspacePolicyEnforced: enableIsolatedWorktrees,
             existingManifest,
           },
         };
@@ -1607,6 +1709,194 @@ const plugin = definePlugin({
             description: typeof c.description === 'string' ? c.description : '',
           }));
         return { companies: normalized };
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : String(err) };
+      }
+    });
+
+    // The Done screen supplies this run's approval IDs. Never expand that scope to
+    // unrelated hires already pending in an existing company.
+    ctx.actions.register('list-pending-hires', async (params) => {
+      try {
+        const companyId =
+          typeof (params as any)?.companyId === 'string' ? (params as any).companyId : '';
+        if (!companyId) return { error: 'companyId is required' };
+        const approvalIds = (params as any)?.approvalIds;
+        if (
+          !Array.isArray(approvalIds) ||
+          approvalIds.some((id: unknown) => typeof id !== 'string' || !id.trim())
+        )
+          return { error: 'approvalIds must be an explicit array of hire approval IDs' };
+        if (approvalIds.length === 0) return { approvals: [] };
+        const requested = new Set(approvalIds);
+        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+        const client = await connectSharedClient(cfg);
+        const approvals = await client.listApprovals(companyId, { status: 'pending' });
+        const normalized = (Array.isArray(approvals) ? approvals : [])
+          .filter(
+            (a: any) =>
+              a &&
+              typeof a.id === 'string' &&
+              requested.has(a.id) &&
+              a.companyId === companyId &&
+              a.status === 'pending' &&
+              a.type === 'hire_agent',
+          )
+          .map((a: any) => ({
+            id: a.id as string,
+            // The payload shape is owned by the server and redacted on read; surface
+            // the agent name when present and fall back to the id so the row is never
+            // blank.
+            name:
+              (typeof a.payload?.name === 'string' && a.payload.name) ||
+              (typeof a.payload?.agentName === 'string' && a.payload.agentName) ||
+              (typeof a.payload?.role === 'string' && a.payload.role) ||
+              '',
+            createdAt: typeof a.createdAt === 'string' ? a.createdAt : '',
+          }));
+        return { approvals: normalized };
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : String(err) };
+      }
+    });
+
+    // Approve pending hires from the wizard. This is an explicit, user-initiated
+    // board action — the wizard never auto-approves during provisioning, so the
+    // company's governance setting keeps its meaning. Approving here only saves the
+    // operator a trip to the board UI for the hires this run just requested.
+    ctx.actions.register('approve-pending-hires', async (params) => {
+      try {
+        const companyId =
+          typeof (params as any)?.companyId === 'string' ? (params as any).companyId : '';
+        if (!companyId) return { error: 'companyId is required' };
+        const approvalIds = (params as any)?.approvalIds;
+        if (
+          !Array.isArray(approvalIds) ||
+          approvalIds.length === 0 ||
+          approvalIds.some((id: unknown) => typeof id !== 'string' || !id.trim())
+        )
+          return { error: 'Select at least one hire approval ID explicitly' };
+        const requested = new Set<string>(approvalIds);
+
+        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+        const client = await connectSharedClient(cfg);
+
+        // Re-read the pending set instead of trusting the caller: ids from an older
+        // render may already be decided. Only the explicitly selected, still
+        // pending company hires may be submitted to the board approval endpoint.
+        const approvals = await client.listApprovals(companyId, { status: 'pending' });
+        const pendingHireIds = (Array.isArray(approvals) ? approvals : [])
+          .filter(
+            (a: any) =>
+              a &&
+              typeof a.id === 'string' &&
+              a.companyId === companyId &&
+              a.status === 'pending' &&
+              a.type === 'hire_agent',
+          )
+          .map((a: any) => a.id as string);
+        const targets = [...new Set(pendingHireIds)].filter((id) => requested.has(id));
+
+        const approved: string[] = [];
+        const failed: { id: string; error: string }[] = [...requested]
+          .filter((id) => !targets.includes(id))
+          .map((id) => ({ id, error: 'Selected hire is no longer pending in this company.' }));
+        for (const id of targets) {
+          try {
+            await client.approveApproval(id, { decisionNote: 'Approved from Company Wizard.' });
+            approved.push(id);
+          } catch (err) {
+            failed.push({ id, error: err instanceof Error ? err.message : String(err) });
+          }
+        }
+        return { approved, failed, remaining: targets.length - approved.length };
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : String(err) };
+      }
+    });
+
+    // Starting work remains a separate operator decision after hiring approvals.
+    ctx.actions.register('start-bootstrap', async (params) => {
+      try {
+        const companyId = typeof params.companyId === 'string' ? params.companyId : '';
+        const agentId = typeof params.agentId === 'string' ? params.agentId : '';
+        const issueId = typeof params.issueId === 'string' ? params.issueId : '';
+        if (!companyId || !agentId || !issueId) {
+          return { error: 'companyId, agentId, and issueId are required' };
+        }
+        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+        const client = await connectSharedClient(cfg);
+        const [agent, issue] = await Promise.all([
+          client.getAgent(agentId),
+          client.getIssue(issueId),
+        ]);
+        if (agent?.id !== agentId || agent?.companyId !== companyId || agent?.role !== 'ceo') {
+          return { error: "The selected agent is not this company's CEO." };
+        }
+        if (
+          issue?.id !== issueId ||
+          issue?.companyId !== companyId ||
+          issue?.assigneeAgentId !== agentId
+        ) {
+          return {
+            error: 'The bootstrap issue must belong to this company and be assigned to its CEO.',
+          };
+        }
+        if (issue.status === 'done' || issue.status === 'cancelled') {
+          return { error: 'The bootstrap issue is already closed.' };
+        }
+        if (agent.status === 'running') {
+          return {
+            started: false,
+            alreadyRunning: true,
+            message: 'The CEO is already running. Check progress in Paperclip.',
+          };
+        }
+        if (!['active', 'idle', 'error'].includes(agent.status)) {
+          return {
+            error: `The CEO cannot start while its status is ${agent.status}. Approve or resume it in Paperclip first.`,
+          };
+        }
+        if (agent.orgChainHealth?.status === 'invalid_org_chain') {
+          return {
+            error:
+              agent.orgChainHealth.repairGuidance ||
+              'Repair the CEO reporting chain in Paperclip before starting.',
+          };
+        }
+
+        const warnings: string[] = [];
+        try {
+          // A governed CEO could not accept its watchdog during provisioning.
+          // Preserve an operator's existing watchdog rather than overwriting it.
+          const existingWatchdog = await client.getIssueWatchdog(issueId);
+          if (!existingWatchdog) {
+            await client.setIssueWatchdog(issueId, {
+              agentId,
+              instructions:
+                'Bootstrap/setup stalled. Re-read this issue and BOOTSTRAP.md, then resume the missing setup work. Do not archive or delete execution workspaces. Leave the issue in a clear final state.',
+            });
+          }
+        } catch (err) {
+          warnings.push(
+            `Bootstrap watchdog could not be restored: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+        const run = await client.triggerHeartbeat(agentId, {
+          issueId,
+          idempotencyKey: `company-wizard-bootstrap:${issueId}`,
+        });
+        if (!run || run.status === 'skipped') {
+          return {
+            started: false,
+            error:
+              run?.message ||
+              'Paperclip skipped the bootstrap wakeup. Check the CEO and issue in Paperclip.',
+            warnings,
+          };
+        }
+        if (!run.id) return { error: 'Paperclip did not return a bootstrap run.', warnings };
+        return { started: true, runId: run.id, warnings };
       } catch (err) {
         return { error: err instanceof Error ? err.message : String(err) };
       }
@@ -1719,6 +2009,7 @@ const plugin = definePlugin({
     // Returns { ..., logs } on success or { error, logs } on failure — never throws.
     ctx.actions.register('start-provision', async (params) => {
       const logs: string[] = [];
+      const pendingApprovalIds = new Set<string>();
       const log = (msg: string) => {
         logs.push(msg);
         ctx.logger.info(msg);
@@ -1737,16 +2028,12 @@ const plugin = definePlugin({
             : '';
         if (!companyName) return { error: 'companyName is required', logs };
 
-        // Refresh the templates cache from the repo before assembling so an update
-        // always provisions the LATEST published instructions — otherwise a stale
-        // local cache silently re-writes old agent instructions over the fix
-        // (a fixed-but-never-deployed trap, especially on existing-company updates).
-        // Best-effort: a download failure falls back to the existing cache.
-        //
-        // Skip when `templatesPath` is explicitly configured — that path is a
-        // user-managed templates dir (e.g. a local working copy synced by hand), and
-        // deleting + re-downloading it from GitHub on every provision would clobber it.
-        if (params.refreshTemplates !== false && !cfg.templatesPath) {
+        // Official templates are pinned to this installed release. Refresh only
+        // an explicitly configured remote source; local template paths are owned
+        // by the operator. A failed custom refresh keeps the existing cache.
+        // A preview and provision must consume the same cached templates. Only
+        // an explicit refresh request may move a configured remote source.
+        if (params.refreshTemplates === true && !cfg.templatesPath) {
           try {
             refreshTemplatesCache(cfg, log);
           } catch (err) {
@@ -1807,13 +2094,17 @@ const plugin = definePlugin({
           : params.goal
             ? [params.goal]
             : [];
-        const userProjects: any[] = Array.isArray(params.projects)
-          ? (params.projects as any[])
-          : [];
+        let userProjects: any[] = Array.isArray(params.projects) ? (params.projects as any[]) : [];
         const userIssues: any[] = Array.isArray(params.issues) ? (params.issues as any[]) : [];
+
+        const liveProjects = existingCompanyId ? await client.listProjects(existingCompanyId) : [];
+        if (existingCompanyId) {
+          userProjects = resolveExistingProjects(existingCompanyId, liveProjects, userProjects);
+        }
 
         const assembleResult = await assembleCompany({
           companyName,
+          existingCompanyId,
           companyDescription,
           userGoals,
           userProjects,
@@ -1849,7 +2140,9 @@ const plugin = definePlugin({
           }
         }
 
-        prepareLocalProjectWorkspace(assembleResult.mainProject, companyDir, log, gitIdentity);
+        if (!existingCompanyId) {
+          prepareLocalProjectWorkspace(assembleResult.mainProject, companyDir, log, gitIdentity);
+        }
 
         const ceoInstructionsDir = path.join(companyDir, 'agents', 'ceo');
         const ceoEntryFile = 'AGENTS.md';
@@ -1874,6 +2167,20 @@ const plugin = definePlugin({
           companyId = company.id;
           log(`✓ Target company "${company.name}" selected`);
           log('Keeping company hire policy as configured (board approvals may be required).');
+          // Apply the exact policies shown in preview, preserving live workspace
+          // identity and operator configuration. Never delete an existing company
+          // or silently continue after a rejected project update.
+          for (const change of projectPolicyChanges(liveProjects, assembleResult.projects)) {
+            await client.updateProject(change.id, {
+              executionWorkspacePolicy: change.after,
+            });
+            log(`✓ Updated execution workspace policy: ${change.name}`);
+          }
+          if (liveProjects.length && !enableIsolatedWorktrees) {
+            log(
+              '⚠ Workspace policies are stored but not enforced while Paperclip enableIsolatedWorkspaces is disabled.',
+            );
+          }
         } else {
           log('Creating company...');
           company = await client.createCompany({
@@ -1922,17 +2229,7 @@ const plugin = definePlugin({
           // Read the wizard manifest (best-effort) for retired-role detection
           if (existingCompanyId) {
             try {
-              const pluginId = await findPluginId(client);
-              if (pluginId) {
-                const settings = await client._fetch(
-                  `/api/plugins/${pluginId}/company-settings/${companyId}`,
-                );
-                const manifestData =
-                  settings?.settingsJson?.wizardManifest ?? settings?.settings_json?.wizardManifest;
-                if (manifestData && typeof manifestData === 'object') {
-                  existingManifest = manifestData as WizardManifest;
-                }
-              }
+              existingManifest = await readWizardManifest(ctx.state, companyId);
             } catch {
               // Manifest read failure is non-fatal — provisioning still proceeds
             }
@@ -2024,6 +2321,7 @@ const plugin = definePlugin({
 
           const logPendingApproval = (agent: any) => {
             if (!agent?._pendingApprovalId) return;
+            pendingApprovalIds.add(agent._pendingApprovalId);
             log(
               `⚠ CEO hire is pending approval: ${agent._pendingApprovalId}. Approve it in the board before the bootstrap heartbeat can run.`,
             );
@@ -2250,6 +2548,7 @@ const plugin = definePlugin({
             });
             log(`✓ ${roleTitle} created (${roleAgent.id})`);
             if (roleAgent?._pendingApprovalId) {
+              pendingApprovalIds.add(roleAgent._pendingApprovalId);
               log(
                 `⚠ ${roleTitle} hire pending approval: ${roleAgent._pendingApprovalId}. Approve it in the board.`,
               );
@@ -2340,6 +2639,7 @@ const plugin = definePlugin({
               routines,
               ceoAgentId,
               teamAgentIds,
+              mainProjectId: assembleResult.mainProject?.id,
               log,
             });
           }
@@ -2422,23 +2722,15 @@ const plugin = definePlugin({
 
         // Persist wizard manifest so future updates can diff against it
         try {
-          const pluginId = await findPluginId(client);
-          if (pluginId) {
-            const wizardManifest = buildWizardManifest({
-              presetName: selectedPreset?.name ?? null,
-              selectedModules: effectiveModules,
-              selectedRoleNames: allRoleNames,
-              assembleResult,
-              initialRoutines: routines,
-            });
-            await client._fetch(`/api/plugins/${pluginId}/company-settings/${companyId}`, {
-              method: 'PUT',
-              body: JSON.stringify({ settingsJson: { wizardManifest } }),
-            });
-            log('✓ Wizard manifest saved');
-          } else {
-            log('⚠ Could not find plugin ID — manifest not saved');
-          }
+          const wizardManifest = buildWizardManifest({
+            presetName: selectedPreset?.name ?? null,
+            selectedModules: effectiveModules,
+            selectedRoleNames: allRoleNames,
+            assembleResult,
+            initialRoutines: routines,
+          });
+          await saveWizardManifest(ctx.state, companyId, wizardManifest);
+          log('✓ Wizard manifest saved');
         } catch (manifestErr) {
           log(
             `⚠ Could not save wizard manifest: ${manifestErr instanceof Error ? manifestErr.message : String(manifestErr)}`,
@@ -2479,9 +2771,7 @@ const plugin = definePlugin({
                 description: issueDescription,
                 priority: 'low',
                 status: 'todo',
-                ...(boardOperationsIssue?.id
-                  ? { projectId: boardOperationsIssue.id, goalId: boardOperationsIssue.id }
-                  : {}),
+                ...(boardOperationsIssue?.id ? { parentId: boardOperationsIssue.id } : {}),
               });
               log(
                 `✓ Retired-role review issue created for "${role}": ${createdIssue.identifier || createdIssue.id}`,
@@ -2500,6 +2790,8 @@ const plugin = definePlugin({
           paperclipUrl: client.baseUrl,
           agentIds: { ceo: ceoAgentId!, ...teamAgentIds },
           issueIds,
+          pendingApprovalIds: [...pendingApprovalIds],
+          bootstrapIssueId: bootstrapIssue!.id,
           logs,
         };
       } catch (err) {

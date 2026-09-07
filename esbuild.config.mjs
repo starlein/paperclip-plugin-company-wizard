@@ -44,7 +44,7 @@ const tailwindPlugin = {
 // warnings even though our lists all have keys. Emit the dev JSX runtime
 // (jsxDEV) for local/dev builds so the flag is set; publish builds opt into the
 // production runtime via NODE_ENV=production.
-const isProduction = process.env.NODE_ENV === "production";
+const isProduction = process.argv.includes("--production") || process.env.NODE_ENV === "production";
 
 // Customize UI config
 const uiConfig = {
