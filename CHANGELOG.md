@@ -4,6 +4,70 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.1] - 2026-09-07
+
+Consolidates the useful changes from PRs #44, #46 and #47 on a fresh branch from main. Compatibility reviewed against Paperclip source `856813ba3a083f23694b8554104b3e50abcb1363` (2026-09-06).
+
+### Changed
+
+- Lean delivery remains optional and unselected by built-in presets. It supplies one non-author Code Reviewer merge gate and risk-triggered evidence; standard PR review retains role-based stages. Fixed PR-count limits are removed across both modes: queue size is advisory, actual blockers and operator policies remain binding.
+- SDK/shared development dependencies and peer floor move to `2026.831.1`. The manifest omits `minimumHostVersion`: current source starts its plugin loader at `0.0.0`, so a numeric floor incorrectly rejects it. API/capability validation remains active; see `docs/PAPERCLIP-COMPATIBILITY.md` for tested contracts and limitations.
+- Default template selection is pinned to the installed release. Explicit local template directories are never overwritten; custom remote URLs use separate source-keyed caches, atomic refresh, and no implicit source change between preview and provisioning.
+- Added current-stable schema contract tests for company, goal, project, issue, governed agent hire, routine/trigger, Company Skill, and plugin-manifest payloads.
+
+### Fixed
+
+- Pending hires are listed only for this wizard run, with explicit checkbox selection and server-side company/type/status validation. Partial failures remain visible. A separate **Start bootstrap** action verifies the CEO and issue, handles skipped wakeups, and restores a missing watchdog best-effort; provisioning never auto-approves hires or invokes this start action.
+- Existing-company updates load and patch real project execution policies before hiring, preserving project IDs, workspaces, goal links, explicit concurrency/disabled settings, strategy hooks, and environment IDs. New project-scoped routines link to the existing main project.
+- AI policy normalization and both bootstrap policy renderers retain all supported fields. Fresh local repositories defer isolation; remote/non-git paths are never initialized as Git repositories. The guard is explicitly documented as inactive when the instance feature or policy is disabled, and operator/issue overrides are preserved.
+- Wizard manifests use company-scoped SDK state instead of a nonexistent company-settings REST endpoint. Retirement review issues use the correct parent issue field rather than issue IDs as project/goal IDs.
+- Company Skill slug collisions no longer overwrite imported/catalog skills; only canonical editable company-managed skills are refreshed, and listing failures stop provisioning rather than creating duplicates.
+- Review recovery uses actual execution-state ownership, managed worktree branch identity is preserved, required repository CI/protection is not disabled, and Product Owner handoffs do not close open-PR work prematurely.
+- Production build command is portable across Windows and Unix. Added worker, schema, template-matrix, project-update, approval/bootstrap, and state-persistence regressions.
+- Removed unused `esbuild-postcss-plugin` and refreshed affected development-tool dependencies (Vitest, esbuild, PostCSS and their transitive parsers/glob utilities). Documented and tested Node 24.11+ to match the published Paperclip SDK/shared host runtime requirement.
+
+- Review instructions distinguish standard executionPolicy verdicts from lean advisory assignment handoffs. Capacity waits no longer become conjunctive dependencies in backlog/stall recovery, and CEO fallbacks run only on assigned planning/routine work.
+- Review stages omit the issue's author, pending/failed required CI cannot be bypassed using local results, and baseline repair is explicitly assigned separately from the feature issue.
+- Company Skill display-name refreshes preserve existing slugs and use the rename response's key for agent skill assignments, including role-disambiguated skills. The backlog snapshot also respects optional lean capacity instead of imposing it when deselected.
+- Existing Company Skill content now updates through `PATCH /companies/:companyId/skills/:skillId/files` with `path: "SKILL.md"`, and display-name changes use the dedicated `/rename` endpoint. Newer Paperclip versions no longer silently discard `markdown` and `name` sent to the metadata-only skill PATCH route.
+- Project provisioning and generated bootstrap instructions now always include the required `executionWorkspacePolicy.enabled` boolean whenever a project execution policy is present.
+- Triggered QA, Security, Product, UI/UX, and DevOps evidence now has an explicit same-issue assignment wake-and-return path before the Code Reviewer gate, matching assignment-driven worker agents.
+- Selecting the `ci-cd` module no longer assumes required checks already exist: exact-head company CI becomes authoritative only after checks run on that head; until then the merge gate runs the complete local gate once.
+- The repo-maintenance preset assigns independently actionable setup work immediately; unspecified health fixes wait for the actual dependency-audit evidence, not a fixed repository PR count.
+- Supported older Paperclip hosts that do not expose the newer Company Skill `/rename` route now keep the existing display name and continue refreshing skill content/metadata instead of aborting provisioning on a 404.
+- Auto-assignment no longer models a dynamic repository PR cap as conjunctive blockers on every open PR; capacity waiters stay unassigned for the next assignment-driven capacity check.
+- Retained Code Reviewer, Engineer, and Security Engineer role instructions now match the lean module contracts: exact-head CI avoids duplicate full gates, Engineers do not self-claim past WIP capacity or invent acceptance, and blocking security remediation stays on the originating issue and PR.
+- QA evidence uses bounded pass/fail comments rather than executionPolicy verdicts; CEO fallback assignment follows the same non-conjunctive capacity wait as the primary skill; and inherited base-branch CI repair is explicitly isolated to one separately owned baseline-restore issue and PR.
+
+## [0.5.3] - 2026-08-28
+
+### Added
+
+**Pending hires can be approved from the wizard's final step.**
+
+Governed `/agent-hires` requests leave the agent created but *not invokable* until the board decides. Until now the wizard only logged the approval ids and told the operator to go find them in the board UI — so a freshly provisioned company sat unable to run its bootstrap heartbeat, and the bootstrap watchdog attach failed for the same reason. The Done step now lists the pending hires and offers an "Approve all hires" action.
+
+This does not weaken governance: provisioning still **never** auto-approves, the company's approval policy keeps its meaning, and approving is an explicit click by the operator — who is the board member holding that authority anyway. The `approve-pending-hires` action re-reads the pending set server-side and intersects it with any requested ids, so it can only ever approve `hire_agent` approvals; a caller cannot use it to resolve a budget or strategy approval.
+
+New API-client methods `listApprovals(companyId, { status })` and `approveApproval(approvalId, { decisionNote })`, plus the `list-pending-hires` and `approve-pending-hires` worker actions.
+
+## [0.5.2] - 2026-08-28
+
+### Added
+
+**Shared project workspaces are now provisioned with a concurrency guard.**
+
+Projects are provisioned with an explicit `executionWorkspacePolicy` carrying `sharedWorkspaceConcurrency: "serialize"`. Previously the wizard emitted no policy at all whenever isolated worktrees were not in play and let the server fall back to `shared_workspace` with `auto` concurrency — and `auto` only serializes runs on non-local environments. On a local driver that meant every agent run entered the *same* working tree at once and collided on git index and branch state. With `serialize`, a run defers while another holds the workspace; the deferral is bounded by holder liveness (60–120 s backoff), not by an attempt counter, so a deferred run resumes rather than starving.
+
+The guard is applied on every resolution path (shared, isolated, and the deferred-isolation path for fresh local repos) and is carried into the project-creation step the CEO follows in BOOTSTRAP.md, so CEO-created projects do not silently fall back to `auto`. A project that pins its own `sharedWorkspaceConcurrency` keeps it.
+
+Per-issue isolation is unaffected: Paperclip resolves an issue's `executionWorkspaceSettings.mode` before consulting the project policy, so the `backlog-health` guidance to give every top-level issue its own worktree still wins. `backlog-process.md` now explains the interplay — serialization protects git state, but only isolation buys parallelism.
+
+### Fixed
+
+- A project policy that set only some fields (for example just `sharedWorkspaceConcurrency`) was forwarded verbatim without `enabled`, which Paperclip's project-policy schema requires — the project creation would have failed with a 400. Every resolution path now defaults `enabled` to `true`.
+- Corrected the deferred-isolation note in BOOTSTRAP.md, which claimed `executionWorkspacePolicy` was "intentionally omitted" for fresh local repos. A shared-workspace policy is now emitted; what is deferred is the isolated `git_worktree` mode.
+
 ## [0.5.1] - 2026-08-28
 
 Compatibility review against Paperclip as of 2026-08-26. No API breakage was found: all 30 REST endpoints used by `src/api/client.js`, all 22 endpoints taught to agents in templates, every `paperclipRole` value, the declared manifest capabilities, and the agent-hire/issue/routine/project/skill payloads all still validate against the current server. The changes below correct staleness that accumulated since the last review.

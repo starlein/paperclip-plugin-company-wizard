@@ -7,7 +7,7 @@
     <a href="https://www.npmjs.com/package/@starlein/paperclip-plugin-company-wizard"><img src="https://img.shields.io/npm/v/@starlein/paperclip-plugin-company-wizard?color=cb3837&label=npm" alt="npm version"></a>
     <a href="https://github.com/starlein/paperclip-plugin-company-wizard/actions/workflows/ci.yml"><img src="https://github.com/starlein/paperclip-plugin-company-wizard/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License"></a>
-    <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen" alt="Node.js"></a>
+    <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D24.11-brightgreen" alt="Node.js"></a>
   </p>
 <hr>
   <img src="https://raw.githubusercontent.com/starlein/paperclip-plugin-company-wizard/main/docs/GIF-Screencast-Paperclip-Plugin-Company-Wizard.gif" alt="Screencast Paperclip Plugin Company Wizard" height="240">
@@ -17,7 +17,11 @@
 
 > **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for Paperclip plugin API v1 and the current published SDK with substantial bug fixes. End-to-end company setup is governed through current Paperclip workflows as of v0.5.0.
 
-**Update Company:** If you have provisioned your company before with some older version of this plugin or you have an existing company, since version 0.4.6 you can update your existing company by providing the company ID in the wizard summary page. It will make a soft update of agent instructions and workflow/instruction documents.
+**Version 0.6.1:** consolidates PRs #44, #46 and #47 with current Paperclip source compatibility, run-scoped hire approvals, explicit bootstrap start, and corrected workflow/workspace safety. See [compatibility notes](docs/PAPERCLIP-COMPATIBILITY.md).
+
+Requires Node **24.11+**, matching the current Paperclip SDK/shared runtime requirement.
+
+**Update Company:** select an existing company to refresh its agent instructions, documents, skills, routines, and live project execution policies. Preview shows policy changes; existing workspace paths, explicit operator policies, and goal links are preserved. Partial failures never delete an existing company.
 
 <details>
 <summary><strong>What changed vs. upstream</strong></summary>
@@ -26,8 +30,8 @@
 
 - Bootstrap metadata fields renamed to match the Paperclip API exactly: `parentId`, `assigneeAgentId`, `projectId`, `goalIds`
 - CEO is provisioned with correct `capabilities` metadata so newly created CEOs are no longer saved with empty summaries
-- The manifest installation floor uses Paperclip's package semver (`>=0.3.1`) rather than the SDK release CalVer, allowing compatible source-derived and `npx paperclipai` hosts that report `0.3.1`; plugin API and declared-capability validation remain the authoritative install-time compatibility checks
-- `@paperclipai/plugin-sdk` and `@paperclipai/shared` declared as `peerDependencies` with minimum version `>=2026.707.0` — the host provides the SDK at runtime (externalized from the bundle)
+- No numeric manifest host floor: current Paperclip source initializes its plugin loader with `0.0.0`, unrelated to SDK release versions. Plugin API and declared-capability validation remain active; older hosts are not implied to be supported
+- `@paperclipai/plugin-sdk` and `@paperclipai/shared` use tested stable `2026.831.1`, with peer floor `>=2026.831.1`; the host provides the externalized SDK at runtime
 - `security-engineer` role now maps to the dedicated Paperclip `security` enum value (was `general`)
 
 #### Bootstrap reliability
@@ -67,7 +71,7 @@
 
 - **Existing-company provisioning** — target an existing Paperclip company instead of creating a new one (`existingCompanyId`); partial-failure cleanup never deletes existing companies
 - **Governed agent hiring** — submits agent creation through `/agent-hires`, preserves pending approval IDs, and does not auto-approve board-gated hires
-- **`disableBoardApprovalOnNewCompanies` setting** — optionally patches new companies to skip board approval for fully-autonomous bootstrap
+- **Explicit approval and bootstrap controls** — select pending hires from this run, approve them with board authority, then explicitly start bootstrap; the wizard never disables the company's approval policy
 - **Repository workspace setup** — choose between a fresh local Git repo or an existing external repository (GitHub, GitLab, etc.) via the manual wizard step or inline on the review/summary screen (available in both the manual and AI paths; the external option opens a repo-URL field)
 - **Routine schedules** tightened to run every few hours around the clock (auto-assign every 2 h, stall-detection every 3 h, backlog grooming every 4 h) with `skip_if_active` concurrency policy
 - **"Update templates" button** on the onboarding screen — deletes the cached templates dir and re-downloads from GitHub without restarting the plugin
@@ -85,7 +89,7 @@
 ## Why Company Wizard?
 
 - 🗣️ **Describe it, don't configure it.** AI mode reads a plain-language brief and picks the right preset, modules, and roles for you. Manual mode is there for the steps you want to control yourself.
-- 🧩 **Composable, not monolithic.** 15 curated presets layered from 26 modules and 17 roles. Mix and match freely — modules add skills, tasks, and heartbeat logic to the roles that are present, and degrade gracefully when they're not.
+- 🧩 **Composable, not monolithic.** 15 curated presets layered from 27 modules and 17 roles. Mix and match freely — modules add skills, tasks, and heartbeat logic to the roles that are present, and degrade gracefully when they're not.
 - 🤝 **Works from day one with a single CEO.** Every capability has an owner chain. Add a specialist and responsibilities shift to them automatically; leave one out and the next-best person — ultimately the CEO — steps in. No setup ever leaves a gap.
 - ✏️ **Review and edit before anything ships.** Preview every generated file, tweak a persona, workflow, or the repository setup inline on the review screen, then provision.
 - 🚀 **Real end-to-end provisioning.** Not just scaffolded files — it creates the company, CEO, goals, projects, and backlog in Paperclip via the API. Target a brand-new or existing company, with a fresh local or existing external Git repo.
@@ -286,6 +290,7 @@ Modules are composable capabilities you layer on top of the base team. Each modu
 | :----- | :----------- | :----------- |
 | **`github-repo`** | Git workflow and commit conventions | Engineer initializes repo |
 | **`pr-review`** | PR-based review workflow | Engineer configures PR workflow and branch protection (requires PRs, no approval gate) |
+| **`lean-delivery`** | Optional single merge gate, risk-triggered evidence, and bounded WIP (requires `pr-review`) | — |
 | **`backlog`** | Auto-generate issues from goals when backlog runs low | Primary owner creates initial backlog |
 | **`auto-assign`** | Assign unassigned issues to idle agents | — |
 | **`stall-detection`** | Detect stuck handovers, nudge or escalate | — |
@@ -346,10 +351,16 @@ Git workflow and commit conventions.
 
 PR-based review workflow. Requires `github-repo`. Activates with `code-reviewer`, `product-owner`, `ui-designer`, `ux-researcher`, `qa`, or `devops`.
 
-Reviews run through the issue's native `executionPolicy` (stages), not child issues: a `review` stage for QA when present, a `review` stage for the Security Engineer only on security-relevant changes, an `approval` stage for the Product Owner when present, then a final `approval` **merge gate** owned by the Code Reviewer (a non-author) — who is woken last to merge the PR before recording the verdict that closes the issue. The merge gate is deliberately the last stage so the Product Owner's approval does not auto-close the issue with the PR still open. The engineer (the issue's executor) is never a stage participant — Paperclip excludes the original executor, so a self-stage stalls with `422 No eligible approval participant`; this is why the merge gate is the Code Reviewer, not the engineer. Domain reviewers (UI Designer, UX Researcher, DevOps) are advisory — they post PR comments and escalate concerns to a blocking reviewer; they are never themselves a stage. When no Code Reviewer is on the team, no `executionPolicy` stages are set and the engineer self-merges via `gh pr merge <N> --merge` (PR Self-Merge Flow).
+Standard review uses the issue's native `executionPolicy`: QA review when present, Security review only for security-relevant changes, Product Owner approval when present, then a non-author Code Reviewer **merge gate**. The merge owner verifies the exact reviewed head, merges the PR, and only then records approval to close the issue. Omit absent roles and the executor from every stage — Paperclip excludes the author and an author-only stage stalls. Without an eligible non-author Code Reviewer, set no stages and use `gh pr merge <N> --merge` (PR Self-Merge Flow).
 
 - **Task:** Engineer configures PR workflow and branch protection (requires PRs, no approval gate)
 - **Doc:** `docs/pr-conventions.md`
+
+#### lean-delivery (optional)
+
+Select **`lean-delivery`** in the setup wizard's **Modules** step; `pr-review` and `github-repo` are automatically included as dependencies. It is not selected by any built-in preset. Deselect it to keep standard review. In AI setup, explicitly request lean delivery.
+
+With this module, the policy has exactly one default stage: the non-author Code Reviewer merge gate. Product acceptance is finalized before implementation; QA, Security, Product, UI/UX, and DevOps provide risk-triggered same-issue evidence instead of serial executionPolicy stages. The `docs/lean-delivery.md` contract uses advisory queue signals, not a fixed PR-count gate. In both modes, real dependencies, workspace safety, required CI, and explicit company capacity policies remain binding. Selecting this module never disables repository protections.
 
 #### backlog
 
@@ -594,18 +605,19 @@ Configure the plugin via **Settings → Plugins → Company Wizard** in the Pape
 | Field | Required | Description |
 | --- | --- | --- |
 | `companiesDir` | No | Where assembled company workspaces are written. Defaults to `~/.paperclip/instances/default/companies`. Override for Docker setups. |
-| `templatesPath` | No | Path to the templates directory. Defaults to `~/.paperclip/plugin-templates` (auto-downloaded from `templatesRepoUrl` if missing). |
-| `templatesRepoUrl` | No | GitHub tree URL to pull templates from when the templates directory does not exist. Defaults to the official @starlein/paperclip-plugin-company-wizard templates. |
+| `templatesPath` | No | Existing operator-managed template directory. Never overwritten by refresh. Default: bundled templates from this installed plugin release. |
+| `templatesRepoUrl` | No | Custom GitHub tree URL opts into a source-specific remote cache. The official default uses bundled templates. Refresh explicitly before preview to update a custom source. |
 | `paperclipUrl` | No | Paperclip instance URL. Defaults to `http://localhost:3100` or `PAPERCLIP_PUBLIC_URL` env var. |
 | `paperclipEmail` | No | Board login email. Required for authenticated (non-`local_trusted`) instances. |
 | `paperclipPassword` | No | Board login password. Stored as a secret ref. |
 | `aiProvider` | No | AI wizard provider: `anthropic` (default) or `openai`. |
 | `anthropicApiKey` | No | Anthropic API key for AI wizard mode. Stored as a governed secret ref. Required when `aiProvider` is `anthropic`. |
 | `openaiApiKey` | No | OpenAI API key for GPT/Codex AI wizard mode. Stored as a governed secret ref. Required when `aiProvider` is `openai`. |
-| `disableBoardApprovalOnNewCompanies` | No | If `true`, the wizard PATCHes new companies to set `requireBoardApprovalForNewAgents=false` during provisioning. Leave `false` to preserve approval-gated hiring. Defaults to `false`. |
 For enriched personas: there is no plugin setting. Template fragments are applied automatically when present.
 
 For isolated worktrees: there is no plugin setting. The policy is controlled by Paperclip instance settings under **Settings → Instance → Experimental → enableIsolatedWorkspaces** and is consumed by the plugin during provisioning. External repository base refs are taken from project/worktree settings; leaving the ref blank lets Paperclip resolve its default instead of the wizard inventing `main`, `master`, or `origin/*`.
+
+**Shared workspace guard:** new policies default to `sharedWorkspaceConcurrency: "serialize"`. Current Paperclip enforces this only for project-bound shared runs when `enableIsolatedWorkspaces` and the project policy are enabled. Explicit `auto`/`allow` and per-issue settings can override it; the wizard preserves these choices and does not turn on instance settings. A stored policy alone is not proof that a run is serialized.
 
 <br>
 
@@ -820,7 +832,7 @@ Create `templates/presets/<name>/preset.meta.json`:
 6. Creates scheduled routines with board authority and links them to the pre-created main project when needed
 7. Creates a **Bootstrap task** assigned to the CEO
 
-The CEO then continues setup on its first heartbeat: approve/confirm any pending hire gates, create goals and initial backlog issues, link pre-created projects to goals when needed, and start normal assigned-work workflows. If provisioning fails after a **new** company is created, the partial company is automatically deleted — existing target companies are never deleted on error.
+On the final step, review and approve selected pending hires, then click **Start bootstrap**. The CEO creates remaining goals/backlog work and links newly created projects where needed; existing project goal links remain untouched. Starting is separate from approval, and normal scheduled/assignment wakes remain governed by Paperclip. If provisioning fails after a **new** company is created, the partial company is automatically deleted — existing target companies are never deleted on error.
 
 <br>
 

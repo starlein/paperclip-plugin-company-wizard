@@ -14,7 +14,7 @@ You own the visual design system. Establish the foundational patterns that ensur
    - **Brand guidelines**: Logo usage, tone of visual language, iconography style
    - **Responsive breakpoints**: Mobile, tablet, desktop sizing approach
 4. Create implementation issues for the engineer:
-   - `POST /api/companies/{companyId}/issues` for CSS/design token setup, component library scaffolding. Include the active `projectId` (and `goalId` / `parentId` when applicable). For top-level issues (no `parentId`), also include `"executionWorkspaceSettings": { "mode": "isolated_workspace" }` so each gets its own worktree; subissues set `parentId` and omit it.
+   - `POST /api/companies/{companyId}/issues` for CSS/design token setup, component library scaffolding. Include `projectId` plus `goalId` / `parentId` when applicable, and set `executionWorkspaceSettings: { "mode": "isolated_workspace" }` for top-level repository implementation issues and subissues when the instance feature, project policy, and initialized repository support isolation. Otherwise follow the rendered project policy and avoid concurrent shared-checkout writes. Reuse only when explicitly required via `inheritExecutionWorkspaceFromIssueId`; keep API-only work project-detached.
 5. Assign or hand off implementation issues to the Engineer with a concrete next action; do not rely on generic @-mentions.
 
 ## Rules

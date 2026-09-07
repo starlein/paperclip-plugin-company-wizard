@@ -1,5 +1,20 @@
 import assert from 'node:assert/strict';
 import { afterEach, describe, it } from 'node:test';
+import {
+  companySkillCreateSchema,
+  companySkillFileUpdateSchema,
+  companySkillRenameSchema,
+  companySkillUpdateSchema,
+  createAgentHireSchema,
+  createCompanySchema,
+  createGoalSchema,
+  createIssueSchema,
+  createProjectSchema,
+  createRoutineSchema,
+  createRoutineTriggerSchema,
+  resolveApprovalSchema,
+  wakeAgentSchema,
+} from '@paperclipai/shared';
 import { PaperclipClient } from './client.js';
 
 const originalFetch = globalThis.fetch;
@@ -134,6 +149,43 @@ describe('PaperclipClient.createAgent', () => {
 });
 
 describe('PaperclipClient provisioning helpers', () => {
+  it('reads projects and bootstrap issue scope, then sends an issue-bound idempotent wakeup', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({
+        url,
+        method: opts.method,
+        body: opts.body ? JSON.parse(opts.body) : undefined,
+      });
+      return jsonResponse(url.endsWith('/projects') ? [] : { id: 'result' });
+    };
+    const client = new PaperclipClient('http://paperclip.test');
+    await client.listProjects('company-1');
+    await client.getIssue('bootstrap-1');
+    await client.triggerHeartbeat('ceo-1', {
+      issueId: 'bootstrap-1',
+      idempotencyKey: 'company-wizard-bootstrap:bootstrap-1',
+    });
+    assert.deepEqual(requests, [
+      {
+        url: 'http://paperclip.test/api/companies/company-1/projects',
+        method: 'GET',
+        body: undefined,
+      },
+      { url: 'http://paperclip.test/api/issues/bootstrap-1', method: 'GET', body: undefined },
+      {
+        url: 'http://paperclip.test/api/agents/ceo-1/wakeup',
+        method: 'POST',
+        body: {
+          source: 'on_demand',
+          triggerDetail: 'manual',
+          payload: { issueId: 'bootstrap-1' },
+          idempotencyKey: 'company-wizard-bootstrap:bootstrap-1',
+        },
+      },
+    ]);
+    assert.doesNotThrow(() => wakeAgentSchema.parse(requests[2].body));
+  });
   it('sends a v2026.403.0 project workspace object instead of a raw workspace string', async () => {
     const requests = [];
     globalThis.fetch = async (url, opts = {}) => {
@@ -159,6 +211,7 @@ describe('PaperclipClient provisioning helpers', () => {
       isPrimary: true,
     });
     assert.deepEqual(requests[0].body.executionWorkspacePolicy, {
+      enabled: true,
       defaultMode: 'isolated_workspace',
       workspaceStrategy: { type: 'git_worktree', baseRef: 'release/2026-q2' },
     });
@@ -216,6 +269,42 @@ describe('PaperclipClient provisioning helpers', () => {
       !Object.hasOwn(requests[1].body, 'watchdog') || requests[1].body.watchdog === undefined,
       'watchdog without agentId must not be sent',
     );
+  });
+
+  it('lists approvals with a status filter and approves through the board route', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({ url, method: opts.method, body: opts.body ? JSON.parse(opts.body) : null });
+      return jsonResponse([{ id: 'ap-1', type: 'hire_agent', status: 'pending' }]);
+    };
+
+    const client = new PaperclipClient('http://paperclip.test');
+    await client.listApprovals('company-1', { status: 'pending' });
+    assert.equal(
+      requests[0].url,
+      'http://paperclip.test/api/companies/company-1/approvals?status=pending',
+    );
+
+    await client.approveApproval('ap-1', { decisionNote: 'ok' });
+    assert.equal(requests[1].url, 'http://paperclip.test/api/approvals/ap-1/approve');
+    assert.equal(requests[1].method, 'POST');
+    assert.equal(requests[1].body.decisionNote, 'ok');
+
+    // No note → an empty body, never `{"decisionNote": undefined}`.
+    await client.approveApproval('ap-2');
+    assert.deepEqual(requests[2].body, {});
+  });
+
+  it('omits the approvals query string when no status filter is given', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({ url, method: opts.method });
+      return jsonResponse([]);
+    };
+
+    const client = new PaperclipClient('http://paperclip.test');
+    await client.listApprovals('company-1');
+    assert.equal(requests[0].url, 'http://paperclip.test/api/companies/company-1/approvals');
   });
 
   it('upserts a task watchdog through PUT /issues/:id/watchdog', async () => {
@@ -384,20 +473,212 @@ describe('PaperclipClient company skills', () => {
     assert.equal(requests[0].body.markdown, '# CI/CD');
   });
 
-  it('lists and updates company skills', async () => {
+  it('uses the current metadata, rename, and SKILL.md update routes', async () => {
     const requests = [];
     globalThis.fetch = async (url, opts = {}) => {
-      requests.push({ url: String(url), method: opts.method || 'GET' });
+      requests.push({
+        url: String(url),
+        method: opts.method || 'GET',
+        body: opts.body ? JSON.parse(opts.body) : undefined,
+      });
       if (String(url).endsWith('/skills') && (!opts.method || opts.method === 'GET')) {
         return jsonResponse([{ id: 'skill-1', key: 'ci-cd', slug: 'ci-cd' }]);
+      }
+      if (String(url).endsWith('/rename')) {
+        return jsonResponse({
+          skill: { id: 'skill-1', key: 'company/company-1/ci-cd', slug: 'ci-cd' },
+          previousSlug: 'ci-cd',
+          reassignments: [],
+        });
       }
       return jsonResponse({ id: 'skill-1', key: 'ci-cd', slug: 'ci-cd' });
     };
     const client = new PaperclipClient('http://paperclip.test');
     const list = await client.listCompanySkills('company-1');
     assert.equal(list[0].slug, 'ci-cd');
-    await client.updateCompanySkill('company-1', 'skill-1', { markdown: '# new' });
+    await client.updateCompanySkill('company-1', 'skill-1', { description: 'updated' });
+    const renamed = await client.renameCompanySkill('company-1', 'skill-1', { name: 'CI/CD' });
+    assert.equal(renamed.skill.key, 'company/company-1/ci-cd');
+    await client.updateCompanySkillFile('company-1', 'skill-1', {
+      path: 'SKILL.md',
+      content: '# new',
+    });
     assert.equal(requests[1].method, 'PATCH');
     assert.ok(requests[1].url.endsWith('/api/companies/company-1/skills/skill-1'));
+    assert.deepEqual(requests[1].body, { description: 'updated' });
+    assert.equal(requests[2].method, 'POST');
+    assert.ok(requests[2].url.endsWith('/api/companies/company-1/skills/skill-1/rename'));
+    assert.deepEqual(requests[2].body, { name: 'CI/CD' });
+    assert.equal(requests[3].method, 'PATCH');
+    assert.ok(requests[3].url.endsWith('/api/companies/company-1/skills/skill-1/files'));
+    assert.deepEqual(requests[3].body, { path: 'SKILL.md', content: '# new' });
+  });
+
+  it('keeps older supported hosts working when the skill rename route is absent', async () => {
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify({ error: 'not found' }), {
+        status: 404,
+        headers: { 'content-type': 'application/json' },
+      });
+
+    const client = new PaperclipClient('http://paperclip.test');
+    const result = await client.renameCompanySkill('company-1', 'skill-1', { name: 'CI/CD' });
+    assert.equal(result, null);
+  });
+});
+
+describe('latest Paperclip stable request contracts', () => {
+  it('emits payloads accepted by the installed Paperclip shared validators', async () => {
+    const ids = {
+      company: '00000000-0000-4000-8000-000000000001',
+      agent: '00000000-0000-4000-8000-000000000002',
+      project: '00000000-0000-4000-8000-000000000003',
+      goal: '00000000-0000-4000-8000-000000000004',
+      parent: '00000000-0000-4000-8000-000000000005',
+      label: '00000000-0000-4000-8000-000000000006',
+      routine: '00000000-0000-4000-8000-000000000007',
+      skill: '00000000-0000-4000-8000-000000000008',
+    };
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      const request = {
+        url: String(url),
+        method: opts.method || 'GET',
+        body: opts.body ? JSON.parse(opts.body) : undefined,
+      };
+      requests.push(request);
+      if (request.url.endsWith('/agent-hires')) {
+        return jsonResponse({ agent: { id: ids.agent }, approval: null }, 201);
+      }
+      return jsonResponse({ id: 'result' }, request.method === 'POST' ? 201 : 200);
+    };
+
+    const client = new PaperclipClient('http://paperclip.test');
+    await client.createCompany({ name: 'Compatible Co', description: 'Current host contract' });
+    await client.createGoal(ids.company, {
+      title: 'Ship',
+      description: 'Ship safely',
+      level: 'company',
+      status: 'active',
+      ownerAgentId: ids.agent,
+    });
+    await client.createProject(ids.company, {
+      name: 'Compatible Project',
+      description: 'Current workspace contract',
+      goalIds: [ids.goal],
+      workspace: '/tmp/compatible-project',
+      executionWorkspacePolicy: {
+        defaultMode: 'isolated_workspace',
+        workspaceStrategy: { type: 'git_worktree', baseRef: 'main' },
+      },
+    });
+    await client.createIssue(ids.company, {
+      title: 'Compatible issue',
+      description: 'Current issue contract',
+      status: 'todo',
+      priority: 'high',
+      parentId: ids.parent,
+      projectId: ids.project,
+      goalId: ids.goal,
+      labelIds: [ids.label],
+      assigneeAgentId: ids.agent,
+      executionWorkspaceSettings: { mode: 'isolated_workspace' },
+      blockedByIssueIds: [],
+    });
+    await client.createAgent(ids.company, {
+      name: 'Engineer',
+      role: 'engineer',
+      adapterType: 'codex_local',
+      adapterConfig: {},
+      desiredSkills: ['company/skill'],
+      instructionsBundle: {
+        entryFile: 'AGENTS.md',
+        files: { 'AGENTS.md': '# Engineer' },
+      },
+      sourceIssueId: ids.parent,
+    });
+    await client.createRoutine(ids.company, {
+      title: 'Backlog health',
+      description: 'Bounded maintenance',
+      assigneeAgentId: ids.agent,
+      projectId: ids.project,
+      priority: 'medium',
+      status: 'active',
+      concurrencyPolicy: 'skip_if_active',
+      catchUpPolicy: 'skip_missed',
+    });
+    await client.createRoutineTrigger(ids.routine, {
+      kind: 'schedule',
+      cronExpression: '0 */4 * * *',
+      timezone: 'UTC',
+    });
+    await client.createCompanySkill(ids.company, {
+      name: 'CI/CD',
+      slug: 'ci-cd',
+      description: 'Pipeline skill',
+      markdown: '# CI/CD',
+      categories: ['delivery'],
+    });
+    await client.updateCompanySkill(ids.company, ids.skill, {
+      description: 'Updated pipeline skill',
+      categories: ['delivery'],
+    });
+    await client.renameCompanySkill(ids.company, ids.skill, { name: 'Delivery CI/CD' });
+    await client.updateCompanySkillFile(ids.company, ids.skill, {
+      path: 'SKILL.md',
+      content: '# Delivery CI/CD',
+    });
+    await client.approveApproval('approval-1', { decisionNote: 'Reviewed this hire.' });
+    await client.triggerHeartbeat(ids.agent, {
+      issueId: ids.parent,
+      idempotencyKey: `company-wizard-bootstrap:${ids.parent}`,
+    });
+
+    const bodyFor = (suffix, method) =>
+      requests.find((request) => request.url.endsWith(suffix) && request.method === method)?.body;
+
+    assert.doesNotThrow(() => createCompanySchema.parse(bodyFor('/api/companies', 'POST')));
+    assert.doesNotThrow(() =>
+      createGoalSchema.parse(bodyFor(`/api/companies/${ids.company}/goals`, 'POST')),
+    );
+    assert.doesNotThrow(() =>
+      createProjectSchema.parse(bodyFor(`/api/companies/${ids.company}/projects`, 'POST')),
+    );
+    assert.doesNotThrow(() =>
+      createIssueSchema.parse(bodyFor(`/api/companies/${ids.company}/issues`, 'POST')),
+    );
+    assert.doesNotThrow(() =>
+      createAgentHireSchema.parse(bodyFor(`/api/companies/${ids.company}/agent-hires`, 'POST')),
+    );
+    assert.doesNotThrow(() =>
+      createRoutineSchema.parse(bodyFor(`/api/companies/${ids.company}/routines`, 'POST')),
+    );
+    assert.doesNotThrow(() =>
+      createRoutineTriggerSchema.parse(bodyFor(`/api/routines/${ids.routine}/triggers`, 'POST')),
+    );
+    assert.doesNotThrow(() =>
+      companySkillCreateSchema.parse(bodyFor(`/api/companies/${ids.company}/skills`, 'POST')),
+    );
+    assert.doesNotThrow(() =>
+      companySkillUpdateSchema.parse(
+        bodyFor(`/api/companies/${ids.company}/skills/${ids.skill}`, 'PATCH'),
+      ),
+    );
+    assert.doesNotThrow(() =>
+      companySkillRenameSchema.parse(
+        bodyFor(`/api/companies/${ids.company}/skills/${ids.skill}/rename`, 'POST'),
+      ),
+    );
+    assert.doesNotThrow(() =>
+      companySkillFileUpdateSchema.parse(
+        bodyFor(`/api/companies/${ids.company}/skills/${ids.skill}/files`, 'PATCH'),
+      ),
+    );
+    assert.doesNotThrow(() =>
+      resolveApprovalSchema.parse(bodyFor('/api/approvals/approval-1/approve', 'POST')),
+    );
+    assert.doesNotThrow(() =>
+      wakeAgentSchema.parse(bodyFor(`/api/agents/${ids.agent}/wakeup`, 'POST')),
+    );
   });
 });

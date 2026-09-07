@@ -3,16 +3,14 @@ import type { PaperclipPluginManifestV1 } from '@paperclipai/plugin-sdk';
 const manifest: PaperclipPluginManifestV1 = {
   id: 'starlein.paperclip-plugin-company-wizard',
   apiVersion: 1,
-  version: '0.5.1',
+  version: '0.6.1',
   displayName: 'Company Wizard',
   description: 'AI-powered wizard to bootstrap agent companies from composable templates',
   author: 'Sascha Pietrowski <sp@speednetwork.de>',
   categories: ['workspace', 'ui'],
-  // Some source-derived and npx installations report Paperclip's package
-  // semver instead of its release CalVer. API shape is gated separately by
-  // apiVersion and capability validation, so keep the install floor on the
-  // package-version axis rather than rejecting an otherwise compatible host.
-  minimumHostVersion: '0.3.1',
+  // No numeric host floor: current Paperclip source starts its plugin loader with
+  // hostVersion "0.0.0" even when /health reports a current release or git build.
+  // Keep API v1/capabilities explicit and validate feature availability at runtime.
   capabilities: [
     'companies.read',
     'issues.create',
@@ -41,13 +39,13 @@ const manifest: PaperclipPluginManifestV1 = {
       templatesPath: {
         type: 'string',
         description:
-          'Path to the templates directory. Auto-detected: ~/plugin-templates in Docker setups, ~/.paperclip/plugin-templates otherwise. Rarely needs manual override.',
+          'Optional operator-managed templates directory. Defaults to templates bundled with this plugin release. Local files are never overwritten by refresh.',
       },
       templatesRepoUrl: {
         type: 'string',
         default: 'https://github.com/starlein/paperclip-plugin-company-wizard/tree/main/templates',
         description:
-          'GitHub tree URL for template downloads. The default is correct for most setups — only change this if using a custom fork.',
+          'Optional custom GitHub tree URL. The official default uses bundled release templates; a custom URL opts into a refreshable remote cache.',
       },
       aiProvider: {
         type: 'string',

@@ -4,7 +4,6 @@ import {
   useWizard,
   useWizardDispatch,
   type Goal,
-  type ProjectExecutionWorkspacePolicy,
   type ProjectWorkspaceConfig,
   type WizardIssue,
   type WizardProject,
@@ -12,6 +11,7 @@ import {
 import { Button } from '../ui/button';
 import { ConfigReview } from '../ConfigReview';
 import { cn, getPluginSettingsUrl } from '../../lib/utils';
+import { normalizeExecutionWorkspacePolicy } from '../../../logic/project-workspace-policy.js';
 import {
   Sparkles,
   Loader2,
@@ -93,23 +93,6 @@ function normalizeWorkspaceConfig(value: unknown): ProjectWorkspaceConfig | unde
   if (isPlainObject(value.metadata)) workspace.metadata = value.metadata;
   if (isPlainObject(value.runtimeConfig)) workspace.runtimeConfig = value.runtimeConfig;
   return Object.keys(workspace).length > 0 ? (workspace as ProjectWorkspaceConfig) : undefined;
-}
-
-function normalizeExecutionWorkspacePolicy(
-  value: unknown,
-): ProjectExecutionWorkspacePolicy | undefined {
-  if (!isPlainObject(value)) return undefined;
-  const policy: Record<string, unknown> = {};
-  copyStringField(value, policy, 'defaultMode');
-  copyStringField(value, policy, 'defaultProjectWorkspaceId');
-  copyStringField(value, policy, 'environmentId');
-  if (typeof value.allowIssueOverride === 'boolean') {
-    policy.allowIssueOverride = value.allowIssueOverride;
-  }
-  if (isPlainObject(value.workspaceStrategy)) {
-    policy.workspaceStrategy = { ...value.workspaceStrategy };
-  }
-  return Object.keys(policy).length > 0 ? (policy as ProjectExecutionWorkspacePolicy) : undefined;
 }
 
 function PhaseIndicator({

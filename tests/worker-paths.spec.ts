@@ -85,6 +85,6 @@ describe('resolveWritableCompaniesDir', () => {
 
     const dir = resolveWritableCompaniesDir({});
 
-    expect(dir).toBe('/tmp/fallback/paperclip-companies');
+    expect(dir).toBe(path.join('/tmp/fallback', 'paperclip-companies'));
   });
 });

@@ -2,7 +2,7 @@
 
 You own stall detection when you are explicitly assigned a stall-detection routine run. This is not an every-heartbeat background scan.
 
-This routine is the **periodic backstop**. Individual top-level issues should also carry a per-issue **task watchdog** (`watchdog: { agentId, instructions }` set at issue creation — see the backlog-health skill), which Paperclip fires event-driven the moment an issue's subtree stalls. When you find a stalled top-level issue here that has no watchdog, add one as part of the fix so it recovers natively next time instead of waiting for this scan.
+This routine is the **periodic backstop**. Do not create universal task-watchdog, queue-drain, status-repair, or workspace-cleanup wrapper issues. Prefer the originating issue's real owner, blockers, executionPolicy, interactions, and normal wake paths. Add a watchdog only when the issue explicitly documents a bounded recovery requirement those paths cannot cover.
 
 ## When To Use This Skill
 
@@ -32,21 +32,23 @@ Paperclip classifies `in_review_without_action_path` only when an agent-owned `i
 
 1. Check the interaction, approval, wake, monitor, active-run, and recovery routes in *Stall Check*. If any path is pending, record it as `WAITING-INTERACTION`, `WAITING-APPROVAL`, `WAITING-REVIEW-PATH-RECOVERY`, or the matching owner in the routine summary and do not nudge, reassign, or change status.
 2. If every path is absent, flag the issue as `IN-REVIEW-WITHOUT-ACTION-PATH` and leave a structured comment naming the missing owner.
-3. Make the next action explicit according to the work: add the intended reviewer/interaction, return it to `in_progress` with a concrete change request and active assignee, mark it `done` if already accepted, or open a bounded recovery issue. For PR work, set non-author `executionPolicy` stages when a Code Reviewer exists; otherwise return it to the engineer for the self-merge flow.
+3. Make the next action explicit according to the work: add the intended reviewer/interaction, return it to `in_progress` with a concrete change request and active assignee, or mark it `done` if already accepted. Keep recovery on the originating issue unless independent work is genuinely required. For PR work, restore the selected policy from `docs/pr-conventions.md` if it exists: standard role-based stages, or exactly one non-author Code Reviewer stage when `docs/lean-delivery.md` exists. With no eligible non-author Code Reviewer, return it to the engineer for self-merge.
 
 ## Author-only first stage
 
-An `in_review` issue whose **first (current) executionPolicy stage lists only the issue's assignee as a participant** has an invalid review participant: Paperclip excludes the executor from every stage, so that stage cannot advance (`422 Only the active reviewer or approver can advance the current execution stage`). Common cause: a non-engineer (e.g. QA) was assigned implementation work, did it, moved the issue to `in_review`, and set itself as the first reviewer. Detect it with `GET /api/issues/{id}` (the list endpoint omits the full `executionPolicy`) and compare the current stage participants with `assigneeAgentId`. If another explicit waiting path is pending, leave it intact and defer policy repair until that path resolves.
+Read `GET /api/issues/{id}` and locate the stage named by `executionState.currentStageId`; it need not be the first stage. Paperclip excludes `executionState.returnAssignee` (the implementation owner) when selecting a participant. Compare principals by both type and id. **Do not compare stage participants with `assigneeAgentId` to infer self-review:** Paperclip normally reassigns the issue to the active reviewer, so that match describes a healthy review. A stage is author-only only when every configured participant is the recorded return assignee and there is no eligible participant. If execution state is missing, diagnose with the issue's history/recovery actions rather than guessing who authored the work. If another explicit waiting path is pending, leave it intact.
 
 1. Flag it in the routine-run summary as `AUTHOR-ONLY-STAGE`.
-2. When no other waiting path is pending, leave a structured comment on the issue: `in_review` whose first executionPolicy stage lists only the assignee `<agent>` as participant — author-only stage with no eligible participant (`422`).
-3. Recover by nulling the policy: `PATCH /api/issues/{id}` with `{"executionPolicy":null}` returns the issue to `in_progress` (do not try `{"status":"in_progress"}` alone — a active policy rejects that with `422 Only the active reviewer or approver can advance`). Then reassign to the correct owner (the engineer for implementation work) with the next action: either re-set `executionPolicy` stages with a **non-author first stage** (Code Reviewer present) or self-merge the PR via `gh pr merge <N> --merge` (no Code Reviewer). Never re-add the assignee as a stage participant.
+2. When no other waiting path is pending, leave a structured comment identifying `currentStageId`, `returnAssignee`, configured participants, and the evidence that no eligible participant exists.
+3. Only with authority to repair this policy, clear it using `PATCH /api/issues/{id}` with `{"executionPolicy":null}`. When a pending execution state has a return assignee, Paperclip restores `in_progress` and that owner; re-read the response rather than assuming the transition. Restore the selected policy with a non-author gate before resubmitting, or return the same issue to its implementation owner for self-merge when no eligible Code Reviewer exists. Never clear a healthy reviewer stage or a human escalation hold. If authorization is denied, report the exact denial to the responsible board operator and stop retrying.
 
 ## Dependency-ready but still blocked
 
 Treat `GET /api/issues/{id}/diagnostics/blockers` as authoritative. When `readiness.isDependencyReady` is false, the issue is validly blocked; inspect the unresolved leaf and its action path. When readiness is true but the issue remains `blocked`, check wake diagnostics, active-run state, recent activity, and recovery actions before intervening. A queued/claimed wake or active recovery means Paperclip already owns the transition.
 
 If `readiness.pendingFinalizeBlockerCount` is non-zero, a blocker may be `done` but still carry `workspace_finalize_pending`, so the dependency is not ready yet. A recent finalization is a valid wait. If finalization remains stale or the corresponding `issue_blockers_resolved` wake is `skipped`/`failed`, flag `WORKSPACE-FINALIZE-PENDING`, attach the blocker and wake diagnostics, and escalate the blocker/finalization failure to the CEO or board operator. Do not force the downstream issue active and do not archive/delete the blocker workspace as a workaround.
+
+A `cancelled` blocker does **not** resolve a dependency. Remove that blocker relation from every dependent when the dependency is no longer required, or replace it with the issue that now owns the work. Do not force a dependent active while diagnostics still list the cancelled blocker as unresolved.
 
 1. If dependency-ready with no active/queued wake or recovery action, flag it in the routine-run summary as `DEPENDENCY-READY-BUT-BLOCKED`.
 2. Leave a structured comment with blocker readiness and wake-diagnostic evidence.
@@ -55,17 +57,14 @@ If `readiness.pendingFinalizeBlockerCount` is non-zero, a blocker may be `done` 
 
 ## PR-queue hygiene
 
-As part of every stall-detection run, scan the repository's open PR queue for pile-ups and red/DIRTY state — the issue queue alone does not surface a growing PR backlog. This scan only applies when the `github-repo` module is active (so `gh` is configured and a repository exists). Discover the repo from the project workspace metadata (`repoUrl` / `repoRef`) or your `heartbeat-context`; for multi-repo companies, scan each project's repo.
+When `github-repo` is active, reconcile each configured project repository's open PRs against their originating Paperclip issues. Resolve repositories only from project metadata/workspace origin and identify every PR as `owner/repo#number`.
 
-1. List open PRs: `gh pr list --repo <owner/repo> --state open --json number,title,mergeStateStatus,headRefName,baseRefName`.
-2. Count PRs in each state: UNSTABLE (mergeable but CI failing), DIRTY/CONFLICTING, CLEAN.
-3. Escalate a triage issue when any threshold is met:
-   - **3 or more** UNSTABLE or DIRTY/CONFLICTING PRs, or
-   - **8 or more** open PRs total.
-4. Before opening the triage issue, run the base-branch-red detection in `../../docs/git-workflow.md` → *Base-branch-red deadlock* against the base commit (if `../../docs/git-workflow.md` is present — it ships with `github-repo`, which is active here). If the base is red, the triage issue names `BASE-BRANCH-RED` and instructs the baseline-emergency protocol (fix main first, fast-track the baseline-restore PR, drain the queue) — the pile-up is a symptom of the red base, not individual PR faults.
-5. If the base is green, the triage issue lists each UNSTABLE/DIRTY PR with its owner and the specific next action (rebase for DIRTY, fix the introduced failure for UNSTABLE).
-6. Assign the triage issue to the CEO (or the engineer owning the red base) and summarize on the routine-run issue.
-7. **Reconcile each open PR against its owning issue.** A `CLEAN`/mergeable open PR (CI green or no required CI) whose owning issue is already `done`, or whose dedicated merge issue is still `blocked` despite dependency readiness, means the merge step never ran. For each such PR: confirm the base and verification gate, then merge it (`gh pr merge <N> --merge`) or route a one-line next action to the merge owner, and recover the merge issue per *Dependency-ready but still blocked* above. Never leave a green, approved PR unmerged because its tracking issue already closed.
+1. List open PRs and compare each with its originating issue, exact head/base, required CI, merge state, owner, and next gate.
+2. Open PR count is a queue-health signal, not a hard WIP cap. Keep independent acceptance-ready work moving while routing stale, conflicting, red, or ownerless PRs to their existing owners; never create dependencies merely because other PRs are open.
+3. Route CI/runner failures, stale bases, conflicts, branch protection, packaging, deployment, and release mechanics on the **existing originating issue and PR** to the operational owner. Never open a replacement PR to escape a blocker.
+4. A `done` issue with an open PR is an invariant violation. Reopen/route the originating issue when work remains, or close the obsolete PR with evidence. Do not create a separate merge, status, evidence, or cleanup issue.
+5. Detect base-branch-red before blaming feature diffs. Restore the base through one explicitly owned baseline fix, then rebase and drain existing PRs.
+6. Summarize repository counts and exact existing issue/PR next actions on the routine-run issue.
 
 ## Rules
 
@@ -73,5 +72,6 @@ As part of every stall-detection run, scan the repository's open PR queue for pi
 - Do not interrupt running agents.
 - Do not close or cancel another agent's work unless the issue explicitly grants that authority.
 - Be specific: which issue, which agent, last activity, why stalled, and who owns the next action.
+- Do not poll ordinary review stages, PR-capacity waits, or workspace cleanup with a fixed-cadence monitor when a live owner, blocker, participant, or wake path exists. For a named external transition such as a running CI job, use a bounded monitor no more often than every 15 minutes unless the issue defines a tighter SLA; set attempt/timeout bounds and comment only on a state change or terminal checkpoint.
 - **A `403 ... outside this actor's authorization boundary` is a final answer, not a retry.** Paperclip contains cross-issue agent writes: a repair you are not authorized to make on someone else's issue will be denied no matter how often you retry. Record the denial (issue id, attempted change, denial reason) in the routine summary and escalate to the responsible human/board operator in the same pass. Never loop on the same denied call.
 - **Never archive or retire your own routine-run workspace.** This routine is pure control-plane work (reading and patching the board via the API) — it needs no repository state. When you finish, mark the routine issue `done` and exit. Do not call `PATCH /api/execution-workspaces/{id}` with `{"status":"archived"}`, do not check `close-readiness` to trigger a teardown, and do not otherwise remove the worktree your run is using. Archiving it mid-run makes Paperclip fail the run's workspace validation and breaks the next reuse of that workspace. Workspace retirement is a board/operator action only.

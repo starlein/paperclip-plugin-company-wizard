@@ -1,6 +1,12 @@
 packages:
-  - .
+  - '.'
 
+# Vite 7 still requests esbuild 0.27, affected on Windows by GHSA-g7r4-m6w7-qqqr.
+# Keep Vitest 3/Vite 7 APIs while using the patched esbuild API verified by tests.
+overrides:
+  'vite>esbuild': '^0.28.1'
+
+# esbuild installs/verifies its platform binary; no other dependency scripts run.
 allowBuilds:
   esbuild: true
 

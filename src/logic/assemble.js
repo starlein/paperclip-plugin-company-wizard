@@ -17,6 +17,10 @@ import {
 } from './ceo-defaults.js';
 import { skillSlug, humanizeSkillName, buildCompanySkillSet } from './resolve.js';
 import { routineUsesProjectWorkspace } from './routines.js';
+import {
+  normalizeExecutionWorkspacePolicy,
+  executionWorkspacePolicyFields,
+} from './project-workspace-policy.js';
 // modulesWithActiveGoals removed — goals no longer contain issues
 
 async function exists(p) {
@@ -100,6 +104,7 @@ function normalizeExecutionBaseRef(ref, fallbackRef) {
  * @param {boolean} [opts.enableEnrichedPersonas] - Internal escape hatch. Defaults true: append role LENSES.md to SOUL.md, role DONE.md to HEARTBEAT.md, and primary-skill <skill>.bar.md output bars when fragments exist.
  * @param {string} [opts.gitUserName] - Git user name for initial commit (falls back to "Paperclip Bootstrap")
  * @param {string} [opts.gitUserEmail] - Git user email for initial commit (falls back to "bootstrap@paperclip.local")
+ * @param {string} [opts.existingCompanyId] - Existing company being extended; reuse it in bootstrap instructions.
  * @param {string} opts.outputDir
  * @param {string} opts.templatesDir
  * @param {(line: string) => void} opts.onProgress
@@ -108,6 +113,7 @@ function normalizeExecutionBaseRef(ref, fallbackRef) {
 export async function assembleCompany({
   companyName,
   companyDescription = '',
+  existingCompanyId,
   userGoals = [],
   userProjects = [],
   moduleNames,
@@ -155,13 +161,15 @@ export async function assembleCompany({
   const resolvedProjects =
     userProjects.length > 0
       ? userProjects
-      : [
-          {
-            name: companyName,
-            description: mainGoal?.description || '',
-            goals: allGoals.map((g) => g.title),
-          },
-        ];
+      : existingCompanyId
+        ? []
+        : [
+            {
+              name: companyName,
+              description: mainGoal?.description || '',
+              goals: allGoals.map((g) => g.title),
+            },
+          ];
 
   const baseDirName = toPascalCase(companyName);
   let dirName = baseDirName;
@@ -198,6 +206,9 @@ export async function assembleCompany({
   // Validate module dependencies before starting assembly.
   // Skip modules that won't activate (missing directory or gated by activatesWithRoles).
   const selectedSet = new Set(moduleNames);
+  const hasLeanDelivery =
+    selectedSet.has('lean-delivery') &&
+    (await exists(join(templatesDir, 'modules', 'lean-delivery', 'module.meta.json')));
   for (const moduleName of moduleNames) {
     const moduleDir = join(templatesDir, 'modules', moduleName);
     if (!(await exists(moduleDir))) continue;
@@ -325,13 +336,16 @@ export async function assembleCompany({
     for (const role of reviewersRaw) {
       if (typeof role !== 'string') continue;
       if (!allRoles.has(role)) continue;
+      if (role === assignTo) continue;
       if (seen.has(role)) continue;
       seen.add(role);
       reviewers.push(role);
     }
 
     const approver =
-      typeof reviewGate.approver === 'string' && allRoles.has(reviewGate.approver)
+      typeof reviewGate.approver === 'string' &&
+      allRoles.has(reviewGate.approver) &&
+      reviewGate.approver !== assignTo
         ? reviewGate.approver
         : undefined;
 
@@ -378,8 +392,10 @@ export async function assembleCompany({
   // Render a resolved reviewGate as an executionPolicy sketch for BOOTSTRAP.md.
   // The CEO/Engineer resolves each role name to its agentId when setting the
   // policy on the issue (same role→agentId resolution as `assigneeAgentId`).
-  // The merge-gate stage carries the hard precondition: CI-green when the ci-cd
-  // module is selected, otherwise running the tests/build and pasting the output.
+  // The merge-gate stage uses exact-head CI only after the required company checks
+  // actually exist and have run on the reviewed head. Selecting the ci-cd module
+  // alone is not evidence that bootstrap has created a working workflow yet, so
+  // the complete local gate remains the runtime fallback until those checks exist.
   const hasCi = moduleNames.includes('ci-cd');
   const renderReviewGate = (gate) => {
     const stages = [];
@@ -393,8 +409,8 @@ export async function assembleCompany({
     }
     if (gate.mergeGate) {
       const gatePrecondition = hasCi
-        ? 'CI must be green before merge'
-        : 'no CI configured — run the test suite/build and paste the output before merge';
+        ? 'if required company CI checks actually exist and ran on this exact head, verify they are green and run only the smallest focused risk check; until those checks exist on this head, run the complete local test/lint/typecheck/build gate once and record the output'
+        : 'no CI configured — run the complete local test/lint/typecheck/build gate once and record the output before merge';
       stages.push(
         `  - stage ${stages.length + 1} (approval) → assign ${JSON.stringify(gate.mergeGate)}  — merge gate (non-author): ${gatePrecondition}; merge the PR, then record approved to close`,
       );
@@ -403,7 +419,8 @@ export async function assembleCompany({
       `- **executionPolicy** (set when creating this issue; resolve each role to its agentId):\n` +
       `${stages.join('\n')}\n` +
       `  - never assign the issue's executor/author to any stage — Paperclip excludes the original executor, so a self-stage has no eligible participant and the issue stalls (422); the merge gate must be a non-author\n` +
-      `  - every verdict must cite executed verification (commands + results); "looks good" without evidence is not a valid verdict\n\n`
+      `  - keep corrections on the originating issue, branch, and PR; technical defects return to the implementation owner, never to the board user\n` +
+      `  - every verdict must cite exact-head verification; "looks good" without evidence is not a valid verdict\n\n`
     );
   };
 
@@ -469,6 +486,9 @@ export async function assembleCompany({
       if (titleKey) seenIssueTitles.add(titleKey);
       initialIssues.push({
         ...issue,
+        ...(hasLeanDelivery && moduleName === 'pr-review' && issue.reviewGate
+          ? { reviewGate: { mergeGate: issue.reviewGate.mergeGate } }
+          : {}),
         assignTo: resolveAssignee(issue.assignTo, moduleJson),
         module: moduleName,
       });
@@ -1061,6 +1081,9 @@ export async function assembleCompany({
   const normalizeProjectWorkspace = (proj) => {
     const explicitWorkspace =
       proj && typeof proj.workspace === 'object' && proj.workspace !== null ? proj.workspace : {};
+    // Existing project workspaces are authoritative, including an absent one.
+    // Extension updates its policy only and must never invent a checkout/setup.
+    if (proj?.id) return { ...explicitWorkspace };
     const sourceType =
       typeof explicitWorkspace.sourceType === 'string' && explicitWorkspace.sourceType.trim()
         ? explicitWorkspace.sourceType.trim()
@@ -1088,7 +1111,7 @@ export async function assembleCompany({
       // `companies/<Company>/projects/<Project>` like local ones — not a separate
       // host-managed clone path.
       if (!workspace.cwd) workspace.cwd = localCwd;
-    } else {
+    } else if (sourceType === 'local_path') {
       if (!workspace.cwd) workspace.cwd = localCwd;
       // A bare `git init -b main` leaves an UNBORN main branch (no commits). The
       // isolated execution policy creates a worktree with `git worktree add … main`,
@@ -1101,7 +1124,8 @@ export async function assembleCompany({
       if (!trimmedSetup || trimmedSetup === 'git init -b main' || trimmedSetup === 'git init') {
         const gitName = gitUserName || 'Paperclip Bootstrap';
         const gitEmail = gitUserEmail || 'bootstrap@paperclip.local';
-        workspace.setupCommand = `git init -b main && git -c user.email=${gitEmail} -c user.name='${gitName.replace(/'/g, "'\\''")}' commit --allow-empty -m 'chore: initialize repository'`;
+        const shellQuote = (value) => `'${value.replace(/'/g, "'\\''")}'`;
+        workspace.setupCommand = `git init -b main && git -c user.email=${shellQuote(gitEmail)} -c user.name=${shellQuote(gitName)} commit --allow-empty -m 'chore: initialize repository'`;
       }
     }
 
@@ -1114,7 +1138,10 @@ export async function assembleCompany({
       ...orderedKeys.filter((key) => workspace[key] !== undefined),
       ...Object.keys(workspace).filter((key) => !orderedKeys.includes(key)),
     ];
-    return keys.map((key) => [`workspace.${key}`, String(workspace[key])]);
+    return keys.map((key) => [
+      `workspace.${key}`,
+      typeof workspace[key] === 'string' ? workspace[key] : JSON.stringify(workspace[key]),
+    ]);
   };
 
   const formatWorkspaceObject = (workspace) => {
@@ -1128,8 +1155,7 @@ export async function assembleCompany({
     const fields = entries
       .filter(([, value]) => value !== undefined && value !== null && value !== '')
       .map(([key, value]) => {
-        if (typeof value === 'boolean') return `${key}: ${value}`;
-        return `${key}: "${String(value)}"`;
+        return `${key}: ${JSON.stringify(value)}`;
       });
     return `{ ${fields.join(', ')} }`;
   };
@@ -1142,34 +1168,80 @@ export async function assembleCompany({
   // Freshly-created local repositories still never use them during bootstrap:
   //    the repo and its base ref do not exist yet when the first agents wake, so
   //    worktree creation fails and every early run errors out. Isolated worktrees
-  //    only make sense for existing external repos (sourceType "git_repo"), where
-  //    a real base ref already exists.
-  const isFreshLocalRepo = (workspace) => workspace?.sourceType !== 'git_repo';
+  // Existing local projects may already have a working git repository. Their
+  // configured mode must survive extension; only new local repos are deferred.
+  const isFreshLocalRepo = (proj, workspace) => workspace?.sourceType === 'local_path' && !proj?.id;
+
+  // Concurrency guard for the shared project workspace. Paperclip's `auto` only
+  // serializes runs on non-local environments (Kubernetes/sandbox); on a local
+  // or SSH driver it permits concurrent runs. `serialize` defers a run while a
+  // live holder owns the shared workspace. Current Paperclip gates the entire
+  // project policy behind enableIsolatedWorkspaces; saving it alone does not
+  // enforce serialization when that instance feature is disabled.
+  const DEFAULT_SHARED_WORKSPACE_CONCURRENCY = 'serialize';
+
+  const withSharedWorkspaceConcurrency = (policy) => ({
+    ...policy,
+    sharedWorkspaceConcurrency:
+      policy.sharedWorkspaceConcurrency ?? DEFAULT_SHARED_WORKSPACE_CONCURRENCY,
+  });
+
+  // The policy emitted when isolated worktrees are not in play. Previously the
+  // wizard emitted no policy at all and let the server fall back to
+  // shared_workspace/auto; making the shared mode explicit is what lets us set the
+  // concurrency guard. A per-issue `executionWorkspaceSettings` still wins over
+  // this — Paperclip resolves the issue mode before consulting the project policy —
+  // so the backlog skill can keep giving top-level issues their own worktree.
+  const sharedWorkspacePolicy = (policy) => {
+    const base = policy && typeof policy === 'object' ? { ...policy } : {};
+    // A git_worktree strategy is meaningless in shared mode (Paperclip strips it
+    // from the agent config anyway); drop it rather than sending a contradiction.
+    delete base.workspaceStrategy;
+    return withSharedWorkspaceConcurrency({
+      ...base,
+      enabled: base.enabled ?? true,
+      defaultMode: 'shared_workspace',
+      allowIssueOverride: base.allowIssueOverride ?? true,
+    });
+  };
 
   const effectiveExecutionPolicy = (proj, workspace) => {
-    const policy = proj?.executionWorkspacePolicy;
-    const canUseIsolatedWorktrees = enableIsolatedWorktrees && !isFreshLocalRepo(workspace);
-    if (!policy || typeof policy !== 'object') {
-      if (!canUseIsolatedWorktrees) return null;
+    const policy = normalizeExecutionWorkspacePolicy(proj?.executionWorkspacePolicy);
+    const canUseIsolatedWorktrees =
+      enableIsolatedWorktrees &&
+      (workspace?.sourceType === 'git_repo' ||
+        (workspace?.sourceType === 'local_path' && Boolean(proj?.id)));
+    // The instance switch controls enforcement, not stored configuration. Keep
+    // existing project modes/strategies so toggling it back on restores intent.
+    if (proj?.id)
+      return withSharedWorkspaceConcurrency(
+        policy ? { ...policy, enabled: policy.enabled ?? true } : sharedWorkspacePolicy(null),
+      );
+    if (!policy) {
+      if (!canUseIsolatedWorktrees) return sharedWorkspacePolicy(null);
       const baseRef = normalizeExecutionBaseRef(null, workspace?.defaultRef || workspace?.repoRef);
-      return {
+      return withSharedWorkspaceConcurrency({
         enabled: true,
         defaultMode: 'isolated_workspace',
         workspaceStrategy: {
           type: 'git_worktree',
           ...(baseRef ? { baseRef } : {}),
         },
-      };
+      });
     }
-    if (policy.defaultMode === 'isolated_workspace') {
-      if (!canUseIsolatedWorktrees) return null;
-
+    // Disabled policies are intentional configuration, not a request to enable
+    // either execution mode. Preserve them even during a shared-mode fallback.
+    if (policy.enabled === false) return withSharedWorkspaceConcurrency(policy);
+    if (policy.defaultMode === 'isolated_workspace' || policy.defaultMode === 'operator_branch') {
       const strategy = policy.workspaceStrategy;
-      if (!strategy || typeof strategy !== 'object')
-        return { ...policy, enabled: policy.enabled ?? true };
-      if (strategy.type !== 'git_worktree') return { ...policy, enabled: policy.enabled ?? true };
+      const needsGitWorktree = !strategy?.type || strategy.type === 'git_worktree';
+      if (!enableIsolatedWorktrees || (needsGitWorktree && !canUseIsolatedWorktrees)) {
+        return sharedWorkspacePolicy(policy);
+      }
+      if (strategy && strategy.type && strategy.type !== 'git_worktree')
+        return withSharedWorkspaceConcurrency({ ...policy, enabled: policy.enabled ?? true });
 
-      const workspaceStrategy = { ...strategy };
+      const workspaceStrategy = { type: 'git_worktree', ...strategy };
       const resolvedBaseRef = normalizeExecutionBaseRef(
         workspaceStrategy.baseRef,
         workspace?.defaultRef || workspace?.repoRef,
@@ -1177,24 +1249,23 @@ export async function assembleCompany({
       if (resolvedBaseRef) {
         workspaceStrategy.baseRef = resolvedBaseRef;
       }
-      return { ...policy, enabled: policy.enabled ?? true, workspaceStrategy };
+      return withSharedWorkspaceConcurrency({
+        ...policy,
+        enabled: policy.enabled ?? true,
+        workspaceStrategy,
+      });
     }
-    return policy;
+    // Any other explicit policy (e.g. one that only pins the concurrency guard).
+    // `enabled` is required by Paperclip's project-policy schema — a policy sent
+    // without it is rejected with a 400 — so default it here rather than forwarding
+    // a partial object verbatim.
+    return withSharedWorkspaceConcurrency({ ...policy, enabled: policy.enabled ?? true });
   };
 
   const renderExecutionPolicyMetaFields = (proj, workspace) => {
     const policy = effectiveExecutionPolicy(proj, workspace);
     if (!policy) return [];
-    const rows = [];
-    if (policy.defaultMode) rows.push(['executionWorkspacePolicy.defaultMode', policy.defaultMode]);
-    const strategy = policy.workspaceStrategy;
-    if (strategy && typeof strategy === 'object') {
-      if (strategy.type)
-        rows.push(['executionWorkspacePolicy.workspaceStrategy.type', strategy.type]);
-      if (strategy.baseRef)
-        rows.push(['executionWorkspacePolicy.workspaceStrategy.baseRef', strategy.baseRef]);
-    }
-    return rows;
+    return executionWorkspacePolicyFields(policy);
   };
 
   // When the instance has isolated worktrees enabled but this project starts as
@@ -1203,8 +1274,15 @@ export async function assembleCompany({
   // the operator is left thinking the setting did nothing and flips it by hand
   // mid-run — which strands early work in the shared workspace. Emit a note so
   // the repo-setup owner enables isolation as soon as the first commit lands.
-  const renderDeferredIsolationNote = (workspace) => {
-    if (!enableIsolatedWorktrees || !isFreshLocalRepo(workspace)) return '';
+  const renderDeferredIsolationNote = (proj, workspace) => {
+    if (
+      !enableIsolatedWorktrees ||
+      !isFreshLocalRepo(proj, workspace) ||
+      proj?.executionWorkspacePolicy?.enabled === false ||
+      (proj?.executionWorkspacePolicy?.defaultMode &&
+        proj.executionWorkspacePolicy.defaultMode !== 'isolated_workspace')
+    )
+      return '';
     const configuredRef = normalizeExecutionBaseRef(
       null,
       workspace?.defaultRef || workspace?.repoRef,
@@ -1214,8 +1292,9 @@ export async function assembleCompany({
       : `When you later enable the project policy, first set the project/worktree base ref to the branch Paperclip should branch from.`;
     return (
       `> **Enable isolated worktrees once the repo exists.** This instance has isolated ` +
-      `worktrees enabled, but this project starts as a fresh local repository, so the ` +
-      `\`executionWorkspacePolicy\` is intentionally omitted now — worktrees need an existing ` +
+      `worktrees enabled, but this project starts as a fresh local repository, so the project ` +
+      `is provisioned with a shared-workspace policy for now and the isolated \`git_worktree\` ` +
+      `mode is intentionally deferred — worktrees need an existing ` +
       `base ref and would fail on the first run. After the initial commit exists on the configured ` +
       `base branch, switch this project to isolated worktrees in Project settings. ${refHint} ` +
       `Until then agents share the project workspace; do not flip it before the repo has its first commit.\n\n`
@@ -1234,31 +1313,39 @@ export async function assembleCompany({
   // itself, so routines owned by other agents would stay project-less. Expose
   // the resolved main project (with its normalized workspace) so the worker can
   // create it.
-  const mainProjectInfo = mainProject
-    ? (() => {
-        const workspace = normalizeProjectWorkspace(mainProject);
-        const executionWorkspacePolicy = effectiveExecutionPolicy(mainProject, workspace);
-        return {
-          name: mainProjectName,
-          description: mainProject.description || '',
-          workspace,
-          ...(executionWorkspacePolicy ? { executionWorkspacePolicy } : {}),
-        };
-      })()
-    : null;
+  const projectInfos = resolvedProjects.map((project) => {
+    const workspace = normalizeProjectWorkspace(project);
+    return {
+      ...(project.id ? { id: project.id } : {}),
+      name: project.name,
+      description: project.description || '',
+      workspace,
+      executionWorkspacePolicy: effectiveExecutionPolicy(project, workspace),
+    };
+  });
+  const mainProjectInfo = projectInfos[0] || null;
   // Mirror the worker's gate: the main project is only pre-created when there
   // are project-scoped routines to attach. Otherwise the CEO still creates it.
   const mainProjectPreCreated =
-    initialRoutines.some(routineUsesProjectWorkspace) && mainProjectInfo !== null;
+    !existingCompanyId &&
+    initialRoutines.some(routineUsesProjectWorkspace) &&
+    mainProjectInfo !== null &&
+    !mainProjectInfo.id;
 
   if (resolvedProjects.length > 0) {
     bootstrap += `## Projects\n\n`;
+    if (!enableIsolatedWorktrees) {
+      bootstrap += `> **Workspace policy enforcement is disabled in this instance.** Paperclip ignores project execution workspace policies, including the saved \`sharedWorkspaceConcurrency: "serialize"\` guard, while the instance's isolated-workspaces feature is off. Local and SSH runs can still overlap in a shared checkout. An operator must enable that instance feature to activate the guard; keep fresh repositories in shared mode until their first commit exists.\n\n`;
+    }
     if (mainProjectPreCreated) {
       bootstrap += `> **The Company Wizard has already created the main project "${mainProjectName}"** (with board authority) so the scheduled routines could be linked to it. Do NOT recreate it — create issues against it. After creating the goals above, resolve their real ids and link them with \`PATCH /api/projects/{projectId}\` using \`{ "goalIds": [...] }\`.\n\n`;
     }
     for (const proj of resolvedProjects) {
       const workspace = normalizeProjectWorkspace(proj);
       bootstrap += `### ${proj.name}\n\n`;
+      if (proj.id) {
+        bootstrap += `> **Existing project** \`${proj.id}\`: reuse this project and its workspace. The wizard updates only its execution workspace policy; do not recreate the project or re-run repository initialization.\n\n`;
+      }
       bootstrap += renderMeta([
         ...renderWorkspaceMetaFields(workspace),
         ...renderExecutionPolicyMetaFields(proj, workspace),
@@ -1270,7 +1357,8 @@ export async function assembleCompany({
       if (proj.description) {
         bootstrap += `${escapeBody(proj.description)}\n\n`;
       }
-      bootstrap += renderDeferredIsolationNote(workspace);
+      bootstrap += `Execution workspace policy payload (copy all fields when creating or updating this project):\n\n\`\`\`json\n${JSON.stringify({ executionWorkspacePolicy: effectiveExecutionPolicy(proj, workspace) }, null, 2)}\n\`\`\`\n\n`;
+      bootstrap += renderDeferredIsolationNote(proj, workspace);
     }
   }
 
@@ -1393,12 +1481,15 @@ export async function assembleCompany({
     bootstrap += `- Subtasks must include explicit \`parentId\` and explicit \`projectId\` matching the parent project unless an explicit override is required.\n`;
     bootstrap += `- Parent/subissue status is not implicitly coupled (no automatic status bounce).\n`;
     bootstrap += `- Do not reopen \`done\` parent/subissues without an explicit reason in a comment.\n`;
-    bootstrap += `- Do not reuse parent workspaces for subissues unless explicitly requested.\n`;
+    bootstrap += `- Repository implementation issues and subissues may use isolated git worktrees only when the instance feature is enabled, the project policy permits them, and the configured base ref already exists. Until then follow the shared project policy; API-only coordination needs no project checkout. When isolating an issue explicitly, include \`executionWorkspaceSettings.mode: "isolated_workspace"\` and \`workspaceStrategy.type: "git_worktree"\` with the configured base ref. \`parentId\` is hierarchy, not workspace consent. Reuse another issue's checkout only when explicitly required via \`inheritExecutionWorkspaceFromIssueId\`.\n`;
     if (moduleNames.includes('pr-review')) {
       const ciClause = hasCi
-        ? 'CI (lint/test/build) must be green before the merge gate merges — this is the hard gate and cannot be skipped'
-        : 'no CI is configured, so the merge-gate agent must run the test suite/build and paste the real output into the merge-gate verdict before merging — this is the hard gate';
-      bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`. The substantive gate is execution, not opinion: ${ciClause}. Stages, in order: a \`review\` stage for QA when present (test adequacy / running the tests), a \`review\` stage for the Security Engineer **only when the change is security-relevant** (auth, secrets, input boundaries, crypto, dependencies, infra exposure), an \`approval\` stage for the Product Owner when present (intent/scope), then a final \`approval\` merge-gate stage for the **Code Reviewer** (a non-author who satisfies the hard gate above, merges the PR, then records approval to close the issue). **Never list the issue's executor/author as a participant in any stage** — Paperclip excludes the original executor from review/approval, so a stage whose only participant is the author has no eligible participant and the issue stalls in \`in_review\` (422 No eligible approval participant); this is why the merge gate is the Code Reviewer (a non-author), not the engineer who wrote the code. The merge gate must be last so the Product Owner's approval does not auto-close the issue with the PR still open. When no Code Reviewer is on the team, do not set executionPolicy stages at all — use the PR-Self-Merge path (the engineer opens the PR and merges via \`gh pr merge <N> --merge\`); other review roles may leave advisory comments but do not block. Other domain reviewers may add advisory, non-blocking comments but do not gate the merge. Every verdict must cite executed verification. Resolve each role to its agentId. Model review stages in executionPolicy rather than child issues or @-mentions.\n`;
+        ? 'when required company CI checks actually exist and ran on the exact reviewed head, the merge gate verifies they are green and runs only the smallest focused risk check; until those checks exist on that head, it runs the complete local lint/test/typecheck/build gate once and records the real output'
+        : 'no CI is configured, so the merge-gate agent runs the complete local lint/test/typecheck/build gate once and records the real output';
+      const reviewPolicy = hasLeanDelivery
+        ? 'Lean delivery is enabled (see `docs/lean-delivery.md`). The default policy has exactly one `approval` stage: the **Code Reviewer** as non-author merge gate. Product acceptance is defined before implementation. QA, Security, UX, Product, and DevOps provide bounded evidence on the originating issue only for a concrete risk trigger or unresolved decision; they are not serial default stages. Coordinate work according to actual delivery capacity and dependencies; review queue counts are advisory and never impose a fixed issue or PR cap.'
+        : 'Standard staged PR review is enabled. In order, use a `review` stage for QA when present, a Security Engineer `review` stage only for security-relevant changes, an `approval` stage for Product Owner when present, and a final `approval` merge gate for the **Code Reviewer**. Omit absent roles and the executor from every stage. Delivery capacity follows company policy; no lean WIP limits are imposed.';
+      bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`. ${reviewPolicy} ${ciClause}. Pending or failed required checks must be awaited or repaired, not bypassed with local output. Keep implementation, corrections, evidence, and merge on one originating issue, branch, and PR. Technical defects, stale bases, merge conflicts, and missing tests return to the implementation owner with one precise action; never assign the board user as an execution participant. Board involvement is reserved for irreducible product, legal, licensing, or residual-risk acceptance through a first-class interaction/approval. The Code Reviewer merges the PR before recording approval, so the issue cannot become \`done\` with an open PR. Never list the executor/author as a participant — Paperclip excludes the author and an author-only stage stalls. When no eligible non-author Code Reviewer is present, set no executionPolicy stages and use PR Self-Merge mode. Do not create review-only, evidence-only, queue-drain, or workspace-cleanup child issues.\n`;
     }
     bootstrap += `\n`;
   }
@@ -1429,10 +1520,12 @@ export async function assembleCompany({
 
   // --- Provisioning steps ---
   bootstrap += `## Provisioning Steps\n\n`;
-  bootstrap += `The Company Wizard "Provision" step creates the company, board-operations issue, hiring-plan issue, agent hire requests, routines, and this bootstrap issue. Approve any pending hires before running dependent team workflows. The CEO heartbeat completes the remaining setup below by following this task.\n\n`;
+  bootstrap += `The Company Wizard "Provision" step ${existingCompanyId ? 'extends the existing company and provisions the selected changes' : 'creates the company, board-operations issue, hiring-plan issue, agent hire requests, routines, and this bootstrap issue'}. Approve any pending hires before running dependent team workflows. The CEO heartbeat completes the remaining setup below by following this task.\n\n`;
   bootstrap += `Manual setup order (respects Paperclip object dependencies):\n\n`;
   let stepN = 1;
-  bootstrap += `${stepN++}. **Create company** "${companyName}"${companyDescription ? ' (with description above)' : ''}\n`;
+  bootstrap += existingCompanyId
+    ? `${stepN++}. **Reuse existing company** "${companyName}" (id: \`${existingCompanyId}\`); do not create another company\n`
+    : `${stepN++}. **Create company** "${companyName}"${companyDescription ? ' (with description above)' : ''}\n`;
   for (const g of allGoals) {
     const parentNote = g.parentGoal ? `, parentId → "${g.parentGoal}"` : '';
     const level = g.level || 'company';
@@ -1443,10 +1536,15 @@ export async function assembleCompany({
     const goalLinks =
       proj.goals?.length > 0 ? `, goalIds → [${proj.goals.map((g) => `"${g}"`).join(', ')}]` : '';
     const activePolicy = effectiveExecutionPolicy(proj, workspace);
-    const policy = activePolicy?.defaultMode
-      ? `, executionWorkspacePolicy.defaultMode: "${activePolicy.defaultMode}"`
+    // Carry the concurrency guard too: a project the CEO creates without it falls
+    // back to Paperclip's `auto`, which does not serialize on a local driver — every
+    // agent run would then enter the same working tree at once.
+    const policy = activePolicy
+      ? `, executionWorkspacePolicy: ${JSON.stringify(activePolicy)}`
       : '';
-    if (idx === 0 && mainProjectPreCreated) {
+    if (proj.id) {
+      bootstrap += `${stepN++}. **Reuse existing project** "${proj.name}" (id: \`${proj.id}\`); update only the execution workspace policy if still needed (${policy.replace(/^, /, '')}). Preserve its existing workspace and repository.\n`;
+    } else if (idx === 0 && mainProjectPreCreated) {
       const goalLinkInstruction = goalLinks
         ? ` After creating the goals above, resolve their real ids and link them with PATCH /api/projects/{projectId} (${goalLinks.replace(/^, /, '')}).`
         : '';
@@ -1487,5 +1585,6 @@ export async function assembleCompany({
     companySkills,
     roleSkillSlugs,
     mainProject: mainProjectInfo,
+    projects: projectInfos,
   };
 }

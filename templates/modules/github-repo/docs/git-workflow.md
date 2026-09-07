@@ -87,16 +87,16 @@ Use this flow when the **pr-review module is not active** (no Code Reviewer role
    - External repos: use the project/worktree `repoRef`, `defaultRef`, or `executionWorkspacePolicy.workspaceStrategy.baseRef` exactly as configured.
    - Fresh/local repos: use the configured local branch.
    - Only if no base ref is configured anywhere, detect the repository's default branch — see *Resolving the default branch* below. Never hard-code `main`.
-2. Update to latest base: `git fetch origin`, check out the base branch, `git pull --ff-only origin <base-branch>` (`<base-branch>` = plain name, strip any `origin/` prefix).
-3. Make changes (on the base branch, or a short-lived local branch you fast-forward back into the base before pushing). Do not open a GitHub PR.
+2. Inspect the resolved workspace. If Paperclip supplied a managed issue branch (`executionWorkspace.branchName`), verify the current branch matches it and keep that branch; do not check out the base inside the managed worktree. Fetch and rebase that branch onto the configured base if needed. In an unmanaged, exclusively held checkout, `git fetch origin`, check out the base branch, and `git pull --ff-only origin <base-branch>` (`<base-branch>` = plain name, strip any `origin/` prefix).
+3. Make changes on the managed issue branch when supplied, otherwise on the base branch. A direct-to-base delivery can push the managed branch's HEAD to the base without switching branches. Do not open a GitHub PR unless repository rules require one.
 4. **Run the authoritative gate locally — always:** lint, typecheck, the full test suite, and the build; paste the real output into the issue. This local executed verification is the merge gate when the company has no CI/CD module.
 5. Commit with a Conventional Commit message, referencing the issue in the body (`Closes <issue-id>`).
 6. Push to the base ref: `git push origin HEAD:<base-branch>`.
    - Rejected as **non-fast-forward**: `git pull --rebase origin <base-branch>`, re-run checks, push again.
-   - Rejected by **branch protection** (PR required): use the PR fallback — feature branch → `git push -u origin <branch-name>` → `gh pr create --base <base-branch> ... --body-file <file>` (register the PR as a work product) → `gh pr merge <N> --merge --delete-branch`. This is the only case where you open a PR.
+   - Rejected by **branch protection** (PR required): use the PR fallback — retain the managed issue branch, or create a feature branch in an unmanaged checkout → `git push -u origin <branch-name>` → `gh pr create --base <base-branch> ... --body-file <file>` (register the PR as a work product) → `gh pr merge <N> --merge`. Preserve the branch and workspace after merge. This is the only case where you open a PR.
 7. Confirm it landed: `git log origin/<base-branch> -1` shows your commit.
 8. If the issue uses an isolated execution workspace (worktree), leave it reusable after the push. Do not archive/delete it during issue completion; workspace retirement is a separate board/operator action.
-9. **Company-owned CI/CD only** (`ci-cd` module active): if the base CI goes red after your push, fix it immediately (see *Base-branch-red deadlock*). A pre-existing repo check the company never configured is advisory — not a gate.
+9. If required base CI goes red after your push, diagnose and repair it (see *Base-branch-red deadlock*). Existing required checks remain binding even without the `ci-cd` module; only optional, non-required checks are advisory.
 
 ## Resolving the default branch
 
@@ -140,7 +140,7 @@ For a brand-new local repository there is no remote yet, so initialize on `main`
 
 ## Branch Safety
 
-- **Match the branch to the flow.** In the **Direct-to-Base Flow** (no pr-review module) you commit on the base ref and push to it directly — that is intended. In the **PR-review flow** (and the PR fallback) you must work on a feature branch and never push the base ref as a feature branch: before `git push -u origin <branch-name>`, confirm `git branch --show-current` prints the feature branch name, not the base ref.
+- **Preserve managed branch identity.** When Paperclip supplies `executionWorkspace.branchName`, keep the checkout on that branch throughout the run; finalization validates the persisted branch identity. Direct-to-base delivery may push its HEAD to the base without switching. In unmanaged checkouts, match the branch to the selected flow. Before a PR push, verify `git branch --show-current` is the intended feature branch, not the base ref.
 - **Always pull/fast-forward before pushing to the base ref** so your push is a fast-forward; if it is rejected as non-fast-forward, `git pull --rebase` and retry. Never force-push the base branch.
 
 ## Resolving merge conflicts
@@ -181,7 +181,7 @@ If the base is red, classify the situation **BASE-BRANCH-RED** and run the basel
 When the base branch's CI is red:
 
 1. **Pause new feature PRs.** Do not open new feature PRs on a red base — they inherit the failure and pile up. In-flight branches can finish, but leave them unmerged with an issue comment tagged `waiting-on-baseline` until the base is green.
-2. **Claim and fix main first.** The first agent to detect BASE-BRANCH-RED claims the restore by commenting on the triage issue (or creating one) so concurrent detectors do not open duplicate restore PRs. Create a single baseline-restore PR from the base ref that fixes the base failure (CI config, the failing code path, or the secret/scan config). Title it `fix(ci): restore base CI` (or `fix: restore base — <cause>`). Scope the diff to the failure fix only — no feature work in this PR.
+2. **Assign and restore the configured base first.** The first detector records BASE-BRANCH-RED evidence and routes it to the backlog owner/CEO, who deduplicates detections into one separately owned baseline-restore issue with an explicit implementation assignee. Do not self-claim additional work or use a feature issue's workspace for the repair. The assigned owner creates a single baseline-restore branch/PR from the configured base ref that fixes the base failure (CI config, the failing code path, or the secret/scan config). Title it `fix(ci): restore base CI` (or `fix: restore base — <cause>`). Scope the diff to the failure fix only — no feature work in this PR.
 3. **Fast-track the baseline-restore PR.** Its own CI will still show the inherited base failure (the base is red), so the normal "green CI" gate cannot pass. The merge owner (the Code Reviewer in PR-Gate mode, or the engineer in Self-Merge mode) merges it under the narrow exception below.
 4. **Re-verify the base.** After the baseline-restore PR merges, re-run CI on the base: `gh api repos/{owner}/{repo}/commits/<new-base-sha>/check-runs`. If still red, repeat from step 2. Once the base is green:
 5. **Drain the queue.** Rebase each queued feature PR onto the now-green base (`git rebase origin/<base-branch>`, resolve, `git push --force-with-lease`), re-run checks, and merge in order. The inherited baseline failures are gone, so feature PR CI now reflects only their own diffs.

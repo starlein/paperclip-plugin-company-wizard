@@ -4,6 +4,7 @@ import { mkdtemp, rm, readFile, readdir, mkdir, writeFile } from 'node:fs/promis
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { assembleCompany } from './assemble.js';
+import { projectExecutionWorkspacePolicySchema } from '@paperclipai/shared';
 
 let tmpDir;
 let templatesDir;
@@ -486,7 +487,7 @@ describe('assembleCompany', () => {
           title: 'Implement gated feature',
           assignTo: 'engineer',
           reviewGate: {
-            reviewers: ['qa', 'missing-role'],
+            reviewers: ['qa', 'engineer', 'missing-role'],
             approver: 'product-owner',
             mergeGate: 'code-reviewer',
           },
@@ -505,6 +506,7 @@ describe('assembleCompany', () => {
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
     assert.ok(bootstrap.includes('**executionPolicy**'), 'executionPolicy block present');
     assert.ok(bootstrap.includes('(review) → assign "qa"'));
+    assert.ok(!bootstrap.includes('(review) → assign "engineer"'), 'author cannot review');
     assert.ok(bootstrap.includes('(approval) → assign "product-owner"'));
     assert.ok(bootstrap.includes('merge gate'), 'merge gate stage present');
     assert.ok(
@@ -522,6 +524,26 @@ describe('assembleCompany', () => {
     const mergeStageIdx = bootstrap.indexOf('merge gate');
     assert.ok(qaIdx > -1 && poStageIdx > qaIdx, 'approver renders after reviewers');
     assert.ok(mergeStageIdx > poStageIdx, 'merge gate renders after the approver');
+  });
+
+  it('omits an author-only approval stage while preserving the non-author merge gate', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'AuthorApprovalCo',
+      moduleNames: [],
+      extraRoleNames: ['product-owner', 'engineer'],
+      presetIssues: [
+        {
+          title: 'Define acceptance',
+          assignTo: 'product-owner',
+          reviewGate: { approver: 'product-owner', mergeGate: 'ceo' },
+        },
+      ],
+      outputDir,
+      templatesDir,
+    });
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(!bootstrap.includes('(approval) → assign "product-owner"'));
+    assert.ok(bootstrap.includes('stage 1 (approval) → assign "ceo"'));
   });
 
   it('does not render an executionPolicy when the configured merge gate is the issue executor', async () => {
@@ -794,7 +816,7 @@ describe('assembleCompany', () => {
 
     assert.ok(projectBlock.includes('**workspace.sourceType**: local_path'));
     assert.ok(projectBlock.includes('**workspace.cwd**:'));
-    assert.ok(projectBlock.includes('/projects/App'));
+    assert.ok(projectBlock.includes(join('projects', 'App')));
     assert.ok(projectBlock.includes('**workspace.isPrimary**: true'));
     assert.ok(
       !projectBlock.includes('**workspace**: /'),
@@ -869,6 +891,7 @@ describe('assembleCompany', () => {
     assert.ok(projectBlock.includes('**workspace.repoUrl**: https://github.com/example/app'));
     assert.ok(projectBlock.includes('**workspace.repoRef**: origin/main'));
     assert.ok(projectBlock.includes('**workspace.defaultRef**: origin/main'));
+    assert.ok(projectBlock.includes('**executionWorkspacePolicy.enabled**: true'));
     assert.ok(
       projectBlock.includes('**executionWorkspacePolicy.defaultMode**: isolated_workspace'),
     );
@@ -882,7 +905,7 @@ describe('assembleCompany', () => {
     // workspace carries a cwd under projects/ (alongside repoUrl) instead of a
     // separate host-managed clone path.
     assert.ok(projectBlock.includes('**workspace.cwd**:'));
-    assert.ok(projectBlock.includes('/projects/App'));
+    assert.ok(projectBlock.includes(join('projects', 'App')));
     assert.ok(
       !projectBlock.includes('Enable isolated worktrees once the repo exists'),
       'an external repo already gets isolated worktrees, so no deferral note',
@@ -890,8 +913,13 @@ describe('assembleCompany', () => {
     assert.ok(bootstrap.includes('sourceType: "git_repo"'));
     assert.ok(bootstrap.includes('repoUrl: "https://github.com/example/app"'));
     assert.ok(bootstrap.includes('repoRef: "origin/main"'));
+    const projectStep = bootstrap
+      .split('## Provisioning Steps')[1]
+      .split('\n')
+      .find((line) => line.includes('**Create project**'));
+    assert.ok(projectStep.includes('"enabled":true'));
     // External repo is cloned into the company's projects dir.
-    assert.ok(/cwd: "[^"]*\/projects\/App"/.test(bootstrap));
+    assert.ok(bootstrap.includes(`cwd: ${JSON.stringify(join(companyDir, 'projects', 'App'))}`));
   });
 
   it('preserves configured git workspace policy base ref for isolated worktrees', async () => {
@@ -961,7 +989,20 @@ describe('assembleCompany', () => {
 
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
     const projectBlock = bootstrap.split('### app')[1].split('## Agents')[0];
-    assert.ok(!projectBlock.includes('executionWorkspacePolicy.defaultMode'));
+    assert.ok(projectBlock.includes('**executionWorkspacePolicy.enabled**: true'));
+    // Isolation must not leak in when the instance setting is off ...
+    assert.ok(
+      !projectBlock.includes('isolated_workspace'),
+      'isolated workspace policy must not be rendered when the instance setting is off',
+    );
+    assert.ok(!projectBlock.includes('workspaceStrategy'));
+    // ... but the project still gets an explicit shared-workspace policy carrying the
+    // concurrency guard, so parallel agent runs serialize instead of colliding in the
+    // one working tree they all share.
+    assert.ok(projectBlock.includes('**executionWorkspacePolicy.defaultMode**: shared_workspace'));
+    assert.ok(
+      projectBlock.includes('**executionWorkspacePolicy.sharedWorkspaceConcurrency**: serialize'),
+    );
   });
 
   it('synthesizes isolated worktree policy from project ref only when the instance setting is on', async () => {
@@ -989,6 +1030,7 @@ describe('assembleCompany', () => {
 
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
     const projectBlock = bootstrap.split('### app')[1].split('## Agents')[0];
+    assert.ok(projectBlock.includes('**executionWorkspacePolicy.enabled**: true'));
     assert.ok(
       projectBlock.includes('**executionWorkspacePolicy.defaultMode**: isolated_workspace'),
     );
@@ -1000,6 +1042,80 @@ describe('assembleCompany', () => {
         '**executionWorkspacePolicy.workspaceStrategy.baseRef**: release/2026-q2',
       ),
     );
+    // Sub-issues deliberately reuse their parent's workspace, so even the isolated
+    // policy carries the concurrency guard for the runs that do share one.
+    assert.ok(
+      projectBlock.includes('**executionWorkspacePolicy.sharedWorkspaceConcurrency**: serialize'),
+    );
+  });
+
+  it('lets a project override the default shared-workspace concurrency guard', async () => {
+    const { companyDir, mainProject } = await assembleCompany({
+      companyName: 'ConcurrencyOverrideCo',
+      userProjects: [
+        {
+          name: 'app',
+          description: '',
+          goals: [],
+          workspace: { sourceType: 'local_path', isPrimary: true },
+          executionWorkspacePolicy: { sharedWorkspaceConcurrency: 'allow' },
+        },
+      ],
+      moduleNames: [],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+    });
+
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    const projectBlock = bootstrap.split('### app')[1] || '';
+    assert.ok(
+      projectBlock.includes('**executionWorkspacePolicy.sharedWorkspaceConcurrency**: allow'),
+      'an explicit concurrency setting must win over the serialize default',
+    );
+    // `enabled` is required by Paperclip's project-policy schema; a partial policy
+    // forwarded without it is rejected with a 400 at project creation.
+    assert.equal(mainProject?.executionWorkspacePolicy?.enabled, true);
+    assert.equal(mainProject?.executionWorkspacePolicy?.sharedWorkspaceConcurrency, 'allow');
+  });
+
+  it('always sends a schema-valid project policy (enabled is required by Paperclip)', async () => {
+    for (const [label, isolated, workspace] of [
+      ['shared/local', false, { sourceType: 'local_path', isPrimary: true }],
+      [
+        'shared/ext-repo',
+        false,
+        { sourceType: 'git_repo', repoUrl: 'https://x/y', repoRef: 'main' },
+      ],
+      [
+        'isolated/ext-repo',
+        true,
+        { sourceType: 'git_repo', repoUrl: 'https://x/y', defaultRef: 'main' },
+      ],
+      [
+        'deferred/fresh-local',
+        true,
+        { sourceType: 'local_path', defaultRef: 'main', isPrimary: true },
+      ],
+    ]) {
+      const { mainProject } = await assembleCompany({
+        companyName: 'PolicyShapeCo',
+        userProjects: [{ name: 'app', description: '', goals: [], workspace }],
+        moduleNames: [],
+        extraRoleNames: [],
+        enableIsolatedWorktrees: isolated,
+        outputDir,
+        templatesDir,
+      });
+      const policy = mainProject?.executionWorkspacePolicy;
+      assert.equal(projectExecutionWorkspacePolicySchema.safeParse(policy).success, true, label);
+      assert.equal(policy?.enabled, true, `${label}: enabled must be set`);
+      assert.equal(
+        policy?.sharedWorkspaceConcurrency,
+        'serialize',
+        `${label}: concurrency guard must be set`,
+      );
+    }
   });
 
   it('suppresses isolated worktree policy for a fresh local git repository', async () => {
@@ -1036,22 +1152,252 @@ describe('assembleCompany', () => {
 
     assert.ok(projectBlock.includes('**workspace.sourceType**: local_path'));
     assert.ok(projectBlock.includes('**workspace.cwd**:'));
-    assert.ok(projectBlock.includes('/projects/App'));
+    assert.ok(projectBlock.includes(join('projects', 'App')));
     assert.ok(projectBlock.includes('**workspace.defaultRef**: main'));
     assert.ok(projectBlock.includes('**workspace.setupCommand**: git init -b main'));
     // The isolated git_worktree policy must be stripped for fresh local repos
     // so agents work in the shared project workspace during bootstrap.
     assert.ok(
-      !projectBlock.includes('**executionWorkspacePolicy.defaultMode**'),
+      !projectBlock.includes('isolated_workspace'),
       'isolated workspace policy must not be rendered for a fresh local repo',
     );
     assert.ok(
       !projectBlock.includes('git_worktree'),
       'git_worktree strategy must not be rendered for a fresh local repo',
     );
-    // The provisioning step for the project must not carry the policy either.
+    // It is replaced by an explicit shared-workspace policy: every agent works in
+    // the one project workspace during bootstrap, so their runs must serialize
+    // rather than collide on the same git index.
+    assert.ok(projectBlock.includes('**executionWorkspacePolicy.defaultMode**: shared_workspace'));
+    assert.ok(
+      projectBlock.includes('**executionWorkspacePolicy.sharedWorkspaceConcurrency**: serialize'),
+    );
+    // The provisioning step for the project must not carry an isolated policy either.
     const provisioningBlock = bootstrap.split('## Provisioning Steps')[1] || '';
-    assert.ok(!provisioningBlock.includes('executionWorkspacePolicy.defaultMode'));
+    assert.ok(!provisioningBlock.includes('isolated_workspace'));
+  });
+
+  it('keeps complete policies in the project payload, metadata and provisioning instructions', async () => {
+    const policy = {
+      enabled: true,
+      defaultMode: 'isolated_workspace',
+      sharedWorkspaceConcurrency: 'allow',
+      allowIssueOverride: false,
+      environmentId: null,
+      defaultProjectWorkspaceId: '11111111-1111-4111-8111-111111111111',
+      workspaceStrategy: {
+        type: 'git_worktree',
+        baseRef: 'release/current',
+        branchTemplate: 'work/{issue.identifier}',
+        worktreeParentDir: '/work/branches',
+        provisionCommand: 'npm ci',
+        runtimeProvisionCommand: 'npm run start',
+        teardownCommand: 'npm run cleanup',
+      },
+      workspaceRuntime: { services: [{ name: 'api' }] },
+      cleanupPolicy: null,
+      authorizationPolicy: { assignmentPolicy: { mode: 'protected' } },
+    };
+    const { companyDir, projects, mainProject } = await assembleCompany({
+      companyName: 'CompletePolicy',
+      userProjects: [
+        {
+          name: 'app',
+          repoUrl: 'https://github.com/example/app',
+          executionWorkspacePolicy: policy,
+        },
+        {
+          name: 'second',
+          repoUrl: 'https://github.com/example/second',
+          executionWorkspacePolicy: policy,
+        },
+      ],
+      moduleNames: [],
+      extraRoleNames: [],
+      enableIsolatedWorktrees: true,
+      outputDir,
+      templatesDir,
+    });
+    assert.equal(projects.length, 2);
+    assert.deepEqual(
+      projects.map((project) => project.executionWorkspacePolicy),
+      [policy, policy],
+    );
+    assert.deepEqual(mainProject, projects[0]);
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(bootstrap.includes('**executionWorkspacePolicy.enabled**: true'));
+    assert.ok(bootstrap.includes('**executionWorkspacePolicy.allowIssueOverride**: false'));
+    assert.ok(
+      bootstrap.includes('**executionWorkspacePolicy.workspaceStrategy.provisionCommand**: npm ci'),
+    );
+    assert.ok(bootstrap.includes('**executionWorkspacePolicy.environmentId**: null'));
+    const provisioning = bootstrap.split('## Provisioning Steps')[1];
+    for (const project of projects) {
+      assert.ok(
+        provisioning.includes(
+          `executionWorkspacePolicy: ${JSON.stringify(project.executionWorkspacePolicy)}`,
+        ),
+      );
+    }
+  });
+
+  it('preserves disabled policies and issue override opt-outs during fresh-repo fallback', async () => {
+    const disabled = {
+      enabled: false,
+      defaultMode: 'isolated_workspace',
+      allowIssueOverride: false,
+      sharedWorkspaceConcurrency: 'auto',
+      workspaceStrategy: { type: 'git_worktree', baseRef: 'main' },
+    };
+    const { projects } = await assembleCompany({
+      companyName: 'OptOutPolicy',
+      userProjects: [
+        { name: 'disabled', executionWorkspacePolicy: disabled },
+        { name: 'guarded', executionWorkspacePolicy: { ...disabled, enabled: true } },
+      ],
+      moduleNames: [],
+      extraRoleNames: [],
+      enableIsolatedWorktrees: false,
+      outputDir,
+      templatesDir,
+    });
+    assert.deepEqual(projects[0].executionWorkspacePolicy, disabled);
+    assert.deepEqual(projects[1].executionWorkspacePolicy, {
+      enabled: true,
+      defaultMode: 'shared_workspace',
+      allowIssueOverride: false,
+      sharedWorkspaceConcurrency: 'auto',
+    });
+  });
+
+  it('preserves existing project modes and workspaces when the instance feature is disabled', async () => {
+    const policy = {
+      enabled: true,
+      defaultMode: 'isolated_workspace',
+      allowIssueOverride: false,
+      workspaceStrategy: { type: 'git_worktree', baseRef: 'origin/stable' },
+    };
+    const workspace = { sourceType: 'local_path', cwd: '/existing/repo', setupCommand: null };
+    const { companyDir, projects } = await assembleCompany({
+      companyName: 'ExistingPolicy',
+      existingCompanyId: 'existing-company',
+      userProjects: [
+        { id: 'existing-app', name: 'app', workspace, executionWorkspacePolicy: policy },
+        { id: 'existing-docs', name: 'docs' },
+      ],
+      moduleNames: [],
+      extraRoleNames: [],
+      enableIsolatedWorktrees: false,
+      outputDir,
+      templatesDir,
+    });
+    assert.deepEqual(projects[0].workspace, workspace);
+    assert.deepEqual(projects[0].executionWorkspacePolicy, {
+      ...policy,
+      sharedWorkspaceConcurrency: 'serialize',
+    });
+    assert.deepEqual(projects[1].workspace, {});
+    assert.equal(projects[1].executionWorkspacePolicy.defaultMode, 'shared_workspace');
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(bootstrap.includes('Workspace policy enforcement is disabled'));
+    assert.ok(bootstrap.includes('**Reuse existing company**'));
+    assert.ok(bootstrap.includes('**Reuse existing project** "app"'));
+    assert.ok(!bootstrap.includes('**Create project**'));
+    assert.ok(!bootstrap.includes('git init'));
+  });
+
+  it('does not relink existing project goals when adding project-scoped routines', async () => {
+    const { companyDir, initialRoutines } = await assembleCompany({
+      companyName: 'ExistingCompany',
+      existingCompanyId: 'existing-company',
+      userGoals: [{ title: 'New template goal' }],
+      userProjects: [
+        {
+          id: 'existing-project',
+          name: 'Existing App',
+          goals: ['Existing operator goal'],
+          workspace: { sourceType: 'git_repo', repoUrl: 'https://github.com/example/app.git' },
+        },
+      ],
+      moduleNames: ['ops-routines'],
+      extraRoleNames: ['product-owner'],
+      outputDir,
+      templatesDir,
+    });
+    assert.ok(initialRoutines.length > 0, 'exercise the project-scoped routine path');
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(bootstrap.includes('**Reuse existing project** "Existing App"'));
+    assert.ok(bootstrap.includes('Existing operator goal'));
+    assert.ok(!bootstrap.includes('has already created the main project'));
+    assert.ok(!bootstrap.includes('**Main project already created**'));
+    assert.ok(!bootstrap.includes('PATCH /api/projects/{projectId}'));
+  });
+
+  it('does not initialize git or defer isolation for non-git and remote-managed workspaces', async () => {
+    const { companyDir, projects } = await assembleCompany({
+      companyName: 'OtherWorkspaces',
+      userProjects: [
+        { name: 'docs', workspace: { sourceType: 'non_git_path', cwd: '/docs' } },
+        {
+          name: 'remote',
+          workspace: { sourceType: 'remote_managed', remoteWorkspaceRef: 'remote/example' },
+        },
+      ],
+      moduleNames: [],
+      extraRoleNames: [],
+      enableIsolatedWorktrees: true,
+      outputDir,
+      templatesDir,
+    });
+    for (const project of projects) {
+      assert.equal(project.workspace.setupCommand, undefined);
+      assert.equal(project.executionWorkspacePolicy.defaultMode, 'shared_workspace');
+    }
+    assert.equal(projects[1].workspace.cwd, undefined);
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(!bootstrap.includes('Enable isolated worktrees once the repo exists'));
+    assert.ok(!bootstrap.includes('git init'));
+  });
+
+  it('does not synthesize a project when extending a company without projects', async () => {
+    const { companyDir, projects, mainProject } = await assembleCompany({
+      companyName: 'NoExistingProjects',
+      existingCompanyId: 'existing-company',
+      userProjects: [],
+      moduleNames: [],
+      extraRoleNames: [],
+      outputDir,
+      templatesDir,
+    });
+    assert.deepEqual(projects, []);
+    assert.equal(mainProject, null);
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(!bootstrap.includes('**Create project**'));
+    assert.ok(!bootstrap.includes('git init'));
+    assert.ok(bootstrap.includes('**Reuse existing company**'));
+  });
+
+  it('fills the strategy and configured ref when an isolated policy only supplies a mode', async () => {
+    const { mainProject } = await assembleCompany({
+      companyName: 'PartialIsolation',
+      userProjects: [
+        {
+          name: 'app',
+          repoUrl: 'https://github.com/example/app',
+          repoRef: 'origin/release',
+          executionWorkspacePolicy: { defaultMode: 'isolated_workspace' },
+        },
+      ],
+      moduleNames: [],
+      extraRoleNames: [],
+      enableIsolatedWorktrees: true,
+      outputDir,
+      templatesDir,
+    });
+    assert.deepEqual(mainProject.executionWorkspacePolicy.workspaceStrategy, {
+      type: 'git_worktree',
+      baseRef: 'origin/release',
+    });
   });
 
   it('preserves a real custom setupCommand and seeds one when missing', async () => {

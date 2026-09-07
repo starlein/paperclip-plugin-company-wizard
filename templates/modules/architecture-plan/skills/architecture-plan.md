@@ -13,7 +13,7 @@ You own system architecture. Design the structure that implements the tech stack
    - **Deployment model**: How the system is built, tested, and deployed
    - **Key decisions**: Architectural decisions with rationale (ADR-style)
 3. Create implementation issues for the foundational structure:
-   - `POST /api/companies/{companyId}/issues` for scaffolding, core modules, etc. Include the active `projectId` (and `goalId` / `parentId` when applicable). For top-level issues (no `parentId`), also include `"executionWorkspaceSettings": { "mode": "isolated_workspace" }` so each gets its own worktree; subissues set `parentId` and omit it.
+   - `POST /api/companies/{companyId}/issues` for scaffolding, core modules, etc. Include `projectId` plus `goalId` / `parentId` when applicable, and set `executionWorkspaceSettings: { "mode": "isolated_workspace" }` for top-level repository implementation issues and subissues when the instance feature, project policy, and initialized repository support isolation. Otherwise follow the rendered project policy and avoid concurrent shared-checkout writes. Reuse only when explicitly required via `inheritExecutionWorkspaceFromIssueId`; keep API-only work project-detached.
 
 ## Rules
 

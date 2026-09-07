@@ -38,7 +38,9 @@ export class PaperclipClient {
     }
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      throw new Error(`${opts.method || 'GET'} ${path} → ${res.status}: ${body}`);
+      const error = new Error(`${opts.method || 'GET'} ${path} → ${res.status}: ${body}`);
+      error.status = res.status;
+      throw error;
     }
     return res.json();
   }
@@ -210,6 +212,51 @@ export class PaperclipClient {
     });
   }
 
+  async renameCompanySkill(companyId, skillId, { name, slug } = {}) {
+    try {
+      return await this._fetch(`/api/companies/${companyId}/skills/${skillId}/rename`, {
+        method: 'POST',
+        body: JSON.stringify({
+          name,
+          ...(slug !== undefined ? { slug } : {}),
+        }),
+      });
+    } catch (error) {
+      // The dedicated rename endpoint was added after the plugin's declared
+      // Paperclip host floor. Older supported hosts keep the existing display
+      // name, but skill content/metadata refresh must continue instead of aborting.
+      if (error?.status === 404) return null;
+      throw error;
+    }
+  }
+
+  async updateCompanySkillFile(companyId, skillId, { path, content }) {
+    return this._fetch(`/api/companies/${companyId}/skills/${skillId}/files`, {
+      method: 'PATCH',
+      body: JSON.stringify({ path, content }),
+    });
+  }
+
+  /**
+   * Board approvals. Governed `/agent-hires` requests land here as `hire_agent`
+   * approvals; until they are decided the agent exists but is not invokable.
+   */
+  async listApprovals(companyId, { status } = {}) {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    const query = params.toString();
+    return this._fetch(`/api/companies/${companyId}/approvals${query ? `?${query}` : ''}`, {
+      method: 'GET',
+    });
+  }
+
+  async approveApproval(approvalId, { decisionNote } = {}) {
+    return this._fetch(`/api/approvals/${approvalId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(decisionNote ? { decisionNote } : {}),
+    });
+  }
+
   async listAgents(companyId) {
     return this._fetch(`/api/companies/${companyId}/agents`, { method: 'GET' });
   }
@@ -269,7 +316,6 @@ export class PaperclipClient {
       icon,
       reportsTo,
       capabilities,
-      tags,
       desiredSkills,
       adapterType,
       adapterConfig,
@@ -288,7 +334,6 @@ export class PaperclipClient {
       ...(icon !== undefined ? { icon: icon || null } : {}),
       reportsTo: reportsTo || null,
       ...(capabilities !== undefined ? { capabilities: capabilities || null } : {}),
-      ...(tags !== undefined ? { tags } : {}),
       ...(desiredSkills !== undefined ? { desiredSkills } : {}),
       adapterType: adapterType || 'codex_local',
       adapterConfig: adapterConfig || {},
@@ -322,6 +367,10 @@ export class PaperclipClient {
     return hiredAgent;
   }
 
+  async listProjects(companyId) {
+    return this._fetch(`/api/companies/${companyId}/projects`, { method: 'GET' });
+  }
+
   async createProject(
     companyId,
     { name, description, goalIds, workspace, executionWorkspacePolicy },
@@ -330,6 +379,13 @@ export class PaperclipClient {
       typeof workspace === 'string'
         ? { sourceType: 'local_path', cwd: workspace, isPrimary: true }
         : workspace || undefined;
+    const executionWorkspacePolicyPayload =
+      executionWorkspacePolicy && typeof executionWorkspacePolicy === 'object'
+        ? {
+            ...executionWorkspacePolicy,
+            enabled: executionWorkspacePolicy.enabled ?? true,
+          }
+        : undefined;
     return this._fetch(`/api/companies/${companyId}/projects`, {
       method: 'POST',
       body: JSON.stringify({
@@ -337,7 +393,9 @@ export class PaperclipClient {
         description: description || null,
         ...(goalIds?.length ? { goalIds } : {}),
         workspace: workspacePayload,
-        ...(executionWorkspacePolicy ? { executionWorkspacePolicy } : {}),
+        ...(executionWorkspacePolicyPayload
+          ? { executionWorkspacePolicy: executionWorkspacePolicyPayload }
+          : {}),
       }),
     });
   }
@@ -414,6 +472,10 @@ export class PaperclipClient {
       method: 'PATCH',
       body: JSON.stringify(updates || {}),
     });
+  }
+
+  async getIssue(issueId) {
+    return this._fetch(`/api/issues/${issueId}`, { method: 'GET' });
   }
 
   // Upsert a task watchdog on an existing issue. The watching agent must be
@@ -517,13 +579,14 @@ export class PaperclipClient {
     });
   }
 
-  async triggerHeartbeat(agentId, { issueId } = {}) {
+  async triggerHeartbeat(agentId, { issueId, idempotencyKey } = {}) {
     return this._fetch(`/api/agents/${agentId}/wakeup`, {
       method: 'POST',
       body: JSON.stringify({
         source: 'on_demand',
         triggerDetail: 'manual',
         ...(issueId ? { payload: { issueId } } : {}),
+        ...(idempotencyKey ? { idempotencyKey } : {}),
       }),
     });
   }

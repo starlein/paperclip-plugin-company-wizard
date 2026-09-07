@@ -29,6 +29,8 @@ interface PreviewDiff {
   routines: RoutineDiff[];
   desiredSkillsPreserved: DesiredSkillsPreserved[];
   plannedFiles: number;
+  projectPolicies: Array<{ id: string; name: string; before: any; after: any }>;
+  workspacePolicyEnforced: boolean;
 }
 
 function AgentActionIcon({ action }: { action: string }) {
@@ -158,6 +160,29 @@ export function StepPreview() {
           <span className="font-medium">{diff.companyName}</span>.
         </p>
       </div>
+
+      {diff.projectPolicies?.length > 0 && (
+        <div className="rounded-lg border p-4 space-y-3">
+          <h3 className="text-sm font-semibold">Project workspace policies</h3>
+          <p className="text-sm text-muted-foreground">
+            Existing workspace paths and project identities are preserved.
+            {!diff.workspacePolicyEnforced &&
+              ' Policies are not enforced until the instance setting enableIsolatedWorkspaces is enabled.'}
+          </p>
+          {diff.projectPolicies.map((project) => (
+            <details key={project.id} className="text-sm">
+              <summary>
+                {project.name}: shared concurrency{' '}
+                {project.before?.sharedWorkspaceConcurrency ?? 'unset'} →{' '}
+                {project.after?.sharedWorkspaceConcurrency}
+              </summary>
+              <pre className="overflow-auto whitespace-pre-wrap text-xs mt-2">
+                {JSON.stringify({ before: project.before, after: project.after }, null, 2)}
+              </pre>
+            </details>
+          ))}
+        </div>
+      )}
 
       {/* Agents section */}
       <div className="rounded-lg border p-4 space-y-3">
