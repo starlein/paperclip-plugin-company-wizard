@@ -198,6 +198,9 @@ export async function assembleCompany({
   // Validate module dependencies before starting assembly.
   // Skip modules that won't activate (missing directory or gated by activatesWithRoles).
   const selectedSet = new Set(moduleNames);
+  const hasLeanDelivery =
+    selectedSet.has('lean-delivery') &&
+    (await exists(join(templatesDir, 'modules', 'lean-delivery', 'module.meta.json')));
   for (const moduleName of moduleNames) {
     const moduleDir = join(templatesDir, 'modules', moduleName);
     if (!(await exists(moduleDir))) continue;
@@ -325,13 +328,16 @@ export async function assembleCompany({
     for (const role of reviewersRaw) {
       if (typeof role !== 'string') continue;
       if (!allRoles.has(role)) continue;
+      if (role === assignTo) continue;
       if (seen.has(role)) continue;
       seen.add(role);
       reviewers.push(role);
     }
 
     const approver =
-      typeof reviewGate.approver === 'string' && allRoles.has(reviewGate.approver)
+      typeof reviewGate.approver === 'string' &&
+      allRoles.has(reviewGate.approver) &&
+      reviewGate.approver !== assignTo
         ? reviewGate.approver
         : undefined;
 
@@ -472,6 +478,9 @@ export async function assembleCompany({
       if (titleKey) seenIssueTitles.add(titleKey);
       initialIssues.push({
         ...issue,
+        ...(hasLeanDelivery && moduleName === 'pr-review' && issue.reviewGate
+          ? { reviewGate: { mergeGate: issue.reviewGate.mergeGate } }
+          : {}),
         assignTo: resolveAssignee(issue.assignTo, moduleJson),
         module: moduleName,
       });
@@ -1402,7 +1411,10 @@ export async function assembleCompany({
       const ciClause = hasCi
         ? 'when required company CI checks actually exist and ran on the exact reviewed head, the merge gate verifies they are green and runs only the smallest focused risk check; until those checks exist on that head, it runs the complete local lint/test/typecheck/build gate once and records the real output'
         : 'no CI is configured, so the merge-gate agent runs the complete local lint/test/typecheck/build gate once and records the real output';
-      bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`. The default policy has exactly one \`approval\` stage: the **Code Reviewer** as non-author merge gate. ${ciClause}. Product acceptance is defined before implementation. QA, Security, UX, Product, and DevOps provide bounded evidence on the originating issue only for a concrete risk trigger or unresolved decision; they are not serial default stages. Keep implementation, corrections, evidence, and merge on one originating issue, branch, and PR. Technical defects, stale bases, merge conflicts, and missing tests return to the implementation owner with one precise action; never assign the board user as an execution participant. Board involvement is reserved for irreducible product, legal, licensing, or residual-risk acceptance through a first-class interaction/approval. The Code Reviewer merges the PR before recording approval, so the issue cannot become \`done\` with an open PR. Never list the executor/author as a participant — Paperclip excludes the author and an author-only stage stalls. When no Code Reviewer is present, set no executionPolicy stages and use PR Self-Merge mode. Do not create review-only, evidence-only, queue-drain, or workspace-cleanup child issues.\n`;
+      const reviewPolicy = hasLeanDelivery
+        ? 'Lean delivery is enabled (see `docs/lean-delivery.md`). The default policy has exactly one `approval` stage: the **Code Reviewer** as non-author merge gate. Product acceptance is defined before implementation. QA, Security, UX, Product, and DevOps provide bounded evidence on the originating issue only for a concrete risk trigger or unresolved decision; they are not serial default stages. Default WIP is one active implementation issue per delivery agent and two open implementation PRs per repository; leave later work unassigned until capacity is free.'
+        : 'Standard staged PR review is enabled. In order, use a `review` stage for QA when present, a Security Engineer `review` stage only for security-relevant changes, an `approval` stage for Product Owner when present, and a final `approval` merge gate for the **Code Reviewer**. Omit absent roles and the executor from every stage. Delivery capacity follows company policy; no lean WIP limits are imposed.';
+      bootstrap += `- Required PR reviews use the issue's \`executionPolicy\`. ${reviewPolicy} ${ciClause}. Pending or failed required checks must be awaited or repaired, not bypassed with local output. Keep implementation, corrections, evidence, and merge on one originating issue, branch, and PR. Technical defects, stale bases, merge conflicts, and missing tests return to the implementation owner with one precise action; never assign the board user as an execution participant. Board involvement is reserved for irreducible product, legal, licensing, or residual-risk acceptance through a first-class interaction/approval. The Code Reviewer merges the PR before recording approval, so the issue cannot become \`done\` with an open PR. Never list the executor/author as a participant — Paperclip excludes the author and an author-only stage stalls. When no eligible non-author Code Reviewer is present, set no executionPolicy stages and use PR Self-Merge mode. Do not create review-only, evidence-only, queue-drain, or workspace-cleanup child issues.\n`;
     }
     bootstrap += `\n`;
   }

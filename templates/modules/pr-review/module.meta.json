@@ -1,6 +1,6 @@
 {
   "name": "pr-review",
-  "description": "Coordinates lean PR review through the issue's native executionPolicy. The default policy has exactly one non-author stage: the Code Reviewer merge gate. Product acceptance is defined before implementation; QA, Security, UX, and DevOps contribute bounded evidence on the originating issue only when a concrete risk trigger applies. Green exact-head company CI is authoritative; the merge gate runs the full local gate only when CI is unavailable.",
+  "description": "Coordinates PR review through native executionPolicy stages: QA review, Product approval, then a non-author Code Reviewer merge gate, using roles present. Select the optional lean-delivery module to replace this chain with one merge gate and risk-triggered specialist evidence. Without a Code Reviewer, use the self-merge path.",
   "requires": [
     "github-repo"
   ],
@@ -21,9 +21,11 @@
       "bootstrapPhase": "foundation",
       "assignTo": "engineer",
       "reviewGate": {
+        "reviewers": ["qa"],
+        "approver": "product-owner",
         "mergeGate": "code-reviewer"
       },
-      "description": "Document and verify the lean PR workflow via the issue's executionPolicy. The default policy contains exactly one approval stage: the Code Reviewer as non-author merge gate. Product acceptance criteria are frozen before implementation. QA, Security, UX, Product, and DevOps are not serial stages; involve one only when a concrete risk or unresolved decision requires bounded evidence, and keep that evidence on the originating issue. The implementation owner keeps the same issue, branch, and PR through corrections. With company CI, verify the exact reviewed head and required checks, then run only the smallest focused risk check; do not repeat the complete lint/test/build suite. Without CI, the merge gate runs the complete local gate once and records the output. The Code Reviewer merges before recording approved, so the issue cannot become done while the PR is still open. Never list the issue's executor/author as a participant — Paperclip excludes the original executor and an author-only stage stalls with 422. Never assign the board user as an execution participant for technical corrections; return those to the implementation owner on the same branch. Board decisions are reserved for irreducible product, legal, licensing, or residual-risk acceptance and use a first-class interaction/approval. When no Code Reviewer is present, set no executionPolicy stages and use PR-Self-Merge mode (`gh pr merge <N> --merge`)."
+      "description": "Document and verify the selected PR workflow via the issue's executionPolicy and docs/pr-conventions.md. Standard stages are QA review when present, Security review only for a security-relevant change, Product Owner approval when present, and a final non-author Code Reviewer approval/merge gate. If docs/lean-delivery.md exists, it replaces the standard chain with exactly one Code Reviewer stage; triggered specialists provide bounded same-issue evidence before that gate, not serial stages. The implementation owner keeps the same issue, branch, and PR through corrections. Verify required company CI on the exact reviewed head; until required checks exist, run the complete local gate once. Pending or failed required checks must be awaited or repaired, not bypassed with local output. The Code Reviewer merges before recording approved, so the issue cannot become done with an open PR. Never list the executor/author as a stage participant: Paperclip excludes the original executor and an author-only stage stalls with 422. Technical corrections return to the implementation owner, not the board user. Use first-class interactions/approvals for genuine human decisions. When no eligible non-author Code Reviewer is present, set no executionPolicy stages and use PR-Self-Merge mode (`gh pr merge <N> --merge`)."
     }
   ]
 }

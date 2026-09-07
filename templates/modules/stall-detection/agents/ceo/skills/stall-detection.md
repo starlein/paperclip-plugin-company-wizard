@@ -32,7 +32,7 @@ Paperclip classifies `in_review_without_action_path` only when an agent-owned `i
 
 1. Check the interaction, approval, wake, monitor, active-run, and recovery routes in *Stall Check*. If any path is pending, record it as `WAITING-INTERACTION`, `WAITING-APPROVAL`, `WAITING-REVIEW-PATH-RECOVERY`, or the matching owner in the routine summary and do not nudge, reassign, or change status.
 2. If every path is absent, flag the issue as `IN-REVIEW-WITHOUT-ACTION-PATH` and leave a structured comment naming the missing owner.
-3. Make the next action explicit according to the work: add the intended reviewer/interaction, return it to `in_progress` with a concrete change request and active assignee, or mark it `done` if already accepted. Keep recovery on the originating issue unless independent work is genuinely required. For PR work, use exactly one non-author Code Reviewer stage when that role exists; otherwise return it to the engineer for self-merge.
+3. Make the next action explicit according to the work: add the intended reviewer/interaction, return it to `in_progress` with a concrete change request and active assignee, or mark it `done` if already accepted. Keep recovery on the originating issue unless independent work is genuinely required. For PR work, restore the selected policy from `docs/pr-conventions.md` if it exists: standard role-based stages, or exactly one non-author Code Reviewer stage when `docs/lean-delivery.md` exists. With no eligible non-author Code Reviewer, return it to the engineer for self-merge.
 
 ## Author-only first stage
 
@@ -60,7 +60,7 @@ A `cancelled` blocker does **not** resolve a dependency. Remove that blocker rel
 When `github-repo` is active, reconcile each configured project repository's open PRs against their originating Paperclip issues. Resolve repositories only from project metadata/workspace origin and identify every PR as `owner/repo#number`.
 
 1. List open PRs and compare each with its originating issue, exact head/base, required CI, merge state, owner, and next gate.
-2. Default WIP is at most two open implementation PRs per repository. At or above the cap, stop new PR-producing assignment and make waiting issues depend on the issues owning the open PRs; never create a queue-drain issue or polling monitor.
+2. Follow company-defined capacity; if `docs/lean-delivery.md` exists, apply its one-issue/two-PR WIP limits. At or above the selected cap, stop new PR-producing assignment and leave later work unassigned for the next capacity check. Do not make capacity waiters depend conjunctively on every open PR; never create a queue-drain issue or polling monitor.
 3. Route CI/runner failures, stale bases, conflicts, branch protection, packaging, deployment, and release mechanics on the **existing originating issue and PR** to the operational owner. Never open a replacement PR to escape a blocker.
 4. A `done` issue with an open PR is an invariant violation. Reopen/route the originating issue when work remains, or close the obsolete PR with evidence. Do not create a separate merge, status, evidence, or cleanup issue.
 5. Detect base-branch-red before blaming feature diffs. Restore the base through one explicitly owned baseline fix, then rebase and drain existing PRs.

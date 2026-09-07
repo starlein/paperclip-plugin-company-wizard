@@ -486,7 +486,7 @@ describe('assembleCompany', () => {
           title: 'Implement gated feature',
           assignTo: 'engineer',
           reviewGate: {
-            reviewers: ['qa', 'missing-role'],
+            reviewers: ['qa', 'engineer', 'missing-role'],
             approver: 'product-owner',
             mergeGate: 'code-reviewer',
           },
@@ -505,6 +505,7 @@ describe('assembleCompany', () => {
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
     assert.ok(bootstrap.includes('**executionPolicy**'), 'executionPolicy block present');
     assert.ok(bootstrap.includes('(review) → assign "qa"'));
+    assert.ok(!bootstrap.includes('(review) → assign "engineer"'), 'author cannot review');
     assert.ok(bootstrap.includes('(approval) → assign "product-owner"'));
     assert.ok(bootstrap.includes('merge gate'), 'merge gate stage present');
     assert.ok(
@@ -522,6 +523,26 @@ describe('assembleCompany', () => {
     const mergeStageIdx = bootstrap.indexOf('merge gate');
     assert.ok(qaIdx > -1 && poStageIdx > qaIdx, 'approver renders after reviewers');
     assert.ok(mergeStageIdx > poStageIdx, 'merge gate renders after the approver');
+  });
+
+  it('omits an author-only approval stage while preserving the non-author merge gate', async () => {
+    const { companyDir } = await assembleCompany({
+      companyName: 'AuthorApprovalCo',
+      moduleNames: [],
+      extraRoleNames: ['product-owner', 'engineer'],
+      presetIssues: [
+        {
+          title: 'Define acceptance',
+          assignTo: 'product-owner',
+          reviewGate: { approver: 'product-owner', mergeGate: 'ceo' },
+        },
+      ],
+      outputDir,
+      templatesDir,
+    });
+    const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.ok(!bootstrap.includes('(approval) → assign "product-owner"'));
+    assert.ok(bootstrap.includes('stage 1 (approval) → assign "ceo"'));
   });
 
   it('does not render an executionPolicy when the configured merge gate is the issue executor', async () => {

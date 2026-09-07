@@ -70,7 +70,9 @@ templates/
     └── messages.json
 ```
 
-**Current counts**: 15 presets, 26 modules, 16 optional roles (CEO is the only base role).
+**Current counts**: 15 presets, 27 modules, 16 optional roles (CEO is the only base role).
+
+**Optional lean delivery**: `lean-delivery` is an opt-in setup module requiring `pr-review` (and transitively `github-repo`), not included in built-in presets. It adds the company-wide `docs/lean-delivery.md` contract, selects a single Code Reviewer merge gate for PR-review setup, and supplies one-issue/two-PR WIP limits. Without it, PR review uses role-based QA/Product/Code Reviewer stages and company-defined capacity. Shared instructions distinguish the modes by the contract's presence.
 
 ### Skill Resolution
 

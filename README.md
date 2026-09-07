@@ -85,7 +85,7 @@
 ## Why Company Wizard?
 
 - 🗣️ **Describe it, don't configure it.** AI mode reads a plain-language brief and picks the right preset, modules, and roles for you. Manual mode is there for the steps you want to control yourself.
-- 🧩 **Composable, not monolithic.** 15 curated presets layered from 26 modules and 17 roles. Mix and match freely — modules add skills, tasks, and heartbeat logic to the roles that are present, and degrade gracefully when they're not.
+- 🧩 **Composable, not monolithic.** 15 curated presets layered from 27 modules and 17 roles. Mix and match freely — modules add skills, tasks, and heartbeat logic to the roles that are present, and degrade gracefully when they're not.
 - 🤝 **Works from day one with a single CEO.** Every capability has an owner chain. Add a specialist and responsibilities shift to them automatically; leave one out and the next-best person — ultimately the CEO — steps in. No setup ever leaves a gap.
 - ✏️ **Review and edit before anything ships.** Preview every generated file, tweak a persona, workflow, or the repository setup inline on the review screen, then provision.
 - 🚀 **Real end-to-end provisioning.** Not just scaffolded files — it creates the company, CEO, goals, projects, and backlog in Paperclip via the API. Target a brand-new or existing company, with a fresh local or existing external Git repo.
@@ -286,6 +286,7 @@ Modules are composable capabilities you layer on top of the base team. Each modu
 | :----- | :----------- | :----------- |
 | **`github-repo`** | Git workflow and commit conventions | Engineer initializes repo |
 | **`pr-review`** | PR-based review workflow | Engineer configures PR workflow and branch protection (requires PRs, no approval gate) |
+| **`lean-delivery`** | Optional single merge gate, risk-triggered evidence, and bounded WIP (requires `pr-review`) | — |
 | **`backlog`** | Auto-generate issues from goals when backlog runs low | Primary owner creates initial backlog |
 | **`auto-assign`** | Assign unassigned issues to idle agents | — |
 | **`stall-detection`** | Detect stuck handovers, nudge or escalate | — |
@@ -346,10 +347,16 @@ Git workflow and commit conventions.
 
 PR-based review workflow. Requires `github-repo`. Activates with `code-reviewer`, `product-owner`, `ui-designer`, `ux-researcher`, `qa`, or `devops`.
 
-The issue's native `executionPolicy` has exactly one default stage: an `approval` **merge gate** owned by the non-author Code Reviewer, who verifies the exact reviewed head, merges the PR, and only then records the verdict that closes the issue. Product acceptance is finalized on the originating issue before implementation. QA, Security, Product, UI/UX, and DevOps provide bounded same-issue evidence only when a concrete risk or unresolved decision triggers them; they are not serial executionPolicy stages and do not close the implementation issue. The engineer (the issue's executor) is never a stage participant — Paperclip excludes the original executor, so a self-stage stalls with `422 No eligible approval participant`. When no Code Reviewer is on the team, no `executionPolicy` stages are set and the engineer self-merges via `gh pr merge <N> --merge` (PR Self-Merge Flow).
+Standard review uses the issue's native `executionPolicy`: QA review when present, Security review only for security-relevant changes, Product Owner approval when present, then a non-author Code Reviewer **merge gate**. The merge owner verifies the exact reviewed head, merges the PR, and only then records approval to close the issue. Omit absent roles and the executor from every stage — Paperclip excludes the author and an author-only stage stalls. Without an eligible non-author Code Reviewer, set no stages and use `gh pr merge <N> --merge` (PR Self-Merge Flow).
 
 - **Task:** Engineer configures PR workflow and branch protection (requires PRs, no approval gate)
 - **Doc:** `docs/pr-conventions.md`
+
+#### lean-delivery (optional)
+
+Select **`lean-delivery`** in the setup wizard's **Modules** step; `pr-review` and `github-repo` are automatically included as dependencies. It is not selected by any built-in preset. Deselect it to keep standard review. In AI setup, explicitly request lean delivery.
+
+With this module, the policy has exactly one default stage: the non-author Code Reviewer merge gate. Product acceptance is finalized before implementation; QA, Security, Product, UI/UX, and DevOps provide risk-triggered same-issue evidence instead of serial executionPolicy stages. The binding `docs/lean-delivery.md` contract also sets WIP limits of one active implementation issue per delivery agent and two open implementation PRs per repository. It is referenced by every role, including the CEO and backlog/assignment owners. Without the module, capacity follows company policy and no lean WIP cap is imposed. API validation, workspace safety, exact-head verification, and the bounded repo-maintenance preset remain independent of this choice.
 
 #### backlog
 

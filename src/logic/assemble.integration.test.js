@@ -4,6 +4,8 @@ import { mkdtemp, rm, readFile, readdir, access } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { assembleCompany } from './assemble.js';
+import { loadModules, loadPresets } from './load-templates.js';
+import { buildModuleDeps, expandModuleDeps } from './resolve.js';
 
 const REAL_TEMPLATES_DIR = resolve(import.meta.dirname, '..', '..', 'templates');
 
@@ -491,13 +493,13 @@ describe('assembleCompany integration (real templates)', () => {
     }
   });
 
-  it('pr-review defaults to one non-author Code Reviewer stage', async () => {
+  it('pr-review defaults to role-based stages unless lean delivery is selected', async () => {
     const meta = JSON.parse(
       await readFile(join(REAL_TEMPLATES_DIR, 'modules', 'pr-review', 'module.meta.json'), 'utf-8'),
     );
     const gate = meta.issues[0].reviewGate;
-    assert.equal(gate.reviewers, undefined, 'QA is bounded evidence, not a default stage');
-    assert.equal(gate.approver, undefined, 'Product acceptance happens before implementation');
+    assert.deepEqual(gate.reviewers, ['qa'], 'standard review includes QA');
+    assert.equal(gate.approver, 'product-owner', 'standard review includes Product approval');
     assert.equal(gate.mergeGate, 'code-reviewer', 'the non-author Code Reviewer is the merge gate');
     assert.ok(
       meta.issues[0].description.includes('not serial stages'),
@@ -514,6 +516,117 @@ describe('assembleCompany integration (real templates)', () => {
     );
   });
 
+  it('offers lean delivery as an opt-in module with transitive dependencies', async () => {
+    const modules = await loadModules(REAL_TEMPLATES_DIR);
+    const lean = modules.find((mod) => mod.name === 'lean-delivery');
+    assert.ok(lean, 'module catalog exposes the option to manual and AI setup');
+    assert.match(lean.description, /Optional lean delivery/);
+    assert.deepEqual(lean.requires, ['pr-review']);
+    assert.equal(lean.activatesWithRoles, undefined, 'the contract applies company-wide');
+
+    const { requires } = buildModuleDeps(modules);
+    const { expanded } = expandModuleDeps(['lean-delivery'], requires);
+    assert.deepEqual(new Set(expanded), new Set(['lean-delivery', 'pr-review', 'github-repo']));
+    assert.ok(!expandModuleDeps(['pr-review'], requires).expanded.includes('lean-delivery'));
+    for (const preset of await loadPresets(REAL_TEMPLATES_DIR)) {
+      assert.ok(
+        !preset.modules.includes('lean-delivery'),
+        `${preset.name} must not opt in silently`,
+      );
+    }
+    await assert.rejects(
+      assembleCompany({
+        companyName: 'MissingLeanDependency',
+        moduleNames: ['lean-delivery'],
+        extraRoleNames: [],
+        outputDir,
+        templatesDir: REAL_TEMPLATES_DIR,
+      }),
+      /requires module "pr-review"/,
+    );
+  });
+
+  for (const lean of [false, true]) {
+    for (const ci of [false, true]) {
+      for (const reviewer of [false, true]) {
+        it(`assembles the selected delivery policy (lean=${lean}, CI=${ci}, reviewer=${reviewer})`, async () => {
+          const moduleNames = [
+            ...(lean ? ['lean-delivery'] : []),
+            'github-repo',
+            'pr-review',
+            'backlog',
+            'auto-assign',
+            'stall-detection',
+            ...(ci ? ['ci-cd'] : []),
+          ];
+          const result = await assembleCompany({
+            companyName: 'DeliveryPolicyCo',
+            moduleNames,
+            extraRoleNames: [
+              'engineer',
+              'qa',
+              'product-owner',
+              'security-engineer',
+              'cmo',
+              ...(reviewer ? ['code-reviewer'] : []),
+            ],
+            outputDir,
+            templatesDir: REAL_TEMPLATES_DIR,
+          });
+          const bootstrap = await readFile(join(result.companyDir, 'BOOTSTRAP.md'), 'utf-8');
+          const stages = [...bootstrap.matchAll(/stage \d+ \([^)]+\) → assign "([^"]+)"/g)].map(
+            (match) => match[1],
+          );
+          assert.deepEqual(
+            stages,
+            reviewer ? (lean ? ['code-reviewer'] : ['qa', 'product-owner', 'code-reviewer']) : [],
+          );
+          const setupIssue = result.initialIssues.find(
+            (issue) => issue.title === 'Set up Paperclip PR review workflow',
+          );
+          assert.deepEqual(
+            setupIssue.reviewGate,
+            lean
+              ? { mergeGate: 'code-reviewer' }
+              : { reviewers: ['qa'], approver: 'product-owner', mergeGate: 'code-reviewer' },
+          );
+          assert.equal(await exists(join(result.companyDir, 'docs', 'lean-delivery.md')), lean);
+          for (const role of result.allRoles) {
+            const agents = await readFile(
+              join(result.companyDir, 'agents', role, 'AGENTS.md'),
+              'utf-8',
+            );
+            assert.equal(
+              agents.includes('docs/lean-delivery.md'),
+              lean,
+              `${role} contract reference`,
+            );
+          }
+          assert.ok(
+            bootstrap.includes(
+              lean ? 'Lean delivery is enabled' : 'Standard staged PR review is enabled',
+            ),
+          );
+          assert.equal(bootstrap.includes('Default WIP is one active implementation issue'), lean);
+          assert.ok(
+            bootstrap.includes(ci ? 'until those checks exist on this head' : 'no CI configured') ||
+              !reviewer,
+          );
+          assert.ok(
+            bootstrap.includes('Pending or failed required checks must be awaited or repaired'),
+          );
+          if (!reviewer) assert.ok(bootstrap.includes('PR Self-Merge mode'));
+          for (const slug of ['qa-review', 'product-review', 'pr-security-review']) {
+            const skill = result.companySkills.find((entry) => entry.slug === slug);
+            assert.ok(skill.markdown.includes('docs/lean-delivery.md'));
+            assert.match(skill.markdown, /Standard active .* stage/);
+            assert.ok(skill.markdown.includes('Lean/advisory handoff'));
+          }
+        });
+      }
+    }
+  }
+
   it('backlog templates enforce bounded WIP and explicit subissue isolation', async () => {
     const backlogMeta = JSON.parse(
       await readFile(join(REAL_TEMPLATES_DIR, 'modules', 'backlog', 'module.meta.json'), 'utf-8'),
@@ -527,7 +640,7 @@ describe('assembleCompany integration (real templates)', () => {
       'utf-8',
     );
     const leanDelivery = await readFile(
-      join(REAL_TEMPLATES_DIR, 'modules', 'pr-review', 'docs', 'lean-delivery.md'),
+      join(REAL_TEMPLATES_DIR, 'modules', 'lean-delivery', 'docs', 'lean-delivery.md'),
       'utf-8',
     );
     const stallDetection = await readFile(
@@ -550,8 +663,9 @@ describe('assembleCompany integration (real templates)', () => {
     );
 
     assert.ok(
-      backlogMeta.issues[0].description.includes('at most two open implementation PRs'),
-      'seed backlog must respect the default repository PR cap',
+      backlogMeta.issues[0].description.includes('If docs/lean-delivery.md exists') &&
+        backlogMeta.issues[0].description.includes('otherwise no lean cap is implied'),
+      'seed backlog applies lean capacity only when the contract exists',
     );
     assert.ok(
       backlogMeta.routines[0].description.includes('create at most the next 1-3'),
@@ -624,6 +738,12 @@ describe('assembleCompany integration (real templates)', () => {
       stallDetection.includes('A `cancelled` blocker does **not** resolve a dependency'),
       'stall recovery must remove or replace cancelled blocker relations',
     );
+    for (const skill of [backlogSkill, autoAssignSkill, autoAssignFallback, stallDetection]) {
+      assert.ok(skill.includes('`docs/lean-delivery.md` exists'), 'lean capacity is conditional');
+      assert.ok(!skill.includes('make waiting issues depend on the issues owning the open PRs'));
+    }
+    assert.ok(stallDetection.includes('WAITING-REVIEW-PATH-RECOVERY'));
+    assert.ok(stallDetection.includes("outside this actor's authorization boundary"));
     assert.ok(
       repoMaintenance.issues.every((issue) => issue.assignTo !== 'user'),
       'automatable repository setup is not assigned to the board user',
@@ -993,11 +1113,11 @@ describe('assembleCompany integration (real templates)', () => {
     );
   });
 
-  it('BOOTSTRAP guardrail names the Code Reviewer merge gate and forbids self-stages', async () => {
+  it('lean BOOTSTRAP guardrail names the Code Reviewer merge gate and forbids self-stages', async () => {
     const { companyDir } = await assembleCompany({
       companyName: 'GuardrailCo',
       userGoals: [{ title: 'Ship it', description: 'Build and launch' }],
-      moduleNames: ['github-repo', 'pr-review'],
+      moduleNames: ['github-repo', 'pr-review', 'lean-delivery'],
       extraRoleNames: ['engineer', 'product-owner', 'qa', 'code-reviewer'],
       outputDir,
       templatesDir: REAL_TEMPLATES_DIR,
@@ -1012,8 +1132,7 @@ describe('assembleCompany integration (real templates)', () => {
       'guardrail names the Code Reviewer as the merge gate',
     );
     assert.ok(
-      /never list the issue's executor/i.test(bootstrap) ||
-        bootstrap.includes('No eligible approval participant'),
+      bootstrap.includes('Never list the executor/author as a participant'),
       'guardrail forbids assigning the issue executor/author to a stage',
     );
     assert.ok(
@@ -1029,7 +1148,7 @@ describe('assembleCompany integration (real templates)', () => {
     assert.ok(mergeStageIdx > -1, 'Code Reviewer merge-gate stage is rendered');
   });
 
-  it('QA review skill is bounded evidence rather than a serial gate', async () => {
+  it('QA review skill distinguishes standard stages from lean bounded evidence', async () => {
     const qaSkill = await readFile(
       join(REAL_TEMPLATES_DIR, 'modules', 'pr-review', 'agents', 'qa', 'skills', 'qa-review.md'),
       'utf-8',
@@ -1042,9 +1161,9 @@ describe('assembleCompany integration (real templates)', () => {
     assert.ok(
       qaSkill.includes('bounded `pass` comment') &&
         qaSkill.includes('bounded `fail` comment') &&
-        !qaSkill.includes('Record `approved`') &&
-        !qaSkill.includes('otherwise `changes_requested`'),
-      'QA records evidence comments rather than executionPolicy stage verdicts',
+        qaSkill.includes('Standard active QA stage') &&
+        qaSkill.includes('Lean/advisory handoff'),
+      'QA uses policy verdicts for standard review and evidence comments for lean delivery',
     );
     assert.ok(!qaSkill.includes('gh pr review'), 'no formal GitHub review with shared credential');
   });
@@ -1065,7 +1184,8 @@ describe('assembleCompany integration (real templates)', () => {
     assert.ok(
       prWorkflow.includes('Assignment is the wake signal') &&
         prWorkflow.includes('always reassigns the originating issue to the implementation owner') &&
-        prWorkflow.indexOf('Resolve triggered specialist evidence') <
+        prWorkflow.indexOf('Resolve advisory evidence') > -1 &&
+        prWorkflow.indexOf('Resolve advisory evidence') <
           prWorkflow.indexOf("Set the originating issue's `executionPolicy`"),
       'the Engineer must wake specialists on the same issue and receive it back before opening the gate',
     );
@@ -1127,7 +1247,7 @@ describe('assembleCompany integration (real templates)', () => {
     );
   });
 
-  it('retained QA heartbeat and public docs follow the lean review flow', async () => {
+  it('retained QA heartbeat and public docs distinguish the optional lean review flow', async () => {
     const qaHeartbeat = await readFile(
       join(REAL_TEMPLATES_DIR, 'roles', 'qa', 'HEARTBEAT.md'),
       'utf-8',
@@ -1148,7 +1268,8 @@ describe('assembleCompany integration (real templates)', () => {
 
     assert.ok(
       qaHeartbeat.includes('Never mark the originating implementation issue `done`') &&
-        qaHeartbeat.includes('sole Code Reviewer stage'),
+        qaHeartbeat.includes("never act on the Code Reviewer's stage") &&
+        qaHeartbeat.includes('standard PR review can name QA as an executionPolicy stage'),
       'QA cannot close the originating PR issue or advance the merge-gate stage',
     );
     assert.ok(
@@ -1165,13 +1286,11 @@ describe('assembleCompany integration (real templates)', () => {
       'ambiguous acceptance has a pre-code Product Owner/CEO route',
     );
     assert.ok(
-      publicReadme.includes('exactly one default stage') &&
-        publicReadme.includes('they are not serial executionPolicy stages'),
-      'public documentation describes the sole Code Reviewer stage',
-    );
-    assert.ok(
-      !publicReadme.includes('a `review` stage for QA when present'),
-      'public documentation no longer advertises the old serial chain',
+      publicReadme.includes('#### lean-delivery (optional)') &&
+        publicReadme.includes('exactly one default stage') &&
+        publicReadme.includes('Standard review uses') &&
+        publicReadme.includes('It is not selected by any built-in preset'),
+      'public documentation describes both modes and how to opt in',
     );
   });
 

@@ -82,7 +82,7 @@
     },
     {
       "title": "Reconcile open pull request ownership",
-      "description": "Inventory open PRs only in the configured project repository. Identify each as owner/repo#number and ensure it has exactly one originating Paperclip issue, implementation owner, current head/base/check evidence, and next gate. Do not review or merge multiple PRs from this setup issue, create replacement PRs, or create queue-drain wrappers. Route work on each existing PR to its own originating issue; stop new PR-producing assignment when the repository is at the default two-PR WIP cap.",
+      "description": "Inventory open PRs only in the configured project repository. Identify each as owner/repo#number and ensure it has exactly one originating Paperclip issue, implementation owner, current head/base/check evidence, and next gate. Do not review or merge multiple PRs from this setup issue, create replacement PRs, or create queue-drain wrappers. Route work on each existing PR to its own originating issue; stop new PR-producing assignment when review capacity is full under company policy. If docs/lean-delivery.md exists, apply its WIP limits; otherwise no lean cap is implied.",
       "priority": "high",
       "assignTo": "devops"
     },

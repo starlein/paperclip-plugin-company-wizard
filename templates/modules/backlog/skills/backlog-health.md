@@ -28,11 +28,11 @@ Add additional labels if the roadmap calls for them (e.g., `docs`, `design`, `se
 1. Checkout the assigned backlog/routine issue in Paperclip before mutating the board. This is API-only control-plane work; do not create or enter a repository worktree for the grooming run.
 2. Read the current company goals, roadmap/project context, existing issue documents, and recent decision log entries.
 3. Query existing issues for the relevant project/goal and avoid duplicates.
-4. Check delivery capacity before creating work: open implementation PRs per repository, active implementation issues per agent, and the current review owner. Default WIP is at most two open implementation PRs per repository and one active implementation issue per delivery agent unless company policy says otherwise.
-5. If capacity is genuinely free and the next work is unclear, create only the next 1-3 small actionable issues via `POST /api/companies/{companyId}/issues`.
+4. Check delivery capacity before creating work: open implementation PRs per repository, active implementation issues per agent, and the current review owner. Follow company-defined capacity; if `docs/lean-delivery.md` exists, apply its one-issue/two-PR WIP limits. Without that optional contract, do not impose lean limits.
+5. If capacity is genuinely free and the next work is unclear, create a capacity-sized batch of small actionable issues via `POST /api/companies/{companyId}/issues`; in lean delivery, create only the next 1-3.
 6. Each issue must include: `title`, acceptance-oriented `description`, `priority`, `projectId`, `goalId` when known, and `labelIds`.
 7. Set workspace isolation explicitly on every implementation issue, including subissues (see Rules).
-8. Use `blockedByIssueIds` for real dependencies instead of free-text blockers. Capacity waits point to the issues owning the in-flight PRs; never poll them with a monitor.
+8. Use `blockedByIssueIds` for real dependencies instead of free-text blockers. For a dynamic PR-capacity wait, leave later work unassigned for the next capacity check; do not link it conjunctively to every in-flight PR or poll it with a monitor.
 9. Assign only work that fits current owner and review capacity. Keep later roadmap items prioritized but inactive instead of stockpiling an assigned queue.
 10. Record generated/assigned issue ids, current WIP evidence, and rationale in the routine issue comment; use issue documents for long plans.
 11. Mark the routine-run issue done when complete.

@@ -4,10 +4,10 @@ Primary assignment happens at backlog grooming — issues are assigned to the be
 
 ## Assignment Check (Fallback)
 
-On your heartbeat, after handling your own assignments:
+Only on an explicitly assigned auto-assignment routine issue:
 
 1. Confirm this is the active routine-run issue and checkout it before mutating the board.
-2. Query unassigned ready issues plus active implementation issues and open implementation PRs. Default WIP is one active implementation issue per delivery agent and two open implementation PRs per repository.
+2. Query unassigned ready issues plus active implementation issues and open implementation PRs. Follow company-defined capacity; if `docs/lean-delivery.md` exists, apply its one-issue/two-PR WIP limits. Otherwise no lean cap is implied.
 3. If unassigned issues are available AND the Product Owner hasn't acted recently:
    - Assign only the next suitable issue that fits owner and review capacity: `PATCH /api/issues/{id}` with `assigneeAgentId` and an assignment comment.
    - Keep later roadmap work prioritized but inactive; a safety net must not manufacture a queue that outruns the merge gate.

@@ -61,22 +61,23 @@ Apply one primary label: `feature`, `bug`, `docs`, `chore`, `infra`, `agent`.
 
 ## Review Workflow
 
-Review runs through one default non-author `executionPolicy` stage on the originating issue, not a serial chain or separate child issues. The gate is **exact-head verification, not opinion**.
+Review runs through the originating issue's `executionPolicy`, not separate child issues. The gate is **exact-head verification, not opinion**. By default, use role-based stages: QA review, Security review only for security-relevant changes, Product Owner approval, then the Code Reviewer merge gate. Omit absent roles and the executor. If `docs/lean-delivery.md` exists, the optional lean-delivery contract replaces this chain with one Code Reviewer merge gate and risk-triggered specialist evidence.
 
 1. **Engineer** resolves the project/worktree base ref before branching from `heartbeat-context` / project workspace metadata. Use the configured `repoRef`, `defaultRef`, or `executionWorkspacePolicy.workspaceStrategy.baseRef` exactly as Paperclip provides it. PRs must target the corresponding GitHub base and must not silently target the wrong branch.
 2. **Engineer** opens the PR on GitHub and adds the PR link as an issue comment.
-3. **Engineer** sets exactly one `approval` stage for the **Code Reviewer** as non-author merge gate. When no Code Reviewer is on the team, set no executionPolicy stages and use PR Self-Merge Flow.
+3. **Engineer** sets the selected workflow's stages before entering review, with a final `approval` stage for the **Code Reviewer** as non-author merge gate. In lean delivery, this is the only stage and all triggered specialist handoffs must return before review begins. When no eligible non-author Code Reviewer is on the team, set no executionPolicy stages and use PR Self-Merge Flow.
    Resolve each role to its agentId. **Never list the issue's assignee/executor (whoever did the work — engineer, QA, or any role) as a participant in any stage** — the runtime excludes the original executor from every stage, so such a stage has no eligible participant and the issue stalls (`422 No eligible approval participant`). This applies to **every** stage, but is fatal in the **first** stage: a first stage listing only the assignee cannot be passed, so the issue stalls at stage 1 (`422 Only the active reviewer or approver can advance the current execution stage`) even when later stages have non-author participants. If the policy ended up with the assignee as the first/only participant of a stage, recover with `PATCH /api/issues/{id}` `{"executionPolicy":null}` (returns the issue to `in_progress`), then re-set stages with a non-author first stage — or, with no Code Reviewer, self-merge via `gh pr merge <N> --merge`. Non-engineer roles (e.g. QA) must not author implementation work and then self-review it; implementation work belongs to the engineer.
 4. **Engineer** sets the issue to `in_review`.
-5. Product acceptance is defined before engineering. QA, Security, UI/UX, Product, and DevOps contribute one bounded same-issue verdict only when a concrete trigger applies; they do not become serial stages or hand the issue to one another.
+5. In standard review, each active QA/Security/Product stage records its verdict through the executionPolicy, which wakes the next participant. In lean delivery, these roles contribute bounded same-issue evidence only for a concrete trigger before the merge gate, returning the issue to the implementation owner rather than advancing policy stages. UI/UX and DevOps remain advisory in both modes.
 6. **Code Reviewer** verifies the exact head/base, required CI, and triggered evidence, merges into the configured base, confirms the merge landed, and only then records `approved` — which closes the issue.
 7. A correction returns to the same implementation owner, issue, branch, and PR. Board users are not execution participants for technical defects; use a first-class board decision only for irreducible product, legal, licensing, or residual-risk acceptance.
 
 ## Review Roles
 
-- **Product Owner**: freezes intent and acceptance before implementation; returns only for a concrete unresolved decision.
-- **QA / Security / UI/UX / DevOps**: risk-triggered bounded evidence on the originating issue, never a serial default stage.
-- **Code Reviewer**: the sole default non-author approval stage, exact-head verifier, and merge owner. When absent, the engineer self-merges with no executionPolicy stages.
+- **Product Owner**: defines acceptance before implementation; approves intent/scope in standard review. In lean delivery, returns only for a concrete unresolved decision.
+- **QA / Security**: QA reviews by default and Security reviews security-relevant changes in standard mode. In lean delivery, both provide only risk-triggered bounded evidence.
+- **UI/UX / DevOps**: risk-triggered advisory evidence on the originating issue in either mode.
+- **Code Reviewer**: final non-author approval stage, exact-head verifier, and merge owner (sole stage in lean delivery). When absent or the author, the engineer self-merges with no executionPolicy stages.
 
 ## Merge Rules
 
@@ -84,15 +85,17 @@ The hard gate is **exact-head verification**, enforced by the Code Reviewer merg
 
 **When required company CI is available, it is authoritative on the exact reviewed head.** Cite the head SHA and required green checks, then run only the smallest independent check needed for a risky or unclear part of the diff. Do not duplicate the complete lint/test/typecheck/build suite. When company CI is unavailable, run the complete local gate once and record the real output.
 
+Selecting `ci-cd` does not prove required checks exist yet. Use the local fallback until they exist on the reviewed head. Pending or failed required checks are not unavailable CI: wait for or repair them, rather than substituting local output. Branch-protection requirements remain binding even for checks the company did not configure.
+
 **CI is a gate only when this company runs its own CI/CD** — i.e. the `ci-cd` module is active (you have the `ci-cd` skill and a `docs/CI-CD*.md` the company authored). In that case the company-owned CI (lint/test/build) must be **green** before the merge gate merges, with one narrow exception: the baseline-restore PR (`fix(ci): restore base CI`) may merge when the base branch's own CI is red and the PR carries cited local-executed verification that its scoped diff reduces the base failure set (remaining failing checks exactly the inherited baseline set). See `../../docs/git-workflow.md` → *Base-branch-red deadlock* and *Narrow exception*. A feature PR on a red company-owned base is never merged; the merge gate records `changes_requested` citing `BASE-BRANCH-RED` and routes back with "waiting-on-baseline".
 
 **When the company did NOT set up CI/CD** (no `ci-cd` module): treat any pre-existing checks on the repository as **advisory signals, not a merge gate**. Do not block or refuse a merge solely because a repo-native check the company never configured is red or flaky — your pasted local lint/test/build output is the sufficient and authoritative gate. (Investigate a red repo check if it points at a real defect in the diff, but never let an external/inherited CI you don't own deadlock the queue.)
 - Triggered specialist evidence must be resolved on the originating issue before merge; completed evidence is not replayed after every correction.
-- No force pushes.
+- No force pushes to the base or someone else's branch. After rebasing your own issue branch, use only `--force-with-lease`.
 - Merge using `gh pr merge <number> --merge`.
 - Before merge, verify the PR base matches the configured project/worktree base from `heartbeat-context`. Retarget before review/merge if needed.
 - The Code Reviewer is the merge owner (a non-author); the engineer who wrote the PR cannot merge it.
-- The merge gate is the **only default stage** and must be a non-author. The issue's executor is never a participant.
+- The merge gate is the **last stage** (the only stage in lean delivery) and must be a non-author. The issue's executor is never a participant.
 - If Paperclip created an isolated execution workspace for the issue, leave it reusable after the PR is merged and the tree is clean. Do not archive/delete it as part of recording approval or marking the issue `done`; review, follow-up, or dependent work may still reference it. Workspace retirement is a separate board/operator action.
 - Do not configure GitHub branch protection to require approving reviews unless the project has distinct non-author GitHub reviewer credentials; all agents using one GitHub account cannot formally approve their own PRs.
 

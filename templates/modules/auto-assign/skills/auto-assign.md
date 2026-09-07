@@ -9,7 +9,7 @@ Use this only when the current assigned issue/routine is titled like "Auto-assig
 ## Assignment Check
 
 1. Confirm this is the active routine-run issue and checkout it before mutating the board.
-2. Query available agents and current delivery capacity: active implementation issues per agent plus open implementation PRs per repository. Default WIP is at most one active implementation issue per delivery agent and two open implementation PRs per repository unless company policy says otherwise.
+2. Query available agents and current delivery capacity: active implementation issues per agent plus open implementation PRs per repository. Follow company-defined capacity; if `docs/lean-delivery.md` exists, apply its one-issue/two-PR WIP limits. Otherwise no lean cap is implied.
 3. Query candidate issues using the board's current issue API for unassigned `todo` work, scoped to the relevant project/goal when the routine has one.
 4. Skip issues that are blocked, awaiting approval/review, missing acceptance criteria, or already have active execution state.
 5. Match issue labels, required skills, project context, and priority to agent role/capabilities.

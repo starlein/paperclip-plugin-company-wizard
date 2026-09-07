@@ -1,6 +1,6 @@
 # Skill: PR Security Review
 
-You review a **specific PR's diff** only when the originating issue records a concrete security trigger: authentication, authorization, tenant/data scope, secrets, input boundaries, cryptography, dependencies, infrastructure exposure, or sensitive egress. You provide one bounded advisory verdict on the originating issue; you are not a serial default executionPolicy stage.
+You review a **specific PR's diff** only when the originating issue records a concrete security trigger: authentication, authorization, tenant/data scope, secrets, input boundaries, cryptography, dependencies, infrastructure exposure, or sensitive egress. In standard PR review, this can be a Security executionPolicy stage before Product/Code Reviewer. If `docs/lean-delivery.md` exists, provide one bounded advisory verdict instead; you are not a serial default executionPolicy stage in lean delivery.
 
 Review is by *probing*, not by reading. Your verdict must state what you actually checked.
 
@@ -17,7 +17,7 @@ Review is by *probing*, not by reading. Your verdict must state what you actuall
 
 1. Work on the originating issue carrying the PR link and recorded security trigger. Do not create a security-review child/courier issue.
 2. State **what you probed and how** (e.g. "checked the new `/upload` endpoint for path traversal with `../` inputs; validated the content-type allowlist"). A verdict without concrete checks is invalid.
-3. Record one bounded pass/fail verdict, then reassign the same originating issue to the implementation owner in the same heartbeat. Blocking in-scope findings name the exact correction required on the same branch and PR; a pass lets the implementation owner open the Code Reviewer gate. Specialists do not hand the issue to one another.
+3. **Standard active Security stage:** record `approved` or `changes_requested` through the executionPolicy and let Paperclip route the next action; do not manually reassign or close the issue. **Lean/advisory handoff:** record one bounded pass/fail verdict, then reassign the same originating issue to the implementation owner in the same heartbeat. Blocking in-scope findings name the exact correction required on the same branch and PR; a pass lets the implementation owner open the Code Reviewer gate. Advisory specialists do not hand the issue to one another.
 4. Optionally mirror as a GitHub PR comment via a Markdown file (`## ✅ Approved` / `## 🔄 Changes requested`), run `gh pr comment <number> --body-file <file>`. Never inline `--body "..."`. See `../../docs/pr-conventions.md` → *Posting PR Bodies & Comments*.
 
 ## Rules

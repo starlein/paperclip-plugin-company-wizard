@@ -1,0 +1,6 @@
+{
+  "name": "lean-delivery",
+  "description": "Optional lean delivery: one non-author Code Reviewer merge gate, risk-triggered specialist evidence, same-issue correction loops, and WIP limits of one active implementation issue per agent and two open implementation PRs per repository. Opt in during setup; without this module, PR review retains its role-based stages and company-defined capacity.",
+  "requires": ["pr-review"],
+  "capabilities": []
+}

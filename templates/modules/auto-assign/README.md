@@ -9,11 +9,11 @@ Adds a low-frequency safety net for issue assignment. Primary dispatch happens a
 
 ## How it works
 
-Primary assignment happens during backlog grooming: the Product Owner creates issues and assigns each to the best-fit agent immediately. The auto-assign routine is a **safety net** that runs every 4 hours to catch anything that slipped through:
+Primary assignment happens during backlog grooming: the Product Owner assigns acceptance-ready issues to best-fit agents when capacity is free. The auto-assign routine is a **safety net** that runs every 4 hours to catch anything that slipped through:
 
 1. Are there unassigned issues in `todo` status?
 2. Do those issues have enough acceptance criteria and no unresolved blockers?
-3. If yes and capacity is free: assign only the next suitable item. Default WIP is one active implementation issue per delivery agent and two open implementation PRs per repository; keep later work inactive.
+3. If yes and capacity is free: assign the next suitable item. Capacity follows company policy; selecting optional `lean-delivery` adds one-active-issue-per-agent and two-open-PRs-per-repository WIP limits. Keep later work inactive when the selected policy's capacity is full.
 
 ## Best for
 
