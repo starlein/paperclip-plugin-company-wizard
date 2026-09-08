@@ -23,7 +23,7 @@ Run this checklist on every heartbeat. The Paperclip skill is the source of trut
 
 ## 4. Checkout and Work
 
-- Checkout before mutating work: `POST /api/issues/{id}/checkout` with the expected current status when the API supports `expectedStatuses`.
+- Checkout before mutating work: `POST /api/issues/{id}/checkout` with `{ "agentId": "<your agent id>", "expectedStatuses": ["todo", "backlog", "blocked", "in_review"] }` — both fields are required, and the list must contain the issue's current status. Send `X-Paperclip-Run-Id` with it.
 - Never retry a 409; that issue belongs to another active run.
 - Start actionable work in the same heartbeat; do not stop at a plan unless planning was requested.
 - Leave durable progress with a clear next action. Use child issues for long or parallel delegated work instead of polling.

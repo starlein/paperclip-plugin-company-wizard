@@ -4,7 +4,7 @@ The Game Designer primarily owns the game design. You are the engineering fallba
 
 ## Game Design (Fallback)
 
-1. If no `../../docs/GDD.md` exists and no Game Designer is active:
+1. If no `docs/GDD.md` exists and no Game Designer is active:
    - Write a minimal Game Design Document covering concept, core mechanic, game loop, platform, controls, and technical constraints.
    - Identify implementation risks: physics, input, asset pipeline, save state, performance, and browser/device support.
    - Mark open design questions explicitly so a Game Designer or CEO can resolve them later.

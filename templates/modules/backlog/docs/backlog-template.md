@@ -40,7 +40,7 @@ _Summary of current backlog health. Update during an assigned backlog-planning o
 - **Open implementation PRs:** _(count by repository; include owner and merge state)_
 - **Prioritized inactive issues:** _(next roadmap work waiting for genuine delivery capacity)_
 - **In-progress issues:** _(count)_
-- **Health:** _(healthy / thin / empty / bloated — see ../../docs/backlog-process.md)_
+- **Health:** _(healthy / thin / empty / bloated — see docs/backlog-process.md)_
 
 ## Decisions Log
 

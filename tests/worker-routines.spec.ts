@@ -55,4 +55,38 @@ describe('existing-company routine project synchronization', () => {
     )?.[1];
     expect(detachedPayload).not.toHaveProperty('projectId');
   });
+
+  it('normalizes a legacy concurrency policy and a legacy name key before calling the API', async () => {
+    const client = {
+      listRoutines: vi.fn().mockResolvedValue([]),
+      updateRoutine: vi.fn().mockResolvedValue({}),
+      createRoutine: vi.fn().mockResolvedValue({ id: 'new-routine' }),
+      createRoutineTrigger: vi.fn().mockResolvedValue({}),
+    };
+    await syncExistingCompanyRoutines({
+      client,
+      companyId: 'company',
+      ceoAgentId: 'ceo',
+      teamAgentIds: { engineer: 'engineer' },
+      mainProjectId: 'selected-project',
+      // `forbid` and the `name` key predate Paperclip's routine schema: sending
+      // either verbatim loses the routine (400) or its title.
+      routines: [
+        {
+          name: 'Dependency audit',
+          assignTo: 'engineer',
+          schedule: '0 2 * * 1',
+          concurrencyPolicy: 'forbid',
+        },
+      ],
+      log: vi.fn(),
+    });
+    expect(client.createRoutine).toHaveBeenCalledWith(
+      'company',
+      expect.objectContaining({
+        title: 'Dependency audit',
+        concurrencyPolicy: 'skip_if_active',
+      }),
+    );
+  });
 });

@@ -12,7 +12,7 @@ Company Wizard is a [Paperclip](https://github.com/paperclipai/paperclip) plugin
 pnpm build          # esbuild: worker + manifest + UI → dist/
 pnpm dev            # watch mode
 pnpm test           # vitest: tests/**/*.spec.ts
-pnpm test:logic     # node --test: src/logic/*.test.js
+pnpm test:logic     # node --test: src/logic/*.test.js + src/api/*.test.js
 pnpm typecheck      # tsc --noEmit
 ```
 
@@ -44,6 +44,7 @@ All worker actions return errors as `{ error }` instead of throwing, so the plug
 - `src/logic/assemble.js` — File assembly: copies templates, resolves capabilities, generates BOOTSTRAP.md
 - `src/logic/resolve.js` — Capability resolution, role formatting, module dependency expansion
 - `src/logic/load-templates.js` — Loads presets, modules, roles. Exports `collectGoals()`, `validateGoal()`
+- `src/logic/routines.js` — Routine template helpers shared by assembly and provisioning: `routineTitle()` (accepts the legacy `name` key), `routineConcurrencyPolicy()` (maps/validates against Paperclip's enum), `routineUsesProjectWorkspace()`, `routineProjectPayload()`
 - `src/api/client.js` — Paperclip REST API client (auto-detects auth: no-op for local_trusted, Better Auth sign-in for authenticated). Network errors wrapped with actionable messages. Methods: `createCompany`, `getCompany`, `updateCompany`, `deleteCompany`, `listAgents`, `getAgent`, `createAgent` (governed `/agent-hires`, returns pending approval ids without auto-approving), `createGoal`, `createProject`, `updateProject`, `createIssue` (accepts an optional `watchdog: { agentId, instructions? }`), `setIssueWatchdog`/`getIssueWatchdog`/`deleteIssueWatchdog` (task-watchdog upsert via `PUT/GET/DELETE /issues/:id/watchdog`), `putIssueDocument`, `createRoutine`, `createRoutineTrigger`, `triggerHeartbeat`
 - `src/ui/context/WizardContext.tsx` — State machine + reducer. Key state: `goals: Goal[]`, `projects: WizardProject[]`, `fileOverrides: Record<string,string>`, `existingCompanyId: string` (when set, provisioning targets this company instead of creating a new one)
 - `src/ui/components/ConfigReview.tsx` — Review step: calls `preview-files`, shows collapsible `FileEntry` components with inline edit. Overrides dispatched via `SET_FILE_OVERRIDE`/`DELETE_FILE_OVERRIDE`
@@ -92,6 +93,8 @@ Two kinds of docs live in `{company}/docs/`:
 
 - **Templates** (`lowercase-kebab.md`) — Shipped by modules, copied at assembly time. Safe to reference directly.
 - **Agent output** (`UPPERCASE.md`) — Created by agents during execution. Always wrap in "if exists" conditionals.
+
+**Path convention.** Skills are installed into the Skills Store, not next to `AGENTS.md`, so skill markdown, module docs, and module/preset issue text reference docs as `docs/<file>.md` — relative to the agent's working directory, which `buildCeoAdapterConfig`/`buildWorkerAdapterConfig` set to the company dir. Only `roles/*/AGENTS.md` and the generated "Shared Documentation" list use `../../docs/<file>.md`, because those live at `{company}/agents/<role>/` and adapters resolve their relative references from that file's directory. Skills must likewise name other skills by slug (`pr-workflow`), never as `skills/<name>.md` — assembly writes no such file.
 
 ### Heartbeat Injection
 
@@ -145,7 +148,7 @@ Watchdogs are native event-driven stall recovery. The wizard attaches one to boo
 
 ### Model Defaults
 
-Codex CEO/team default is `gpt-5.6-sol` (`DEFAULT_CEO_MODEL`); Claude default is `claude-opus-4-8` (`DEFAULT_CLAUDE_CEO_MODEL`). In the UI (`StepName.tsx`) the model field is an optional free-text override with an adapter-aware suggestion datalist — Codex: `gpt-5.6-sol`/`terra`/`luna`, `gpt-5.5`, `gpt-5.4`; Claude: `claude-opus-4-8`, `claude-opus-5`, `claude-sonnet-5`, `claude-fable-5`, `claude-mythos-5`, `claude-sonnet-4-6`. Empty means "use the adapter-appropriate default" (resolved in `buildCeoAdapterConfig`).
+Codex CEO/team default is `gpt-5.6-sol` (`DEFAULT_CEO_MODEL`); Claude default is `claude-opus-4-8` (`DEFAULT_CLAUDE_CEO_MODEL`). In the UI (`StepName.tsx`) the model field is an optional free-text override with an adapter-aware suggestion datalist — Codex: `gpt-5.6-sol`/`terra`/`luna`, `gpt-6-astra`, `gpt-5.4`; Claude: `claude-opus-4-8`, `claude-opus-5`, `claude-sonnet-5`, `claude-fable-5-1`, `claude-fable-5`, `claude-mythos-5`, `claude-sonnet-4-6`. The lists mirror the ids each Paperclip adapter publishes (`gpt-6-astra` additionally accepts the extended `max`/`ultra` reasoning efforts); unknown ids stay valid as manual models. Empty means "use the adapter-appropriate default" (resolved in `buildCeoAdapterConfig`).
 
 Use the concrete `gpt-5.6-sol` slug, not the bare `gpt-5.6` alias: OpenAI publishes no model metadata for the bare slug, so the Codex CLI warns (`Model metadata for gpt-5.6 not found`) and falls back to generic context-window limits. Paperclip's `codex_local` adapter rewrites the bare alias for legacy agents (`CODEX_LOCAL_MODEL_ALIASES`), but new companies should never be provisioned onto it.
 
@@ -157,7 +160,7 @@ The wizard never changes `requireBoardApprovalForNewAgents`. Pending approvals r
 
 Two separate test runners:
 - `pnpm test` — vitest, `tests/**/*.spec.ts` — TypeScript plugin tests
-- `pnpm test:logic` — `node --test`, `src/logic/*.test.js` — Plain-JS logic tests
+- `pnpm test:logic` — `node --test`, `src/logic/*.test.js` and `src/api/*.test.js` — Plain-JS logic tests
 
 ## React Considerations
 
