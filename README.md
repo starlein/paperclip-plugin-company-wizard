@@ -17,7 +17,9 @@
 
 > **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for Paperclip plugin API v1 and the current published SDK with substantial bug fixes. End-to-end company setup is governed through current Paperclip workflows as of v0.5.0.
 
-**Version 0.6.2:** re-reviewed against Paperclip master through 2026-09-06. Fixes routines that were silently rejected (invalid `concurrencyPolicy`) or rendered as `undefined` in the bootstrap issue, repoints instructions at Skills Store slugs and working-directory doc paths, and corrects the review-gate error/round-cap guidance. 0.6.1 consolidated PRs #44, #46 and #47 with run-scoped hire approvals and explicit bootstrap start. See [compatibility notes](docs/PAPERCLIP-COMPATIBILITY.md).
+**Version 0.6.3:** fixes the empty-template / **Custom-only** wizard dead end, validates template sources in **Test Configuration**, and switches OpenAI wizard generation to **GPT-6-Astra with high reasoning effort**. Includes all 0.6.2 routine, Skills Store path, and review-guidance fixes. See the [changelog](CHANGELOG.md) and [compatibility notes](docs/PAPERCLIP-COMPATIBILITY.md).
+
+**Upgrading from 0.6.2:** update the installed plugin package and reload it; refreshing templates alone does not update the worker or AI model. If `templatesPath` points to an empty directory, clear it, save, and reload the wizard to use bundled templates. Keep it only for an intentionally populated operator-managed library; it overrides the GitHub URL and refresh never populates it. `companiesDir` does not need to change.
 
 Requires Node **24.11+**, matching the current Paperclip SDK/shared runtime requirement.
 
@@ -74,7 +76,7 @@ Requires Node **24.11+**, matching the current Paperclip SDK/shared runtime requ
 - **Explicit approval and bootstrap controls** — select pending hires from this run, approve them with board authority, then explicitly start bootstrap; the wizard never disables the company's approval policy
 - **Repository workspace setup** — choose between a fresh local Git repo or an existing external repository (GitHub, GitLab, etc.) via the manual wizard step or inline on the review/summary screen (available in both the manual and AI paths; the external option opens a repo-URL field)
 - **Routine schedules** tightened to run every few hours around the clock (auto-assign every 2 h, stall-detection every 3 h, backlog grooming every 4 h) with `skip_if_active` concurrency policy
-- **"Update templates" button** on the onboarding screen — deletes the cached templates dir and re-downloads from GitHub without restarting the plugin
+- **"Update templates" button** on the onboarding screen — validates custom GitHub downloads before atomically replacing their source-specific cache; bundled templates stay release-pinned and operator-managed local paths are never overwritten
 
 </details>
 

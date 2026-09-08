@@ -4,6 +4,27 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.3] - 2026-09-08
+
+Includes PR #50 and preserves all changes from the previously published v0.6.2 tag, which had not yet been merged into main.
+
+### Fixed
+
+- Empty or incorrectly nested `templatesPath` directories no longer silently return an empty catalog and leave the wizard stuck with only **Custom**. Local, bundled, and cached sources must contain a valid base CEO template; minimal CEO-only libraries remain supported without optional presets or modules.
+- The template data endpoint returns actionable errors, and the UI blocks unusable catalogs with recovery instructions, including empty responses from older workers.
+- **Test Configuration** validates template availability and metadata before checking Paperclip connectivity. Previously a working API login could mask unusable templates. It does not make a paid AI request or verify model entitlement.
+- Remote template refresh validates downloaded metadata before replacing the cache, preserving the previous working copy on invalid downloads. Explicit operator-managed paths remain untouched.
+
+### Changed
+
+- OpenAI wizard generation uses `gpt-6-astra` with `reasoning.effort: high` for both synchronous interview calls and background configuration/bootstrap generation. Anthropic behavior and provisioned CEO/team adapter model defaults are unchanged.
+- README and settings guidance clarify that `templatesPath` overrides `templatesRepoUrl` and is not a download destination. Clear an unintended empty local path, save, and reload to use bundled release templates; keep `companiesDir` unchanged.
+
+### Upgrade notes
+
+- Update the installed plugin package and reload it to activate the worker/UI fixes and new OpenAI model. Refreshing templates alone is insufficient.
+- No existing companies, agent model settings, credentials, or local template files are automatically changed by this release.
+
 ## [0.6.2] - 2026-09-07
 
 Follow-up review of the 0.6.1 consolidation against Paperclip source `3fb4b65f9d974d8687db8a060f20ec66b6071a79` (upstream master through 2026-09-06). Fixes two template defects that silently dropped provisioned routines and a set of instruction/doc drifts left by the Skills Store migration.

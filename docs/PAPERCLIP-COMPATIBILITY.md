@@ -1,8 +1,10 @@
-# Paperclip compatibility — Company Wizard 0.6.2
+# Paperclip compatibility — Company Wizard 0.6.3
 
 Reviewed on 2026-09-07 against [Paperclip source `856813ba3a083f23694b8554104b3e50abcb1363`](https://github.com/paperclipai/paperclip/tree/856813ba3a083f23694b8554104b3e50abcb1363), the current master snapshot at review time (2026-09-06).
 
 **0.6.2 re-review (2026-09-07).** The 0.6.1 claims below were re-verified line by line against the local Paperclip checkout at `3fb4b65f9d974d8687db8a060f20ec66b6071a79` ("merge upstream master through 2026-09-06"). Approval, hire, watchdog, workspace-policy, Company Skill, and REST-shape claims held. The defects found were on the plugin side and are fixed in 0.6.2: an invalid routine `concurrencyPolicy`, a routine title read from a key the renderer ignored, instruction paths left behind by the Skills Store migration, a misquoted review-gate 422, undocumented review-round escalation, a stale checkout contract, and the host-floor rationale corrected below. See `CHANGELOG.md` for the full list.
+
+**0.6.3 update (2026-09-08).** Preserves the 0.6.2 source-contract fixes and adds template-source validation, an actionable empty-catalog UI, and GPT-6-Astra/high for OpenAI wizard generation. Regression checks cover local-path precedence, invalid remote-cache replacement, CEO-only libraries, and both AI request modes. This is not a new live host compatibility audit or a model-entitlement test. Update and reload the plugin package; template refresh alone cannot update worker code.
 
 The plugin does not vendor, modify, or deploy Paperclip itself. Its runtime SDK remains provided by the host.
 
