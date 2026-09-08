@@ -142,19 +142,15 @@ export async function ensureTemplatesDir(cfg: Record<string, string>): Promise<s
   const repoUrl = cfg.templatesRepoUrl || DEFAULT_TEMPLATES_REPO_URL;
 
   if (cfg.templatesPath) {
-    if (fs.existsSync(cfg.templatesPath)) return cfg.templatesPath;
-    throw new Error(`Configured templatesPath does not exist: ${cfg.templatesPath}`);
+    return validateTemplatesDir(cfg.templatesPath, 'Configured templatesPath');
   }
 
   if (!cfg.templatesRepoUrl || cfg.templatesRepoUrl === DEFAULT_TEMPLATES_REPO_URL) {
-    if (fs.existsSync(BUNDLED_TEMPLATES_DIR)) return BUNDLED_TEMPLATES_DIR;
-    throw new Error(
-      'Bundled templates are missing. Reinstall Company Wizard or configure templatesPath.',
-    );
+    return validateTemplatesDir(BUNDLED_TEMPLATES_DIR, 'Bundled templates');
   }
 
   const cacheDir = resolveTemplatesCacheDir(cfg);
-  if (fs.existsSync(cacheDir)) return cacheDir;
+  if (fs.existsSync(cacheDir)) return validateTemplatesDir(cacheDir, 'Cached templates');
   // A custom source must never silently fall back to unrelated official files.
   return refreshTemplatesCache(cfg);
 }
@@ -185,14 +181,12 @@ function resolveTemplatesCacheDir(cfg: Record<string, string>): string {
  */
 function refreshTemplatesCache(cfg: Record<string, string>, log?: (m: string) => void): string {
   if (cfg.templatesPath) {
-    if (!fs.existsSync(cfg.templatesPath))
-      throw new Error(`Configured templatesPath does not exist: ${cfg.templatesPath}`);
+    validateTemplatesDir(cfg.templatesPath, 'Configured templatesPath');
     log?.('Using operator-managed templatesPath; no files overwritten.');
     return cfg.templatesPath;
   }
   if (!cfg.templatesRepoUrl || cfg.templatesRepoUrl === DEFAULT_TEMPLATES_REPO_URL) {
-    if (!fs.existsSync(BUNDLED_TEMPLATES_DIR))
-      throw new Error('Bundled templates are missing. Reinstall Company Wizard.');
+    validateTemplatesDir(BUNDLED_TEMPLATES_DIR, 'Bundled templates');
     log?.(`Using bundled Company Wizard ${CURRENT_PLUGIN_VERSION} templates.`);
     return BUNDLED_TEMPLATES_DIR;
   }
@@ -205,6 +199,9 @@ function refreshTemplatesCache(cfg: Record<string, string>, log?: (m: string) =>
   const backupDir = `${stagingDir}-previous`;
   try {
     downloadTemplatesFromGithub(stagingDir, repoUrl);
+    validateTemplatesDir(stagingDir, 'Downloaded templates');
+    const { loadErrors } = loadTemplates(stagingDir);
+    if (loadErrors.length > 0) throw new Error(loadErrors.join('\n'));
     if (fs.existsSync(targetDir)) fs.renameSync(targetDir, backupDir);
     try {
       fs.renameSync(stagingDir, targetDir);
@@ -230,7 +227,7 @@ type SecretResolverContext = {
 };
 
 const ANTHROPIC_AI_MODEL = 'claude-opus-5';
-const OPENAI_AI_MODEL = 'gpt-5.6-sol';
+const OPENAI_AI_MODEL = 'gpt-6-astra';
 
 function isLikelyAnthropicApiKey(value: string): boolean {
   return value.startsWith('sk-ant-');
@@ -475,7 +472,17 @@ function loadJsonFiles(dir: string, filename: string): { items: any[]; errors: s
     if (!fs.existsSync(fp)) continue;
 
     try {
-      items.push(JSON.parse(fs.readFileSync(fp, 'utf-8')));
+      const item = JSON.parse(fs.readFileSync(fp, 'utf-8'));
+      if (
+        !item ||
+        typeof item !== 'object' ||
+        Array.isArray(item) ||
+        typeof item.name !== 'string' ||
+        !item.name.trim()
+      ) {
+        throw new Error('Template metadata must be an object with a non-empty name');
+      }
+      items.push(item);
     } catch (err) {
       errors.push(`Failed to parse ${fp}: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -515,6 +522,30 @@ function loadTemplates(templatesDir: string) {
     roles,
     loadErrors: [...presetLoad.errors, ...moduleLoad.errors, ...roleLoad.errors],
   };
+}
+
+/** Validate every read/refresh/assembly source, without replacing operator files. */
+function validateTemplatesDir(dir: string, source: string): string {
+  try {
+    if (!fs.existsSync(dir)) throw new Error('directory does not exist');
+    if (!fs.statSync(dir).isDirectory()) throw new Error('path is not a directory');
+    const templates = loadTemplates(dir);
+    // Presets and modules are optional; even a minimal company needs its base CEO.
+    if (!templates.roles.some((role) => role.name === 'ceo' && role._base)) {
+      throw new Error(
+        'No base CEO template found. Expected roles/ceo/role.meta.json with name "ceo" and base: true.' +
+          (templates.loadErrors.length ? ` ${templates.loadErrors.join(' ')}` : ''),
+      );
+    }
+    return dir;
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    const guidance =
+      source === 'Configured templatesPath'
+        ? 'Point templatesPath to the template root (containing roles/, modules/, presets/), or clear templatesPath to use bundled templates / the configured GitHub source. templatesPath overrides templatesRepoUrl; refresh never populates or overwrites local files.'
+        : 'Reinstall Company Wizard for bundled templates, or refresh the configured custom GitHub source.';
+    throw new Error(`${source} "${dir}": ${detail} ${guidance}`);
+  }
 }
 
 // --- Helpers ---
@@ -1216,14 +1247,19 @@ ${moduleNames.length > 0 ? moduleNames.map((mod) => `- ${mod}`).join('\n') : '- 
 const plugin = definePlugin({
   async setup(ctx) {
     ctx.data.register('templates', async () => {
-      const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
-      const templates = loadTemplates(await ensureTemplatesDir(cfg));
-      if (templates.loadErrors.length > 0) {
-        for (const err of templates.loadErrors) {
-          ctx.logger.info(`⚠ Template load warning: ${err}`);
+      try {
+        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+        const templates = loadTemplates(await ensureTemplatesDir(cfg));
+        for (const warning of templates.loadErrors) {
+          ctx.logger.info(`⚠ Template load warning: ${warning}`);
         }
+        return templates;
+      } catch (err) {
+        // Keep the actionable error in the payload instead of a host-generic 502.
+        const error = err instanceof Error ? err.message : String(err);
+        ctx.logger.info(`Template load failed: ${error}`);
+        return { presets: [], modules: [], roles: [], loadErrors: [error], error };
       }
-      return templates;
     });
 
     // Refresh templates — delete cached dir so next load re-downloads from GitHub.
@@ -2816,6 +2852,8 @@ const plugin = definePlugin({
       process.env.PAPERCLIP_PUBLIC_URL ||
       'http://localhost:3100';
     try {
+      const templates = loadTemplates(await ensureTemplatesDir(config as Record<string, string>));
+      if (templates.loadErrors.length > 0) return { ok: false, errors: templates.loadErrors };
       const client = new PaperclipClient(paperclipUrl, {
         email: (config.paperclipEmail as string) || '',
         password: (config.paperclipPassword as string) || '',

@@ -39,7 +39,7 @@ const manifest: PaperclipPluginManifestV1 = {
       templatesPath: {
         type: 'string',
         description:
-          'Optional operator-managed templates directory. Defaults to templates bundled with this plugin release. Local files are never overwritten by refresh.',
+          'Optional existing template root containing roles/, modules/, and presets/. Overrides the GitHub URL. Leave empty to use bundled release templates or a custom GitHub source. Refresh never populates or overwrites this directory.',
       },
       templatesRepoUrl: {
         type: 'string',
@@ -52,7 +52,7 @@ const manifest: PaperclipPluginManifestV1 = {
         enum: ['anthropic', 'openai'],
         default: 'anthropic',
         description:
-          'AI provider used for company generation. Anthropic uses Claude Opus 5 at max effort; OpenAI uses GPT-5.6 Sol at high reasoning effort.',
+          'AI provider used for company generation. Anthropic uses Claude Opus 5 at max effort; OpenAI uses GPT-6-Astra at high reasoning effort.',
       },
       anthropicApiKey: {
         // Paperclip's secret picker submits an EnvSecretRefBinding object,

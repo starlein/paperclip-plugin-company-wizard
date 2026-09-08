@@ -30,10 +30,32 @@ export function WizardPage(_props: PluginPageProps) {
         <div className="space-y-1.5">
           <p className="text-sm font-medium">Loading templates</p>
           <p className="text-xs text-muted-foreground max-w-xs">
-            Checking your templates directory. If no local templates are found, they'll be
-            downloaded from GitHub — this may take a moment.
+            Checking bundled or operator-managed templates. A custom GitHub source may need to be
+            downloaded — this may take a moment.
           </p>
         </div>
+      </div>
+    );
+  }
+
+  // Also guard against the silent empty response returned by older workers.
+  if (templates.error || !templates.roles.some((role) => role.name === 'ceo')) {
+    return (
+      <div
+        role="alert"
+        className="flex flex-col items-center justify-center min-h-[400px] gap-3 px-6 text-sm text-center"
+      >
+        <AlertTriangle className="h-6 w-6 text-destructive" />
+        <p className="font-medium">Templates are unavailable</p>
+        <p className="max-w-2xl text-destructive">
+          {templates.error || 'No CEO template was loaded.'}
+        </p>
+        <p className="max-w-2xl text-muted-foreground">
+          Open Company Wizard plugin settings. Clear templatesPath to use bundled templates or your
+          custom GitHub source, or point it to a populated template root. The local path overrides
+          the GitHub URL and is never populated by refresh. Test Configuration, save, then reload
+          this page.
+        </p>
       </div>
     );
   }
