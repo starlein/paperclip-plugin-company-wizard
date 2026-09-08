@@ -28,11 +28,16 @@ describe('company-wizard', () => {
       loadErrors?: string[];
     }>('templates');
 
-    // Templates may be empty if templates dir doesn't exist in test env, but handler should respond
+    // The release must contain usable templates, not just the right response keys.
     expect(data).toHaveProperty('presets');
     expect(data).toHaveProperty('modules');
     expect(data).toHaveProperty('roles');
-    expect(Array.isArray(data.loadErrors ?? [])).toBe(true);
+    expect(data.presets.length).toBeGreaterThan(0);
+    expect(data.modules.length).toBeGreaterThan(0);
+    expect(data.roles).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'ceo', _base: true })]),
+    );
+    expect(data.loadErrors).toEqual([]);
 
     // Compatibility guarantee: modules exposing issues should also expose tasks for older UI callers.
     const withIssues = data.modules.find((m) => Array.isArray(m.issues) && m.issues.length > 0);
@@ -186,7 +191,7 @@ describe('company-wizard', () => {
     });
   });
 
-  it('uses a governed OpenAI key with GPT-5.6 Sol at high reasoning effort', async () => {
+  it('uses a governed OpenAI key with GPT-6-Astra at high reasoning effort', async () => {
     const companyId = '11111111-1111-4111-8111-111111111111';
     const secretRef = {
       type: 'secret_ref',
@@ -213,7 +218,7 @@ describe('company-wizard', () => {
     await expect(harness.performAction('check-ai-config', { companyId })).resolves.toEqual({
       ok: true,
       provider: 'openai',
-      model: 'gpt-5.6-sol',
+      model: 'gpt-6-astra',
     });
 
     const result = (await harness.performAction('ai-chat', {
@@ -235,10 +240,27 @@ describe('company-wizard', () => {
       'Bearer resolved-openai-key',
     );
     expect(JSON.parse(String(init.body))).toMatchObject({
-      model: 'gpt-5.6-sol',
+      model: 'gpt-6-astra',
       reasoning: { effort: 'high' },
       instructions: 'Build the company.',
       input: [{ role: 'user', content: 'hello' }],
+    });
+
+    const started = await harness.performAction<{ jobId: string }>('ai-chat', {
+      mode: 'start',
+      companyId,
+      system: 'Build the bootstrap configuration.',
+      messages: [{ role: 'user', content: 'Generate configuration' }],
+    });
+    await vi.waitFor(async () => {
+      const result = await harness.performAction('ai-chat', { mode: 'poll', jobId: started.jobId });
+      expect(result).toMatchObject({ status: 'done', text: 'openai-ok' });
+    });
+    const backgroundInit = fetchMock.mock.calls[1]?.[1] as RequestInit;
+    expect(JSON.parse(String(backgroundInit.body))).toMatchObject({
+      model: 'gpt-6-astra',
+      reasoning: { effort: 'high' },
+      instructions: 'Build the bootstrap configuration.',
     });
   });
 

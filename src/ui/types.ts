@@ -47,4 +47,5 @@ export interface TemplateData {
   modules: ModuleData[];
   roles: RoleData[];
   loadErrors?: string[];
+  error?: string;
 }

@@ -57,7 +57,7 @@ Requires Node **24.11+**, matching the current Paperclip SDK/shared runtime requ
 
 #### AI wizard
 
-- Choose Anthropic or OpenAI in plugin settings. Anthropic generation uses `claude-opus-5` with adaptive thinking, max effort, and a 65,536-token ceiling; OpenAI/Codex generation uses `gpt-5.6-sol` with high reasoning effort and the same output ceiling.
+- Choose Anthropic or OpenAI in plugin settings. Anthropic generation uses `claude-opus-5` with adaptive thinking, max effort, and a 65,536-token ceiling; OpenAI/Codex generation uses `gpt-6-astra` with high reasoning effort and the same output ceiling. The AI wizard provider/model is separate from the CEO/team adapter model settings.
 - All provider calls run as background jobs in the worker (start + poll), eliminating the 30 s RPC timeout that previously crashed config generation
 - AI wizard now generates domain-specific initial issues from the project brief that lead the bootstrap backlog ahead of generic scaffolding issues
 - Preset roles are defensively merged with AI-selected roles so preset roles are no longer silently dropped
@@ -605,7 +605,7 @@ Configure the plugin via **Settings → Plugins → Company Wizard** in the Pape
 | Field | Required | Description |
 | --- | --- | --- |
 | `companiesDir` | No | Where assembled company workspaces are written. Defaults to `~/.paperclip/instances/default/companies`. Override for Docker setups. |
-| `templatesPath` | No | Existing operator-managed template directory. Never overwritten by refresh. Default: bundled templates from this installed plugin release. |
+| `templatesPath` | No | Existing operator-managed template root, not a download destination. Overrides `templatesRepoUrl`; never populated or overwritten by refresh. Leave empty to use bundled templates or a custom GitHub source. |
 | `templatesRepoUrl` | No | Custom GitHub tree URL opts into a source-specific remote cache. The official default uses bundled templates. Refresh explicitly before preview to update a custom source. |
 | `paperclipUrl` | No | Paperclip instance URL. Defaults to `http://localhost:3100` or `PAPERCLIP_PUBLIC_URL` env var. |
 | `paperclipEmail` | No | Board login email. Required for authenticated (non-`local_trusted`) instances. |
@@ -613,6 +613,8 @@ Configure the plugin via **Settings → Plugins → Company Wizard** in the Pape
 | `aiProvider` | No | AI wizard provider: `anthropic` (default) or `openai`. |
 | `anthropicApiKey` | No | Anthropic API key for AI wizard mode. Stored as a governed secret ref. Required when `aiProvider` is `anthropic`. |
 | `openaiApiKey` | No | OpenAI API key for GPT/Codex AI wizard mode. Stored as a governed secret ref. Required when `aiProvider` is `openai`. |
+If the wizard only shows **Custom** and `/templates` contains empty arrays, check `templatesPath` first. It must point directly to the template root (normally containing `roles/`, `modules/`, and `presets/`), not an empty directory or the repository root above `templates/`. Clear the field to use the installed release templates; the official GitHub URL does not override an explicit local path. Save and reload the wizard. **Test Configuration** now validates template availability and metadata before checking Paperclip connectivity; it does not make a paid AI generation request or verify model entitlement. A custom CEO-only library is supported, but `roles/ceo/role.meta.json` must declare `name: "ceo"` and `base: true`.
+
 For enriched personas: there is no plugin setting. Template fragments are applied automatically when present.
 
 For isolated worktrees: there is no plugin setting. The policy is controlled by Paperclip instance settings under **Settings → Instance → Experimental → enableIsolatedWorkspaces** and is consumed by the plugin during provisioning. External repository base refs are taken from project/worktree settings; leaving the ref blank lets Paperclip resolve its default instead of the wizard inventing `main`, `master`, or `origin/*`.
