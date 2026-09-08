@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { routineProjectPayload, routineUsesProjectWorkspace } from './routines.js';
+import {
+  DEFAULT_ROUTINE_CONCURRENCY_POLICY,
+  ROUTINE_CONCURRENCY_POLICIES,
+  routineConcurrencyPolicy,
+  routineProjectPayload,
+  routineTitle,
+  routineUsesProjectWorkspace,
+} from './routines.js';
 
 describe('routine workspace policy', () => {
   it('keeps ordinary routines linked to the resolved main project', () => {
@@ -25,5 +32,37 @@ describe('routine workspace policy', () => {
       routineProjectPayload({ title: 'Dependency audit' }, undefined, { sync: true }),
       {},
     );
+  });
+});
+
+describe('routine title resolution', () => {
+  it('accepts both the current title and the legacy name key', () => {
+    assert.equal(routineTitle({ title: 'Dependency audit' }), 'Dependency audit');
+    assert.equal(routineTitle({ name: 'Release readiness check' }), 'Release readiness check');
+    assert.equal(routineTitle({ title: '  Stall detection  ' }), 'Stall detection');
+  });
+
+  it('prefers title over name and reports an empty title as empty', () => {
+    assert.equal(routineTitle({ title: 'Backlog grooming', name: 'legacy' }), 'Backlog grooming');
+    assert.equal(routineTitle({ title: '   ' }), '');
+    assert.equal(routineTitle(undefined), '');
+  });
+});
+
+describe('routine concurrency policy', () => {
+  it('passes through the policies Paperclip accepts', () => {
+    for (const policy of ROUTINE_CONCURRENCY_POLICIES) {
+      assert.equal(routineConcurrencyPolicy({ concurrencyPolicy: policy }), policy);
+    }
+  });
+
+  it('maps the legacy forbid spelling instead of sending a rejected value', () => {
+    assert.equal(routineConcurrencyPolicy({ concurrencyPolicy: 'forbid' }), 'skip_if_active');
+  });
+
+  it('falls back to the default for missing or unknown values', () => {
+    assert.equal(routineConcurrencyPolicy({}), DEFAULT_ROUTINE_CONCURRENCY_POLICY);
+    assert.equal(routineConcurrencyPolicy({ concurrencyPolicy: 'nope' }), 'skip_if_active');
+    assert.equal(routineConcurrencyPolicy({ concurrencyPolicy: 42 }), 'skip_if_active');
   });
 });

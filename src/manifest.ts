@@ -3,13 +3,15 @@ import type { PaperclipPluginManifestV1 } from '@paperclipai/plugin-sdk';
 const manifest: PaperclipPluginManifestV1 = {
   id: 'starlein.paperclip-plugin-company-wizard',
   apiVersion: 1,
-  version: '0.6.1',
+  version: '0.6.3',
   displayName: 'Company Wizard',
   description: 'AI-powered wizard to bootstrap agent companies from composable templates',
   author: 'Sascha Pietrowski <sp@speednetwork.de>',
   categories: ['workspace', 'ui'],
-  // No numeric host floor: current Paperclip source starts its plugin loader with
-  // hostVersion "0.0.0" even when /health reports a current release or git build.
+  // No numeric host floor: the loader compares this against the host version
+  // `createApp` resolves (git describe → stamped build version → the server
+  // package version), so a packaged install reports its package version (0.3.1)
+  // and `compareSemver` would reject any CalVer floor on a current host.
   // Keep API v1/capabilities explicit and validate feature availability at runtime.
   capabilities: [
     'companies.read',

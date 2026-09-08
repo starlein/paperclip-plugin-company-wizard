@@ -29,7 +29,7 @@
           "id": "repo-onboarding",
           "title": "Repo Onboarding",
           "level": "team",
-          "description": "Understand the existing codebase and document its current state. Done when ../../docs/CODEBASE-AUDIT.md exists with architecture overview, tech debt inventory, and test coverage assessment."
+          "description": "Understand the existing codebase and document its current state. Done when docs/CODEBASE-AUDIT.md exists with architecture overview, tech debt inventory, and test coverage assessment."
         },
         {
           "id": "process-setup",
@@ -55,19 +55,19 @@
   "issues": [
     {
       "title": "Audit codebase and document architecture",
-      "description": "Read the existing codebase, map architecture, identify tech debt hotspots and test coverage gaps. Document in ../../docs/CODEBASE-AUDIT.md.",
+      "description": "Read the existing codebase, map architecture, identify tech debt hotspots and test coverage gaps. Document in docs/CODEBASE-AUDIT.md.",
       "priority": "high",
       "assignTo": "engineer"
     },
     {
       "title": "Run initial dependency audit",
-      "description": "Audit dependencies for outdated versions and known vulnerabilities. Document in ../../docs/DEPENDENCY-AUDIT.md and apply compatible patch updates with focused verification on this issue's own branch/PR. This work can proceed independently of the codebase-audit PR; open PR count is advisory.",
+      "description": "Audit dependencies for outdated versions and known vulnerabilities. Document in docs/DEPENDENCY-AUDIT.md and apply compatible patch updates with focused verification on this issue's own branch/PR. This work can proceed independently of the codebase-audit PR; open PR count is advisory.",
       "priority": "high",
       "assignTo": "engineer"
     },
     {
       "title": "Configure PR workflow and branch protection",
-      "description": "Inspect existing branch protection and repository rules before configuring the selected PR workflow. Preserve required checks, review requirements, and organization rules; never overwrite them with null defaults or weaken protections to accommodate shared credentials. For a new repository using one shared GitHub credential, use Paperclip executionPolicy for the non-author review gate and do not add a GitHub-native approval requirement the team cannot satisfy. Existing requirements need eligible credentials or an explicit owner decision. Document PR conventions in ../../docs/pr-conventions.md. Open PR count does not block this independent setup work.",
+      "description": "Inspect existing branch protection and repository rules before configuring the selected PR workflow. Preserve required checks, review requirements, and organization rules; never overwrite them with null defaults or weaken protections to accommodate shared credentials. For a new repository using one shared GitHub credential, use Paperclip executionPolicy for the non-author review gate and do not add a GitHub-native approval requirement the team cannot satisfy. Existing requirements need eligible credentials or an explicit owner decision. Document PR conventions in docs/pr-conventions.md. Open PR count does not block this independent setup work.",
       "priority": "high",
       "assignTo": "devops"
     },
@@ -79,7 +79,7 @@
     },
     {
       "title": "Document or establish release process",
-      "description": "Review current release workflow. If none exists, establish semver + changelog. Document in ../../docs/RELEASE-PROCESS.md. Assign it when acceptance criteria and an owner are ready; open PR count is not a release cap.",
+      "description": "Review current release workflow. If none exists, establish semver + changelog. Document in docs/RELEASE-PROCESS.md. Assign it when acceptance criteria and an owner are ready; open PR count is not a release cap.",
       "priority": "medium",
       "assignTo": "devops"
     },

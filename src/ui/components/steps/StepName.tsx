@@ -29,11 +29,14 @@ const MODEL_SUGGESTIONS: Record<string, string[]> = {
   // alias is deliberately omitted: it has no published model metadata, so Codex
   // warns and falls back to generic context limits (Paperclip rewrites it for
   // legacy agents, but new companies should not be provisioned onto it).
-  codex_local: ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5', 'gpt-5.4'],
+  // Mirrors the ids Paperclip's codex_local adapter publishes; `gpt-6-astra`
+  // additionally accepts the extended `max`/`ultra` reasoning efforts.
+  codex_local: ['gpt-5.6-sol', 'gpt-6-astra', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.4'],
   claude_local: [
     'claude-opus-4-8',
     'claude-opus-5',
     'claude-sonnet-5',
+    'claude-fable-5-1',
     'claude-fable-5',
     'claude-mythos-5',
     'claude-sonnet-4-6',
@@ -171,7 +174,8 @@ export function StepName() {
               <p className="text-xs text-muted-foreground">
                 Leave empty for the adapter default (
                 {modelSuggestionsFor(state.ceoAdapter.type)[0] || 'adapter default'}). Codex:
-                gpt-5.6-sol/terra/luna. Claude: opus-4-8, opus-5, sonnet-5, fable-5, mythos-5.
+                gpt-5.6-sol/terra/luna, gpt-6-astra. Claude: opus-4-8, opus-5, sonnet-5, fable-5.1,
+                mythos-5.
               </p>
             </div>
           </div>
