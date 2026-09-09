@@ -75,7 +75,8 @@ function copyDirSync(src: string, dest: string): void {
     const s = path.join(src, entry.name);
     const d = path.join(dest, entry.name);
     if (entry.isDirectory()) copyDirSync(s, d);
-    else fs.copyFileSync(s, d);
+    else if (entry.isFile()) fs.copyFileSync(s, d);
+    else throw new Error('Template downloads must contain only regular files and directories.');
   }
 }
 
@@ -87,15 +88,24 @@ function downloadTemplatesFromGithub(destDir: string, githubUrl: string): void {
   // Branch is captured as the first path segment after /tree/; subpath takes the rest.
   // Branch names with slashes (e.g. feature/my-branch) are not supported in tree URLs —
   // use a tag or a branch without slashes, or pin to a commit SHA instead.
-  const match = githubUrl.match(/github\.com\/([^/]+)\/([^/]+)\/tree\/([^/]+)\/(.+)/);
+  const match = githubUrl.match(
+    /^https:\/\/github\.com\/([\w-]+)\/([\w.-]+)\/tree\/([\w.-]+)\/([\w./-]+)$/,
+  );
   if (!match) {
     throw new Error(
-      `Unsupported templates URL: ${githubUrl}. Expected https://github.com/{owner}/{repo}/tree/{branch}/{path}`,
+      'Unsupported templates URL. Expected https://github.com/{owner}/{repo}/tree/{branch}/{path} (no credentials or query string).',
     );
   }
   const [, owner, repo, branch, subpath] = match;
+  if (
+    subpath
+      .split('/')
+      .some((part) => !part || part === '.' || part === '..' || part.startsWith('-'))
+  ) {
+    throw new Error('Unsupported templates URL path.');
+  }
   const cloneUrl = `https://github.com/${owner}/${repo}.git`;
-  const tmpDir = path.join(os.tmpdir(), `plugin-templates-dl-${Date.now()}`);
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plugin-templates-dl-'));
   try {
     execFileSync(
       'git',
@@ -114,6 +124,13 @@ function downloadTemplatesFromGithub(destDir: string, githubUrl: string): void {
     );
     execFileSync('git', ['sparse-checkout', 'set', subpath], { cwd: tmpDir, stdio: 'pipe' });
     const srcDir = path.join(tmpDir, subpath);
+    if (
+      fs.existsSync(srcDir) &&
+      (!fs.lstatSync(srcDir).isDirectory() ||
+        !fs.realpathSync(srcDir).startsWith(`${tmpDir}${path.sep}`))
+    ) {
+      throw new Error('Template source must be a directory inside the downloaded repository.');
+    }
     if (!fs.existsSync(srcDir)) throw new Error(`Path '${subpath}' not found in ${cloneUrl}`);
     copyDirSync(srcDir, destDir);
   } finally {
@@ -220,6 +237,55 @@ function refreshTemplatesCache(cfg: Record<string, string>, log?: (m: string) =>
   }
   log?.(`✓ Refreshed templates cache from ${repoUrl} → ${targetDir}`);
   return targetDir;
+}
+
+/** An offer is bound to the saved source and the exact empty directory. */
+function emptyTemplateSyncOffer(cfg: Record<string, string>) {
+  try {
+    if (!cfg.templatesPath) return undefined;
+    const stat = fs.lstatSync(cfg.templatesPath);
+    if (!stat.isDirectory() || fs.readdirSync(cfg.templatesPath).length) return undefined;
+    const targetDir = fs.realpathSync(cfg.templatesPath);
+    const token = createHash('sha256')
+      .update(
+        JSON.stringify([
+          cfg.templatesPath,
+          targetDir,
+          cfg.templatesRepoUrl || '',
+          stat.dev,
+          stat.ino,
+        ]),
+      )
+      .digest('hex');
+    return { targetDir, token, canSync: !!cfg.templatesRepoUrl?.trim() };
+  } catch {
+    return undefined;
+  }
+}
+
+function syncEmptyTemplates(cfg: Record<string, string>, confirmation: unknown): string {
+  const offer = emptyTemplateSyncOffer(cfg);
+  if (!offer?.canSync || confirmation !== offer.token) {
+    throw new Error(
+      'Sync requires confirmation for the current empty templatesPath and a configured templatesRepoUrl. Reload the page and check settings.',
+    );
+  }
+  const stagingDir = fs.mkdtempSync(`${offer.targetDir}-sync-`);
+  try {
+    downloadTemplatesFromGithub(stagingDir, cfg.templatesRepoUrl);
+    validateTemplatesDir(stagingDir, 'Downloaded templates');
+    const { loadErrors } = loadTemplates(stagingDir);
+    if (loadErrors.length) throw new Error('Downloaded template metadata is invalid.');
+    if (emptyTemplateSyncOffer(cfg)?.token !== offer.token) {
+      throw new Error('Template directory changed during sync. No existing files were replaced.');
+    }
+    // Atomic directory rename refuses a non-empty target, including files added
+    // after the check. Never delete/empty the operator directory to make room.
+    fs.renameSync(stagingDir, offer.targetDir);
+    return offer.targetDir;
+  } finally {
+    fs.rmSync(stagingDir, { recursive: true, force: true });
+  }
 }
 
 type SecretResolverContext = {
@@ -1252,6 +1318,15 @@ const plugin = definePlugin({
     ctx.data.register('templates', async () => {
       try {
         const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+        const syncOffer = emptyTemplateSyncOffer(cfg);
+        if (syncOffer) {
+          const error =
+            `Configured templatesPath "${syncOffer.targetDir}" is empty. ` +
+            (syncOffer.canSync
+              ? 'Confirm sync from the configured template URL to populate it.'
+              : 'Set templatesRepoUrl in plugin settings to enable sync, or clear templatesPath to use bundled templates.');
+          return { presets: [], modules: [], roles: [], loadErrors: [error], error, syncOffer };
+        }
         const templates = loadTemplates(await ensureTemplatesDir(cfg));
         for (const warning of templates.loadErrors) {
           ctx.logger.info(`⚠ Template load warning: ${warning}`);
@@ -1277,6 +1352,22 @@ const plugin = definePlugin({
         return { ok: true, targetDir };
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) };
+      }
+    });
+
+    ctx.actions.register('sync-empty-templates', async (params) => {
+      try {
+        const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+        const targetDir = syncEmptyTemplates(cfg, params.confirmation);
+        ctx.logger.info('Synced empty configured template directory.');
+        return { ok: true, targetDir };
+      } catch {
+        // Git/filesystem errors may contain remote credentials or local details.
+        return {
+          ok: false,
+          error:
+            'Template sync failed. Check the configured GitHub tree URL, permissions, and that the directory is still empty. Existing files were not overwritten. Reload to retry.',
+        };
       }
     });
 
