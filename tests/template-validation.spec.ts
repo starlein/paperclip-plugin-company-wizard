@@ -44,6 +44,121 @@ async function harnessFor(templatesPath: string) {
   return harness;
 }
 
+describe('explicit empty directory sync', () => {
+  async function setup(url = 'https://github.com/example/custom/tree/main/templates') {
+    const parent = await fixture();
+    const templatesPath = join(parent, 'templates');
+    fs.mkdirSync(templatesPath);
+    const config = { templatesPath, templatesRepoUrl: url };
+    const harness = createTestHarness({ manifest, capabilities: manifest.capabilities, config });
+    await plugin.definition.setup(harness.ctx);
+    vi.mocked(childProcess.execFileSync).mockReset();
+    return { harness, config, parent };
+  }
+  function download(onClone = () => {}) {
+    vi.mocked(childProcess.execFileSync).mockImplementation((_cmd, args) => {
+      const argv = args as string[];
+      if (argv[0] === 'clone') {
+        const root = join(argv.at(-1)!, 'templates', 'roles', 'ceo');
+        fs.mkdirSync(root, { recursive: true });
+        fs.writeFileSync(join(root, 'role.meta.json'), JSON.stringify({ name: 'ceo', base: true }));
+        onClone();
+      }
+      return Buffer.from('');
+    });
+  }
+  it('offers without fetching, requires confirmation, syncs and reloads the catalog', async () => {
+    const { harness, config } = await setup();
+    const data = await harness.getData<any>('templates');
+    expect(data.syncOffer.canSync).toBe(true);
+    expect(childProcess.execFileSync).not.toHaveBeenCalled();
+    expect((await harness.performAction<any>('sync-empty-templates', {})).ok).toBe(false);
+    expect((await harness.performAction<any>('refresh-templates', {})).ok).toBe(false);
+    expect(childProcess.execFileSync).not.toHaveBeenCalled();
+    download();
+    expect(
+      (
+        await harness.performAction<any>('sync-empty-templates', {
+          confirmation: data.syncOffer.token,
+        })
+      ).ok,
+    ).toBe(true);
+    expect(await ensureTemplatesDir(config)).toBe(config.templatesPath);
+    const loaded = await harness.getData<any>('templates');
+    expect(loaded.roles).toHaveLength(1);
+    expect(loaded.syncOffer).toBeUndefined();
+  });
+  it('requires a saved URL and does not invent a default', async () => {
+    const { harness } = await setup('');
+    const data = await harness.getData<any>('templates');
+    expect(data.syncOffer.canSync).toBe(false);
+    expect(data.error).toContain('Set templatesRepoUrl');
+    expect(
+      (
+        await harness.performAction<any>('sync-empty-templates', {
+          confirmation: data.syncOffer.token,
+        })
+      ).ok,
+    ).toBe(false);
+    expect(childProcess.execFileSync).not.toHaveBeenCalled();
+  });
+  it.each(['network', 'invalid', 'race', 'last-moment-race', 'populated', 'symlink'])(
+    'preserves operator files and removes staging on %s',
+    async (failure) => {
+      const { harness, config, parent } = await setup();
+      const data = await harness.getData<any>('templates');
+      const sentinel = join(config.templatesPath, '.operator');
+      download(() => {
+        if (failure === 'network') throw new Error('secret network details');
+        if (failure === 'race') fs.writeFileSync(sentinel, 'keep');
+      });
+      if (failure === 'invalid')
+        vi.mocked(childProcess.execFileSync).mockReturnValue(Buffer.from(''));
+      if (failure === 'populated') fs.writeFileSync(sentinel, 'keep');
+      if (failure === 'symlink') {
+        fs.rmdirSync(config.templatesPath);
+        fs.symlinkSync(await fixture(), config.templatesPath);
+      }
+      if (failure === 'last-moment-race') {
+        const rename = fs.renameSync;
+        vi.spyOn(fs, 'renameSync').mockImplementation((from, to) => {
+          fs.writeFileSync(sentinel, 'keep');
+          return rename(from, to);
+        });
+      }
+      const result = await harness.performAction<any>('sync-empty-templates', {
+        confirmation: data.syncOffer.token,
+      });
+      expect(result.ok).toBe(false);
+      expect(result.error).not.toContain('secret');
+      expect(fs.readdirSync(parent)).toEqual(['templates']);
+      if (['race', 'last-moment-race', 'populated'].includes(failure))
+        expect(fs.readFileSync(sentinel, 'utf8')).toBe('keep');
+      if (failure === 'network' || failure === 'invalid')
+        expect(fs.readdirSync(config.templatesPath)).toEqual([]);
+      if (failure === 'populated' || failure === 'symlink') {
+        expect(childProcess.execFileSync).not.toHaveBeenCalled();
+        expect((await harness.getData<any>('templates')).syncOffer).toBeUndefined();
+      }
+    },
+  );
+  it.each([
+    'https://evil.test/github.com/a/b/tree/main/templates',
+    'https://user:secret@github.com/a/b/tree/main/templates',
+    'https://github.com/a/b/tree/main/../outside',
+    'https://github.com/a/b/tree/main/-option',
+  ])('rejects unsafe URL without invoking git: %s', async (url) => {
+    const { harness } = await setup(url);
+    const data = await harness.getData<any>('templates');
+    const result = await harness.performAction<any>('sync-empty-templates', {
+      confirmation: data.syncOffer.token,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.error).not.toContain('secret');
+    expect(childProcess.execFileSync).not.toHaveBeenCalled();
+  });
+});
+
 describe('template source validation', () => {
   it('rejects an existing empty directory with actionable local-path guidance', async () => {
     const templatesPath = await fixture();

@@ -1,9 +1,11 @@
 import {
   usePluginData,
+  usePluginAction,
   type PluginPageProps,
   type PluginSidebarProps,
   type PluginWidgetProps,
 } from '@paperclipai/plugin-sdk/ui';
+import { useState } from 'react';
 import { Loader2, Sparkles, AlertTriangle } from 'lucide-react';
 import { WizardShell } from './components/WizardShell';
 import { WizardProvider } from './context/WizardContext';
@@ -13,7 +15,27 @@ import type { TemplateData } from './types';
 const PLUGIN_ID = 'starlein.paperclip-plugin-company-wizard';
 
 export function WizardPage(_props: PluginPageProps) {
-  const { data: templates, loading, error } = usePluginData<TemplateData>('templates');
+  const { data: templates, loading, error, refresh } = usePluginData<TemplateData>('templates');
+  const syncTemplates = usePluginAction('sync-empty-templates');
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const handleSync = async () => {
+    if (syncing || !templates?.syncOffer?.canSync) return;
+    setSyncing(true);
+    setSyncError(null);
+    try {
+      const result = (await syncTemplates({ confirmation: templates.syncOffer.token })) as {
+        ok?: boolean;
+        error?: string;
+      };
+      if (!result.ok) throw new Error(result.error || 'Template sync failed.');
+      await refresh();
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : 'Template sync failed.');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   if (error) {
     return (
@@ -46,15 +68,38 @@ export function WizardPage(_props: PluginPageProps) {
         className="flex flex-col items-center justify-center min-h-[400px] gap-3 px-6 text-sm text-center"
       >
         <AlertTriangle className="h-6 w-6 text-destructive" />
-        <p className="font-medium">Templates are unavailable</p>
+        <p className="font-medium">
+          {templates.syncOffer ? 'Template directory is empty' : 'Templates are unavailable'}
+        </p>
+        {templates.syncOffer?.canSync && (
+          <>
+            <p className="text-muted-foreground">
+              Sync downloads and validates the configured template URL into this empty directory.
+              Existing files are never overwritten.
+            </p>
+            <button
+              type="button"
+              disabled={syncing}
+              onClick={handleSync}
+              className="rounded-md bg-primary px-4 py-2 text-primary-foreground disabled:opacity-50"
+            >
+              {syncing ? 'Syncing templates…' : 'Confirm sync from configured template URL'}
+            </button>
+          </>
+        )}
+        {syncError && (
+          <p role="alert" className="text-destructive">
+            {syncError}
+          </p>
+        )}
         <p className="max-w-2xl text-destructive">
           {templates.error || 'No CEO template was loaded.'}
         </p>
         <p className="max-w-2xl text-muted-foreground">
           Open Company Wizard plugin settings. Clear templatesPath to use bundled templates or your
           custom GitHub source, or point it to a populated template root. The local path overrides
-          the GitHub URL and is never populated by refresh. Test Configuration, save, then reload
-          this page.
+          the GitHub URL. Only the explicit sync offer can populate an empty local directory. Test
+          Configuration, save, then reload this page.
         </p>
       </div>
     );
