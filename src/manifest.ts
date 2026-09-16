@@ -41,7 +41,7 @@ const manifest: PaperclipPluginManifestV1 = {
       templatesPath: {
         type: 'string',
         description:
-          'Optional existing template root containing roles/, modules/, and presets/. Overrides the GitHub URL. Leave empty to use bundled release templates or a custom GitHub source. Refresh never populates or overwrites this directory.',
+          'Optional existing template root containing roles/, modules/, and presets/. Overrides the GitHub URL. Leave empty to use bundled release templates or a custom GitHub source. Refresh never overwrites this directory. For an existing empty directory, the wizard offers an explicit sync from the configured template URL.',
       },
       templatesRepoUrl: {
         type: 'string',

@@ -46,6 +46,7 @@ export interface TemplateData {
   presets: PresetData[];
   modules: ModuleData[];
   roles: RoleData[];
+  syncOffer?: { targetDir: string; token: string; canSync: boolean };
   loadErrors?: string[];
   error?: string;
 }
