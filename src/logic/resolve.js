@@ -114,6 +114,13 @@ export function hashSkillContent(markdown) {
   return createHash('sha256').update(String(markdown), 'utf-8').digest('hex').slice(0, 16);
 }
 
+/** Paperclip stores these records as SKILL.md, which Codex requires to start with YAML frontmatter. */
+export function ensureSkillFrontmatter(slug, description, markdown) {
+  const content = String(markdown);
+  if (/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/.test(content)) return content;
+  return `---\nname: ${slug}\ndescription: ${JSON.stringify(String(description || slug))}\n---\n\n${content}`;
+}
+
 /**
  * Group per-role resolved skill records into deduped Company Skills.
  * Identical content under the same base slug collapses to one skill (shared).
@@ -148,13 +155,14 @@ export function buildCompanySkillSet(records) {
 
     groups.forEach((group, idx) => {
       const slug = idx === 0 ? baseSlug : `${baseSlug}-${group.repRole}`;
+      const markdown = ensureSkillFrontmatter(slug, group.rec.description, group.rec.markdown);
       companySkills.push({
         slug,
         name: group.rec.name,
         description: group.rec.description,
         categories: group.rec.categories,
-        markdown: group.rec.markdown,
-        contentHash: group.hash,
+        markdown,
+        contentHash: hashSkillContent(markdown),
       });
       for (const roleName of group.roles) addRoleSlug(roleName, slug);
     });

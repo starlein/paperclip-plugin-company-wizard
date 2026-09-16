@@ -4,6 +4,21 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.4] - 2026-09-16
+
+### Fixed
+
+- Assembled Company Skills now include the YAML `name` and `description` frontmatter required by Codex. Provisioning also normalizes skill markdown before creating or updating `SKILL.md`, and keeps Paperclip's stored skill name equal to the Codex-compatible slug so a later rename cannot reintroduce an invalid name.
+- Existing frontmatter is preserved instead of adding a duplicate block. Role-specific skill variants receive their final, disambiguated slug in the generated frontmatter.
+
+### Changed
+
+- When `templatesPath` points to an empty directory and a custom GitHub template URL is configured, the wizard offers an explicit sync bound to that directory and saved source. The download is validated before replacing the empty directory; an operator-managed directory with files is left untouched (PR #52).
+
+### Upgrade notes
+
+- Install or update the plugin package and reload it to activate the worker fix. Installing this release does not rewrite existing companies or skill files; refresh an existing company to regenerate its managed skills with valid frontmatter.
+
 ## [0.6.3] - 2026-09-08
 
 Includes PR #50 and preserves all changes from the previously published v0.6.2 tag, which had not yet been merged into main.

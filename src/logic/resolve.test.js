@@ -10,6 +10,7 @@ import {
   skillSlug,
   humanizeSkillName,
   hashSkillContent,
+  ensureSkillFrontmatter,
   buildCompanySkillSet,
 } from './resolve.js';
 
@@ -270,6 +271,20 @@ describe('hashSkillContent', () => {
   });
 });
 
+describe('ensureSkillFrontmatter', () => {
+  it('adds the required Codex metadata and preserves the skill body', () => {
+    assert.equal(
+      ensureSkillFrontmatter('ci-cd', 'Delivery: build and review', '# CI/CD\n\nDo the work.\n'),
+      '---\nname: ci-cd\ndescription: "Delivery: build and review"\n---\n\n# CI/CD\n\nDo the work.\n',
+    );
+  });
+
+  it('preserves existing frontmatter without adding a second block', () => {
+    const markdown = '---\nname: custom\ndescription: Existing description\n---\n\n# Skill';
+    assert.equal(ensureSkillFrontmatter('custom', 'new description', markdown), markdown);
+  });
+});
+
 describe('buildCompanySkillSet', () => {
   it('shares one slug when content is identical across roles', () => {
     const { companySkills, roleSkillSlugs } = buildCompanySkillSet([
@@ -292,6 +307,7 @@ describe('buildCompanySkillSet', () => {
     ]);
     assert.equal(companySkills.length, 1);
     assert.equal(companySkills[0].slug, 'ci-cd');
+    assert.match(companySkills[0].markdown, /^---\nname: ci-cd\ndescription: /);
     assert.deepEqual(roleSkillSlugs.get('engineer'), ['ci-cd']);
     assert.deepEqual(roleSkillSlugs.get('devops'), ['ci-cd']);
   });
@@ -317,6 +333,10 @@ describe('buildCompanySkillSet', () => {
     ]);
     const slugs = companySkills.map((s) => s.slug).sort();
     assert.deepEqual(slugs, ['design-system', 'design-system-ui-designer']);
+    assert.match(
+      companySkills.find((skill) => skill.slug === 'design-system-ui-designer').markdown,
+      /^---\nname: design-system-ui-designer\ndescription: /,
+    );
     // 'engineer' sorts before 'ui-designer', so it keeps the base slug.
     assert.deepEqual(roleSkillSlugs.get('engineer'), ['design-system']);
     assert.deepEqual(roleSkillSlugs.get('ui-designer'), ['design-system-ui-designer']);

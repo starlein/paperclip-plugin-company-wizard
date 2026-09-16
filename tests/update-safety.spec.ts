@@ -132,11 +132,23 @@ describe('company skill ownership', () => {
         metadata: { sourceKind: 'catalog' },
         editable: false,
       };
+      const updateCompanySkillFile = vi.fn(async () => ({}));
+      const renameCompanySkill = vi.fn(async () => ({ skill: { key: 'company/c1/review' } }));
       const client = {
         listCompanySkills: async () => (reverse ? [foreign, managed] : [managed, foreign]),
+        updateCompanySkillFile,
+        renameCompanySkill,
       };
       const keys = await provisionCompanySkills(client, 'c1', [skill], () => {});
       expect(keys.get('review')).toBe('company/c1/review');
+      expect(updateCompanySkillFile).toHaveBeenCalledWith('c1', 'managed', {
+        path: 'SKILL.md',
+        content: '---\nname: review\ndescription: "review"\n---\n\n# Review',
+      });
+      expect(renameCompanySkill).toHaveBeenCalledWith('c1', 'managed', {
+        name: 'review',
+        slug: 'review',
+      });
     },
   );
   it('creates a company-owned skill instead of overwriting a matching imported skill', async () => {
