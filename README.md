@@ -17,9 +17,9 @@
 
 > **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for Paperclip plugin API v1 and the current published SDK with substantial bug fixes. End-to-end company setup is governed through current Paperclip workflows as of v0.5.0.
 
-**Version 0.6.3:** fixes the empty-template / **Custom-only** wizard dead end, validates template sources in **Test Configuration**, and switches OpenAI wizard generation to **GPT-6-Astra with high reasoning effort**. Includes all 0.6.2 routine, Skills Store path, and review-guidance fixes. See the [changelog](CHANGELOG.md) and [compatibility notes](docs/PAPERCLIP-COMPATIBILITY.md).
+**Version 0.6.4:** adds an explicit sync option for a configured empty template directory and fixes generated Company Skills so Codex can load their `SKILL.md` files. See the [changelog](CHANGELOG.md) and [compatibility notes](docs/PAPERCLIP-COMPATIBILITY.md).
 
-**Upgrading from 0.6.2:** update the installed plugin package and reload it; refreshing templates alone does not update the worker or AI model. If `templatesPath` points to an empty directory, clear it, save, and reload the wizard to use bundled templates. Keep it only for an intentionally populated operator-managed library; it overrides the GitHub URL and refresh never populates it. `companiesDir` does not need to change.
+**Upgrading from 0.6.3:** update the installed plugin package and reload it; refreshing templates alone does not update the worker. Newly provisioned or refreshed Company Skills gain Codex-compatible YAML frontmatter. Existing skills are not changed merely by installing the release. If `templatesPath` is intentionally empty, the wizard can offer an explicit sync from the configured GitHub template URL; clearing the path still selects bundled templates. `companiesDir` does not need to change.
 
 Requires Node **24.11+**, matching the current Paperclip SDK/shared runtime requirement.
 

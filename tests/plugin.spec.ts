@@ -781,6 +781,9 @@ describe('company-wizard', () => {
 
       // A Company Skill was created for the module capability.
       expect(skillCreateBodies.map((b) => b.slug)).toContain('ci-cd');
+      expect(skillCreateBodies.find((b) => b.slug === 'ci-cd')?.markdown).toMatch(
+        /^---\nname: ci-cd\ndescription: /,
+      );
       // The engineer hire carried the skill key in desiredSkills.
       const engineerHire = hireBodies.find(
         (b) => b.role === 'general' || b.title === 'Engineer' || b.name === 'Engineer',
@@ -845,8 +848,14 @@ describe('company-wizard', () => {
         renameSupported ? 'canonical/ci-cd-engineer' : 'company/company-1/ci-cd-engineer',
       );
       expect(calls).toEqual([
-        ['file', { path: 'SKILL.md', content: '# CI/CD' }],
-        ['rename', { name: 'CI/CD', slug: 'ci-cd-engineer' }],
+        [
+          'file',
+          {
+            path: 'SKILL.md',
+            content: '---\nname: ci-cd-engineer\ndescription: "current"\n---\n\n# CI/CD',
+          },
+        ],
+        ['rename', { name: 'ci-cd-engineer', slug: 'ci-cd-engineer' }],
         ['metadata', { description: 'current', categories: ['delivery'] }],
       ]);
     },

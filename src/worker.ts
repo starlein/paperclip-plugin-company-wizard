@@ -10,6 +10,8 @@ import { fileURLToPath } from 'node:url';
 import manifest from './manifest.js';
 // @ts-ignore — plain JS modules, bundled by esbuild
 import { assembleCompany, toPascalCase } from './logic/assemble.js';
+// @ts-ignore — plain JS module, bundled by esbuild
+import { ensureSkillFrontmatter } from './logic/resolve.js';
 // @ts-ignore — plain JS modules, bundled by esbuild
 import { resolveExistingProjects, projectPolicyChanges } from './logic/existing-projects.js';
 // @ts-ignore — plain JS module, bundled by esbuild
@@ -931,13 +933,17 @@ export async function provisionCompanySkills(
   }
 
   for (const skill of companySkills) {
+    const markdown = ensureSkillFrontmatter(skill.slug, skill.description, skill.markdown);
+    // Paperclip uses YAML `name` as its stored name and rewrites it on rename.
+    // Provision by slug so it remains a valid Codex skill name; `skill.name`
+    // is retained for human-readable references in the assembled workspace.
     const found = bySlug.get(skill.slug);
     if (!found) {
       const created = await client.createCompanySkill(companyId, {
-        name: skill.name,
+        name: skill.slug,
         slug: skill.slug,
         description: skill.description,
-        markdown: skill.markdown,
+        markdown,
         categories: skill.categories,
       });
       slugToKey.set(skill.slug, created?.key || created?.slug || skill.slug);
@@ -947,16 +953,16 @@ export async function provisionCompanySkills(
 
     slugToKey.set(skill.slug, found.key || skill.slug);
     let updated = false;
-    if ((found.markdown ?? '') !== skill.markdown) {
+    if ((found.markdown ?? '') !== markdown) {
       await client.updateCompanySkillFile(companyId, found.id, {
         path: 'SKILL.md',
-        content: skill.markdown,
+        content: markdown,
       });
       updated = true;
     }
-    if ((found.name ?? '') !== skill.name) {
+    if ((found.name ?? '') !== skill.slug) {
       const renamed = await client.renameCompanySkill(companyId, found.id, {
-        name: skill.name,
+        name: skill.slug,
         slug: found.slug,
       });
       if (renamed == null) {
