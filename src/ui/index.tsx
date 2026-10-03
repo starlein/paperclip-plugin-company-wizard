@@ -8,6 +8,7 @@ import {
 import { useState } from 'react';
 import { Loader2, Sparkles, AlertTriangle } from 'lucide-react';
 import { WizardShell } from './components/WizardShell';
+import { BrowserAuthGate } from './components/BrowserAuthGate';
 import { WizardProvider } from './context/WizardContext';
 import './index.css';
 import type { TemplateData } from './types';
@@ -122,9 +123,11 @@ export function WizardPage(_props: PluginPageProps) {
           </div>
         </div>
       )}
-      <WizardProvider templates={templates}>
-        <WizardShell />
-      </WizardProvider>
+      <BrowserAuthGate>
+        <WizardProvider templates={templates}>
+          <WizardShell />
+        </WizardProvider>
+      </BrowserAuthGate>
     </div>
   );
 }

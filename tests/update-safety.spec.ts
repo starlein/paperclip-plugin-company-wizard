@@ -15,7 +15,7 @@ const response = (data: unknown, status = 200) =>
   });
 
 describe('existing company project updates', () => {
-  it('patches every live policy before hires and preserves operator settings with isolation off', async () => {
+  it('preserves explicit policies and leaves absent policies to host defaults before hires', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'wizard-project-update-'));
     const requests: Array<{ url: string; method: string; body: any }> = [];
     const policy = {
@@ -92,17 +92,6 @@ describe('existing company project updates', () => {
           url: 'http://project-update.test/api/projects/one',
           method: 'PATCH',
           body: { executionWorkspacePolicy: policy },
-        },
-        {
-          url: 'http://project-update.test/api/projects/two',
-          method: 'PATCH',
-          body: {
-            executionWorkspacePolicy: {
-              enabled: true,
-              defaultMode: 'shared_workspace',
-              sharedWorkspaceConcurrency: 'serialize',
-            },
-          },
         },
       ]);
       expect(requests.some((r) => r.method === 'DELETE')).toBe(false);

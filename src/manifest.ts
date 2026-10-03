@@ -3,7 +3,7 @@ import type { PaperclipPluginManifestV1 } from '@paperclipai/plugin-sdk';
 const manifest: PaperclipPluginManifestV1 = {
   id: 'starlein.paperclip-plugin-company-wizard',
   apiVersion: 1,
-  version: '0.6.4',
+  version: '0.7.0',
   displayName: 'Company Wizard',
   description: 'AI-powered wizard to bootstrap agent companies from composable templates',
   author: 'Sascha Pietrowski <sp@speednetwork.de>',
@@ -75,15 +75,17 @@ const manifest: PaperclipPluginManifestV1 = {
       paperclipUrl: {
         type: 'string',
         description:
-          'Paperclip instance URL. Defaults to http://localhost:3100 or the PAPERCLIP_PUBLIC_URL env var.',
+          'Worker-side Paperclip URL. Defaults to PAPERCLIP_PUBLIC_URL or http://localhost:3100. Browser authorization permits the current UI HTTPS origin or trusted loopback; remote instances require legacy credentials.',
       },
       paperclipEmail: {
         type: 'string',
-        description: 'Board login email (for authenticated instances).',
+        description:
+          'Optional legacy board login email. Leave both login fields empty to use the current browser login after consent in the wizard. Keep for older hosts or a separate remote instance.',
       },
       paperclipPassword: {
         type: 'string',
-        description: 'Board login password (for authenticated instances).',
+        description:
+          'Optional legacy board login password. Not needed with browser authorization. Existing values remain supported; clear both login fields to switch modes.',
       },
     },
   },

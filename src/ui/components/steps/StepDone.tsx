@@ -1,5 +1,5 @@
 import { useWizard, useWizardDispatch, getAllRoles } from '../../context/WizardContext';
-import { usePluginAction } from '@paperclipai/plugin-sdk/ui';
+import { useWizardAction as usePluginAction } from '../../use-wizard-action';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWizard, useWizardDispatch } from '../../context/WizardContext';
-import { usePluginAction } from '@paperclipai/plugin-sdk/ui';
+import { useWizardAction as usePluginAction } from '../../use-wizard-action';
 import { Button } from '../ui/button';
 import { ConfigReview } from '../ConfigReview';
 import { AlertTriangle, Settings } from 'lucide-react';

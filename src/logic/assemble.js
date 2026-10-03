@@ -1211,10 +1211,14 @@ export async function assembleCompany({
     // existing project modes/strategies so toggling it back on restores intent.
     // An existing project (it has an id) always returns here with its own stored
     // policy, so everything below only ever runs for a project this run creates.
-    if (proj?.id)
+    if (proj?.id) {
+      // Null/absent means inherit the instance default, not explicit shared mode.
+      // v2026.1001.0 can default existing projects to isolated workspaces.
+      if (proj.executionWorkspacePolicy == null) return proj.executionWorkspacePolicy;
       return withSharedWorkspaceConcurrency(
         policy ? { ...policy, enabled: policy.enabled ?? true } : sharedWorkspacePolicy(null),
       );
+    }
     // New projects can only be isolated when they point at an existing external
     // repo: a fresh local repo has no base ref to branch a worktree from yet.
     const canUseIsolatedWorktrees = enableIsolatedWorktrees && workspace?.sourceType === 'git_repo';
@@ -1358,7 +1362,12 @@ export async function assembleCompany({
       if (proj.description) {
         bootstrap += `${escapeBody(proj.description)}\n\n`;
       }
-      bootstrap += `Execution workspace policy payload (copy all fields when creating or updating this project):\n\n\`\`\`json\n${JSON.stringify({ executionWorkspacePolicy: effectiveExecutionPolicy(proj, workspace) }, null, 2)}\n\`\`\`\n\n`;
+      const policy = effectiveExecutionPolicy(proj, workspace);
+      if (policy) {
+        bootstrap += `Execution workspace policy payload (copy all fields when creating or updating this project):\n\n\`\`\`json\n${JSON.stringify({ executionWorkspacePolicy: policy }, null, 2)}\n\`\`\`\n\n`;
+      } else {
+        bootstrap += `This project inherits the instance default for execution workspaces. Keep its execution workspace policy unset; do not synthesize an explicit policy.\n\n`;
+      }
       bootstrap += renderDeferredIsolationNote(proj, workspace);
     }
   }
@@ -1544,7 +1553,10 @@ export async function assembleCompany({
       ? `, executionWorkspacePolicy: ${JSON.stringify(activePolicy)}`
       : '';
     if (proj.id) {
-      bootstrap += `${stepN++}. **Reuse existing project** "${proj.name}" (id: \`${proj.id}\`); update only the execution workspace policy if still needed (${policy.replace(/^, /, '')}). Preserve its existing workspace and repository.\n`;
+      const policyInstruction = activePolicy
+        ? `update only the execution workspace policy if still needed (${policy.replace(/^, /, '')})`
+        : 'leave its execution workspace policy unset to inherit the instance default';
+      bootstrap += `${stepN++}. **Reuse existing project** "${proj.name}" (id: \`${proj.id}\`); ${policyInstruction}. Preserve its existing workspace and repository.\n`;
     } else if (idx === 0 && mainProjectPreCreated) {
       const goalLinkInstruction = goalLinks
         ? ` After creating the goals above, resolve their real ids and link them with PATCH /api/projects/{projectId} (${goalLinks.replace(/^, /, '')}).`

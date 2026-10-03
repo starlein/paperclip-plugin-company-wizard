@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useWizardDispatch } from '../../context/WizardContext';
-import { usePluginAction } from '@paperclipai/plugin-sdk/ui';
+import { useWizardAction as usePluginAction } from '../../use-wizard-action';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/card';
 import { Building2, Sparkles, RefreshCw, ExternalLink } from 'lucide-react';
 import { cn } from '../../lib/utils';

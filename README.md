@@ -17,9 +17,9 @@
 
 > **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for Paperclip plugin API v1 and the current published SDK with substantial bug fixes. End-to-end company setup is governed through current Paperclip workflows as of v0.5.0.
 
-**Version 0.6.4:** adds an explicit sync option for a configured empty template directory and fixes generated Company Skills so Codex can load their `SKILL.md` files. See the [changelog](CHANGELOG.md) and [compatibility notes](docs/PAPERCLIP-COMPATIBILITY.md).
+**Version 0.7.0:** adds opt-in authorization using the current browser login, without storing a board email/password in plugin settings, and compatibility fixes for Paperclip v2026.1001.0. See the [changelog](CHANGELOG.md) and [compatibility notes](docs/PAPERCLIP-COMPATIBILITY.md).
 
-**Upgrading from 0.6.3:** update the installed plugin package and reload it; refreshing templates alone does not update the worker. Newly provisioned or refreshed Company Skills gain Codex-compatible YAML frontmatter. Existing skills are not changed merely by installing the release. If `templatesPath` is intentionally empty, the wizard can offer an explicit sync from the configured GitHub template URL; clearing the path still selects bundled templates. `companiesDir` does not need to change.
+**Upgrading from 0.6.x:** update the installed plugin package and reload it; refreshing templates alone does not update the worker/UI. Existing login settings keep the legacy behavior. To switch, clear both `paperclipEmail` and `paperclipPassword`, save, reload the wizard, and choose **Use current login**. Existing companies, template directories, approval rules, and instance settings are not changed just by installing the release.
 
 Requires Node **24.11+**, matching the current Paperclip SDK/shared runtime requirement.
 
@@ -610,11 +610,20 @@ Configure the plugin via **Settings → Plugins → Company Wizard** in the Pape
 | `templatesPath` | No | Existing operator-managed template root, not a download destination. Overrides `templatesRepoUrl`; never populated or overwritten by refresh. Leave empty to use bundled templates or a custom GitHub source. |
 | `templatesRepoUrl` | No | Custom GitHub tree URL opts into a source-specific remote cache. The official default uses bundled templates. Refresh explicitly before preview to update a custom source. |
 | `paperclipUrl` | No | Paperclip instance URL. Defaults to `http://localhost:3100` or `PAPERCLIP_PUBLIC_URL` env var. |
-| `paperclipEmail` | No | Board login email. Required for authenticated (non-`local_trusted`) instances. |
-| `paperclipPassword` | No | Board login password. Stored as a secret ref. |
+| `paperclipEmail` | No | Optional legacy board login email for older hosts or a separate remote instance. Leave both login fields empty for browser authorization. |
+| `paperclipPassword` | No | Optional legacy board password. Existing values remain supported; browser authorization stores no password in plugin config. |
 | `aiProvider` | No | AI wizard provider: `anthropic` (default) or `openai`. |
 | `anthropicApiKey` | No | Anthropic API key for AI wizard mode. Stored as a governed secret ref. Required when `aiProvider` is `anthropic`. |
 | `openaiApiKey` | No | OpenAI API key for GPT/Codex AI wizard mode. Stored as a governed secret ref. Required when `aiProvider` is `openai`. |
+
+### Authorization without a stored password
+
+With both legacy login fields empty, the wizard asks for **Use current login** consent before mounting its board actions. On an authenticated host it uses the existing HttpOnly browser session to mint an expiring board API key for each action. The key value is held only in memory, passed through the bridge in a redacted `credentials` envelope, verified against the host-authenticated invoking user, and never shared between users or cached across actions. Worker and browser attempt revocation after completion; the server expires the key after at most one hour if cleanup is interrupted. A bridge timeout does not cancel the worker: inspect the company before retrying provisioning.
+
+**Trust boundary:** these are full board keys, not company/action-scoped capabilities. A trusted plugin receives the current user's authority, including the ability to create further keys. The short lifetime bounds this key, not a compromised plugin's possible actions. This integration uses official board-key REST endpoints from the same-origin UI, outside the SDK's stated no-direct-host-API convention; Paperclip currently has no complete typed SDK API for dynamic company provisioning. Do not enable it for an untrusted plugin.
+
+The worker sends credentials only to the operator-configured `paperclipUrl` / `PAPERCLIP_PUBLIC_URL`, or the default loopback server, never to an invocation-chosen URL. Public targets must match the UI HTTPS origin; loopback HTTP supports reverse-proxy deployments. If the public ingress requires separate SSO, use the same instance's loopback URL. Separately configured remote instances retain legacy login. Missing board-key endpoints produce an actionable error, not an automatic retry with a different identity. `local_trusted` remains credential-free without minting a key. **Test Configuration** checks templates and server connectivity; the wizard's auth check verifies actual board access.
+
 If the wizard only shows **Custom** and `/templates` contains empty arrays, check `templatesPath` first. It must point directly to the template root (normally containing `roles/`, `modules/`, and `presets/`), not an empty directory or the repository root above `templates/`. Clear the field to use the installed release templates; the official GitHub URL does not override an explicit local path. Save and reload the wizard. **Test Configuration** now validates template availability and metadata before checking Paperclip connectivity; it does not make a paid AI generation request or verify model entitlement. A custom CEO-only library is supported, but `roles/ceo/role.meta.json` must declare `name: "ceo"` and `base: true`.
 
 For enriched personas: there is no plugin setting. Template fragments are applied automatically when present.
@@ -828,7 +837,7 @@ Create `templates/presets/<name>/preset.meta.json`:
 
 **Provisioning** (Review → Provision step):
 
-1. Connects to Paperclip API (auto-detects `local_trusted` vs authenticated)
+1. Connects to Paperclip API using consented browser authorization, configured legacy credentials, or `local_trusted`
 2. Creates a new **company** in Paperclip — or targets an existing one if `existingCompanyId` is set in the review step
 3. Creates **Board Operations** and **Hiring Plan** issues with `decision-log` and `hiring-plan` documents
 4. Upserts assembled **Company Skills** in the Skills Store and resolves their stable keys

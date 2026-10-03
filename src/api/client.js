@@ -3,6 +3,12 @@ const BASE_ROLE_MAP = {
   engineer: 'engineer',
 };
 
+function assertBearerToken(token) {
+  if (typeof token !== 'string' || !token || token.length > 512 || /\s/.test(token)) {
+    throw new Error('Bearer authentication requires a valid non-empty token.');
+  }
+}
+
 /**
  * Minimal Paperclip API client using native fetch.
  * Supports both local_trusted (no auth) and authenticated instances.
@@ -15,7 +21,8 @@ export class PaperclipClient {
   constructor(baseUrl = 'http://localhost:3100', credentials = {}) {
     this.baseUrl = baseUrl.replace(/\/$/, '');
     this.origin = new URL(this.baseUrl).origin;
-    this.credentials = credentials; // { email, password } — optional
+    this.credentials = credentials; // { email, password, token } — optional
+    this.token = credentials.token;
     this.sessionCookie = null;
     this.boardUserId = null; // resolved during connect()
     this.boardUserName = null; // resolved during connect()
@@ -25,22 +32,48 @@ export class PaperclipClient {
   async _fetch(path, opts = {}) {
     const url = `${this.baseUrl}${path}`;
     const headers = { 'Content-Type': 'application/json', Origin: this.origin, ...opts.headers };
-    if (this.sessionCookie) {
+    if (this.token !== undefined) {
+      assertBearerToken(this.token);
+      for (const name of Object.keys(headers)) {
+        if (/^(authorization|cookie)$/i.test(name)) delete headers[name];
+      }
+      headers['Authorization'] = `Bearer ${this.token}`;
+    } else if (this.sessionCookie) {
       headers['Cookie'] = this.sessionCookie;
     }
     let res;
     try {
-      res = await fetch(url, { ...opts, headers });
+      res = await fetch(url, {
+        ...opts,
+        headers,
+        ...(this.token !== undefined ? { redirect: 'error' } : {}),
+      });
     } catch (err) {
+      if (this.token !== undefined) {
+        // Fetch errors can echo request headers. Never expose them or their cause.
+        throw new Error('Paperclip bearer request failed: network error or redirect refused.');
+      }
       throw new Error(
         `${opts.method || 'GET'} ${path} — network error: ${err.message}. Is Paperclip running at ${this.baseUrl}?`,
       );
     }
     if (!res.ok) {
+      if (this.token !== undefined) {
+        const error = new Error(`Paperclip bearer request failed (${res.status}).`);
+        error.status = res.status;
+        throw error;
+      }
       const body = await res.text().catch(() => '');
       const error = new Error(`${opts.method || 'GET'} ${path} → ${res.status}: ${body}`);
       error.status = res.status;
       throw error;
+    }
+    if (this.token !== undefined) {
+      try {
+        return await res.json();
+      } catch {
+        throw new Error('Paperclip bearer request failed: invalid JSON response.');
+      }
     }
     return res.json();
   }
@@ -51,6 +84,20 @@ export class PaperclipClient {
    * For local_trusted instances this is a no-op beyond the connectivity check.
    */
   async connect() {
+    if (this.token !== undefined) {
+      this.boardUserId = null;
+      this.boardUserName = null;
+      this.boardUserEmail = null;
+      const identity = await this._fetch('/api/cli-auth/me', { method: 'GET' });
+      if (typeof identity?.user?.id !== 'string' || !identity.user.id.trim()) {
+        throw new Error('Bearer authentication failed: no authenticated board user returned.');
+      }
+      this.boardUserId = identity.user.id;
+      this.boardUserName = identity?.user?.name || null;
+      this.boardUserEmail = identity?.user?.email || null;
+      return;
+    }
+
     let res;
     try {
       res = await fetch(`${this.baseUrl}/api/companies`, {
@@ -139,10 +186,16 @@ export class PaperclipClient {
   async ping() {
     try {
       const headers = { Origin: this.origin };
-      if (this.sessionCookie) headers['Cookie'] = this.sessionCookie;
+      if (this.token !== undefined) {
+        assertBearerToken(this.token);
+        headers['Authorization'] = `Bearer ${this.token}`;
+      } else if (this.sessionCookie) {
+        headers['Cookie'] = this.sessionCookie;
+      }
       const res = await fetch(`${this.baseUrl}/api/companies`, {
         method: 'GET',
         headers,
+        ...(this.token !== undefined ? { redirect: 'error' } : {}),
       });
       return res.ok;
     } catch {

@@ -113,6 +113,35 @@ describe('CEO provisioning defaults', () => {
     );
   });
 
+  for (const build of [buildCeoAdapterConfig, buildWorkerAdapterConfig]) {
+    for (const engine of ['cli', 'acp', 'auto']) {
+      it(`${build.name} forwards explicit ${engine} engine over role defaults`, () => {
+        const config = build({
+          userCeoAdapter: { engine },
+          companyDir: '/paperclip/companies/Dialer',
+          roleAdapterOverrides: { engine: engine === 'cli' ? 'acp' : 'cli' },
+        });
+        assert.equal(config.engine, engine);
+      });
+    }
+
+    it(`${build.name} leaves the engine unpinned without a supported explicit selection`, () => {
+      for (const engine of [undefined, null, '', 'unknown', ' CLI ', {}, false]) {
+        const config = build({ userCeoAdapter: { engine }, companyDir: '/company' });
+        assert.ok(!Object.hasOwn(config, 'engine'));
+      }
+    });
+
+    it(`${build.name} preserves a role engine when the user does not select one`, () => {
+      const config = build({
+        userCeoAdapter: {},
+        companyDir: '/company',
+        roleAdapterOverrides: { engine: 'cli' },
+      });
+      assert.equal(config.engine, 'cli');
+    });
+  }
+
   it('preserves explicit CEO adapter overrides while keeping Codex safety defaults', () => {
     assert.deepEqual(
       buildCeoAdapterConfig({

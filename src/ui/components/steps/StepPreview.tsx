@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWizard, useWizardDispatch, getAllRoles } from '../../context/WizardContext';
-import { usePluginAction } from '@paperclipai/plugin-sdk/ui';
+import { useWizardAction as usePluginAction } from '../../use-wizard-action';
 import { Button } from '../ui/button';
 import { Loader2, UserPlus, RefreshCw, UserMinus, CheckCircle, AlertCircle } from 'lucide-react';
 

@@ -1,5 +1,7 @@
 import { definePlugin, runWorker } from '@paperclipai/plugin-sdk';
 import type { PluginStateClient } from '@paperclipai/plugin-sdk';
+import type { PluginPerformActionContext } from '@paperclipai/plugin-sdk';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import type { EnvSecretRefBinding } from '@paperclipai/shared';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -664,6 +666,8 @@ type SharedAuthCache = {
 
 let sharedAuthCache: SharedAuthCache | null = null;
 const SHARED_AUTH_TTL_MS = 5 * 60 * 1000;
+// Browser credentials belong to exactly one invocation, never the legacy cache.
+const browserClientScope = new AsyncLocalStorage<PaperclipClient>();
 
 /**
  * Connect to Paperclip, reusing a cached session when one is still valid. Returns a
@@ -672,6 +676,8 @@ const SHARED_AUTH_TTL_MS = 5 * 60 * 1000;
  * refreshes the cache.
  */
 async function connectSharedClient(cfg: Record<string, string>): Promise<PaperclipClient> {
+  const browserClient = browserClientScope.getStore();
+  if (browserClient) return browserClient;
   const { url, email, password } = resolvePaperclipCredentials(cfg);
   const key = `${url}|${email}`;
   const client = new PaperclipClient(url, { email, password });
@@ -1321,6 +1327,89 @@ ${moduleNames.length > 0 ? moduleNames.map((mod) => `- ${mod}`).join('\n') : '- 
 
 const plugin = definePlugin({
   async setup(ctx) {
+    const registerAction = (
+      key: string,
+      handler: (params: Record<string, unknown>) => Promise<unknown>,
+    ) => {
+      ctx.actions.register(key, async (params, context: PluginPerformActionContext) => {
+        const { credentials, ...actionParams } = params;
+        if (credentials === undefined) return handler(actionParams);
+        try {
+          const auth = credentials as { origin?: unknown; token?: unknown } | null;
+          if (
+            !auth ||
+            typeof auth.origin !== 'string' ||
+            typeof auth.token !== 'string' ||
+            !auth.token ||
+            auth.token.length > 512 ||
+            /[\r\n]/.test(auth.token) ||
+            context?.actor?.type !== 'user' ||
+            !context.actor.userId
+          )
+            throw new Error('Browser authorization requires an authenticated board user.');
+          const origin = new URL(auth.origin);
+          if (
+            origin.origin !== auth.origin ||
+            (origin.protocol !== 'https:' &&
+              !(
+                origin.protocol === 'http:' &&
+                ['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname)
+              ))
+          )
+            throw new Error('Browser authorization requires HTTPS (or loopback HTTP).');
+          const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+          // The invocation must never choose a network destination for board credentials.
+          // An internal loopback URL is safe behind a public reverse proxy; otherwise
+          // the operator-selected URL must be the UI's exact origin.
+          const target = new URL(resolvePaperclipCredentials(cfg).url);
+          const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(target.hostname);
+          if (
+            target.username ||
+            target.password ||
+            target.search ||
+            target.hash ||
+            target.pathname !== '/' ||
+            (!loopback && target.origin !== origin.origin) ||
+            (target.protocol !== 'https:' && !(target.protocol === 'http:' && loopback))
+          ) {
+            throw new Error('Browser authorization cannot be sent to a different paperclipUrl.');
+          }
+          const client = new PaperclipClient(target.origin, { token: auth.token });
+          await client.connect();
+          if (client.boardUserId !== context.actor.userId) {
+            throw new Error('Browser authorization does not match the invoking board user.');
+          }
+          try {
+            return await browserClientScope.run(client, () => handler(actionParams));
+          } finally {
+            try {
+              await client._fetch('/api/cli-auth/revoke-current', {
+                method: 'POST',
+                body: '{}',
+                signal: AbortSignal.timeout(5000),
+              });
+            } catch {
+              ctx.logger.warn(
+                'Temporary board-key cleanup failed; browser cleanup or server expiry remains in effect.',
+              );
+            }
+          }
+        } catch {
+          // Never reflect a supplied bearer or upstream response into bridge logs.
+          return {
+            error:
+              'Browser authorization failed. Sign in again; check HTTPS, paperclipUrl and board permissions.',
+          };
+        }
+      });
+    };
+    ctx.actions.register('auth-options', async () => {
+      const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
+      return {
+        mode: cfg.paperclipEmail || cfg.paperclipPassword ? 'legacy' : 'browser',
+        paperclipUrl: cfg.paperclipUrl || null,
+      };
+    });
     ctx.data.register('templates', async () => {
       try {
         const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
@@ -1399,7 +1488,7 @@ const plugin = definePlugin({
       }
     });
 
-    ctx.actions.register('prepare-plugin-update', async () => {
+    registerAction('prepare-plugin-update', async () => {
       try {
         const latestVersion = await fetchLatestPluginVersion();
         const updateAvailable = isNewerVersion(latestVersion, CURRENT_PLUGIN_VERSION);
@@ -1444,7 +1533,7 @@ const plugin = definePlugin({
 
     // Preview action — assembles files to a temp dir and returns their contents.
     // Used by the UI review step to show/edit generated MD files before provisioning.
-    ctx.actions.register('preview-files', async (params) => {
+    registerAction('preview-files', async (params) => {
       let tmpDir: string | undefined;
       try {
         const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
@@ -1553,7 +1642,7 @@ const plugin = definePlugin({
 
     // Preview company update — dry-run diff of what would change for an existing company.
     // READ-ONLY: no writes to Paperclip. Returns agents/routines diff and preserved skills.
-    ctx.actions.register('preview-company-update', async (params) => {
+    registerAction('preview-company-update', async (params) => {
       let tmpDir: string | undefined;
       try {
         const existingCompanyId =
@@ -1820,7 +1909,7 @@ const plugin = definePlugin({
     });
 
     // Auth check action — called by the summary step to surface credential issues early.
-    ctx.actions.register('check-auth', async () => {
+    registerAction('check-auth', async () => {
       try {
         const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
         await connectSharedClient(cfg);
@@ -1832,7 +1921,7 @@ const plugin = definePlugin({
 
     // List companies — populates the "Update existing company" dropdown so the user
     // picks from a list instead of pasting a UUID. Returns { companies } or { error }.
-    ctx.actions.register('list-companies', async () => {
+    registerAction('list-companies', async () => {
       try {
         const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
         const client = await connectSharedClient(cfg);
@@ -1852,7 +1941,7 @@ const plugin = definePlugin({
 
     // The Done screen supplies this run's approval IDs. Never expand that scope to
     // unrelated hires already pending in an existing company.
-    ctx.actions.register('list-pending-hires', async (params) => {
+    registerAction('list-pending-hires', async (params) => {
       try {
         const companyId =
           typeof (params as any)?.companyId === 'string' ? (params as any).companyId : '';
@@ -1900,7 +1989,7 @@ const plugin = definePlugin({
     // board action — the wizard never auto-approves during provisioning, so the
     // company's governance setting keeps its meaning. Approving here only saves the
     // operator a trip to the board UI for the hires this run just requested.
-    ctx.actions.register('approve-pending-hires', async (params) => {
+    registerAction('approve-pending-hires', async (params) => {
       try {
         const companyId =
           typeof (params as any)?.companyId === 'string' ? (params as any).companyId : '';
@@ -1952,7 +2041,7 @@ const plugin = definePlugin({
     });
 
     // Starting work remains a separate operator decision after hiring approvals.
-    ctx.actions.register('start-bootstrap', async (params) => {
+    registerAction('start-bootstrap', async (params) => {
       try {
         const companyId = typeof params.companyId === 'string' ? params.companyId : '';
         const agentId = typeof params.agentId === 'string' ? params.agentId : '';
@@ -2143,7 +2232,7 @@ const plugin = definePlugin({
     // falls back to PaperclipClient HTTP for operations the SDK doesn't support
     // yet (company creation, agent creation).
     // Returns { ..., logs } on success or { error, logs } on failure — never throws.
-    ctx.actions.register('start-provision', async (params) => {
+    registerAction('start-provision', async (params) => {
       const logs: string[] = [];
       const pendingApprovalIds = new Set<string>();
       const log = (msg: string) => {
@@ -2476,6 +2565,15 @@ const plugin = definePlugin({
 
               // Keep the reused CEO aligned with the newly generated workspace/instructions.
               try {
+                // Preserve deliberate CLI/ACP selection when this update did not
+                // request another engine. Do not inherit across adapter changes.
+                if (
+                  existingCeo.adapterType === adapterType &&
+                  adapterConfig.engine === undefined &&
+                  ['cli', 'acp', 'auto'].includes(existingCeo.adapterConfig?.engine)
+                ) {
+                  adapterConfig.engine = existingCeo.adapterConfig.engine;
+                }
                 const ceoPatch: Record<string, unknown> = {
                   adapterType,
                   adapterConfig,
@@ -2632,6 +2730,13 @@ const plugin = definePlugin({
             const existingAgent = existingByTemplateRole.get(roleName);
             if (existingAgent?.id) {
               try {
+                if (
+                  existingAgent.adapterType === adapterType &&
+                  roleAdapterConfig.engine === undefined &&
+                  ['cli', 'acp', 'auto'].includes(existingAgent.adapterConfig?.engine)
+                ) {
+                  roleAdapterConfig.engine = existingAgent.adapterConfig.engine;
+                }
                 await client.updateAgent(existingAgent.id, {
                   adapterType,
                   adapterConfig: roleAdapterConfig,
@@ -2954,6 +3059,17 @@ const plugin = definePlugin({
     try {
       const templates = loadTemplates(await ensureTemplatesDir(config as Record<string, string>));
       if (templates.loadErrors.length > 0) return { ok: false, errors: templates.loadErrors };
+      if (!config.paperclipEmail && !config.paperclipPassword) {
+        // Settings validation has no browser credential. Check connectivity only;
+        // the wizard's check-auth action verifies the actual board identity.
+        const response = await fetch(`${paperclipUrl.replace(/\/$/, '')}/api/companies`, {
+          redirect: 'error',
+        });
+        if (!response.ok && response.status !== 401 && response.status !== 403) {
+          throw new Error(`Paperclip connectivity check failed (${response.status}).`);
+        }
+        return { ok: true };
+      }
       const client = new PaperclipClient(paperclipUrl, {
         email: (config.paperclipEmail as string) || '',
         password: (config.paperclipPassword as string) || '',

@@ -14,6 +14,10 @@ vi.mock('@paperclipai/plugin-sdk/ui', () => ({
   usePluginAction: () => vi.fn(),
 }));
 vi.mock('../src/ui/components/WizardShell', () => ({ WizardShell: () => 'wizard-ready' }));
+// Authorization has its own tests; isolate this template error boundary.
+vi.mock('../src/ui/components/BrowserAuthGate', () => ({
+  BrowserAuthGate: ({ children }: { children: unknown }) => children,
+}));
 vi.mock('../src/ui/context/WizardContext', () => ({
   WizardProvider: ({ children }: { children: unknown }) => children,
 }));

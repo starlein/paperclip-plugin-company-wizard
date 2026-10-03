@@ -58,6 +58,11 @@ function buildAdapterConfig({
     cwd: userCwd || companyDir,
     ...(model ? { model } : {}),
   };
+  // Do not pin the host's default engine unless the user deliberately selected
+  // one. In particular, explicit `auto` must survive as a reset to host selection.
+  if (['cli', 'acp', 'auto'].includes(userCeoAdapter.engine)) {
+    adapterConfig.engine = userCeoAdapter.engine;
+  }
   delete adapterConfig.promptTemplate;
   delete adapterConfig.bootstrapPromptTemplate;
   // Thinking effort is applied per-adapter below from the resolved `thinkingLevel`.

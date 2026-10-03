@@ -71,10 +71,11 @@ test('missing and ambiguous targets fail before writes; no workspace is synthesi
     { ...project, primaryWorkspace: null, executionWorkspacePolicy: null },
   ]);
   assert.equal(result.workspace, undefined);
-  assert.deepEqual(result.executionWorkspacePolicy, {
-    enabled: true,
-    defaultMode: 'shared_workspace',
-  });
+  assert.equal(result.executionWorkspacePolicy, null);
+  assert.deepEqual(
+    projectPolicyChanges([{ ...project, executionWorkspacePolicy: null }], [result]),
+    [],
+  );
 });
 test('preview reports the same policy object used for updates', () => {
   const projects = resolveExistingProjects('c1', [project]);

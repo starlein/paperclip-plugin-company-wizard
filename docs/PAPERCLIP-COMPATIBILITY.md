@@ -1,4 +1,34 @@
-# Paperclip compatibility — Company Wizard 0.6.4
+# Paperclip compatibility — Company Wizard 0.7.0
+
+## Paperclip v2026.1001.0 review (2026-10-03)
+
+Audited the exact upstream tag [`v2026.1001.0`](https://github.com/paperclipai/paperclip/releases/tag/v2026.1001.0), commit `8f8a0ab7effbd6a0584107d8038736c134ee5047`, against the previous source baseline `856813ba`. The host checkout/deployment was not modified.
+
+### Required plugin adjustments
+
+- **Instance-default isolation:** `server/src/services/execution-workspace-policy.ts` now supplies isolated mode for projects with a workspace and no explicit policy when `enableIsolatedWorkspacesByDefault` is enabled. Wizard updates previously synthesized shared mode. 0.7.0 preserves null/absent existing policies in live resolution, assembly and update; the generated bootstrap tells agents to preserve inheritance. A probe using the exact upstream policy function confirms isolated mode remains isolated after assembly. Explicit operator policies and fresh-repository safety are preserved, including on older hosts.
+- **Execution engine:** Codex/Claude `engine: auto` now selects ACP without silently falling back to CLI when ACP is unavailable. The wizard previously dropped explicit user engine selection and existing agent engine configuration. 0.7.0 forwards supported explicit engines and preserves existing engines on same-adapter updates. It does not force CLI or disable the host's fail-closed policy. Verify provider login, ACP/CLI installation and confinement requirements before starting real runs.
+
+### Authorization contract
+
+There is no host-supplied board credential or complete typed SDK API for dynamic company/hire/skill provisioning. The optional browser integration uses `POST /api/board-api-keys`, `GET /api/cli-auth/me`, `POST /api/cli-auth/revoke-current`, and `DELETE /api/board-api-keys/:id` from `server/src/routes/access.ts`. Keys carry the user's full current board authority; `requestedCompanyId` is not an attenuation mechanism. The consent UI discloses this and the direct-REST SDK-convention trade-off. Worker destinations come only from operator config/environment or the fixed loopback default. A bearer must match the immutable bridge user and never enters the shared legacy cookie cache. The `credentials` envelope is recognized by the host's recursive log redactor. Timeout handling leaves an in-flight worker's key valid until worker cleanup or expiry, rather than interrupting partially applied provisioning.
+
+### Other release changes
+
+- Legacy Composio broker removal does not require a plugin payload change: the wizard does not provision those connections. Existing operator-managed Composio connections need the host's manual migration.
+- The host's new full-auto execution defaults do not change the wizard's already-explicit Codex/Claude execution defaults. Board hiring approvals remain enforced and are never auto-approved by provisioning.
+- Native runner/chat recovery, personas, Slack/Railway connectors, routine webhooks and image catalogs introduce no required change to the wizard's current REST payloads. Ordinary plugin installations are not required to adopt image-catalog distribution. The ordered review-stage service remains compatible.
+
+### Verification and boundaries
+
+- Full plugin and logic/API suites, stable-SDK typecheck and production build pass.
+- Separate TypeScript check against published SDK/shared `2026.1001.0` passes; shipped development pins and peer floor stay at `2026.831.1`.
+- The exact tag's manifest schema accepts the manifest. Eleven representative requests produced by the real client pass exact-tag Zod schemas without top-level fields being stripped: company, hire, project, goal, review issue, skill create/file/rename, routine, schedule and wakeup.
+- A Chromium smoke test with a local HTTP fixture and the built real worker verifies consent before minting, HttpOnly-cookie isolation, bearer identity, action completion, revocation, zero active keys, and consent reset on reload. This is a fixture integration, not live Paperclip database acceptance or provider entitlement testing.
+- The browser fixture also verifies a mounted legacy wizard cannot mint a key after an external change to browser mode without explicit consent, and a cleanup failure is visibly reported while preserving the successful result. Cleanup requests on both sides have a five-second timeout.
+- Known pre-existing template issue: `templates/roles/devops/AGENTS.md` still suggests a comment-only transition to `blocked`. Current Paperclip requires an actual blocker/interaction/approval or valid recovery descriptor. A pending human-input interaction should use the supported review/wait path. The protected instruction file was not changed without explicit write approval; this is not a new v2026.1001.0 regression.
+
+## Historical reviews
 
 Reviewed on 2026-09-07 against [Paperclip source `856813ba3a083f23694b8554104b3e50abcb1363`](https://github.com/paperclipai/paperclip/tree/856813ba3a083f23694b8554104b3e50abcb1363), the current master snapshot at review time (2026-09-06).
 

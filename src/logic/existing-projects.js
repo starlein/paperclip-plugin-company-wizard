@@ -17,12 +17,15 @@ export function resolveExistingProjects(companyId, liveProjects, requested = [])
     const project = matches[0];
     if (seen.has(project.id)) throw new Error(`Duplicate project selection: ${project.id}`);
     seen.add(project.id);
-    const policy = {
-      enabled: true,
-      defaultMode: 'shared_workspace',
-      ...(project.executionWorkspacePolicy || {}),
-      ...(requestedProject.executionWorkspacePolicy || {}),
-    };
+    const policy =
+      project.executionWorkspacePolicy == null && requestedProject.executionWorkspacePolicy == null
+        ? null
+        : {
+            enabled: true,
+            defaultMode: 'shared_workspace',
+            ...(project.executionWorkspacePolicy || {}),
+            ...(requestedProject.executionWorkspacePolicy || {}),
+          };
     // Preserve nested operator policy values when an explicit selection changes
     // only one strategy field; null remains a deliberate reset.
     if (
@@ -35,7 +38,7 @@ export function resolveExistingProjects(companyId, liveProjects, requested = [])
       };
     }
     const workspace =
-      project.workspaces?.find((w) => w.id === policy.defaultProjectWorkspaceId) ||
+      project.workspaces?.find((w) => w.id === policy?.defaultProjectWorkspaceId) ||
       project.primaryWorkspace ||
       project.workspaces?.find((w) => w.isPrimary);
     return {
@@ -61,5 +64,6 @@ export function projectPolicyChanges(liveProjects, assembledProjects) {
         before: existing.executionWorkspacePolicy || null,
         after: project.executionWorkspacePolicy,
       };
-    });
+    })
+    .filter((change) => change.before != null || change.after != null);
 }

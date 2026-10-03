@@ -5,7 +5,7 @@ import {
   getAllRoles,
   getActiveModules,
 } from '../context/WizardContext';
-import { usePluginAction } from '@paperclipai/plugin-sdk/ui';
+import { useWizardAction as usePluginAction } from '../use-wizard-action';
 import type { ModuleData, RoleData } from '../types';
 import type { WizardProject } from '../context/WizardContext';
 import { Badge } from './ui/badge';

@@ -1270,6 +1270,45 @@ describe('assembleCompany', () => {
     });
   });
 
+  for (const enableIsolatedWorktrees of [false, true]) {
+    for (const policy of [null, undefined]) {
+      it(`preserves an existing project's ${policy} policy with isolation ${enableIsolatedWorktrees}`, async () => {
+        const project = {
+          id: 'existing-app',
+          name: 'app',
+          workspace: { sourceType: 'git_repo', repoUrl: 'https://github.com/example/app.git' },
+          ...(policy === null ? { executionWorkspacePolicy: null } : {}),
+        };
+        const { companyDir, projects, mainProject } = await assembleCompany({
+          companyName: 'InheritedPolicy',
+          existingCompanyId: 'existing-company',
+          userProjects: [project],
+          moduleNames: [],
+          extraRoleNames: [],
+          enableIsolatedWorktrees,
+          outputDir,
+          templatesDir,
+        });
+        assert.equal(projects[0].executionWorkspacePolicy, policy);
+        assert.equal(mainProject.executionWorkspacePolicy, policy);
+        const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
+        const projectBlock = bootstrap.split('### app')[1].split('## Agents')[0];
+        assert.ok(!projectBlock.includes('**executionWorkspacePolicy.'));
+        assert.ok(!projectBlock.includes('shared_workspace'));
+        assert.ok(!projectBlock.includes('isolated_workspace'));
+        assert.ok(projectBlock.includes('inherits the instance default'));
+        const provisioning = bootstrap.split('## Provisioning Steps')[1];
+        assert.ok(!provisioning.includes('executionWorkspacePolicy: {'));
+        assert.ok(provisioning.includes('leave its execution workspace policy unset'));
+        assert.ok(!provisioning.includes('if still needed ()'));
+        assert.deepEqual(project.workspace, {
+          sourceType: 'git_repo',
+          repoUrl: 'https://github.com/example/app.git',
+        });
+      });
+    }
+  }
+
   it('preserves existing project modes and workspaces when the instance feature is disabled', async () => {
     const policy = {
       enabled: true,
@@ -1297,7 +1336,7 @@ describe('assembleCompany', () => {
       sharedWorkspaceConcurrency: 'serialize',
     });
     assert.deepEqual(projects[1].workspace, {});
-    assert.equal(projects[1].executionWorkspacePolicy.defaultMode, 'shared_workspace');
+    assert.equal(projects[1].executionWorkspacePolicy, undefined);
     const bootstrap = await readFile(join(companyDir, 'BOOTSTRAP.md'), 'utf-8');
     assert.ok(bootstrap.includes('Workspace policy enforcement is disabled'));
     assert.ok(bootstrap.includes('**Reuse existing company**'));

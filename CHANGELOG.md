@@ -4,6 +4,27 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.7.0] - 2026-10-03
+
+### Added
+
+- Opt-in **Use current login** authorization when both legacy login fields are empty. The browser creates a short-lived board key per action using its existing session; the worker verifies the invoking user and uses an isolated client. No password or session cookie is forwarded to the worker. Key values are never persisted by the plugin; worker/browser cleanup revokes them, with one-hour server expiry as a backstop.
+- Explicit consent explaining that these keys carry full board authority, not company/action-scoped permissions. Credential-bearing requests reject redirects and cannot select a worker network destination through action parameters. Bridge errors never trigger a fallback to cached credentials; uncertain timeouts warn against blindly retrying provisioning.
+- Consent is checked again immediately before key creation, including after configuration changes in another tab. Cleanup has a five-second request limit, and browser cleanup failures display a warning without discarding successful results.
+
+### Fixed
+
+- Existing projects with no execution workspace policy now retain that absence through live-project resolution, assembly, preview, and update. This preserves Paperclip v2026.1001.0's `enableIsolatedWorkspacesByDefault` behavior instead of silently writing `shared_workspace`. Explicit policies and safe defaults for new repositories remain intact.
+- Explicit `cli`, `acp`, and `auto` engine choices are forwarded to agent adapter configuration. Existing CEO/team engine selections survive updates when the adapter type is unchanged and no new engine was requested; new agents are not forcibly pinned to CLI.
+- Credential-free **Test Configuration** checks template validity and connectivity without requiring a password. Actual board authorization is checked in the wizard.
+
+### Compatibility and upgrade
+
+- Audited exact Paperclip `v2026.1001.0` (`8f8a0ab7effbd6a0584107d8038736c134ee5047`); manifest and representative REST payloads validate, and TypeScript checks pass against both SDK/shared `2026.831.1` and `2026.1001.0`. Existing dependency pins/peer floor and plugin API v1 are unchanged.
+- Existing configured email/password and `local_trusted` remain supported. Clear both login fields and reload to opt into the browser flow. Older hosts without board-key endpoints and separate remote instances retain the optional legacy path. AI provider credentials are unaffected.
+- Browser key minting uses official REST endpoints but is outside the SDK's no-direct-host-API UI convention. Enable only for a trusted installed plugin. See the detailed trust boundary and deployment requirements in README.
+- Installing the release does not modify existing companies, live credentials, protected templates, or the Paperclip deployment. Full live database provisioning and provider/ACP availability remain operator acceptance checks.
+
 ## [0.6.4] - 2026-09-16
 
 ### Fixed

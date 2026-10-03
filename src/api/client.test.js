@@ -30,6 +30,194 @@ function jsonResponse(body, status = 200) {
   });
 }
 
+describe('PaperclipClient legacy authentication', () => {
+  it('keeps email/password sign-in and cookie identity on older hosts', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({ url, opts });
+      if (url.endsWith('/api/companies')) return jsonResponse({}, 401);
+      if (url.endsWith('/sign-in/email'))
+        return new Response('{}', {
+          headers: { 'set-cookie': 'session=test-only; HttpOnly; Path=/' },
+        });
+      return jsonResponse({
+        user: { id: 'legacy-board', name: 'Legacy', email: 'legacy@example.test' },
+      });
+    };
+    const client = new PaperclipClient('http://legacy.test', {
+      email: 'legacy@example.test',
+      password: 'test-password',
+    });
+    await client.connect();
+    assert.equal(client.boardUserId, 'legacy-board');
+    assert.equal(client.sessionCookie, 'session=test-only');
+    assert.equal(requests[1].url, 'http://legacy.test/api/auth/sign-in/email');
+    assert.equal(requests[2].opts.headers.Cookie, 'session=test-only');
+    assert.equal(requests[2].opts.headers.Authorization, undefined);
+  });
+});
+
+describe('PaperclipClient bearer authentication', () => {
+  it('fails closed for explicitly supplied malformed tokens before making requests', async () => {
+    let requests = 0;
+    globalThis.fetch = async () => {
+      requests += 1;
+      return jsonResponse({ user: { id: 'implicit-user' } });
+    };
+    for (const token of ['', '   ', null, 123]) {
+      const client = new PaperclipClient('http://paperclip.test', {
+        token,
+        email: 'board@example.test',
+        password: 'test-password',
+      });
+      await assert.rejects(client.connect(), /[Bb]earer/);
+      await assert.rejects(client.listCompanies(), /[Bb]earer/);
+      assert.equal(await client.ping(), false);
+      assert.equal(client.boardUserId, null);
+    }
+    assert.equal(requests, 0);
+  });
+
+  it('enforces instance-local bearer headers and redirect refusal for API requests', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({ url, opts });
+      return jsonResponse([]);
+    };
+    const first = new PaperclipClient('http://paperclip.test', { token: 'test-first-key' });
+    const second = new PaperclipClient('http://paperclip.test', { token: 'test-second-key' });
+    first.sessionCookie = 'session=stale';
+    await first._fetch('/api/companies', {
+      redirect: 'follow',
+      headers: { authorization: 'Basic stale', cookie: 'session=override', 'X-Test': 'retained' },
+    });
+    await second.listCompanies();
+    await first.listCompanies();
+    for (const [index, key] of ['test-first-key', 'test-second-key', 'test-first-key'].entries()) {
+      const headers = new Headers(requests[index].opts.headers);
+      assert.equal(headers.get('authorization'), `Bearer ${key}`);
+      assert.equal(headers.get('cookie'), null);
+      assert.equal(headers.get('origin'), 'http://paperclip.test');
+      assert.equal(requests[index].opts.redirect, 'error');
+    }
+    assert.equal(new Headers(requests[0].opts.headers).get('X-Test'), 'retained');
+  });
+
+  it('uses bearer-only ping requests and returns false for rejection or redirect errors', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({ url, opts });
+      if (requests.length === 3) throw new Error('redirect blocked: test-ping-key');
+      return jsonResponse([], requests.length === 1 ? 200 : 403);
+    };
+    const client = new PaperclipClient('http://paperclip.test', { token: 'test-ping-key' });
+    client.sessionCookie = 'session=stale';
+    assert.equal(await client.ping(), true);
+    assert.equal(await client.ping(), false);
+    assert.equal(await client.ping(), false);
+    for (const { url, opts } of requests) {
+      assert.equal(url, 'http://paperclip.test/api/companies');
+      assert.equal(opts.method, 'GET');
+      assert.equal(new Headers(opts.headers).get('authorization'), 'Bearer test-ping-key');
+      assert.equal(new Headers(opts.headers).get('cookie'), null);
+      assert.equal(opts.redirect, 'error');
+    }
+  });
+
+  for (const failure of ['http', 'network', 'json']) {
+    it(`sanitizes ${failure} errors for bearer requests without authentication fallback`, async () => {
+      const token = 'test-sensitive-board-key';
+      const secretBody = `private-response ${token} test-password`;
+      const requests = [];
+      globalThis.fetch = async (url) => {
+        requests.push(url);
+        if (failure === 'network') throw new Error(`Failed Authorization: Bearer ${secretBody}`);
+        if (failure === 'json') return new Response(secretBody, { status: 200 });
+        return new Response(secretBody, { status: 401 });
+      };
+      const client = new PaperclipClient('http://paperclip.test', {
+        token,
+        email: 'board@example.test',
+        password: 'test-password',
+      });
+      for (const operation of [() => client.connect(), () => client.listCompanies()]) {
+        await assert.rejects(operation, (error) => {
+          assert.match(error.message, /[Bb]earer/);
+          assert.ok(!String(error.stack).includes(token));
+          assert.ok(!String(error.stack).includes('private-response'));
+          assert.ok(!String(error.stack).includes('test-password'));
+          if (failure === 'http') assert.equal(error.status, 401);
+          return true;
+        });
+      }
+      assert.deepEqual(requests, [
+        'http://paperclip.test/api/cli-auth/me',
+        'http://paperclip.test/api/companies',
+      ]);
+      assert.equal(client.boardUserId, null);
+    });
+  }
+
+  it('rejects missing board users without falling back to passwords or local-board', async () => {
+    for (const body of [
+      null,
+      {},
+      { userId: 'local-board', user: null },
+      { user: {} },
+      { user: { id: 42 } },
+    ]) {
+      const requests = [];
+      globalThis.fetch = async (url) => {
+        requests.push(url);
+        return jsonResponse(body);
+      };
+      const client = new PaperclipClient('http://paperclip.test', {
+        token: 'test-invalid-key',
+        email: 'board@example.test',
+        password: 'test-password',
+      });
+      client.boardUserId = 'stale-user';
+      client.boardUserName = 'Stale Name';
+      client.boardUserEmail = 'stale@example.test';
+      await assert.rejects(client.connect(), /[Bb]oard user/);
+      assert.deepEqual(requests, ['http://paperclip.test/api/cli-auth/me']);
+      assert.equal(client.boardUserId, null);
+      assert.equal(client.boardUserName, null);
+      assert.equal(client.boardUserEmail, null);
+    }
+  });
+
+  it('connects with a bearer key and resolves the authenticated board user', async () => {
+    const requests = [];
+    globalThis.fetch = async (url, opts = {}) => {
+      requests.push({ url, opts });
+      return jsonResponse({
+        user: { id: 'board-user-1', name: 'Board User', email: 'board@example.test' },
+        userId: 'board-user-1',
+        isInstanceAdmin: true,
+        companyIds: [],
+        memberships: [],
+        source: 'board_key',
+        keyId: 'key-1',
+      });
+    };
+    const client = new PaperclipClient('http://paperclip.test', { token: 'test-board-key' });
+    await client.connect();
+
+    assert.equal(client.boardUserId, 'board-user-1');
+    assert.equal(client.boardUserName, 'Board User');
+    assert.equal(client.boardUserEmail, 'board@example.test');
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].url, 'http://paperclip.test/api/cli-auth/me');
+    assert.equal(requests[0].opts.method, 'GET');
+    assert.equal(
+      new Headers(requests[0].opts.headers).get('authorization'),
+      'Bearer test-board-key',
+    );
+    assert.equal(requests[0].opts.redirect, 'error');
+  });
+});
+
 describe('PaperclipClient.createAgent', () => {
   it('forwards CEO metadata fields accepted by Paperclip through the governance hire endpoint', async () => {
     const requests = [];
