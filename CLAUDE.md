@@ -89,12 +89,12 @@ Skills are provisioned as **Company Skills** (Skills Store) rather than written 
 
 ### Doc References in Skills
 
-Two kinds of docs live in `{company}/docs/`:
+Distinguish two document locations:
 
-- **Templates** (`lowercase-kebab.md`) — Shipped by modules, copied at assembly time. Safe to reference directly.
-- **Agent output** (`UPPERCASE.md`) — Created by agents during execution. Always wrap in "if exists" conditionals.
+- **Company reference templates** (`lowercase-kebab.md`) — Shipped by modules into `{company}/docs/` at assembly time, referenced by generated AGENTS.md Shared Documentation links.
+- **Project output** (`UPPERCASE.md`) — Created by agents in the actual project/execution workspace, or issue documents for project-detached work. Read only if present; create as part of assigned work.
 
-**Path convention.** Skills are installed into the Skills Store, not next to `AGENTS.md`, so skill markdown, module docs, and module/preset issue text reference docs as `docs/<file>.md` — relative to the agent's working directory, which `buildCeoAdapterConfig`/`buildWorkerAdapterConfig` set to the company dir. Only `roles/*/AGENTS.md` and the generated "Shared Documentation" list use `../../docs/<file>.md`, because those live at `{company}/agents/<role>/` and adapters resolve their relative references from that file's directory. Skills must likewise name other skills by slug (`pr-workflow`), never as `skills/<name>.md` — assembly writes no such file.
+**Path convention.** Skills are installed into the Skills Store, not next to `AGENTS.md`. Resolve company reference documents through the generated Shared Documentation links (`../../docs/<file>.md`, relative to the instructions file). The host can select a project checkout or managed issue worktree as runtime CWD; never equate it with the company or installed-skill directory. Project deliverables use the actual project CWD. Skills name other skills by slug (`pr-workflow`), never as `skills/<name>.md` — assembly writes no such file. The generated skill runtime contract clarifies these locations and bounds ongoing work to assigned tasks/routines.
 
 ### Heartbeat Injection
 
@@ -116,7 +116,7 @@ Enabled by default when templates provide fragments. The plugin no longer expose
 - **Inline goals** — Module-level goals (`goal: {}` in `module.meta.json`) and preset goals (`goals: []` in `preset.meta.json`). Goals can have `subgoals[]` (nested goals with `id`, `title`, `level`, `description`). `collectGoals()` merges them at runtime as `inlineGoals`. During assembly, inline goals become sub-goals of the main user goal, and subgoals are expanded into the goal hierarchy.
 - **Module issues and routines** — Issues are at module/preset level (`issues[]`), not inside goals. Routines (`routines[]`) define recurring scheduled work with `assignTo`, `schedule` (cron), and `concurrencyPolicy`. Both are collected from active modules during assembly.
 - **`assembleCompany()` params** — `userGoals` (from wizard), `userProjects` (from wizard), `inlineGoals` (from `collectGoals()`). Module inline goals are auto-parented to `userGoals[0]`. If no `userProjects` specified, a default project linked to all goals is created.
-- **Paperclip object model** — Goals have `level` (`company` | `team` | `agent` | `task`), nested via `parentId`. Projects link to goals via `goalIds`. Issues link to projects via `projectId`. Routines have `assigneeAgentId`, `schedule`, and cron triggers. `instructionsFilePath` sets the agent's working directory.
+- **Paperclip object model** — Goals have `level` (`company` | `team` | `agent` | `task`), nested via `parentId`. Projects link to goals via `goalIds`. Issues link to projects via `projectId`; API-only control routines can be project-detached. Routines have `assigneeAgentId`, `schedule`, and cron triggers. `instructionsFilePath` identifies the instructions file and relative instruction references, not necessarily runtime CWD.
 - **`assignTo: "user"`** — Issues assigned to the board user via `assigneeUserId` (resolved during `client.connect()`).
 - **`companyDescription`** — AI wizard generates a comprehensive description. Stored in `WizardContext.companyDescription`, rendered in BOOTSTRAP.md, and sent to the Paperclip API as the company's `description` field.
 - **File overrides** — `WizardContext.fileOverrides` (`Record<string,string>`) stores edits made in ConfigReview. Passed to `start-provision` as `params.fileOverrides`; written over assembled files before API provisioning.
@@ -131,14 +131,16 @@ Connects to Paperclip API (auto-detects auth mode). Resolves the target company:
 
 ### Execution Workspace Policy
 
-`effectiveExecutionPolicy()` in `assemble.js` resolves the `executionWorkspacePolicy` sent with the project (and rendered into BOOTSTRAP.md). It **always returns a policy** — the wizard no longer lets the server fall back to an implicit default:
+`effectiveExecutionPolicy()` in `assemble.js` resolves the `executionWorkspacePolicy` sent with the project (and rendered into BOOTSTRAP.md). Existing projects preserve null/absent policies so the instance's default remains authoritative. New projects receive explicit defaults:
 
 - Isolated `git_worktree` mode only when the instance experimental setting `enableIsolatedWorkspaces` is on **and** the project is an existing external repo (`sourceType: "git_repo"`). A fresh local repo defers isolation (no base ref exists yet on first run).
 - Otherwise an explicit `shared_workspace` policy.
 
-Every branch carries `sharedWorkspaceConcurrency: "serialize"` unless the project pins its own value. Paperclip's `auto` only serializes non-local environments, so on a local driver it would let every agent run enter the *same* working tree concurrently and collide on git state. The deferral is bounded by holder liveness (60–120 s backoff), not an attempt counter, so a deferred run never starves.
+Every emitted policy object carries `sharedWorkspaceConcurrency: "serialize"` unless the project pins its own value; inherited null/absent policies are not materialized just to add this field. Paperclip's `auto` only serializes non-local environments, so on a local driver it can permit overlapping runs in the same working tree. Deferral is bounded by holder liveness, not an attempt counter.
 
-`enabled` is required by Paperclip's `projectExecutionWorkspacePolicySchema` (which is `.strict()` — unknown keys are a 400). Never forward a partial policy verbatim; every return path defaults `enabled` to `true`.
+`enabled` is required by Paperclip's `projectExecutionWorkspacePolicySchema` (which is `.strict()` — unknown keys are a 400). Emitted objects default `enabled` to `true` while preserving explicit false. This does not require replacing an inherited null/absent policy.
+
+For local workspaces, explicit `setupCommand: null` disables Git initialization (plain folders or operator-managed local checkouts). Preserve it through UI/AI normalization, assembly, API payloads and preparation. Omitted setup retains the legacy new-Git default. Never silently add provider trust-bypass flags; adapter prerequisites still apply.
 
 Current Paperclip ignores workspace policies/settings when `enableIsolatedWorkspaces` is off. Project serialization also requires `enabled: true`; explicit issue concurrency/mode settings take precedence. Preserve operator opt-outs and never claim that storing `serialize` alone guarantees enforcement.
 

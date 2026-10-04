@@ -4,9 +4,9 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.8.0] - 2026-10-04
 
-### Template audit follow-up (release pending CLAUDE.md authorization)
+### Template compatibility and non-Git workspaces
 
 - Resolve previously ownerless capabilities in CEO-only companies and `launch-pack`; install the corresponding primary/fallback skills. Add a complete 103-scenario catalog matrix.
 - Distinguish review admission from recovery liveness, document conditional human escalation and rejected self-review, and align governed hiring and assigned backlog routines.
@@ -14,7 +14,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Correct all eight DONE fragments and five output bars; test all 18 bars and six LENSES for exact-once injection, disabled enrichment, and no standalone fragment output. Harden tool-discovery/secrets notes for every role.
 - Add explicit plain-folder/existing-local-workspace reuse via `setupCommand: null` across manual UI, AI normalization, assembly and preparation. Preserve unchanged workspace settings; never reuse an old checkout when changing the remote URL. Keep legacy omitted setup defaults.
 - Keep runtime and published AI prompts in parity; remove Git-only and preset-role contradictions. Validate missing company names before network access.
-- Complete the authorized AGENTS.md blocker/handoff and UX SOUL corrections, align project-output paths and unchanged-blocker dedup, and enable all eleven previously skipped acceptance cases. All 362 plugin and 229 logic/API tests pass without skips. Only the documentation correction in protected `CLAUDE.md` still awaits separate permission; see `docs/TEMPLATE-AUDIT.md`.
+- Complete AGENTS.md blocker/handoff and UX SOUL corrections, align project-output paths and unchanged-blocker dedup, and correct developer guidance in `CLAUDE.md`. All eleven previously skipped acceptance cases are active; all 362 plugin and 229 logic/API tests pass without skips. See `docs/TEMPLATE-AUDIT.md` and its complete enrichment inventory.
+
+### Compatibility and upgrade
+
+- Audited against exact Paperclip v2026.1001.0; SDK/shared pins and peer floor remain 2026.831.1. Legacy configured login, local_trusted mode, browser authorization and omitted-setup Git defaults remain supported.
+- Update the plugin package and reload. Template refresh alone does not update worker/UI code. Existing company instructions, caches and live deployments are not changed automatically; preview and explicitly apply company updates when desired.
+- Plain-folder mode does not bypass adapter/provider trust requirements. Verification covers schemas, assembly, tests and browser fixtures, not live provider-backed company runs.
 
 ## [0.7.0] - 2026-10-03
 

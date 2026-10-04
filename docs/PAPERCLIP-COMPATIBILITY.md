@@ -1,4 +1,8 @@
-# Paperclip compatibility — Company Wizard 0.7.0
+# Paperclip compatibility — Company Wizard 0.8.0
+
+## Template audit completion (0.8.0)
+
+The follow-up audit covers all 15 presets, 27 modules and 17 roles, including 70 persona/enrichment/AI source files. Capability fallbacks, blocker/review/hiring instructions, release safety, document locations, DONE criteria, output bars, tool prerequisites and AI prompt consistency were corrected. The six LENSES remain intact and have exact-once assembly coverage. Explicit local `setupCommand: null` supports plain folders without changing legacy omitted-setup defaults. All 362 plugin and 229 logic/API tests pass with no skips; all 103 catalog configurations assemble with resolved ownership. See [TEMPLATE-AUDIT.md](TEMPLATE-AUDIT.md) for detailed evidence and live-runtime limitations.
 
 ## Paperclip v2026.1001.0 review (2026-10-03)
 
@@ -26,7 +30,7 @@ There is no host-supplied board credential or complete typed SDK API for dynamic
 - The exact tag's manifest schema accepts the manifest. Eleven representative requests produced by the real client pass exact-tag Zod schemas without top-level fields being stripped: company, hire, project, goal, review issue, skill create/file/rename, routine, schedule and wakeup.
 - A Chromium smoke test with a local HTTP fixture and the built real worker verifies consent before minting, HttpOnly-cookie isolation, bearer identity, action completion, revocation, zero active keys, and consent reset on reload. This is a fixture integration, not live Paperclip database acceptance or provider entitlement testing.
 - The browser fixture also verifies a mounted legacy wizard cannot mint a key after an external change to browser mode without explicit consent, and a cleanup failure is visibly reported while preserving the successful result. Cleanup requests on both sides have a five-second timeout.
-- Known pre-existing template issue: `templates/roles/devops/AGENTS.md` still suggests a comment-only transition to `blocked`. Current Paperclip requires an actual blocker/interaction/approval or valid recovery descriptor. A pending human-input interaction should use the supported review/wait path. The protected instruction file was not changed without explicit write approval; this is not a new v2026.1001.0 regression.
+- The pre-existing DevOps comment-only `blocked` instruction is fixed in 0.8.0: it now requires structured dependencies/descriptors or a persisted human-input interaction with the supported wait path. Previously pending role/UX corrections are complete and their regression tests are active.
 
 ## Historical reviews
 

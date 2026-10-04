@@ -1,8 +1,8 @@
-# Template audit follow-up (unreleased)
+# Template audit — Company Wizard 0.8.0
 
 ## Scope and release boundary
 
-This is a partial follow-up to Company Wizard 0.7.0 (`11096c0892d4e6ddf3cd23ba13dfe69eaec7e081`), checked against the exact Paperclip `v2026.1001.0` tag (`8f8a0ab7effbd6a0584107d8038736c134ee5047`). It is not a new published release, a live-company migration, or an unconditional compatibility sign-off.
+This release completes the audited follow-up to Company Wizard 0.7.0 (`11096c0892d4e6ddf3cd23ba13dfe69eaec7e081`), checked against the exact Paperclip `v2026.1001.0` tag (`8f8a0ab7effbd6a0584107d8038736c134ee5047`). The audit is source-, schema-, assembly- and fixture-based, not a live-company migration or an unconditional guarantee of autonomous agent behavior.
 
 The complete enrichment inventory is in [template-audit-inventory.json](template-audit-inventory.json). Each of its 70 files has an explicit outcome and content hash: six LENSES, eight DONE, 17 SOUL, 17 TOOLS, 18 output bars and four published AI prompt files. All six LENSES remain unchanged after review; their domain perspectives are intentional. Optional absence of enrichment in other roles is not a defect.
 
@@ -22,15 +22,15 @@ The complete enrichment inventory is in [template-audit-inventory.json](template
 | Local workspaces | Manual setup, ConfigReview and AI normalization preserve explicit `workspace.setupCommand: null`. The assembler/client retain it, and local preparation does not initialize/reset Git. Existing local cwd/files and unchanged directory policy flags are preserved. Changing a remote repository URL no longer reuses the previous checkout. Tests cover UI helpers, the actual normalizer, assembly, filesystem effects and project schemas. Omitted setup still uses legacy Git defaults. |
 | Input validation | Missing/blank company names fail before instance HTTP lookup. Regression tests assert zero network calls, eliminating the previously observed network-dependent validation timeout. |
 
-## Previously protected corrections
+## Completed instruction and documentation corrections
 
 The renewed task authorization allowed the role instruction changes: DevOps now uses structured blockers and saved human-input interactions; all nine affected role handoffs route absent specialists through a present owner/CEO without weakening gates; unconditional repeat-comment instructions and incorrect project-output paths were corrected. UX SOUL now describes sample size, population/task coverage and limitations instead of a universal percentage. All eleven previously skipped acceptance tests are enabled and pass.
 
-The only remaining permission blocker is `CLAUDE.md`: the attempted documentation-only correction was denied again and the separate confirmation timed out. Its company-CWD assumption and “always returns a policy” claim remain stale. Actual code preserves existing null/absent policy inheritance; actual adapters can select a project/issue workspace independently from the instructions path. No alternate write mechanism was used. The requested complete release remains pending this final documentation authorization.
+After explicit authorization, `CLAUDE.md` was also corrected: company reference paths are distinct from project output locations, `instructionsFilePath` is not assumed to determine runtime CWD, null/absent existing policies retain inheritance, and explicit null setup disables local Git initialization. No audited permission-blocked correction remains outstanding.
 
 ## Verification commands
 
-Recorded verification: all 362 Vitest cases passed without skips; all 229 logic/API cases passed. Both SDK typechecks and production build passed. The 103-case exact-host matrix passed; all generated payload schema checks passed. A package dry run confirmed that the audit report and per-file inventory are included. The remaining CLAUDE.md documentation permission blocker is not a failing runtime test.
+Recorded verification: all 362 Vitest cases passed without skips; all 229 logic/API cases passed. Both SDK typechecks and production build passed. The 103-case exact-host matrix passed; all generated payload schema checks passed. A package dry run confirmed that the audit report and per-file inventory are included. Independent reviews covered the implementation and the final role-instruction corrections.
 
 - `pnpm test` — includes complete catalog, enrichment, workflow, release/path, no-Git and AI regression suites; all formerly pending cases are active.
 - `pnpm run test:logic`
@@ -45,4 +45,4 @@ Additional audit checks compile against separately installed SDK/shared `2026.10
 - No production API/database mutations, agent wakeups, installed template-cache synchronization or existing-company instruction migration were performed.
 - A plain folder disables initialization; it does not change provider trust policy. The operator must select/configure an adapter that supports the actual workspace. For example, Codex CLI has repository trust requirements; this plugin does not silently add a trust-bypass flag. Provider credentials, entitlements, external tools and ACP availability still require environment-specific acceptance checks.
 - Templates affect future assembly. Already-provisioned company files do not automatically receive these changes.
-- Live model behavior cannot be guaranteed by schema checks or text assertions. Tests establish deterministic assembly and contract invariants, while the audit distinguishes operator prerequisites and remaining permission blockers.
+- Live model behavior cannot be guaranteed by schema checks or text assertions. Tests establish deterministic assembly and contract invariants; operator prerequisites still require environment-specific verification.

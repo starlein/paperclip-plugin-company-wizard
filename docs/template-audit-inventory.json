@@ -16,7 +16,7 @@
     "reviewed_unchanged": 35,
     "hardened_and_regression_tested": 17
   },
-  "scope": "Persona/enrichment/AI source inventory; role AGENTS corrections are complete; central CLAUDE documentation permission remains pending as documented in TEMPLATE-AUDIT.md. No live-agent evaluation.",
+  "scope": "Persona/enrichment/AI source inventory for Company Wizard 0.8.0; role AGENTS and central CLAUDE documentation corrections are complete. No live-agent evaluation.",
   "files": [
     {
       "path": "templates/ai-wizard/config-format.md",
