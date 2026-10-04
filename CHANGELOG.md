@@ -22,6 +22,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Compatibility and upgrade
 
+- Expand npm keywords and GitHub repository topics for Paperclip plugins, agent companies, orchestration, templates and skills.
 - SDK/shared pins and peer floor remain `2026.831.1`; the public Company Skill contract was checked against exact Paperclip `v2026.1001.0`. Existing authentication modes are unchanged.
 - Update the plugin package and reload; refreshing templates alone cannot apply worker/UI fixes. Installing this version does not repair a partially provisioned company or change live agent settings automatically. Review the existing company before applying an update.
 - Verification: full plugin and logic/API suites, typecheck/build, and a Chromium fixture using the real worker with simulated skill conflicts, preserved manual assignments and both agent-settings modes. No live company or provider-backed run was modified.

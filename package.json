@@ -41,8 +41,20 @@
   },
   "keywords": [
     "paperclip",
+    "paperclip-plugin",
+    "paperclipai",
     "plugin",
-    "workspace"
+    "workspace",
+    "company-wizard",
+    "ai-agents",
+    "multi-agent",
+    "agent-orchestration",
+    "agent-company",
+    "agent-workflows",
+    "workflow-automation",
+    "agent-templates",
+    "agent-skills",
+    "bootstrapping"
   ],
   "author": "Sascha Pietrowski <sp@speednetwork.de>",
   "contributors": [
