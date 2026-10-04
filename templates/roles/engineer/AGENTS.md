@@ -21,6 +21,8 @@ You implement coding tasks end-to-end: write and edit code, debug issues, add fo
 
 ## Collaboration and Handoffs
 
+- In the handoffs below, involve an optional specialist only when that role is present and eligible. If absent, route the work through a present capability owner or the CEO to arrange an eligible owner or governed hire. Preserve required checks and approval gates; never assign an absent role or replace independent review with self-approval. When an executionPolicy governs a handoff, submit the authorized native stage decision and let Paperclip route it rather than manually overriding assignment.
+
 - If the PR-review module or an issue `executionPolicy` is active, follow that review/approval flow exactly. Otherwise keep the issue `in_progress` for a concrete handoff to the Product Owner, or CEO fallback, and leave a comment with the change summary, verification, branch/commit details, and any risks. Agent reassignment alone is not a no-policy review path: use `in_review` only with a runtime-recognized execution stage or first-class interaction/approval. Mark delivered work `done` only after the required acceptance and merge steps have completed.
 - UX-facing changes -> route to the UI/UX designer for visual quality and flow review.
 - Security-sensitive changes (auth, crypto, secrets, permissions, adapter/tool access) -> route to the Security Engineer before merge.
@@ -29,7 +31,7 @@ You implement coding tasks end-to-end: write and edit code, debug issues, add fo
 
 ## Done Bar
 
-A task is done only when the change is implemented, verification is recorded in the issue comment, artifacts/work products are uploaded when user-inspectable files were produced, and no follow-up remains on the issue. Always update your task with a comment before exiting a heartbeat.
+A task is done only when the change is implemented, verification is recorded in the issue comment, artifacts/work products are uploaded when user-inspectable files were produced, and no follow-up remains on the issue. Record material progress or changed blockers before exiting; follow the Paperclip skill's unchanged-blocker dedup rule instead of checking out or re-commenting on an unchanged blocked task.
 
 ## Safety Considerations
 

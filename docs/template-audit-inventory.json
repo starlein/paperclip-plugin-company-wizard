@@ -12,12 +12,11 @@
     "LENSES": 6
   },
   "statusCounts": {
-    "fixed_and_regression_tested": 17,
+    "fixed_and_regression_tested": 18,
     "reviewed_unchanged": 35,
-    "hardened_and_regression_tested": 17,
-    "blocked_permission": 1
+    "hardened_and_regression_tested": 17
   },
-  "scope": "Persona/enrichment/AI source inventory; separate protected AGENTS/CLAUDE work is documented in TEMPLATE-AUDIT.md. No live-agent evaluation.",
+  "scope": "Persona/enrichment/AI source inventory; role AGENTS corrections are complete; central CLAUDE documentation permission remains pending as documented in TEMPLATE-AUDIT.md. No live-agent evaluation.",
   "files": [
     {
       "path": "templates/ai-wizard/config-format.md",
@@ -430,8 +429,8 @@
     {
       "path": "templates/roles/ux-researcher/SOUL.md",
       "sourceAuditVerdict": "fix_needed",
-      "status": "blocked_permission",
-      "sha256": "e022448716f3e352fca34fbae7431589b5bf9b0e05d792e46d67de5255eb3b1b"
+      "status": "fixed_and_regression_tested",
+      "sha256": "65f4fa27fb608adb10a6bcbc712f4d4df882aa786d2f8f7af41abdc145378bd9"
     },
     {
       "path": "templates/roles/ux-researcher/TOOLS.md",

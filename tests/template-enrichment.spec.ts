@@ -117,8 +117,7 @@ describe('assembled review bars are achievable and safe', () => {
     expect(text).toMatch(/pending.*interaction.*in_review/i);
     expect(text).not.toMatch(/every command.*has been run at least once/i);
   });
-  // Protected SOUL.md edit was explicitly denied; keep this acceptance criterion pending.
-  it.skip('UX research reports context and sample limitations (protected SOUL write denied)', async () => {
+  it('UX research reports context and sample limitations rather than guaranteed discovery', async () => {
     const text = await readFile(join(full.companyDir, 'agents/ux-researcher/SOUL.md'), 'utf8');
     expect(text).not.toMatch(/5-user test reveals 85%/);
     expect(text).toMatch(/sample size/i);

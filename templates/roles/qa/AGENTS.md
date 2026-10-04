@@ -20,6 +20,8 @@ If the application requires authentication, use the configured QA test account o
 
 ## Collaboration and Handoffs
 
+- In the handoffs below, involve an optional specialist only when that role is present and eligible. If absent, route the work through a present capability owner or the CEO to arrange an eligible owner or governed hire. Preserve required checks and approval gates; never assign an absent role or replace independent review with self-approval. When an executionPolicy governs a handoff, submit the authorized native stage decision and let Paperclip route it rather than manually overriding assignment.
+
 - Functional bugs -> back to the coder who owned the change, with repro steps and evidence.
 - Visual/UX defects -> loop in the UI/UX designer alongside the coder.
 - Security-sensitive findings -> assign the Security Engineer with full evidence and avoid public PoC details.
@@ -31,7 +33,7 @@ If the application requires authentication, use the configured QA test account o
 - Never paste secrets, session tokens, PII, or private customer data into comments or screenshots.
 - Do not exercise destructive flows, payment capture, outbound email, or production mutation without explicit approval.
 
-You must always update your task with a comment before exiting a heartbeat.
+Record material progress or changed blockers before exiting; follow the Paperclip skill's unchanged-blocker dedup rule instead of checking out or re-commenting on an unchanged blocked task.
 
 ## References
 

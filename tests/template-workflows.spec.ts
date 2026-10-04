@@ -71,9 +71,7 @@ describe('assembled workflow contracts', () => {
     expect(text).toContain('Assign acceptance-ready work');
     expect(text).not.toMatch(/On every heartbeat|count < threshold|left unassigned/);
   });
-  // Pending explicit write approval for protected templates/roles/*/AGENTS.md.
-  // These acceptance criteria are visible, not claimed as implemented.
-  it.skip.each([
+  it.each([
     'engineer',
     'qa',
     'product-owner',
@@ -106,7 +104,7 @@ describe('assembled workflow contracts', () => {
       minimal.companySkills.some((skill: any) => skill.slug === 'hiring-review-fallback'),
     ).toBe(false);
   });
-  it.skip('uses structured DevOps blockers and self-owned descriptors (protected AGENTS write not approved)', async () => {
+  it('uses structured DevOps blockers and self-owned descriptors', async () => {
     const text = await read('agents/devops/AGENTS.md');
     for (const token of [
       'blockedByIssueIds',

@@ -22,22 +22,17 @@ The complete enrichment inventory is in [template-audit-inventory.json](template
 | Local workspaces | Manual setup, ConfigReview and AI normalization preserve explicit `workspace.setupCommand: null`. The assembler/client retain it, and local preparation does not initialize/reset Git. Existing local cwd/files and unchanged directory policy flags are preserved. Changing a remote repository URL no longer reuses the previous checkout. Tests cover UI helpers, the actual normalizer, assembly, filesystem effects and project schemas. Omitted setup still uses legacy Git defaults. |
 | Input validation | Missing/blank company names fail before instance HTTP lookup. Regression tests assert zero network calls, eliminating the previously observed network-dependent validation timeout. |
 
-## Known incomplete work — permission denied or not granted
+## Previously protected corrections
 
-The following protected files were not changed. No alternative write path or assembly override was used to conceal these pending edits:
+The renewed task authorization allowed the role instruction changes: DevOps now uses structured blockers and saved human-input interactions; all nine affected role handoffs route absent specialists through a present owner/CEO without weakening gates; unconditional repeat-comment instructions and incorrect project-output paths were corrected. UX SOUL now describes sample size, population/task coverage and limitations instead of a universal percentage. All eleven previously skipped acceptance tests are enabled and pass.
 
-1. `templates/roles/devops/AGENTS.md`: the old comment-only `blocked` recommendation still needs structured blocker/wait guidance. The current host can reject a prose-only status transition with 422.
-2. Optional-role handoffs in protected role AGENTS files still need present-owner/CEO routing without weakening verification. Pending regression cases cover Engineer, QA, Product Owner, Security Engineer, UI Designer, UX Researcher, DevOps, CTO and CMO.
-3. `templates/roles/ux-researcher/SOUL.md`: the universal “5-user test reveals 85%” statement remains. Its correction was explicitly denied; LENSES are unrelated and were not rewritten to mask it.
-4. `CLAUDE.md`: its company-CWD assumption and “always returns a policy” claim remain stale. Actual code preserves existing null/absent policy inheritance. Actual adapters can select a project/issue workspace independently from the instructions path.
-
-Ten AGENTS acceptance cases and one UX SOUL case are explicitly skipped with reasons. These skips are not evidence that those requirements pass. Existing protected instructions may still conflict with improved completion fragments. Obtain explicit write authorization, apply the corrections, enable all 11 tests, and rerun the full verification before claiming complete template compatibility or releasing this follow-up.
+The only remaining permission blocker is `CLAUDE.md`: the attempted documentation-only correction was denied again and the separate confirmation timed out. Its company-CWD assumption and “always returns a policy” claim remain stale. Actual code preserves existing null/absent policy inheritance; actual adapters can select a project/issue workspace independently from the instructions path. No alternate write mechanism was used. The requested complete release remains pending this final documentation authorization.
 
 ## Verification commands
 
-Recorded verification: 351 Vitest cases passed, 11 protected-file acceptance cases skipped; all 229 logic/API cases passed. Both SDK typechecks and production build passed. The 103-case exact-host matrix passed; all generated payload schema checks passed. A package dry run confirmed that the audit report and per-file inventory are included. Independent specification and quality review passed for the allowed partial scope. These results do not waive the pending protected-file requirements listed above.
+Recorded verification: all 362 Vitest cases passed without skips; all 229 logic/API cases passed. Both SDK typechecks and production build passed. The 103-case exact-host matrix passed; all generated payload schema checks passed. A package dry run confirmed that the audit report and per-file inventory are included. The remaining CLAUDE.md documentation permission blocker is not a failing runtime test.
 
-- `pnpm test` — includes complete catalog, enrichment, workflow, release/path, no-Git and AI regression suites; the 11 pending protected cases remain visible.
+- `pnpm test` — includes complete catalog, enrichment, workflow, release/path, no-Git and AI regression suites; all formerly pending cases are active.
 - `pnpm run test:logic`
 - `pnpm run typecheck`
 - `pnpm run build:prod`
