@@ -4,7 +4,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
-import { CheckCircle2, RotateCcw, ExternalLink, ShieldCheck, Loader2, Play } from 'lucide-react';
+import {
+  CheckCircle2,
+  TriangleAlert,
+  RotateCcw,
+  ExternalLink,
+  ShieldCheck,
+  Loader2,
+  Play,
+} from 'lucide-react';
 
 type PendingHire = { id: string; name: string; createdAt: string };
 type HireActionResult = {
@@ -279,11 +287,16 @@ export function StepDone() {
   const dispatch = useWizardDispatch();
   const allRoles = getAllRoles(state);
   const result = state.provisionResult;
+  const provisionWarnings = result?.warnings ?? [];
 
   return (
     <div className="space-y-6">
       <div className="flex items-start gap-3">
-        <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0 mt-0.5" />
+        {provisionWarnings.length > 0 ? (
+          <TriangleAlert className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
+        ) : (
+          <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0 mt-0.5" />
+        )}
         <div>
           <h2 className="text-xl font-semibold tracking-tight">{state.companyName}</h2>
           <p className="text-sm text-muted-foreground mt-1">
@@ -293,6 +306,22 @@ export function StepDone() {
           </p>
         </div>
       </div>
+
+      {provisionWarnings.length > 0 && (
+        <div role="alert" className="rounded-lg border border-amber-500/40 p-4 space-y-2 text-sm">
+          <p className="font-medium">Completed with warnings</p>
+          <p>
+            Provisioning continued. Review unchanged or skipped skills before starting bootstrap.
+          </p>
+          <ul className="list-disc pl-5 space-y-1">
+            {provisionWarnings.map((warning, index) => (
+              <li key={`${index}:${warning}`} className="wrap-break-word">
+                {warning}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <Card>
         <CardContent className="pt-6 space-y-4">

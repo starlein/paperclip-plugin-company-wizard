@@ -325,6 +325,13 @@ export class PaperclipClient {
     });
   }
 
+  async addAgentSkills(agentId, desiredSkills) {
+    return this._fetch(`/api/agents/${agentId}/skills/sync`, {
+      method: 'POST',
+      body: JSON.stringify({ mode: 'add', desiredSkills }),
+    });
+  }
+
   async updateInstructionsBundle(agentId, updates) {
     return this._fetch(`/api/agents/${agentId}/instructions-bundle`, {
       method: 'PATCH',

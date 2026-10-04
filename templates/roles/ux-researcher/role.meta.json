@@ -11,7 +11,5 @@
     "Takes over vision-workshop success metrics validation from CEO",
     "Adds UX review pass when pr-review module is active"
   ],
-  "adapter": {
-    "thinkingLevel": "auto"
-  }
+  "adapter": {}
 }

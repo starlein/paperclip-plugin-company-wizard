@@ -924,79 +924,153 @@ export async function provisionCompanySkills(
     categories?: string[];
   }>,
   log: (msg: string) => void,
+  options: { continueOnError?: boolean; onWarning?: (message: string) => void } = {},
 ): Promise<Map<string, string>> {
   const slugToKey = new Map<string, string>();
   if (!Array.isArray(companySkills) || companySkills.length === 0) return slugToKey;
 
-  const existing = await client.listCompanySkills(companyId);
-  if (!Array.isArray(existing)) throw new Error('Paperclip returned an invalid company skill list');
   const bySlug = new Map<string, any>();
-  for (const s of existing) {
-    // Slugs are not unique across catalog, repo-scanned and company skills.
-    // Never overwrite an imported or read-only skill just because its slug matches.
-    if (
-      s?.key === `company/${companyId}/${s.slug}` &&
-      s?.metadata?.sourceKind === 'managed_local' &&
-      s.editable !== false
-    ) {
-      bySlug.set(s.slug, s);
+  const warn = (message: string) => {
+    log(`⚠ ${message}`);
+    options.onWarning?.(message);
+  };
+  const refreshInventory = async () => {
+    const existing = await client.listCompanySkills(companyId);
+    if (!Array.isArray(existing)) throw new Error('Invalid company skill list');
+    bySlug.clear();
+    for (const entry of existing) {
+      // A slug alone can also identify a catalog/repository skill. Only adopt the
+      // exact company key; never overwrite another source or company's content.
+      if (
+        typeof entry?.id === 'string' &&
+        entry.id &&
+        typeof entry.slug === 'string' &&
+        entry.key === `company/${companyId}/${entry.slug}` &&
+        (entry.companyId === undefined || entry.companyId === companyId)
+      )
+        bySlug.set(entry.slug, entry);
     }
+  };
+  try {
+    await refreshInventory();
+  } catch (err) {
+    if (!options.continueOnError) throw err;
+    warn(
+      'Could not read company skill inventory. Skill changes were skipped; existing agent skill assignments will be preserved.',
+    );
+    return slugToKey;
   }
 
   for (const skill of companySkills) {
-    const markdown = ensureSkillFrontmatter(skill.slug, skill.description, skill.markdown);
-    // Paperclip uses YAML `name` as its stored name and rewrites it on rename.
-    // Provision by slug so it remains a valid Codex skill name; `skill.name`
-    // is retained for human-readable references in the assembled workspace.
-    const found = bySlug.get(skill.slug);
-    if (!found) {
-      const created = await client.createCompanySkill(companyId, {
-        name: skill.slug,
-        slug: skill.slug,
-        description: skill.description,
-        markdown,
-        categories: skill.categories,
-      });
-      slugToKey.set(skill.slug, created?.key || created?.slug || skill.slug);
-      log(`✓ Created company skill "${skill.slug}"`);
-      continue;
-    }
+    try {
+      const markdown = ensureSkillFrontmatter(skill.slug, skill.description, skill.markdown);
+      // Paperclip uses YAML `name` as its stored name and rewrites it on rename.
+      // Provision by slug so it remains a valid Codex skill name; `skill.name`
+      // is retained for human-readable references in the assembled workspace.
+      let found = bySlug.get(skill.slug);
+      if (!found) {
+        try {
+          const created = await client.createCompanySkill(companyId, {
+            name: skill.slug,
+            slug: skill.slug,
+            description: skill.description,
+            markdown,
+            categories: skill.categories,
+          });
+          const key =
+            typeof created?.key === 'string' && created.key
+              ? created.key
+              : typeof created?.id === 'string' && created.id
+                ? created.id
+                : null;
+          if (!key) throw new Error('Created skill has no usable reference');
+          slugToKey.set(skill.slug, key);
+          if (created?.key === `company/${companyId}/${skill.slug}`)
+            bySlug.set(skill.slug, created);
+          log(`✓ Created company skill "${skill.slug}"`);
+          continue;
+        } catch (err) {
+          if ((err as { status?: number })?.status !== 409) throw err;
+          // Another invocation may have created the skill after our initial list.
+          // One readback is sufficient; never retry a blind create indefinitely.
+          await refreshInventory();
+          found = bySlug.get(skill.slug);
+          if (!found) throw err;
+        }
+      }
 
-    slugToKey.set(skill.slug, found.key || skill.slug);
-    let updated = false;
-    if ((found.markdown ?? '') !== markdown) {
-      await client.updateCompanySkillFile(companyId, found.id, {
-        path: 'SKILL.md',
-        content: markdown,
-      });
-      updated = true;
-    }
-    if ((found.name ?? '') !== skill.slug) {
-      const renamed = await client.renameCompanySkill(companyId, found.id, {
-        name: skill.slug,
-        slug: found.slug,
-      });
-      if (renamed == null) {
-        log(`! Paperclip host does not support Company Skill rename; kept "${found.name}"`);
-      } else {
-        slugToKey.set(
-          skill.slug,
-          renamed.skill?.key || renamed.skill?.slug || found.key || skill.slug,
+      slugToKey.set(skill.slug, found.key);
+      // Current Paperclip list summaries omit metadata and markdown. Recognize
+      // their public sourceType/editable fields, while retaining older full rows.
+      const editableManaged =
+        found.editable !== false &&
+        !found.forkedFromSkillId &&
+        !found.metadata?.forkedFromSkillId &&
+        (found.metadata?.sourceKind === 'managed_local' ||
+          (found.sourceType === 'local_path' && found.editable === true));
+      if (!editableManaged) {
+        warn(
+          `Kept existing company skill "${skill.slug}" unchanged: it is read-only, forked, or its managed source could not be verified.`,
         );
+        continue;
+      }
+      let updated = false;
+      if ((found.markdown ?? '') !== markdown) {
+        await client.updateCompanySkillFile(companyId, found.id, {
+          path: 'SKILL.md',
+          content: markdown,
+        });
         updated = true;
       }
-    }
-    const updates: Record<string, unknown> = {};
-    if ((found.description ?? '') !== (skill.description ?? '')) {
-      updates.description = skill.description ?? null;
-    }
-    if (Array.isArray(skill.categories)) updates.categories = skill.categories;
-    if (Object.keys(updates).length > 0) {
-      await client.updateCompanySkill(companyId, found.id, updates);
-      updated = true;
-    }
-    if (updated) {
-      log(`✓ Updated company skill "${skill.slug}"`);
+      if ((found.name ?? '') !== skill.slug) {
+        const renamed = await client.renameCompanySkill(companyId, found.id, {
+          name: skill.slug,
+          slug: found.slug,
+        });
+        // A 404 can mean an older host without rename support OR a deleted
+        // record. Verify its actual key/identity instead of inventing a slug ref.
+        await refreshInventory();
+        const current = bySlug.get(skill.slug);
+        if (!current || current.id !== found.id) {
+          slugToKey.delete(skill.slug);
+          throw new Error('Company skill identity changed during rename');
+        }
+        slugToKey.set(skill.slug, current.key);
+        if (renamed == null) {
+          log(`! Company Skill rename unavailable; verified and retained "${skill.slug}"`);
+        } else {
+          updated = true;
+        }
+      }
+      const updates: Record<string, unknown> = {};
+      if ((found.description ?? '') !== (skill.description ?? '')) {
+        updates.description = skill.description ?? null;
+      }
+      if (Array.isArray(skill.categories)) updates.categories = skill.categories;
+      if (Object.keys(updates).length > 0) {
+        await client.updateCompanySkill(companyId, found.id, updates);
+        updated = true;
+      }
+      if (updated) {
+        log(`✓ Updated company skill "${skill.slug}"`);
+      }
+    } catch (err) {
+      if (!options.continueOnError) throw err;
+      const status = (err as { status?: unknown })?.status;
+      if (slugToKey.has(skill.slug) && (status === 404 || status === 409)) {
+        const previousId = bySlug.get(skill.slug)?.id;
+        try {
+          await refreshInventory();
+          const current = bySlug.get(skill.slug);
+          if (!current || current.id !== previousId) slugToKey.delete(skill.slug);
+        } catch {
+          slugToKey.delete(skill.slug);
+        }
+      }
+      const detail = typeof status === 'number' ? ` (HTTP ${status})` : '';
+      warn(
+        `Could not reconcile company skill "${skill.slug}"${detail}. Continuing with other skills and provisioning steps; any verified existing skill was retained.`,
+      );
     }
   }
   return slugToKey;
@@ -1872,7 +1946,17 @@ const plugin = definePlugin({
                   desiredSkillsPreserved.push({
                     agentId: a.id,
                     agentName: a.title || a.name || a.id,
-                    skills: skills as string[],
+                    // Display labels only; retain actual pinned entries unchanged
+                    // in the agent configuration and additive sync path.
+                    skills: skills.flatMap((ref) => {
+                      if (typeof ref === 'string') return [ref];
+                      if (typeof ref?.key !== 'string') return [];
+                      return [
+                        typeof ref.versionId === 'string' && ref.versionId
+                          ? `${ref.key} (pinned: ${ref.versionId})`
+                          : ref.key,
+                      ];
+                    }),
                   });
                 }
               }
@@ -2239,6 +2323,7 @@ const plugin = definePlugin({
     // Returns { ..., logs } on success or { error, logs } on failure — never throws.
     registerAction('start-provision', async (params) => {
       const logs: string[] = [];
+      const warnings: string[] = [];
       const pendingApprovalIds = new Set<string>();
       const log = (msg: string) => {
         logs.push(msg);
@@ -2448,6 +2533,10 @@ const plugin = definePlugin({
             companyId,
             assembleResult.companySkills ?? [],
             log,
+            {
+              continueOnError: Boolean(existingCompanyId),
+              onWarning: (message) => warnings.push(message),
+            },
           );
           const desiredSkillsForRole = (roleName: string): string[] =>
             (
@@ -2456,6 +2545,54 @@ const plugin = definePlugin({
             )
               .map((slug) => slugToKey.get(slug))
               .filter((key): key is string => Boolean(key));
+
+          const syncExistingAgentSkills = async (
+            roleName: string,
+            existingAgent: any,
+          ): Promise<void> => {
+            // Generic agent PATCH ignores desiredSkills. Use the supported sync
+            // contract, adding only missing keys: add mode overwrites same-key
+            // entries, so resending an existing key would erase its version pin.
+            const previous = existingAgent?.adapterConfig?.paperclipSkillSync?.desiredSkills;
+            const existingKeys = new Set(
+              (Array.isArray(previous) ? previous : []).map((ref: any) =>
+                typeof ref === 'string' ? ref : ref?.key,
+              ),
+            );
+            const missing = [...new Set(desiredSkillsForRole(roleName))].filter(
+              (key) => !existingKeys.has(key),
+            );
+            if (missing.length === 0) return;
+            try {
+              const result = await client.addAgentSkills(existingAgent.id, missing);
+              for (const detail of result?.warnings ?? []) {
+                const message = `Skill assignment warning for ${roleName}: ${typeof detail === 'string' ? detail : detail?.message || 'Host could not fully synchronize skills.'}`;
+                warnings.push(message);
+                log(`⚠ ${message}`);
+              }
+            } catch (err) {
+              const status = (err as { status?: number })?.status;
+              const message = `Could not synchronize skills for ${roleName}${status ? ` (HTTP ${status})` : ''}. Existing selections were not replaced; continuing provisioning.`;
+              warnings.push(message);
+              log(`⚠ ${message}`);
+            }
+          };
+          const existingSettingsConfig = (config: Record<string, unknown>) => {
+            // PATCH shallow-merges on current hosts. Explicit nulls clear omitted
+            // model/effort overrides without replacing env, skills or other config.
+            // Record-valued adapterConfig accepts these on the 2026.831.1 floor.
+            const next: Record<string, unknown> = {
+              model: null,
+              modelReasoningEffort: null,
+              thinkingLevel: null,
+              reasoningEffort: null,
+              effort: null,
+              ...config,
+            };
+            // Both floor/current hosts retain env and paperclipSkillSync via
+            // ADAPTER_AGNOSTIC_KEYS on transitions. Do not replay stale/redacted values.
+            return next;
+          };
 
           // Read the wizard manifest (best-effort) for retired-role detection
           if (existingCompanyId) {
@@ -2525,6 +2662,7 @@ const plugin = definePlugin({
           // Step 6: Resolve or create CEO agent
           const userCeoAdapter = (params.ceoAdapter as any) || {};
           const adapterType = normalizeCeoAdapterType(userCeoAdapter);
+          const updateExistingAgentSettings = userCeoAdapter.updateExistingAgents === true;
 
           const ceoTemplate = roleTemplateByName.get('ceo') || {};
           const ceoTitle =
@@ -2581,10 +2719,13 @@ const plugin = definePlugin({
                   adapterConfig.engine = existingCeo.adapterConfig.engine;
                 }
                 const ceoPatch: Record<string, unknown> = {
-                  adapterType,
-                  adapterConfig,
-                  desiredSkills: desiredSkillsForRole('ceo'),
-                  runtimeConfig: ceoRuntimeConfig,
+                  ...(updateExistingAgentSettings
+                    ? {
+                        adapterType,
+                        adapterConfig: existingSettingsConfig(adapterConfig),
+                        runtimeConfig: ceoRuntimeConfig,
+                      }
+                    : {}),
                   ...(ceoMetadata
                     ? { metadata: { ...(existingCeo.metadata ?? {}), ...ceoMetadata } }
                     : {}),
@@ -2596,8 +2737,16 @@ const plugin = definePlugin({
                   ceoPatch.capabilities = ceoDescription;
                 }
                 await client.updateAgent(ceoAgentId, ceoPatch);
-                log('✓ Updated existing CEO adapter config (cwd + Codex defaults)');
+                await syncExistingAgentSkills('ceo', existingCeo);
+                log(
+                  updateExistingAgentSettings
+                    ? '✓ Applied the selected agent settings to the existing CEO'
+                    : '✓ Preserved existing CEO adapter, model and runtime settings',
+                );
               } catch (updateErr) {
+                warnings.push(
+                  'Could not update existing CEO settings or skill assignments; continuing with existing configuration.',
+                );
                 log(
                   `⚠ Could not update existing CEO adapter config: ${updateErr instanceof Error ? updateErr.message : String(updateErr)}`,
                 );
@@ -2744,18 +2893,26 @@ const plugin = definePlugin({
                   roleAdapterConfig.engine = existingAgent.adapterConfig.engine;
                 }
                 await client.updateAgent(existingAgent.id, {
-                  adapterType,
-                  adapterConfig: roleAdapterConfig,
-                  desiredSkills: desiredSkillsForRole(roleName),
-                  runtimeConfig: roleRuntimeConfig,
+                  ...(updateExistingAgentSettings
+                    ? {
+                        adapterType,
+                        adapterConfig: existingSettingsConfig(roleAdapterConfig),
+                        runtimeConfig: roleRuntimeConfig,
+                      }
+                    : {}),
+
                   metadata: { ...(existingAgent.metadata ?? {}), ...roleMetadata },
                   ...(!existingAgent.title && roleTitle ? { title: roleTitle } : {}),
                   ...(!existingAgent.capabilities && roleDescription
                     ? { capabilities: roleDescription }
                     : {}),
                 });
+                await syncExistingAgentSkills(roleName, existingAgent);
                 log(`✓ Reusing ${roleTitle} (${existingAgent.id})`);
               } catch (err) {
+                warnings.push(
+                  `Could not update ${roleTitle} settings or skill assignments; continuing with existing configuration.`,
+                );
                 log(
                   `⚠ Could not update ${roleTitle}: ${err instanceof Error ? err.message : String(err)}`,
                 );
@@ -3039,6 +3196,7 @@ const plugin = definePlugin({
           issueIds,
           pendingApprovalIds: [...pendingApprovalIds],
           bootstrapIssueId: bootstrapIssue!.id,
+          warnings,
           logs,
         };
       } catch (err) {
@@ -3047,7 +3205,7 @@ const plugin = definePlugin({
         if (!logs.some((l) => l.includes('Provisioning failed'))) {
           log(`✗ ${message}`);
         }
-        return { error: message, logs };
+        return { error: message, logs, warnings };
       }
     });
   },

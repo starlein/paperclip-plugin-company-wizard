@@ -1,19 +1,13 @@
 export const DEFAULT_CEO_ADAPTER_TYPE = 'codex_local';
-// Use the concrete `gpt-5.6-sol` slug rather than the bare `gpt-5.6` alias. OpenAI
-// publishes no model metadata for the bare slug, so Codex warns ("Model metadata for
-// `gpt-5.6` not found") and falls back to generic context-window limits. Paperclip's
-// codex_local adapter still rewrites the bare alias for legacy agents, but new
-// companies should be provisioned on the slug the Codex CLI actually knows.
-export const DEFAULT_CEO_MODEL = 'gpt-5.6-sol';
-export const DEFAULT_CEO_THINKING_LEVEL = 'high';
+// Empty model and auto reasoning inherit the selected adapter's host defaults.
+export const DEFAULT_CEO_MODEL = '';
+export const DEFAULT_CEO_THINKING_LEVEL = 'auto';
 // Worker (non-CEO) agents default to 'auto' reasoning effort — let the model decide
 // per task instead of pinning a flat level. A role can still set an explicit level
 // via its role.meta.json adapter override (now propagated to provisioning).
 export const DEFAULT_WORKER_THINKING_LEVEL = 'auto';
 export const DEFAULT_CEO_MAX_CONCURRENT_RUNS = 1;
 export const DEFAULT_CEO_HEARTBEAT_INTERVAL_SEC = 3600;
-
-const DEFAULT_CLAUDE_CEO_MODEL = 'claude-opus-4-8';
 
 function asTrimmedString(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -34,9 +28,7 @@ function buildAdapterConfig({
   const userCwd = asTrimmedString(userCeoAdapter.cwd);
   const userModel = asTrimmedString(userCeoAdapter.model);
   const overrideModel = asTrimmedString(roleAdapterOverrides.model);
-  const defaultModel =
-    adapterType === 'claude_local' ? DEFAULT_CLAUDE_CEO_MODEL : DEFAULT_CEO_MODEL;
-  const model = userModel || overrideModel || defaultModel;
+  const model = userModel || overrideModel;
   // The CEO inherits the user-configured thinking level; worker agents do NOT — a
   // user picking xhigh for the CEO shouldn't silently turn the whole team xhigh. A
   // role can still set its own level via role.meta.json (roleAdapterOverrides).
@@ -63,6 +55,7 @@ function buildAdapterConfig({
   if (['cli', 'acp', 'auto'].includes(userCeoAdapter.engine)) {
     adapterConfig.engine = userCeoAdapter.engine;
   }
+  if (!model) delete adapterConfig.model;
   delete adapterConfig.promptTemplate;
   delete adapterConfig.bootstrapPromptTemplate;
   // Thinking effort is applied per-adapter below from the resolved `thinkingLevel`.
@@ -85,6 +78,7 @@ function buildAdapterConfig({
     }
     adapterConfig.dangerouslyBypassApprovalsAndSandbox = true;
   } else if (adapterType === 'claude_local') {
+    if (thinkingLevel && thinkingLevel !== 'auto') adapterConfig.effort = thinkingLevel;
     adapterConfig.dangerouslySkipPermissions = true;
   }
 

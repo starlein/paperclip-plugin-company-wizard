@@ -6,9 +6,5 @@
   "tagline": "Sets the vision, delegates the work, unblocks the team",
   "paperclipRole": "ceo",
   "description": "Strategic leader. Sets goals, delegates work, manages approvals.",
-  "adapter": {
-    "model": "gpt-5.6-sol",
-    "effort": "high",
-    "thinkingLevel": "high"
-  }
+  "adapter": {}
 }

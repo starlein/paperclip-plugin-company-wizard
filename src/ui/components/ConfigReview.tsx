@@ -9,6 +9,7 @@ import { useWizardAction as usePluginAction } from '../use-wizard-action';
 import type { ModuleData, RoleData } from '../types';
 import type { WizardProject } from '../context/WizardContext';
 import { Badge } from './ui/badge';
+import { AgentSetup } from './AgentSetup';
 import { Card, CardContent } from './ui/card';
 import { cn, toPascalCase } from '../lib/utils';
 import {
@@ -391,7 +392,7 @@ function RoleDetail({ role }: { role: RoleData }) {
         {adapter?.model && (
           <span className="flex items-center gap-1">
             <Wrench className="h-3 w-3" />
-            {adapter.model}
+            Template metadata: {adapter.model}
             {adapter.effort && ` (${adapter.effort})`}
           </span>
         )}
@@ -734,6 +735,7 @@ export function ConfigReview() {
 
   return (
     <>
+      <AgentSetup />
       <Card>
         <CardContent className="divide-y p-0">
           {/* Company name — editable when creating; read-only (the existing company) on update */}

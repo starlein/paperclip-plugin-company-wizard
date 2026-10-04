@@ -827,7 +827,7 @@ describe('company-wizard', () => {
         async renameCompanySkill(_companyId: string, _skillId: string, body: unknown) {
           calls.push(['rename', body]);
           return renameSupported
-            ? { skill: { key: 'canonical/ci-cd-engineer', slug: 'ci-cd-engineer' } }
+            ? { skill: { key: 'company/company-1/ci-cd-engineer', slug: 'ci-cd-engineer' } }
             : null;
         },
         async updateCompanySkill(_companyId: string, _skillId: string, body: unknown) {
@@ -850,9 +850,7 @@ describe('company-wizard', () => {
         () => undefined,
       );
 
-      expect(keys.get('ci-cd-engineer')).toBe(
-        renameSupported ? 'canonical/ci-cd-engineer' : 'company/company-1/ci-cd-engineer',
-      );
+      expect(keys.get('ci-cd-engineer')).toBe('company/company-1/ci-cd-engineer');
       expect(calls).toEqual([
         [
           'file',

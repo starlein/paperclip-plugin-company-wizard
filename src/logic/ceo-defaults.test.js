@@ -14,10 +14,20 @@ import {
 } from './ceo-defaults.js';
 
 describe('CEO provisioning defaults', () => {
-  it('defaults new CEOs to Codex GPT-5.6 Sol high thinking with one heartbeat run', () => {
+  it('omits unselected models and reasoning for every supported adapter', () => {
+    for (const build of [buildCeoAdapterConfig, buildWorkerAdapterConfig]) {
+      for (const type of ['codex_local', 'claude_local', 'custom']) {
+        const config = build({ userCeoAdapter: { type, model: '  ' }, companyDir: '/company' });
+        for (const key of ['model', 'thinkingLevel', 'modelReasoningEffort', 'effort']) {
+          assert.ok(!Object.hasOwn(config, key), `${build.name} ${type} must omit ${key}`);
+        }
+      }
+    }
+  });
+  it('defaults new CEOs to host model and reasoning with one heartbeat run', () => {
     assert.equal(DEFAULT_CEO_ADAPTER_TYPE, 'codex_local');
-    assert.equal(DEFAULT_CEO_MODEL, 'gpt-5.6-sol');
-    assert.equal(DEFAULT_CEO_THINKING_LEVEL, 'high');
+    assert.equal(DEFAULT_CEO_MODEL, '');
+    assert.equal(DEFAULT_CEO_THINKING_LEVEL, 'auto');
     assert.equal(DEFAULT_CEO_MAX_CONCURRENT_RUNS, 1);
 
     assert.equal(normalizeCeoAdapterType({}), 'codex_local');
@@ -25,9 +35,6 @@ describe('CEO provisioning defaults', () => {
       buildCeoAdapterConfig({ userCeoAdapter: {}, companyDir: '/paperclip/companies/Dialer' }),
       {
         cwd: '/paperclip/companies/Dialer',
-        model: 'gpt-5.6-sol',
-        modelReasoningEffort: 'high',
-        thinkingLevel: 'high',
         dangerouslyBypassApprovalsAndSandbox: true,
       },
     );
@@ -56,7 +63,6 @@ describe('CEO provisioning defaults', () => {
       }),
       {
         cwd: '/paperclip/companies/Dialer',
-        model: 'gpt-5.6-sol',
         dangerouslyBypassApprovalsAndSandbox: true,
       },
     );
@@ -71,7 +77,6 @@ describe('CEO provisioning defaults', () => {
       }),
       {
         cwd: '/paperclip/companies/Dialer',
-        model: 'gpt-5.6-sol',
         modelReasoningEffort: 'high',
         thinkingLevel: 'high',
         dangerouslyBypassApprovalsAndSandbox: true,
@@ -90,7 +95,6 @@ describe('CEO provisioning defaults', () => {
       }),
       {
         cwd: '/paperclip/companies/Dialer',
-        model: 'gpt-5.6-sol',
         dangerouslyBypassApprovalsAndSandbox: true,
       },
     );
@@ -105,7 +109,6 @@ describe('CEO provisioning defaults', () => {
       }),
       {
         cwd: '/paperclip/companies/Dialer',
-        model: 'gpt-5.6-sol',
         modelReasoningEffort: 'high',
         thinkingLevel: 'high',
         dangerouslyBypassApprovalsAndSandbox: true,
@@ -141,6 +144,29 @@ describe('CEO provisioning defaults', () => {
       assert.equal(config.engine, 'cli');
     });
   }
+
+  it('preserves explicit models, functional overrides and Claude thinking without pinning defaults', () => {
+    for (const build of [buildCeoAdapterConfig, buildWorkerAdapterConfig]) {
+      const config = build({
+        userCeoAdapter: { type: 'claude_local', model: 'operator-model', engine: 'acp' },
+        roleAdapterOverrides: { model: 'custom-model', effort: 'low', chrome: true },
+      });
+      assert.equal(config.model, 'operator-model');
+      assert.equal(config.engine, 'acp');
+      assert.equal(config.effort, 'low');
+      assert.equal(config.chrome, true);
+      assert.ok(!Object.hasOwn(config, 'modelReasoningEffort'));
+      assert.equal(
+        build({ roleAdapterOverrides: { model: 'custom-model' } }).model,
+        'custom-model',
+      );
+    }
+    assert.equal(
+      buildCeoAdapterConfig({ userCeoAdapter: { type: 'claude_local', thinkingLevel: 'high' } })
+        .effort,
+      'high',
+    );
+  });
 
   it('preserves explicit CEO adapter overrides while keeping Codex safety defaults', () => {
     assert.deepEqual(

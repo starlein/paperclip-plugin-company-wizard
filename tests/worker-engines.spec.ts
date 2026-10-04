@@ -53,7 +53,11 @@ describe('existing agent engine compatibility', () => {
           existingCompanyId: 'existing',
           selectedRoles: ['engineer'],
           selectedModules: [],
-          ceoAdapter: { type: 'codex_local', ...(engine ? { engine } : {}) },
+          ceoAdapter: {
+            type: 'codex_local',
+            updateExistingAgents: true,
+            ...(engine ? { engine } : {}),
+          },
         });
         expect(patches).toHaveLength(2);
         for (const patch of patches) expect(patch.adapterConfig.engine).toBe(engine || 'cli');

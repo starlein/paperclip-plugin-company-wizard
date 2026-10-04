@@ -8,13 +8,6 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { join } from 'node:path';
-import {
-  DEFAULT_CEO_ADAPTER_TYPE,
-  DEFAULT_CEO_MODEL,
-  DEFAULT_CEO_THINKING_LEVEL,
-  DEFAULT_CEO_MAX_CONCURRENT_RUNS,
-  DEFAULT_CEO_HEARTBEAT_INTERVAL_SEC,
-} from './ceo-defaults.js';
 import { skillSlug, humanizeSkillName, buildCompanySkillSet } from './resolve.js';
 import { routineConcurrencyPolicy, routineTitle, routineUsesProjectWorkspace } from './routines.js';
 import {
@@ -862,58 +855,6 @@ export async function assembleCompany({
     return apiRole || role;
   };
 
-  const resolveRoleAdapterConfig = (role, roleMeta, instructionsFilePath) => {
-    const adapter = roleMeta && typeof roleMeta.adapter === 'object' ? roleMeta.adapter : {};
-    const adapterType =
-      typeof adapter.type === 'string' && adapter.type.trim()
-        ? adapter.type.trim()
-        : DEFAULT_CEO_ADAPTER_TYPE;
-    const model =
-      adapterType === DEFAULT_CEO_ADAPTER_TYPE
-        ? DEFAULT_CEO_MODEL
-        : typeof adapter.model === 'string' && adapter.model.trim()
-          ? adapter.model.trim()
-          : DEFAULT_CEO_MODEL;
-    const thinkingLevel =
-      typeof adapter.thinkingLevel === 'string' && adapter.thinkingLevel.trim()
-        ? adapter.thinkingLevel.trim()
-        : typeof adapter.modelReasoningEffort === 'string' && adapter.modelReasoningEffort.trim()
-          ? adapter.modelReasoningEffort.trim()
-          : typeof adapter.effort === 'string' && adapter.effort.trim()
-            ? adapter.effort.trim()
-            : DEFAULT_CEO_THINKING_LEVEL;
-
-    const adapterConfig = {
-      cwd: companyDir,
-      model,
-      instructionsFilePath,
-    };
-
-    if (adapter && typeof adapter === 'object') {
-      for (const [key, value] of Object.entries(adapter)) {
-        if (['type', 'model', 'effort', 'thinkingLevel', 'modelReasoningEffort'].includes(key)) {
-          continue;
-        }
-        adapterConfig[key] = value;
-      }
-    }
-
-    if (adapterType === DEFAULT_CEO_ADAPTER_TYPE) {
-      // Codex's `reasoning.effort` only accepts none|minimal|low|medium|high|xhigh —
-      // it rejects 'auto' with a 400. 'auto' means "let the model decide", which for
-      // Codex is expressed by *omitting* the param entirely (Codex picks its own
-      // effort). Only set the effort when we have a concrete level the API accepts.
-      const codexEffort = thinkingLevel && thinkingLevel !== 'auto' ? thinkingLevel : '';
-      if (codexEffort) {
-        adapterConfig.modelReasoningEffort = codexEffort;
-        adapterConfig.thinkingLevel = codexEffort;
-      }
-      adapterConfig.dangerouslyBypassApprovalsAndSandbox = true;
-    }
-
-    return { adapterType, adapterConfig };
-  };
-
   const defaultLabelByName = new Map(
     DEFAULT_BOOTSTRAP_LABELS.map((label) => [label.name, { ...label }]),
   );
@@ -1412,6 +1353,7 @@ export async function assembleCompany({
   // --- Agents ---
   bootstrap += `## Agents\n\n`;
   bootstrap += `> **The Company Wizard has already created all agents listed below**, each with its full instructions bundle. Do NOT create new agents. Match them by \`metadata.templateRole\` when assigning issues; only re-create one if it is genuinely missing.\n\n`;
+  bootstrap += `> **Preserve existing agents** and their actual wizard-provisioned adapter, model, reasoning, engine, and runtime settings. These role descriptions are not runtime configuration. Do not reconfigure agents from role metadata. For a genuinely missing agent, use operator-approved wizard settings or the host default; omit unselected model and reasoning parameters.\n\n`;
   for (const role of rolesList) {
     const roleMeta = roleMetaByName.get(role) || {};
     const roleTitle = typeof roleMeta.title === 'string' ? roleMeta.title : undefined;
@@ -1419,12 +1361,6 @@ export async function assembleCompany({
       typeof roleMeta.description === 'string' ? roleMeta.description : undefined;
     const instructionsFilePath = `${companyDir}/agents/${role}/AGENTS.md`;
     const apiRole = normalizePaperclipRole(role, roleMeta);
-    const { adapterType, adapterConfig } = resolveRoleAdapterConfig(
-      role,
-      roleMeta,
-      instructionsFilePath,
-    );
-
     bootstrap += `### ${formatRole(role)}\n\n`;
     bootstrap += renderMeta([
       ['role', apiRole],
@@ -1432,20 +1368,7 @@ export async function assembleCompany({
       ['title', roleTitle],
       ['capabilities', roleCapabilities],
       ['metadata.description', roleCapabilities],
-      ['adapterType', adapterType],
-      ['adapterConfig.cwd', adapterConfig.cwd],
-      ['adapterConfig.model', adapterConfig.model],
-      ['adapterConfig.modelReasoningEffort', adapterConfig.modelReasoningEffort],
-      ['adapterConfig.thinkingLevel', adapterConfig.thinkingLevel],
-      [
-        'adapterConfig.dangerouslyBypassApprovalsAndSandbox',
-        adapterConfig.dangerouslyBypassApprovalsAndSandbox,
-      ],
-      ['adapterConfig.instructionsFilePath', adapterConfig.instructionsFilePath],
       ['instructionsFilePath', instructionsFilePath],
-      ['runtimeConfig.heartbeat.enabled', 'true'],
-      ['runtimeConfig.heartbeat.intervalSec', String(DEFAULT_CEO_HEARTBEAT_INTERVAL_SEC)],
-      ['runtimeConfig.heartbeat.maxConcurrentRuns', String(DEFAULT_CEO_MAX_CONCURRENT_RUNS)],
     ]);
   }
 

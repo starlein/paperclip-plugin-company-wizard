@@ -83,7 +83,23 @@ describe('company-scoped wizard manifest persistence', () => {
           '/api/companies/company-a/routines': [],
           '/api/instance/settings/experimental': { enableIsolatedWorkspaces: false },
           '/api/companies/company-a/agents': [
-            { id: 'ceo-id', role: 'ceo', status: 'idle', metadata: { templateRole: 'ceo' } },
+            {
+              id: 'ceo-id',
+              role: 'ceo',
+              status: 'idle',
+              metadata: { templateRole: 'ceo' },
+              adapterConfig: {
+                paperclipSkillSync: {
+                  desiredSkills: [
+                    'manual/skill',
+                    {
+                      key: 'company/company-a/pinned',
+                      versionId: '11111111-1111-4111-8111-111111111111',
+                    },
+                  ],
+                },
+              },
+            },
             {
               id: 'eng-id',
               role: 'engineer',
@@ -113,7 +129,11 @@ describe('company-scoped wizard manifest persistence', () => {
     await plugin.definition.setup(harness.ctx);
     const result = await harness.performAction<{
       error?: string;
-      diff: { existingManifest: WizardManifest; agents: Array<{ role: string; action: string }> };
+      diff: {
+        existingManifest: WizardManifest;
+        agents: Array<{ role: string; action: string }>;
+        desiredSkillsPreserved: Array<{ skills: string[] }>;
+      };
     }>('preview-company-update', {
       existingCompanyId: 'company-a',
       companyName: 'Existing',
@@ -122,6 +142,10 @@ describe('company-scoped wizard manifest persistence', () => {
 
     expect(result.error).toBeUndefined();
     expect(result.diff.existingManifest).toEqual(previous);
+    expect(result.diff.desiredSkillsPreserved[0].skills).toEqual([
+      'manual/skill',
+      'company/company-a/pinned (pinned: 11111111-1111-4111-8111-111111111111)',
+    ]);
     expect(
       result.diff.agents.filter((agent) => agent.action === 'retire').map((agent) => agent.role),
     ).toEqual(['engineer']);

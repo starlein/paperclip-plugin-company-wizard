@@ -17,7 +17,7 @@
 
 > **Fork:** This is a community-maintained fork of [yesterday-AI/paperclip-plugin-company-wizard](https://github.com/yesterday-AI/paperclip-plugin-company-wizard), updated for Paperclip plugin API v1 and the current published SDK with substantial bug fixes. End-to-end company setup is governed through current Paperclip workflows as of v0.5.0.
 
-**Version 0.8.0:** completes the Paperclip v2026.1001.0 template audit with resolved capability fallbacks, governed blocker/review/hiring handoffs, safer releases, verified persona enrichment and non-Git workspaces. Opt-in browser authorization from 0.7.0 remains supported without storing board login/password. See the [changelog](CHANGELOG.md) and [compatibility notes](docs/PAPERCLIP-COMPATIBILITY.md).
+**Version 0.8.1:** fixes existing-company skill collisions and keeps provisioning running with visible warnings after individual skill failures. Existing agent settings and manually selected skills are preserved by default. Model-neutral defaults and optional Agent setup controls replace fixed model suggestions. The 0.8.0 template audit and opt-in password-free browser authorization remain supported. See the [changelog](CHANGELOG.md) and [compatibility notes](docs/PAPERCLIP-COMPATIBILITY.md).
 
 **Plain folder (no Git):** explicit `workspace.setupCommand: null` disables Git initialization and preserves an existing local `cwd`; omitted setup retains the legacy new-Git default. This does not change provider trust checks or guarantee a particular adapter can run outside a repository. See the completed [template audit](docs/TEMPLATE-AUDIT.md). Existing companies are not migrated automatically.
 
@@ -26,6 +26,8 @@
 Requires Node **24.11+**, matching the current Paperclip SDK/shared runtime requirement.
 
 **Update Company:** select an existing company to refresh its agent instructions, documents, skills, routines, and live project execution policies. Preview shows policy changes; existing workspace paths, explicit operator policies, and goal links are preserved. Partial failures never delete an existing company.
+
+**Agent setup:** choose an adapter and optionally enter a supported model identifier in setup or configuration review (manual, AI and existing-company paths). Leave the model blank for the host adapter default; bundled templates no longer pin a model or reasoning level. Existing agents keep their adapter/model/runtime settings unless **Apply wizard settings to existing agents** is checked. This opt-in applies the selected adapter/model and wizard runtime settings; a blank model then means the adapter default—not the agent's previous model. A blank runtime cwd preserves an existing cwd. Verified new skill keys are added without removing manual selections or version pins. Review any completion warnings before starting bootstrap, and avoid concurrent agent-settings edits during provisioning. The AI wizard's own generation model is separate and unchanged.
 
 <details>
 <summary><strong>What changed vs. upstream</strong></summary>

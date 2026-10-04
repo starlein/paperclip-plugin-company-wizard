@@ -11,7 +11,5 @@
     "Takes over user-testing with playtesting focus (engagement, fun, difficulty)",
     "Adds gameplay review pass when pr-review module is active"
   ],
-  "adapter": {
-    "thinkingLevel": "auto"
-  }
+  "adapter": {}
 }

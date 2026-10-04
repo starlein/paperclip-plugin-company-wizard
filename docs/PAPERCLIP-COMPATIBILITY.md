@@ -1,4 +1,14 @@
-# Paperclip compatibility — Company Wizard 0.8.0
+# Paperclip compatibility — Company Wizard 0.8.1
+
+## Existing-company follow-up (0.8.1)
+
+The exact `v2026.1001.0` skill-list implementation (`server/src/services/company-skills.ts`, `toCompanySkillListItem`) omits `metadata` and `markdown`. Earlier mocks supplied full rows and missed this mismatch: requiring `metadata.sourceKind` caused duplicate creation and HTTP 409 for a genuinely existing managed skill. Reconciliation now uses the canonical company key and public `sourceType`/`editable` fields, preserves read-only/forked records, and performs bounded readback on collisions and rename identity changes. Existing-company inventory or per-skill failures warn and continue; strict new-company failures remain fatal. Existing manual skill selections are retained, and unresolved new skill references are not invented.
+
+Existing agent adapter/model/runtime settings now remain untouched unless the operator explicitly opts in through shared Agent setup controls. Blank model/reasoning values defer to the adapter rather than selecting a pinned provider model. Bundled role model preferences and generated bootstrap runtime guesses have been removed; explicit operator selections and all existing authentication modes remain supported. The SDK/shared peer floor is unchanged.
+
+The generic agent PATCH route ignores top-level `desiredSkills` and shallow-merges same-adapter configuration. Existing assignments now use `POST /agents/:id/skills/sync` with explicit additive mode and only missing keys, preserving manual version pins. Opt-in blank models/reasoning use explicit null resets, not an environment/skill config replacement. A blank cwd preserves an existing runtime cwd. Avoid concurrent operator edits during provisioning; the host offers no atomic compare-and-swap for skill selection.
+
+All 388 plugin and 232 logic/API tests pass, as do TypeScript checks against SDK/shared `2026.831.1` and `2026.1001.0`. The Chromium fixture uses the built real worker, exact-tag schemas and extracted host skill-selection helpers. It verifies persisted selections/pins, same-adapter blank-model reset, continued bootstrap after both skill HTTP 409 and sync HTTP 403, and readable pinned-version previews. Layout checks passed at 375, 768 and 1440 px. These are fixture/source-contract checks, not a live company migration or provider entitlement test. Install/reload the worker/UI package before retrying a reviewed existing-company update.
 
 ## Template audit completion (0.8.0)
 

@@ -11,8 +11,5 @@
     "Takes over monitoring module tasks from Engineer",
     "Adds infrastructure review pass (with pr-review module)"
   ],
-  "adapter": {
-    "model": "claude-sonnet-4-6",
-    "thinkingLevel": "auto"
-  }
+  "adapter": {}
 }

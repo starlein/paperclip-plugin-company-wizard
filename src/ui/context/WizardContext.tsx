@@ -87,6 +87,7 @@ export interface CeoAdapter {
   type: string;
   cwd: string;
   model: string;
+  updateExistingAgents?: boolean;
 }
 
 export interface ProvisionResult {
@@ -98,6 +99,7 @@ export interface ProvisionResult {
   issueIds: string[];
   pendingApprovalIds?: string[];
   bootstrapIssueId?: string;
+  warnings?: string[];
 }
 
 export interface WizardState {
@@ -252,9 +254,8 @@ const initialState: WizardState = {
   goals: [],
   projects: [],
   issues: [],
-  // model is an optional override; empty means "use the adapter-appropriate default"
-  // (gpt-5.6 for Codex, claude-opus-4-8 for Claude) resolved in buildCeoAdapterConfig.
-  ceoAdapter: { type: 'codex_local', cwd: '', model: '' },
+  // Blank model delegates selection to the host adapter, not a wizard model list.
+  ceoAdapter: { type: 'codex_local', cwd: '', model: '', updateExistingAgents: false },
   existingCompanyId: '',
   presetName: '',
   selectedModules: [],

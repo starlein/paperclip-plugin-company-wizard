@@ -11,8 +11,5 @@
     "Adds security review pass when pr-review module is active",
     "Contributes threat model to architecture-plan"
   ],
-  "adapter": {
-    "model": "claude-sonnet-4-6",
-    "thinkingLevel": "auto"
-  }
+  "adapter": {}
 }

@@ -1594,11 +1594,9 @@ describe('assembleCompany', () => {
     assert.ok(engineerBlock.includes('**role**: engineer'));
     assert.ok(engineerBlock.includes('**title**: Software Engineer'));
     assert.ok(engineerBlock.includes('**capabilities**: Implements features and fixes bugs.'));
-    assert.ok(engineerBlock.includes('**adapterType**: codex_local'));
-    assert.ok(engineerBlock.includes('**adapterConfig.cwd**:'));
-    assert.ok(engineerBlock.includes('**adapterConfig.model**: gpt-5.6-sol'));
-    assert.ok(engineerBlock.includes('**adapterConfig.modelReasoningEffort**: high'));
-    assert.ok(engineerBlock.includes('**runtimeConfig.heartbeat.maxConcurrentRuns**: 1'));
+    assert.ok(!engineerBlock.includes('**adapterType**'));
+    assert.ok(!engineerBlock.includes('**adapterConfig.model**'));
+    assert.ok(bootstrap.includes('Preserve existing agents'));
   });
 
   it('fires onProgress callback for each step', async () => {

@@ -4,6 +4,28 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.1] - 2026-10-04
+
+### Fixed
+
+- Recognize existing Company Skills from Paperclip's public list summaries, which omit `metadata.sourceKind`. Match the exact company key, not a catalog/imported skill with the same slug. Re-read on create conflicts and verify identities after rename; never use an unverified bare slug as an agent skill reference.
+- Existing-company skill inventory/create/update failures now produce visible warnings and allow later skills, agents and bootstrap provisioning to continue. No speculative creates follow an unreadable inventory. Read-only/forked skills remain unchanged; new-company provisioning retains strict error handling.
+- Preserve existing agent adapter/model/runtime settings by default, along with manually selected skills. Partial skill failures never send an empty replacement for unknown existing assignments. Generated bootstrap instructions no longer reconstruct stale adapter settings from role metadata.
+- Persist existing-agent skill assignments through the dedicated additive skill-sync endpoint, not the generic PATCH field that the host ignores. Add only missing keys so manually pinned `{key, versionId}` selections survive; display pinned references clearly in the preview. Sync failures and host warnings remain visible and nonfatal.
+- Explicitly reset omitted model/reasoning overrides when applying settings to existing agents: same-adapter PATCH otherwise retains the old values through shallow merging. Do not replace/replay environment or skill configuration snapshots. A blank runtime cwd preserves an existing cwd.
+
+### Agent setup
+
+- Add shared Agent setup controls to manual setup and configuration review, including the AI and existing-company paths. A free-form optional model replaces fixed model suggestions; blank uses the host adapter default. Existing agents change only when **Apply wizard settings to existing agents** is explicitly checked.
+- Remove pinned model/reasoning preferences from all bundled role metadata and CEO/worker defaults. Explicit operator model, reasoning and engine selections remain supported; adapter defaults and functional role metadata remain available.
+- Show partial completion warnings in the progress log and final result before bootstrap, instead of an unconditional green success.
+
+### Compatibility and upgrade
+
+- SDK/shared pins and peer floor remain `2026.831.1`; the public Company Skill contract was checked against exact Paperclip `v2026.1001.0`. Existing authentication modes are unchanged.
+- Update the plugin package and reload; refreshing templates alone cannot apply worker/UI fixes. Installing this version does not repair a partially provisioned company or change live agent settings automatically. Review the existing company before applying an update.
+- Verification: full plugin and logic/API suites, typecheck/build, and a Chromium fixture using the real worker with simulated skill conflicts, preserved manual assignments and both agent-settings modes. No live company or provider-backed run was modified.
+
 ## [0.8.0] - 2026-10-04
 
 ### Template compatibility and non-Git workspaces

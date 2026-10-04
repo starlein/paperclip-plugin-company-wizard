@@ -60,7 +60,12 @@ export function StepProvision() {
           return;
         }
         dispatch({ type: 'ADD_PROVISION_LOG', line: '' });
-        dispatch({ type: 'ADD_PROVISION_LOG', line: 'All done!' });
+        dispatch({
+          type: 'ADD_PROVISION_LOG',
+          line: result?.warnings?.length
+            ? 'Completed with warnings — review the result before starting bootstrap.'
+            : 'All done!',
+        });
         dispatch({ type: 'SET_PROVISION_RESULT', result });
         setTimeout(() => dispatch({ type: 'GO_TO', step: 'done' }), 2000);
       })
@@ -79,6 +84,7 @@ export function StepProvision() {
   }, []);
 
   const isDone = !state.provisioning && state.provisionResult;
+  const hasWarnings = (state.provisionResult?.warnings?.length ?? 0) > 0;
   const showConfigHint = state.error && isConfigError(state.error);
 
   return (
@@ -86,11 +92,20 @@ export function StepProvision() {
       <div className="space-y-2">
         <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2">
           {state.provisioning && <Loader2 className="h-5 w-5 animate-spin" />}
-          {state.provisioning ? 'Provisioning...' : state.error ? 'Error' : 'Provisioned'}
+          {state.provisioning
+            ? 'Provisioning...'
+            : state.error
+              ? 'Error'
+              : hasWarnings
+                ? 'Provisioned with warnings'
+                : 'Provisioned'}
         </h2>
         {isDone && (
           <p className="text-sm text-muted-foreground">
-            Company created. CEO will bootstrap the team on first heartbeat.
+            {state.existingCompanyId ? 'Existing company updated.' : 'Company created.'}{' '}
+            {hasWarnings
+              ? 'Review unchanged or skipped skills before starting bootstrap.'
+              : 'Start bootstrap when the team and approvals are ready.'}
           </p>
         )}
       </div>

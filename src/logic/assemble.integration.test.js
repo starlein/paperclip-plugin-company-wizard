@@ -31,6 +31,41 @@ describe('assembleCompany integration (real templates)', () => {
     await rm(tmpDir, { recursive: true, force: true });
   });
 
+  it('keeps every official role and generated bootstrap model-neutral', async () => {
+    const roles = (await readdir(join(REAL_TEMPLATES_DIR, 'roles'), { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+    const result = await assembleCompany({
+      companyName: 'Neutral',
+      existingCompanyId: 'existing',
+      moduleNames: [],
+      extraRoleNames: roles,
+      outputDir,
+      templatesDir: REAL_TEMPLATES_DIR,
+    });
+    const bootstrap = await readFile(join(result.companyDir, 'BOOTSTRAP.md'), 'utf-8');
+    assert.doesNotMatch(
+      bootstrap,
+      /gpt-\d|claude-(?:opus|sonnet|haiku)|\*\*adapterType\*\*|\*\*adapterConfig\.model/,
+    );
+    assert.match(bootstrap, /Preserve existing agents/);
+    assert.match(bootstrap, /host default/);
+    for (const role of roles) {
+      const meta = JSON.parse(
+        await readFile(join(REAL_TEMPLATES_DIR, 'roles', role, 'role.meta.json'), 'utf-8'),
+      );
+      for (const key of [
+        'model',
+        'effort',
+        'thinkingLevel',
+        'reasoningEffort',
+        'modelReasoningEffort',
+      ]) {
+        assert.ok(!Object.hasOwn(meta.adapter || {}, key), `${role} pins ${key}`);
+      }
+    }
+  });
+
   it('keeps execution workspaces reusable when issues complete', async () => {
     const roleEntries = await readdir(join(REAL_TEMPLATES_DIR, 'roles'), { withFileTypes: true });
     for (const roleEntry of roleEntries.filter((entry) => entry.isDirectory())) {

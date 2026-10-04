@@ -11,9 +11,5 @@
     "Takes over technical unblocking from CEO (CEO becomes fallback)",
     "Adds architecture review pass when pr-review module is active"
   ],
-  "adapter": {
-    "model": "claude-opus-4-8",
-    "effort": "high",
-    "thinkingLevel": "auto"
-  }
+  "adapter": {}
 }
