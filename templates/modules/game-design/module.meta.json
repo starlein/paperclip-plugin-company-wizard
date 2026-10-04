@@ -16,7 +16,8 @@
       "owners": [
         "level-designer",
         "game-designer",
-        "engineer"
+        "engineer",
+        "ceo"
       ],
       "fallbackSkill": "level-design.fallback"
     },
@@ -25,7 +26,8 @@
       "owners": [
         "audio-designer",
         "game-designer",
-        "engineer"
+        "engineer",
+        "ceo"
       ],
       "fallbackSkill": "audio-design.fallback"
     }

@@ -25,7 +25,7 @@
   "routines": [
     {
       "title": "Release readiness check",
-      "description": "Check for unreleased changes and cut a release if warranted.",
+      "description": "Assess unreleased changes on the configured release base. Execute only within documented authorization and the repository release workflow; CEO owners coordinate documentation, eligible ownership, governed hiring, or escalation without executing releases.",
       "assignTo": "capability:release-process",
       "schedule": "0 9 * * 1",
       "concurrencyPolicy": "skip_if_active"

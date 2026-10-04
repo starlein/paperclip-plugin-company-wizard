@@ -824,6 +824,11 @@ export function prepareLocalProjectWorkspace(
 
   fs.mkdirSync(resolvedCwd, { recursive: true });
 
+  if (workspace.setupCommand === null) {
+    log?.(`✓ Local workspace ready without Git initialization: ${resolvedCwd}`);
+    return;
+  }
+
   const gitDir = path.join(resolvedCwd, '.git');
   if (fs.existsSync(gitDir)) {
     log?.(`✓ Project workspace ready: ${resolvedCwd}`);
@@ -2243,7 +2248,6 @@ const plugin = definePlugin({
       try {
         const cfg = ((await ctx.config.get()) ?? {}) as Record<string, string>;
         const paperclipEmail = cfg.paperclipEmail || '';
-        const enableIsolatedWorktrees = await resolveEnableIsolatedWorkspacesFromInstance(cfg, log);
         const enableEnrichedPersonas = true;
 
         const companyName = typeof params.companyName === 'string' ? params.companyName.trim() : '';
@@ -2252,6 +2256,8 @@ const plugin = definePlugin({
             ? params.existingCompanyId.trim()
             : '';
         if (!companyName) return { error: 'companyName is required', logs };
+
+        const enableIsolatedWorktrees = await resolveEnableIsolatedWorkspacesFromInstance(cfg, log);
 
         // Official templates are pinned to this installed release. Refresh only
         // an explicitly configured remote source; local template paths are owned

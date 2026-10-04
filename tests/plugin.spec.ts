@@ -46,14 +46,20 @@ describe('company-wizard', () => {
     }
   });
 
-  it('registers start-provision action', async () => {
-    const harness = createTestHarness({ manifest, capabilities: manifest.capabilities });
-    await plugin.definition.setup(harness.ctx);
+  it.each([{}, { companyName: '' }, { companyName: '   ' }])(
+    'rejects a missing company name without network access: %j',
+    async (params) => {
+      const fetchMock = vi.fn().mockRejectedValue(new Error('network must not be consulted'));
+      vi.stubGlobal('fetch', fetchMock);
+      const harness = createTestHarness({ manifest, capabilities: manifest.capabilities });
+      await plugin.definition.setup(harness.ctx);
 
-    // Should return graceful error without a companyName (no longer throws)
-    const result = (await harness.performAction('start-provision', {})) as { error?: string };
-    expect(result.error).toBe('companyName is required');
-  });
+      // Should return graceful error without a companyName (no longer throws)
+      const result = (await harness.performAction('start-provision', params)) as { error?: string };
+      expect(result.error).toBe('companyName is required');
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
 
   it('reports available plugin updates', async () => {
     const [major, minor, patch] = manifest.version

@@ -4,16 +4,16 @@ Owns the product backlog lifecycle — from goal decomposition to a steady pipel
 
 ## What it adds
 
-- **Backlog health skill**: Monitors unassigned issue count and generates new issues from the roadmap when the pipeline runs low.
+- **Backlog health skill**: Reviews backlog readiness and ownership during assigned routines/planning issues, generating concrete roadmap work when needed.
 - **Process doc**: `backlog-process.md` — shared workflow guide for how issues flow from goals to agents.
 
 ## How it works
 
-On every heartbeat, the backlog owner checks the issue pipeline:
-1. Count unassigned issues with status `todo`
-2. If count < threshold (default: 3), decompose the next chunk of work from the goal/roadmap into concrete issues
-3. New issues are created with proper `projectId`, `goalId`, priority, and acceptance criteria. For top-level backlog issues, never omit `projectId`.
-4. Issues are left unassigned for the auto-assign module (or manual assignment)
+Only on an assigned backlog-grooming routine or backlog-planning issue, the backlog owner checks the pipeline; this is not a normal-heartbeat background scan:
+1. Checkout the assigned run and inspect goals, roadmap, existing issues, and delivery ownership through Paperclip APIs; avoid duplicate work.
+2. When the next work is unclear, decompose the next 1–3 actionable issues. Open PR counts guide prioritization but do not freeze unrelated acceptance-ready work.
+3. New work issues include `projectId`, `goalId` when known, priority, labels, acceptance criteria, and explicit workspace intent. The grooming routine itself stays project-detached and does not use a repository worktree.
+4. Assign acceptance-ready work to available owners. Use `blockedByIssueIds` only for real dependencies, record created/assigned ids and rationale, then complete the routine run.
 
 ## Ownership
 

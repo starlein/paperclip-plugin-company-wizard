@@ -51,6 +51,7 @@ import {
   GitBranch,
   Github,
   PlusCircle,
+  Folder,
 } from 'lucide-react';
 
 // --- Shared helpers ---
@@ -166,7 +167,7 @@ function RepositoryEdit({
 
   const save = () => {
     if (externalRepoMissing) return;
-    onSave(repositoryProjectFields(mode, repoUrl, repoRef));
+    onSave(repositoryProjectFields(mode, repoUrl, repoRef, project));
   };
 
   const modeButton = (value: RepositoryMode, Icon: React.ElementType, label: string) => (
@@ -174,7 +175,7 @@ function RepositoryEdit({
       type="button"
       onClick={() => chooseMode(value)}
       className={cn(
-        'flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors',
+        'flex min-h-11 items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors',
         mode === value
           ? 'border-foreground/30 bg-accent text-foreground'
           : 'border-border text-muted-foreground hover:bg-accent/50',
@@ -190,7 +191,8 @@ function RepositoryEdit({
 
   return (
     <div className="space-y-2.5 py-1">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        {modeButton('directory', Folder, 'Plain folder (no Git)')}
         {modeButton('new', PlusCircle, 'New repository')}
         {modeButton('external', Github, 'Existing repository')}
       </div>
@@ -222,6 +224,10 @@ function RepositoryEdit({
             Do not paste tokens or credentials. Configure provider access as company secrets.
           </p>
         </div>
+      ) : mode === 'directory' ? (
+        <p className="text-xs text-muted-foreground">
+          No Git initialization. {project?.workspace?.cwd || 'Use a local project folder.'}
+        </p>
       ) : (
         <input
           className={inputClass}
@@ -241,14 +247,14 @@ function RepositoryEdit({
           type="button"
           onClick={save}
           disabled={externalRepoMissing}
-          className="flex items-center gap-1 text-xs px-2 py-1 rounded border hover:bg-accent disabled:opacity-50"
+          className="flex min-h-11 items-center gap-1 text-xs px-2 py-1 rounded border hover:bg-accent disabled:opacity-50"
         >
           <Check className="h-3 w-3" /> Save
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="flex items-center gap-1 text-xs px-2 py-1 rounded border hover:bg-accent"
+          className="flex min-h-11 items-center gap-1 text-xs px-2 py-1 rounded border hover:bg-accent"
         >
           <X className="h-3 w-3" /> Cancel
         </button>
@@ -665,7 +671,8 @@ export function ConfigReview() {
     primaryProject?.repoRef ||
     '';
   const isExternalRepo = isExternalRepository(primaryProject);
-  const repositoryFingerprint = `${isExternalRepo ? 'external' : 'new'}|${
+  const repositoryMode = getRepositoryMode(primaryProject);
+  const repositoryFingerprint = `${repositoryMode}|${
     primaryWorkspace?.sourceType || primaryProject?.workspaceSourceType || ''
   }|${primaryRepoUrl}|${primaryRepoRef}|${primaryWorkspace?.defaultRef || ''}|${
     primaryWorkspace?.setupCommand || ''
@@ -801,7 +808,7 @@ export function ConfigReview() {
             <div className="px-4">
               <SummaryRow
                 icon={GitBranch}
-                label="Repository"
+                label="Workspace"
                 onEdit={() => setEditing('repository')}
               >
                 {editing === 'repository' ? (
@@ -818,7 +825,14 @@ export function ConfigReview() {
                     onClick={() => setEditing('repository')}
                     className="group/repo w-full text-left rounded-md -mx-1 px-1 py-0.5 hover:bg-accent/50 transition-colors"
                   >
-                    {isExternalRepo ? (
+                    {repositoryMode === 'directory' ? (
+                      <>
+                        <span className="font-medium">Plain folder (no Git)</span>
+                        <p className="text-xs text-muted-foreground">
+                          No Git initialization · {primaryWorkspace?.cwd || 'Local workspace'}
+                        </p>
+                      </>
+                    ) : isExternalRepo ? (
                       <>
                         <span className="font-medium">External Git repository</span>
                         <span className="ml-2 text-xs text-muted-foreground underline decoration-dotted underline-offset-2 group-hover/repo:text-foreground">

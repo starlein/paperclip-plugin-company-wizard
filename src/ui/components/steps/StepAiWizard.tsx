@@ -70,7 +70,7 @@ function copyStringField(
   if (typeof value === 'string' && value.trim()) target[key] = value.trim();
 }
 
-function normalizeWorkspaceConfig(value: unknown): ProjectWorkspaceConfig | undefined {
+export function normalizeWorkspaceConfig(value: unknown): ProjectWorkspaceConfig | undefined {
   if (!isPlainObject(value)) return undefined;
   const workspace: Record<string, unknown> = {};
   for (const key of [
@@ -89,6 +89,7 @@ function normalizeWorkspaceConfig(value: unknown): ProjectWorkspaceConfig | unde
   ]) {
     copyStringField(value, workspace, key);
   }
+  if (value.setupCommand === null) workspace.setupCommand = null;
   if (typeof value.isPrimary === 'boolean') workspace.isPrimary = value.isPrimary;
   if (isPlainObject(value.metadata)) workspace.metadata = value.metadata;
   if (isPlainObject(value.runtimeConfig)) workspace.runtimeConfig = value.runtimeConfig;

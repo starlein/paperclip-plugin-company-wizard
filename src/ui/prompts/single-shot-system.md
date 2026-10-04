@@ -4,12 +4,11 @@ Given a natural language description of what the user wants to build, you select
 
 {{CATALOG}}
 
+`lean-delivery` is opt-in: explain its single merge gate and risk-triggered specialist evidence when relevant, and include it only if the user chooses that policy. Open PR count is advisory in either mode, not a numeric assignment cap. Otherwise leave it unselected. When selected, include its `pr-review` and `github-repo` dependencies.
+
 ## How Roles Work
 
 - **Base roles** (marked "always included") are auto-added. You do NOT list them in the JSON.
-- **All other roles** (listed under "Available Extra Roles") are OPTIONAL and must be EXPLICITLY listed in your JSON `roles` array if you want them.
-- **Critically: `engineer` is NOT a base role.** Most software projects need an engineer. If the project involves writing code, building software, or maintaining a repository, you MUST include `engineer` in your `roles` array. The preset does NOT auto-add roles — you must list every non-base role the company needs.
-- When in doubt, include the engineer. A company that builds software without an engineer agent will have no one to write code.
 
 ## Instructions
 
@@ -23,7 +22,7 @@ Given a natural language description of what the user wants to build, you select
 8. Define projects as an array. Most setups need one project linked to all goals. Name and describe the project concretely.
 9. Always decide the repository setup for the primary project:
    - If the user gives an existing GitHub/GitLab/remote Git repo, set `workspace.sourceType: "git_repo"`, include `repoUrl`, and set `repoRef`/`defaultRef` exactly when the user or repository context provides one. Do not force a branch name or remote prefix; Paperclip's project/worktree settings decide the worktree base ref.
-   - If no external repository is given, assume Paperclip should create a fresh local Git repository. Set `workspace.sourceType: "local_path"`, `workspace.defaultRef: "main"` unless the user requested another initial branch, `workspace.setupCommand: "git init -b <defaultRef>"`, and `workspace.isPrimary: true`. Do NOT include an `executionWorkspacePolicy`; the assembler applies isolated worktrees only when Paperclip's experimental isolated-workspaces setting is enabled and a usable project base ref exists.
+   - Choose plain folder, existing local directory reuse, new Git, or external Git according to the Workspace and role contract below.
    - Never include credentials or tokens in repository URLs or project text.
 10. Define an `issues` array of 6-12 CONCRETE, domain-specific initial work items taken straight from the description — the real features, components, and integrations the user actually described, each with a `title`, a `description` with acceptance criteria, a `priority`, and `assignTo` set to a role on the team. These seed the backlog so the project starts in its actual domain instead of only doing generic setup. Issue titles should lead with the core product capability; secondary constraints belong in acceptance criteria or risk notes unless the issue is specifically about that constraint. Do NOT put generic scaffolding here (vision docs, linters, CI, branch protection) — the wizard adds those automatically.
 
@@ -31,3 +30,11 @@ First write one paragraph explaining your reasoning: why this preset, why these 
 
 Then output the JSON (no markdown fences):
 {{CONFIG_FORMAT}}
+
+## Workspace and role contract
+
+- No external URL does not imply a new repository. For non-code work (research, writing, operations), use a plain local folder unless the user requests Git.
+- Plain folder or explicit existing local directory reuse without initialization: use `workspace.sourceType: "local_path"`, preserve the user's explicit `workspace.cwd`, set `workspace.setupCommand: null`, and `workspace.isPrimary: true`. Omit repoUrl, repoRef and defaultRef. Do not invent a cwd if none was provided. Null explicitly disables initialization; omission retains the legacy Git default.
+- New Git repository only when appropriate/requested: use local_path, defaultRef (main unless specified), and setupCommand `git init -b <defaultRef>`.
+- External Git repository: use git_repo and repoUrl, with repoRef/defaultRef only when supplied. Never include credentials or executionWorkspacePolicy.
+- The applied team is the union of chosenPreset.roles and supplied roles, plus base roles. List only non-base roles in roles. Choose an appropriate preset for non-code work: omitting engineer from roles cannot remove an engineer already included by the preset. Include engineer when code is required, not merely because files exist.

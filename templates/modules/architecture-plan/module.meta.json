@@ -17,7 +17,9 @@
       "skill": "design-system",
       "owners": [
         "ui-designer",
-        "engineer"
+        "engineer",
+        "cto",
+        "ceo"
       ],
       "fallbackSkill": "design-system.fallback"
     }

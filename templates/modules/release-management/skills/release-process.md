@@ -1,47 +1,28 @@
 # Skill: Release Process
 
-You are responsible for managing the release lifecycle — versioning, changelogs, tagging, and rollback procedures.
+You manage versioning, changelogs, releases, and verified rollback procedures as the specialist release owner. Read company conventions through generated `AGENTS.md` → **Shared Documentation** paths. Project files, including `docs/RELEASE-PROCESS.md` and the changelog, live in the actual project/execution workspace, not the company documentation directory. Inspect existing project documents before creating missing ones.
 
-## Steps
+## Establish the process
 
-1. **Assess current state** — Check if the project already has:
-   - A versioning scheme (package.json version, git tags, etc.)
-   - A CHANGELOG.md or release notes history
-   - A release branch strategy or tag-based releases
-   - CI/CD release automation (GitHub Actions release workflow, etc.)
+Document the repository's existing release automation, SemVer policy, changelog format, exact release base, review/CI gates, authorized publisher, registry/environment targets, and rollback procedure in `docs/RELEASE-PROCESS.md`. Identify unverified procedures explicitly. Do not replace an existing repository release workflow with an ad hoc manual one.
 
-2. **Establish or document the release process** in `docs/RELEASE-PROCESS.md`:
-   - **Versioning** — Semantic Versioning (MAJOR.MINOR.PATCH). Document what constitutes each level.
-   - **Changelog** — Keep a CHANGELOG.md following Keep a Changelog format. Update it with every release.
-   - **Tagging** — Tag releases as `vX.Y.Z`. Tags trigger release workflows if CI is configured.
-   - **Release workflow:**
-     1. Ensure all PRs for the release are merged
-     2. Update version in package manifest
-     3. Update CHANGELOG.md with release notes
-     4. Commit: `chore: release vX.Y.Z`
-     5. Tag: `git tag vX.Y.Z`
-     6. Push: `git push origin main --tags`
-   - **Rollback** — Document how to revert a bad release (revert commit + patch release, or redeploy previous tag).
+## Execute authorized releases
 
-3. **Execute releases** when the codebase reaches a release-worthy state:
-   - Compile changelog entries from merged PRs and closed issues since last release
-   - Bump version according to the nature of changes
-   - Create the release commit and tag
-   - Create a GitHub Release with notes: `gh release create vX.Y.Z --notes "..."`
+1. **Authorization first:** require documented authorization covering this release's version, target, credentials, and effects. Existing approved routine policy may supply bounded authority; a schedule or release-worthy change alone cannot. Missing or ambiguous authority is a blocker to escalate before any release-triggering write.
+2. **Resolve the configured release base exactly:** inspect the repository release configuration and project workspace/heartbeat metadata (`repoRef`, `defaultRef`, `executionWorkspacePolicy.workspaceStrategy.baseRef`). Record the configured ref unchanged and verify its remote and branch mapping. Reconcile conflicting release versus workspace refs with the owner; never silently normalize a token, guess from HEAD, or hard-code a branch. If no base is configured, inspect the remote's advertised default and obtain confirmation before establishing release policy. A tag, SHA, unresolved ref, or ambiguous remote requires clarification, not an invented branch.
+3. **Preserve the managed issue branch:** verify `executionWorkspace.branchName` against `git branch --show-current`. Do not switch, rename, reset, delete, or retire a managed issue branch/worktree. Fetch the exact chosen remote/base and record its resolved SHA. Do not use the issue worktree's HEAD as the release target by default.
+4. Prepare version and changelog changes on the assigned branch through the repository PR/release workflow, including required reviews, executionPolicy gates, tests, build, and CI. Push only the explicitly chosen branch ref when authorized; never all branches or tags. If the repository workflow intentionally allows direct delivery, use its documented reviewed/verified delivery gate rather than bypassing it. Do not create a parallel manual release when automation owns publishing.
+5. **Verify landing before tagging:** read the merged PR/release record to obtain the intended merge/squash commit SHA, fetch the configured release base, and prove that exact SHA is reachable on that base (`git merge-base --is-ancestor <intended-sha> <fetched-base-ref>`). Inspect the version, changelog, full build/test results, and required CI for that exact commit, not merely for an earlier PR head. If it differs from the authorized intended release or required gates are incomplete, stop. Do not tag an arbitrary current HEAD or the latest base tip simply because it moved.
+6. When manual tagging is explicitly authorized by the repository workflow, tag only the verified merged commit: `git tag -a <tag> <verified-merged-sha> -m "Release <version>"`. First check both local and remote tag existence; never overwrite or move an existing release tag. Push only that tag: `git push <remote> refs/tags/<tag>:refs/tags/<tag>`. Never use blanket tag pushes. If automation owns the tag, verify its result instead of creating another. Read back the remote tag and dereferenced commit SHA and require an exact match before continuing.
+7. Publish through the documented repository release workflow. If it explicitly calls for manual GitHub Release creation, use `gh release create <tag> --verify-tag --notes-file <release-notes-file>` only after the remote-tag check. Verify workflow completion, release record, tag target, and uploaded assets. Finally read back the exact package/version from the target registry and download/inspect the published artifact, checking expected digest/provenance and version against the verified commit. For a non-registry release, document that scope and read back the actual artifact destination instead. A successful command or tag push is not proof of publication.
+8. Record immutable commit/tag, checks, release URL, registry/artifact evidence, and any remaining blockers on the originating issue. Keep failed releases open or blocked; never report success from unverified output.
 
 ## Ongoing Release Readiness (Routine-Triggered)
 
-When assigned a "Release readiness check" routine-run issue:
-
-1. Check if unreleased changes have accumulated since the last release: `git log <last-tag>..HEAD --oneline`. If no unreleased commits, mark done.
-2. Review `docs/CHANGELOG.md` or commit log for breaking changes, new features, or bug fixes that warrant a version bump.
-3. Run the full test suite and build. If failing, create a blocking issue and escalate before continuing.
-4. If a release is warranted, follow the release steps in the *Setup* section of this skill to cut the release. Otherwise leave a comment noting the check result and mark the routine issue done.
+Resolve and fetch the configured release base, then compare the last verified release against that base, not issue HEAD. Assess merged changes, tests, CI, changelog, and authorization. Execute only within documented authorization using the full workflow above. Otherwise record readiness and request approval or an eligible owner; do not automatically cut a release. Keep follow-ups with a present, eligible owner, or CEO-owned pending governed hiring; never assign to absent roles or unresolved capability tokens.
 
 ## Rules
 
-- Never release with failing tests or CI. Verify the build passes before tagging.
-- One version bump per release. Don't skip versions.
-- Changelog entries should describe user-visible changes, not internal refactors.
-- Rollback procedures must be tested — don't document a rollback you haven't verified.
-- Coordinate with the team before major version bumps — breaking changes need communication.
+- Never release with failing tests or required CI, bypass review gates, force-push release refs, or retry a partial publication without reading its current state.
+- Changelogs describe user-visible changes. Coordinate breaking changes before major releases.
+- Verify rollback in an authorized safe environment and distinguish tested recovery from proposed procedures.

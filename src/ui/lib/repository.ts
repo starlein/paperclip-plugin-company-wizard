@@ -1,6 +1,6 @@
 import type { WizardProject } from '../context/WizardContext';
 
-export type RepositoryMode = 'new' | 'external';
+export type RepositoryMode = 'new' | 'external' | 'directory';
 
 function resolveWorkspaceSourceType(project: WizardProject | null | undefined): string | undefined {
   const sourceType = project?.workspace?.sourceType || project?.workspaceSourceType;
@@ -11,6 +11,7 @@ function resolveWorkspaceSourceType(project: WizardProject | null | undefined): 
 export function getRepositoryMode(project: WizardProject | null | undefined): RepositoryMode {
   const workspace = project?.workspace;
   const sourceType = resolveWorkspaceSourceType(project);
+  if (workspace?.setupCommand === null && sourceType === 'local_path') return 'directory';
   if (
     sourceType === 'git_repo' ||
     workspace?.repoUrl ||
@@ -19,10 +20,13 @@ export function getRepositoryMode(project: WizardProject | null | undefined): Re
   ) {
     return 'external';
   }
+  if (workspace?.setupCommand === null && (!sourceType || sourceType === 'local_path'))
+    return 'directory';
   return 'new';
 }
 
 export function isExternalRepository(project: WizardProject | null | undefined): boolean {
+  if (getRepositoryMode(project) === 'directory') return false;
   const sourceType = resolveWorkspaceSourceType(project);
   return (
     (typeof sourceType === 'string' && sourceType !== 'local_path' && sourceType.length > 0) ||
@@ -61,14 +65,15 @@ export function normalizeNewRepoBranch(value: string): string {
 /**
  * Builds the repository-related fields of a project from the chosen mode.
  *
- * Repository selection deliberately carries NO `executionWorkspacePolicy`.
- * Isolated worktrees are an instance/project policy and are applied by the
- * assembler only when Paperclip's isolated-workspace experiment is enabled.
+ * Unchanged workspace saves preserve the operator's executionWorkspacePolicy.
+ * Mode/repository changes do not synthesize one: the assembler supplies defaults
+ * for new projects while existing project policy remains operator-controlled.
  */
 export function repositoryProjectFields(
   mode: RepositoryMode,
   repoUrl: string,
   repoRef: string,
+  existing?: WizardProject | null,
 ): Pick<
   WizardProject,
   | 'repoUrl'
@@ -78,6 +83,47 @@ export function repositoryProjectFields(
   | 'executionWorkspacePolicy'
   | 'workspaceSourceType'
 > {
+  const sameMode = existing && getRepositoryMode(existing) === mode;
+  if (
+    sameMode &&
+    mode !== 'directory' &&
+    repoUrl === getRepositoryUrl(existing) &&
+    repoRef === getRepositoryRef(existing, mode)
+  ) {
+    return {
+      workspaceSourceType: existing.workspaceSourceType,
+      repoUrl: existing.repoUrl,
+      repoRef: existing.repoRef,
+      defaultRef: existing.defaultRef,
+      workspace: existing.workspace,
+      executionWorkspacePolicy: existing.executionWorkspacePolicy,
+    };
+  }
+  const sameRepository =
+    sameMode && (mode !== 'external' || repoUrl.trim() === getRepositoryUrl(existing).trim());
+  const retainedWorkspace =
+    sameRepository || (mode !== 'external' && existing && !isExternalRepository(existing))
+      ? { ...existing?.workspace }
+      : {};
+  delete retainedWorkspace.repoUrl;
+  delete retainedWorkspace.repoRef;
+  delete retainedWorkspace.defaultRef;
+  delete retainedWorkspace.setupCommand;
+  if (mode === 'directory') {
+    return {
+      workspaceSourceType: 'local_path',
+      repoUrl: undefined,
+      repoRef: undefined,
+      defaultRef: undefined,
+      workspace: {
+        ...retainedWorkspace,
+        sourceType: 'local_path',
+        setupCommand: null,
+        isPrimary: sameMode ? (existing.workspace?.isPrimary ?? true) : true,
+      },
+      executionWorkspacePolicy: sameMode ? existing.executionWorkspacePolicy : undefined,
+    };
+  }
   if (mode === 'external') {
     const ref = normalizeExternalRepoRef(repoRef);
     const url = repoUrl.trim();
@@ -86,6 +132,7 @@ export function repositoryProjectFields(
       repoUrl: url,
       ...(ref ? { repoRef: ref, defaultRef: ref } : { repoRef: undefined, defaultRef: undefined }),
       workspace: {
+        ...retainedWorkspace,
         sourceType: 'git_repo',
         repoUrl: url,
         ...(ref ? { repoRef: ref, defaultRef: ref } : {}),
@@ -102,6 +149,7 @@ export function repositoryProjectFields(
     repoRef: undefined,
     defaultRef: branch,
     workspace: {
+      ...retainedWorkspace,
       sourceType: 'local_path',
       defaultRef: branch,
       setupCommand: `git init -b ${branch}`,

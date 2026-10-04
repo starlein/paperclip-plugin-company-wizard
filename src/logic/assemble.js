@@ -666,7 +666,18 @@ export async function assembleCompany({
     }
   }
 
-  const { companySkills, roleSkillSlugs } = buildCompanySkillSet(skillRecords);
+  const skillRuntimeContract = `\n\n## Runtime scope and document locations
+
+- Apply this skill to your assigned issue, active review stage, or explicitly assigned routine-run. Ongoing/on-heartbeat instructions are not permission to scan unrelated queues or create duplicate work; perform one bounded pass and exit when no owned action remains.
+- Resolve shipped company reference documents through your generated AGENTS.md **Shared Documentation** links, relative to that instruction file, not the shell CWD or installed skill directory. This applies to git-workflow.md, pr-conventions.md, lean-delivery.md and shipped template documents, including existence checks for \`docs/lean-delivery.md\` when selecting the review policy.
+- Repository commands and project deliverables belong to the actual project/execution workspace from issue metadata. A company directory, project checkout and managed worktree may differ. Read project output documents only if present; create them only as part of assigned work. API-only routines may use issue documents without inventing a project or repository.
+`;
+  const { companySkills, roleSkillSlugs } = buildCompanySkillSet(
+    skillRecords.map((record) => ({
+      ...record,
+      markdown: `${record.markdown.trimEnd()}${skillRuntimeContract}`,
+    })),
+  );
   const slugToSkillName = new Map(companySkills.map((s) => [s.slug, s.name]));
   for (const [roleName, slugs] of roleSkillSlugs) {
     if (!slugs.length) continue;
@@ -1113,6 +1124,9 @@ export async function assembleCompany({
       if (!workspace.cwd) workspace.cwd = localCwd;
     } else if (sourceType === 'local_path') {
       if (!workspace.cwd) workspace.cwd = localCwd;
+      // Explicit null opts out of repository initialization (plain folders or
+      // operator-managed local checkouts). Omitted setup keeps legacy defaults.
+      if (workspace.setupCommand === null) return workspace;
       // A bare `git init -b main` leaves an UNBORN main branch (no commits). The
       // isolated execution policy creates a worktree with `git worktree add … main`,
       // which fails until something makes the first commit — so the earliest issues
@@ -1153,7 +1167,10 @@ export async function assembleCompany({
       ...Object.entries(workspace).filter(([key]) => !orderedKeys.includes(key)),
     ];
     const fields = entries
-      .filter(([, value]) => value !== undefined && value !== null && value !== '')
+      .filter(
+        ([key, value]) =>
+          value !== undefined && (value !== null || key === 'setupCommand') && value !== '',
+      )
       .map(([key, value]) => {
         return `${key}: ${JSON.stringify(value)}`;
       });
@@ -1170,7 +1187,8 @@ export async function assembleCompany({
   //    worktree creation fails and every early run errors out. Isolated worktrees
   // Existing local projects may already have a working git repository. Their
   // configured mode must survive extension; only new local repos are deferred.
-  const isFreshLocalRepo = (proj, workspace) => workspace?.sourceType === 'local_path' && !proj?.id;
+  const isFreshLocalRepo = (proj, workspace) =>
+    workspace?.sourceType === 'local_path' && workspace.setupCommand !== null && !proj?.id;
 
   // Concurrency guard for the shared project workspace. Paperclip's `auto` only
   // serializes runs on non-local environments (Kubernetes/sandbox); on a local
@@ -1348,6 +1366,10 @@ export async function assembleCompany({
     for (const proj of resolvedProjects) {
       const workspace = normalizeProjectWorkspace(proj);
       bootstrap += `### ${proj.name}\n\n`;
+      if (workspace.sourceType === 'local_path' && workspace.setupCommand === null) {
+        bootstrap +=
+          '> **Local workspace; initialization disabled.** Do not initialize or reset Git, invent a repository URL, or change an existing branch. Preserve any existing local files/repository. Use this workspace for the assigned project outputs; Git workflows apply only if an existing repository is actually present.\n\n';
+      }
       if (proj.id) {
         bootstrap += `> **Existing project** \`${proj.id}\`: reuse this project and its workspace. The wizard updates only its execution workspace policy; do not recreate the project or re-run repository initialization.\n\n`;
       }

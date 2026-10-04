@@ -8,7 +8,7 @@ import {
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { cn } from '../../lib/utils';
-import { Check, GitBranch, Github, PlusCircle } from 'lucide-react';
+import { Check, GitBranch, Github, PlusCircle, Folder } from 'lucide-react';
 import {
   type RepositoryMode,
   getRepositoryMode,
@@ -48,7 +48,7 @@ function buildProject({
     name,
     description,
     goals,
-    ...repositoryProjectFields(mode, repoUrl, repoRef),
+    ...repositoryProjectFields(mode, repoUrl, repoRef, existing),
   };
 }
 
@@ -142,14 +142,21 @@ export function StepRepository() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h2 className="text-xl font-semibold tracking-tight">Repository setup</h2>
+        <h2 className="text-xl font-semibold tracking-tight">Workspace setup</h2>
         <p className="text-sm text-muted-foreground">
-          Should Paperclip create a fresh Git repository for this project, or should the agents work
-          from an existing external repository such as GitHub?
+          Choose a plain folder without Git initialization, a new Git repository, or an existing
+          remote repository.
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
+        <ModeCard
+          icon={Folder}
+          title="Plain folder (no Git)"
+          description="For research, writing, and operations. Use a local folder without initializing Git; keep an existing local workspace path."
+          selected={mode === 'directory'}
+          onClick={() => chooseMode('directory')}
+        />
         <ModeCard
           icon={PlusCircle}
           title="Create a new Git repository"
@@ -193,6 +200,11 @@ export function StepRepository() {
             />
           </div>
         </div>
+      ) : mode === 'directory' ? (
+        <p className="text-sm text-muted-foreground">
+          No Git initialization.{' '}
+          {existingProject?.workspace?.cwd || 'Paperclip will provide a local project folder.'}
+        </p>
       ) : (
         <div className="space-y-4 rounded-lg border p-4">
           <div className="flex items-start gap-3">
@@ -221,7 +233,7 @@ export function StepRepository() {
       )}
 
       <div className="flex justify-end">
-        <Button onClick={handleNext} disabled={externalRepoMissing}>
+        <Button className="min-h-11" onClick={handleNext} disabled={externalRepoMissing}>
           Continue
         </Button>
       </div>

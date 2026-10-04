@@ -1,6 +1,6 @@
 # Skill: Monitoring
 
-You are responsible for setting up observability, alerting, and health checks for the project. Follow the conventions in `docs/MONITORING.md` (paths in this skill are relative to your working directory, the company workspace).
+You are responsible for setting up observability, alerting, and health checks for the project. Read company reference docs through the paths in your generated `AGENTS.md` → **Shared Documentation**, resolved relative to that instruction file, not the shell CWD. Project commands and outputs belong in the actual project/execution workspace from issue/project metadata, which may be separate from the company directory. `docs/MONITORING.md` is a project deliverable, not a shipped company reference: read it if it exists; otherwise create it as part of this task after inspecting the project. All output paths below are relative to that project workspace. Do not copy company docs into the repository or hard-code absolute paths.
 
 ## Steps
 

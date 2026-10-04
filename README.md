@@ -19,6 +19,8 @@
 
 **Version 0.7.0:** adds opt-in authorization using the current browser login, without storing a board email/password in plugin settings, and compatibility fixes for Paperclip v2026.1001.0. See the [changelog](CHANGELOG.md) and [compatibility notes](docs/PAPERCLIP-COMPATIBILITY.md).
 
+**Unreleased template-audit follow-up:** this branch adds capability fallbacks, safer release/review instructions, enrichment regressions, and a **Plain folder (no Git)** workspace choice. Explicit `workspace.setupCommand: null` disables Git initialization and preserves an existing local `cwd`; omitted setup retains the legacy new-Git default. It does not change provider trust checks or guarantee a particular adapter can run outside a repository. See [template audit status](docs/TEMPLATE-AUDIT.md), including protected-file corrections still awaiting permission. Existing companies are not migrated automatically.
+
 **Upgrading from 0.6.x:** update the installed plugin package and reload it; refreshing templates alone does not update the worker/UI. Existing login settings keep the legacy behavior. To switch, clear both `paperclipEmail` and `paperclipPassword`, save, reload the wizard, and choose **Use current login**. Existing companies, template directories, approval rules, and instance settings are not changed just by installing the release.
 
 Requires Node **24.11+**, matching the current Paperclip SDK/shared runtime requirement.
@@ -160,7 +162,7 @@ No role is ever truly missing. When a specialist isn't present, the next best av
 <details>
 <summary><strong>Full capability ownership table</strong></summary>
 
-Start with just a CEO. Everything works. Add roles and responsibilities shift automatically:
+Start with just a CEO: active capabilities have an owner, with bounded coordination when specialist execution requires an eligible role or authorization. Add roles and responsibilities shift automatically:
 
 | Capability | Primary Owner | Fallback | Module |
 | :--------- | :------------ | :------- | :----- |
@@ -170,26 +172,28 @@ Start with just a CEO. Everything works. Add roles and responsibilities shift au
 | `auto-assign` | Product Owner | CEO | auto-assign |
 | `user-testing` | QA → UX Researcher → Product Owner | CEO | user-testing |
 | `brand-identity` | UI Designer → CMO | CEO | brand-identity |
-| `ci-cd` | DevOps | Engineer | ci-cd |
-| `monitoring` | DevOps | Engineer | monitoring |
+| `ci-cd` | DevOps → Engineer | CEO | ci-cd |
+| `monitoring` | DevOps → Engineer | CEO | monitoring |
 | `tech-stack` | Engineer | CEO | tech-stack |
 | `architecture-plan` | Engineer | CEO | architecture-plan |
-| `design-system` | UI Designer | Engineer | architecture-plan |
+| `design-system` | UI Designer → Engineer → CTO | CEO | architecture-plan |
 | `pr-review` | QA (review) / Security Engineer (review, security-relevant) / Product Owner (approval, when present) / Code Reviewer (merge gate, non-author); UI / UX / DevOps advisory | — | pr-review |
-| `threat-model` | Security Engineer → DevOps | Engineer | security-audit |
-| `security-review` | Security Engineer → DevOps | Engineer | security-audit |
+| `threat-model` | Security Engineer → DevOps → Engineer | CEO | security-audit |
+| `security-review` | Security Engineer → DevOps → Engineer | CEO | security-audit |
 | `project-docs` | Technical Writer → Engineer | CEO | documentation |
 | `competitive-tracking` | Customer Success → CMO → Product Owner | CEO | competitive-intel |
-| `accessibility-audit` | QA → UI Designer | Engineer | accessibility |
+| `accessibility-audit` | QA → UI Designer → Engineer | CEO | accessibility |
 | `codebase-audit` | Engineer | CEO | codebase-onboarding |
 | `issue-triage` | Product Owner → Engineer | CEO | triage |
-| `dependency-audit` | DevOps → Security Engineer | Engineer | dependency-management |
+| `dependency-audit` | DevOps → Security Engineer → Engineer | CEO | dependency-management |
 | `release-process` | DevOps → Engineer | CEO | release-management |
 | `game-design` | Game Designer → Engineer | CEO | game-design |
+| `level-design` | Level Designer → Game Designer → Engineer | CEO | game-design |
+| `audio-design` | Audio Designer → Game Designer → Engineer | CEO | game-design |
 | `stall-detection` | CEO (always) | — | stall-detection |
 | `vision-workshop` | CEO (always) | — | vision-workshop |
 
-**How it works:** Primary owners get the full skill. Fallback owners get a safety-net variant that only activates when the primary is absent or stalled.
+**How it works:** The first present owner gets the primary skill, including any role-specific primary override. Other present owners get a safety-net variant for bounded assigned recovery, not duplicate background work. The CEO release primary is deliberately coordination-only; it does not execute releases in a CEO-only company.
 
 > **Example:** CEO only? They handle everything — strategy, backlog, auto-assign. Add an Engineer and they take over implementation. Add a Product Owner and they take over backlog management, with the CEO as fallback.
 
@@ -339,7 +343,7 @@ Evaluates technology options and documents decisions with rationale and trade-of
 Designs the system architecture. Requires `tech-stack`. Includes a `design-system` capability for UI Designers.
 
 - **Capability:** `architecture-plan` — owners: `engineer` → `ceo`
-- **Capability:** `design-system` — owners: `ui-designer` → `engineer`
+- **Capability:** `design-system` — owners: `ui-designer` → `engineer` → `cto` → `ceo`
 - **Docs:** `docs/architecture-template.md`, `docs/design-system-template.md`
 
 #### github-repo
@@ -353,7 +357,7 @@ Git workflow and commit conventions.
 
 PR-based review workflow. Requires `github-repo`. Activates with `code-reviewer`, `product-owner`, `ui-designer`, `ux-researcher`, `qa`, or `devops`.
 
-Standard review uses the issue's native `executionPolicy`: QA review when present, Security review only for security-relevant changes, Product Owner approval when present, then a non-author Code Reviewer **merge gate**. The merge owner verifies the exact reviewed head, merges the PR, and only then records approval to close the issue. Omit absent roles and the executor from every stage — Paperclip excludes the author and an author-only stage stalls. Without an eligible non-author Code Reviewer, set no stages and use `gh pr merge <N> --merge` (PR Self-Merge Flow).
+Standard review uses the issue's native `executionPolicy`: QA review when present, Security review only for security-relevant changes, Product Owner approval when present, then a non-author Code Reviewer **merge gate**. The merge owner verifies the exact reviewed head, merges the PR, and only then records approval to close the issue. Omit absent roles and the executor from every stage — an author-only first stage rejects review entry with 422; read back actual state rather than assuming the transition happened. Without an eligible non-author Code Reviewer, set no stages and use `gh pr merge <N> --merge` (PR Self-Merge Flow) after its documented verification gates.
 
 - **Task:** Engineer configures PR workflow and branch protection (requires PRs, no approval gate)
 - **Doc:** `docs/pr-conventions.md`
@@ -399,7 +403,7 @@ Designs and executes usability evaluations, documents findings with severity rat
 
 Continuous integration and deployment pipeline. Requires `github-repo`.
 
-- **Capability:** `ci-cd` — owners: `devops` → `engineer`
+- **Capability:** `ci-cd` — owners: `devops` → `engineer` → `ceo`
 - **Fallback:** Engineer sets up basic CI (lint, test, build); DevOps owns full pipeline lifecycle including CD
 - **Doc:** `docs/ci-cd-template.md`
 
@@ -407,7 +411,7 @@ Continuous integration and deployment pipeline. Requires `github-repo`.
 
 Observability, error tracking, logging, alerting, and health checks. Requires `github-repo`.
 
-- **Capability:** `monitoring` — owners: `devops` → `engineer`
+- **Capability:** `monitoring` — owners: `devops` → `engineer` → `ceo`
 - **Fallback:** Engineer sets up basic health checks and structured logging; DevOps owns full observability stack
 - **Doc:** `docs/monitoring-template.md`
 
@@ -415,8 +419,8 @@ Observability, error tracking, logging, alerting, and health checks. Requires `g
 
 Threat modeling and security code review. Identifies attack surfaces, OWASP Top 10 vulnerabilities, and dependency CVEs.
 
-- **Capability:** `threat-model` — owners: `security-engineer` → `devops` → `engineer`
-- **Capability:** `security-review` — owners: `security-engineer` → `devops` → `engineer`
+- **Capability:** `threat-model` — owners: `security-engineer` → `devops` → `engineer` → `ceo`
+- **Capability:** `security-review` — owners: `security-engineer` → `devops` → `engineer` → `ceo`
 - **Fallback:** DevOps focuses on infrastructure security; Engineer runs basic checks only
 
 #### documentation
@@ -437,7 +441,7 @@ Living competitive landscape — competitor profiles that evolve over time with 
 
 WCAG 2.2 compliance auditing: semantic HTML, keyboard navigation, color contrast, ARIA, screen reader compatibility.
 
-- **Capability:** `accessibility-audit` — owners: `qa` → `ui-designer` → `engineer`
+- **Capability:** `accessibility-audit` — owners: `qa` → `ui-designer` → `engineer` → `ceo`
 - **Fallback:** UI Designer focuses on visual accessibility; Engineer runs automated checks
 
 #### website-relaunch
@@ -479,12 +483,14 @@ Processes inbound GitHub issues: classify by type and priority, respond to repor
 
 Dependency lifecycle: vulnerability scanning, outdated package detection, safe patch-level updates, and major version migration planning. Requires `github-repo`.
 
-- **Capability:** `dependency-audit` — owners: `devops` → `security-engineer` → `engineer`
+- **Capability:** `dependency-audit` — owners: `devops` → `security-engineer` → `engineer` → `ceo`
 - **Output:** `docs/DEPENDENCY-AUDIT.md`
 
 #### release-management
 
 Release lifecycle: semantic versioning, changelog generation, git tagging, GitHub Releases, and rollback documentation. Requires `github-repo`.
+
+Specialists execute only authorized releases through the repository's existing gates, from a verified merged commit on its configured base. Only the intended tag is pushed; publication includes artifact readback. The CEO primary/fallback documents readiness and arranges an eligible owner instead of publishing on its own.
 
 - **Capability:** `release-process` — owners: `devops` → `engineer` → `ceo`
 - **Output:** `docs/RELEASE-PROCESS.md`

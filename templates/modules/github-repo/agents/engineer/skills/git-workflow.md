@@ -1,6 +1,6 @@
 # Skill: Git Workflow
 
-You work in a GitHub repository. Follow the conventions in `docs/git-workflow.md` (paths in this skill are relative to your working directory, the company workspace). The PR-specific steps in that doc apply only to the PR fallback below and to the PR-review flow — your default without a review module is to work directly on the base branch.
+You work in a GitHub repository. Follow the company conventions in `docs/git-workflow.md` using its path in your generated `AGENTS.md` → **Shared Documentation**, resolved relative to that instruction file, not the shell CWD. All references to that company document below use this same mapping. Run repository commands and write project outputs in the actual project/execution workspace from issue/project metadata; it may be an external checkout or managed worktree separate from the company directory. Do not copy company docs into the repository or hard-code absolute paths. The PR-specific steps in that doc apply only to the PR fallback below and to the PR-review flow — your default without a review module is to work directly on the base branch.
 
 ## Direct-to-Base Flow (no pr-review module)
 

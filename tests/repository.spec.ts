@@ -15,6 +15,109 @@ const baseProject = (): WizardProject => ({
 });
 
 describe('repository helpers', () => {
+  it('does not reuse the old checkout when the remote repository URL changes', () => {
+    const project: WizardProject = {
+      ...baseProject(),
+      workspace: {
+        sourceType: 'git_repo',
+        cwd: '/work/old',
+        repoUrl: 'https://example.com/old.git',
+        setupCommand: 'old-repo-setup',
+        metadata: { owner: 'old' },
+      },
+    };
+    const saved = repositoryProjectFields(
+      'external',
+      'https://example.com/new.git',
+      'trunk',
+      project,
+    );
+    expect(saved.workspace?.repoUrl).toBe('https://example.com/new.git');
+    expect(saved.workspace?.cwd).toBeUndefined();
+    expect(saved.workspace?.metadata).toBeUndefined();
+    expect(saved.workspace?.setupCommand).toBeUndefined();
+  });
+  it('preserves operator policy when saving an unchanged directory workspace', () => {
+    const project: WizardProject = {
+      ...baseProject(),
+      workspace: {
+        sourceType: 'local_path',
+        cwd: '/work/docs',
+        setupCommand: null,
+        isPrimary: false,
+      },
+      executionWorkspacePolicy: {
+        enabled: false,
+        defaultMode: 'shared_workspace',
+        allowIssueOverride: false,
+      },
+    };
+    const saved = repositoryProjectFields('directory', '', '', project);
+    expect(saved.executionWorkspacePolicy).toEqual(project.executionWorkspacePolicy);
+    expect(saved.workspace?.isPrimary).toBe(false);
+  });
+  it('supports explicit no-Git directories and preserves local cwd on saves and transitions', () => {
+    const existing = {
+      ...baseProject(),
+      workspace: {
+        sourceType: 'local_path',
+        cwd: '/work/research',
+        setupCommand: null,
+        metadata: { owner: 'research' },
+      },
+    };
+    expect(getRepositoryMode(existing)).toBe('directory');
+    const directory = repositoryProjectFields('directory', 'stale.git', 'main', existing);
+    expect(directory.workspace).toMatchObject({
+      sourceType: 'local_path',
+      cwd: '/work/research',
+      setupCommand: null,
+      metadata: { owner: 'research' },
+    });
+    expect(directory.repoUrl).toBeUndefined();
+    expect(directory.defaultRef).toBeUndefined();
+    expect(directory.workspace?.repoRef).toBeUndefined();
+    const git = repositoryProjectFields('new', '', 'dev', existing);
+    expect(git.workspace).toMatchObject({ cwd: '/work/research', setupCommand: 'git init -b dev' });
+    expect(getRepositoryMode({ ...existing, ...git })).toBe('new');
+    const remote = repositoryProjectFields('external', 'https://example.com/repo', '', existing);
+    expect(remote.workspace?.cwd).toBeUndefined();
+    expect(remote.workspace?.setupCommand).toBeUndefined();
+    expect(getRepositoryMode({ ...existing, ...remote })).toBe('external');
+    const back = repositoryProjectFields('directory', '', '', { ...existing, ...remote });
+    expect(back.workspace?.setupCommand).toBeNull();
+    expect(back.workspace?.repoUrl).toBeUndefined();
+  });
+  it('keeps an unchanged existing workspace and explicit no-Git intent over stale Git fields', () => {
+    const directory = {
+      ...baseProject(),
+      repoUrl: 'old.git',
+      workspace: {
+        sourceType: 'local_path',
+        cwd: '/work/docs',
+        setupCommand: null,
+        repoRef: 'old',
+      },
+    };
+    expect(getRepositoryMode(directory)).toBe('directory');
+    const saved = repositoryProjectFields('directory', 'old.git', 'old', directory);
+    expect(saved.workspace?.cwd).toBe('/work/docs');
+    expect(saved.workspace?.setupCommand).toBeNull();
+    expect(saved.repoUrl).toBeUndefined();
+    expect(saved.workspace?.repoRef).toBeUndefined();
+    const remote = {
+      ...baseProject(),
+      workspace: {
+        sourceType: 'git_repo',
+        cwd: '/work/git',
+        repoUrl: 'https://example.com/repo',
+        setupCommand: 'npm ci',
+      },
+    };
+    expect(
+      repositoryProjectFields('external', 'https://example.com/repo', '', remote).workspace,
+    ).toEqual(remote.workspace);
+  });
   it('derives external mode from workspaceSourceType', () => {
     const externalFromSourceType: WizardProject = {
       ...baseProject(),

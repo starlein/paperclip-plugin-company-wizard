@@ -29,6 +29,8 @@
     "dist/",
     "templates/",
     "docs/PAPERCLIP-COMPATIBILITY.md",
+    "docs/TEMPLATE-AUDIT.md",
+    "docs/template-audit-inventory.json",
     "CHANGELOG.md",
     "CONTRIBUTING.md"
   ],

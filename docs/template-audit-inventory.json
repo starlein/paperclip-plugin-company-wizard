@@ -1,0 +1,443 @@
+{
+  "hostTag": "v2026.1001.0",
+  "hostCommit": "8f8a0ab7effbd6a0584107d8038736c134ee5047",
+  "baselinePluginCommit": "11096c0892d4e6ddf3cd23ba13dfe69eaec7e081",
+  "reviewedFiles": 70,
+  "countsByKind": {
+    "ai-wizard": 4,
+    "bar": 18,
+    "SOUL": 17,
+    "TOOLS": 17,
+    "DONE": 8,
+    "LENSES": 6
+  },
+  "statusCounts": {
+    "fixed_and_regression_tested": 17,
+    "reviewed_unchanged": 35,
+    "hardened_and_regression_tested": 17,
+    "blocked_permission": 1
+  },
+  "scope": "Persona/enrichment/AI source inventory; separate protected AGENTS/CLAUDE work is documented in TEMPLATE-AUDIT.md. No live-agent evaluation.",
+  "files": [
+    {
+      "path": "templates/ai-wizard/config-format.md",
+      "sourceAuditVerdict": "fix_needed",
+      "status": "fixed_and_regression_tested",
+      "sha256": "0c1554783de287c7a7915e985267fe90c31dc176003bfbda0354adc0ddc5ac74"
+    },
+    {
+      "path": "templates/ai-wizard/interview-system.md",
+      "sourceAuditVerdict": "fix_needed",
+      "status": "fixed_and_regression_tested",
+      "sha256": "d73b56ec29d661dd21c0b0bc1b7bb6b9c6456166a68bec8b2aa9c036d79fb3f4"
+    },
+    {
+      "path": "templates/ai-wizard/messages.json",
+      "sourceAuditVerdict": "fix_needed",
+      "status": "fixed_and_regression_tested",
+      "sha256": "7e211f576d1457f200c798ac1b230317f4a165a0f2f7cdf10375935c2b245b31"
+    },
+    {
+      "path": "templates/ai-wizard/single-shot-system.md",
+      "sourceAuditVerdict": "fix_needed",
+      "status": "fixed_and_regression_tested",
+      "sha256": "3bf1b66d9e0ec3cbb547d271e950e00d400f33f63c63101ece70d365a1ffa07e"
+    },
+    {
+      "path": "templates/modules/accessibility/skills/accessibility-audit.bar.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "91e4efe2139d707524c901bbac938eb67f1cef058256de8e489278f70f0545a3"
+    },
+    {
+      "path": "templates/modules/architecture-plan/agents/ceo/skills/architecture-plan.bar.md",
+      "sourceAuditVerdict": "fix_needed",
+      "status": "fixed_and_regression_tested",
+      "sha256": "5cd05df60b7d3efaa0c01a880b9293fb23fefe693d7e7993d833819b1c06d7a7"
+    },
+    {
+      "path": "templates/modules/architecture-plan/agents/ui-designer/skills/design-system.bar.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "3ca5743e86fa35e046120daf570639ddfca1573ef192426d78c678026298667d"
+    },
+    {
+      "path": "templates/modules/architecture-plan/skills/architecture-plan.bar.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "4bed9860626ed31abeb0b576f5115cdd8ca62d02e0384f7794b18f32cdde45e7"
+    },
+    {
+      "path": "templates/modules/backlog/skills/backlog-health.bar.md",
+      "sourceAuditVerdict": "fix_needed",
+      "status": "fixed_and_regression_tested",
+      "sha256": "0dbce30db5e2b62cc4d19afb1f3d102669737da48f63e4a20721b84cd1055596"
+    },
+    {
+      "path": "templates/modules/brand-identity/skills/brand-identity.bar.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "bbdc660d17eb451ce62d761bf516faab1737f8b639283ff4d3103da3f455ee6f"
+    },
+    {
+      "path": "templates/modules/build-api/skills/api-design.bar.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "c5f3453e3ad904a6c5e9f9482d1ba1232ca5822e9aab5bb51293472924c84065"
+    },
+    {
+      "path": "templates/modules/ci-cd/skills/ci-cd.bar.md",
+      "sourceAuditVerdict": "fix_needed",
+      "status": "fixed_and_regression_tested",
+      "sha256": "47e0c36c6aa2c0c5196cd7754daa5c9d8ddf7bc0489439a96a5826de23dd27a3"
+    },
+    {
+      "path": "templates/modules/codebase-onboarding/skills/codebase-audit.bar.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "58d8440f07c887ee08119352660536117b3c3dc6d60e8928cd026d638f35c575"
+    },
+    {
+      "path": "templates/modules/competitive-intel/skills/competitive-tracking.bar.md",
+      "sourceAuditVerdict": "fix_needed",
+      "status": "fixed_and_regression_tested",
+      "sha256": "a6919ddc1fe30f7364c3a1ad04e369f94c14c891e6868d7a82a8ad12acc80a5b"
+    },
+    {
+      "path": "templates/modules/documentation/skills/project-docs.bar.md",
+      "sourceAuditVerdict": "fix_needed",
+      "status": "fixed_and_regression_tested",
+      "sha256": "a84a30826277c6e8a06dd1aa363f2130e3a3e69412b3d72e158925f47328b222"
+    },
+    {
+      "path": "templates/modules/game-design/skills/game-design.bar.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "eea0b5bc30871ffd34fec3920e9913aefdcdebafb29a66cd9bc41e066b015667"
+    },
+    {
+      "path": "templates/modules/market-analysis/skills/market-analysis.bar.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "58c4f200465381e7a3baf171a73163a385b055a43ca68d8e8aa46d57483df794"
+    },
+    {
+      "path": "templates/modules/monitoring/skills/monitoring.bar.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "8f57de8ca0e6116edfee411a06747a7d8d8135e1be8ac67aca48aefa16ed575f"
+    },
+    {
+      "path": "templates/modules/security-audit/skills/security-review.bar.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "ab40104b3a6210e080f28386b76fa9356667d0e638afa642b94fb7ed562b0be3"
+    },
+    {
+      "path": "templates/modules/security-audit/skills/threat-model.bar.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "d421ca0776c1be6b40ea9b7443cdeae5f829d3e074ea8391eb4226135271bd57"
+    },
+    {
+      "path": "templates/modules/tech-stack/skills/tech-stack.bar.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "0ce96925ef8b6142da431cb38e22e8f10b468a3b4919b7ea4f4f4b8dd50b7a79"
+    },
+    {
+      "path": "templates/modules/user-testing/skills/user-testing.bar.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "7c248c2b95ab83cb927ca07bf5d48c42fabd83b1b0430c0176ddd13ee8eeada6"
+    },
+    {
+      "path": "templates/roles/audio-designer/SOUL.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "b521d4419963c430e22052d4221b999d4daed5bba766b4b9c494415c074e3ee3"
+    },
+    {
+      "path": "templates/roles/audio-designer/TOOLS.md",
+      "sourceAuditVerdict": "pass",
+      "status": "hardened_and_regression_tested",
+      "sha256": "faac5f5898df13a9dcb5d7bb2e224bd0de4583983d24c87e887dde54f1d43ad6"
+    },
+    {
+      "path": "templates/roles/ceo/SOUL.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "11d2175612842142cb54bca1430798dea69ee8854219fa7e0405216121f8508e"
+    },
+    {
+      "path": "templates/roles/ceo/TOOLS.md",
+      "sourceAuditVerdict": "pass",
+      "status": "hardened_and_regression_tested",
+      "sha256": "faac5f5898df13a9dcb5d7bb2e224bd0de4583983d24c87e887dde54f1d43ad6"
+    },
+    {
+      "path": "templates/roles/cmo/SOUL.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "78d5f705e7240f732b463df0c1548763477f2e37616aa3f0456df5f4707c8ef7"
+    },
+    {
+      "path": "templates/roles/cmo/TOOLS.md",
+      "sourceAuditVerdict": "pass",
+      "status": "hardened_and_regression_tested",
+      "sha256": "faac5f5898df13a9dcb5d7bb2e224bd0de4583983d24c87e887dde54f1d43ad6"
+    },
+    {
+      "path": "templates/roles/code-reviewer/DONE.md",
+      "sourceAuditVerdict": "fix_needed",
+      "status": "fixed_and_regression_tested",
+      "sha256": "e97641431d8b32c82a102d872c3f09b1e6c494396e54a0da97c02ecb4992f6a3"
+    },
+    {
+      "path": "templates/roles/code-reviewer/LENSES.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "2424934124c0650099b4e91e16b3e5ca01038074a16de37048adbfa608754ecb"
+    },
+    {
+      "path": "templates/roles/code-reviewer/SOUL.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "17bf02da876aba288bc7aa050752f91a815ea33ca010aa568b8c8f08f6149a8e"
+    },
+    {
+      "path": "templates/roles/code-reviewer/TOOLS.md",
+      "sourceAuditVerdict": "pass",
+      "status": "hardened_and_regression_tested",
+      "sha256": "faac5f5898df13a9dcb5d7bb2e224bd0de4583983d24c87e887dde54f1d43ad6"
+    },
+    {
+      "path": "templates/roles/cto/SOUL.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "46fd075a31aa752dab91be472c1a2a877dbe9d9407dba67c3e5d4cfab275866b"
+    },
+    {
+      "path": "templates/roles/cto/TOOLS.md",
+      "sourceAuditVerdict": "pass",
+      "status": "hardened_and_regression_tested",
+      "sha256": "faac5f5898df13a9dcb5d7bb2e224bd0de4583983d24c87e887dde54f1d43ad6"
+    },
+    {
+      "path": "templates/roles/customer-success/SOUL.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "8bfc589a98ceca4055f46108ebd770391ad99f28d3eb9dc1cb0e08183b52302c"
+    },
+    {
+      "path": "templates/roles/customer-success/TOOLS.md",
+      "sourceAuditVerdict": "pass",
+      "status": "hardened_and_regression_tested",
+      "sha256": "faac5f5898df13a9dcb5d7bb2e224bd0de4583983d24c87e887dde54f1d43ad6"
+    },
+    {
+      "path": "templates/roles/devops/DONE.md",
+      "sourceAuditVerdict": "fix_needed",
+      "status": "fixed_and_regression_tested",
+      "sha256": "e97641431d8b32c82a102d872c3f09b1e6c494396e54a0da97c02ecb4992f6a3"
+    },
+    {
+      "path": "templates/roles/devops/LENSES.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "16b0c8ca807fcb3353ec095f9109c393be00f1833f9147f6d86483fae9d2c901"
+    },
+    {
+      "path": "templates/roles/devops/SOUL.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "c9a7b6f3da1b97d0f1e437b0c3fdcc83a058c7c9cba3c41f07b878649dcb78fd"
+    },
+    {
+      "path": "templates/roles/devops/TOOLS.md",
+      "sourceAuditVerdict": "pass",
+      "status": "hardened_and_regression_tested",
+      "sha256": "faac5f5898df13a9dcb5d7bb2e224bd0de4583983d24c87e887dde54f1d43ad6"
+    },
+    {
+      "path": "templates/roles/engineer/DONE.md",
+      "sourceAuditVerdict": "fix_needed",
+      "status": "fixed_and_regression_tested",
+      "sha256": "e97641431d8b32c82a102d872c3f09b1e6c494396e54a0da97c02ecb4992f6a3"
+    },
+    {
+      "path": "templates/roles/engineer/SOUL.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "52968304afa42a00276af946601763280558bdb894aec0a0e5dbb82a95215ed6"
+    },
+    {
+      "path": "templates/roles/engineer/TOOLS.md",
+      "sourceAuditVerdict": "pass",
+      "status": "hardened_and_regression_tested",
+      "sha256": "faac5f5898df13a9dcb5d7bb2e224bd0de4583983d24c87e887dde54f1d43ad6"
+    },
+    {
+      "path": "templates/roles/game-artist/SOUL.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "eddfe004644a57b213cbb50aad465a7f737415fe56effa4adba28a9a08c45474"
+    },
+    {
+      "path": "templates/roles/game-artist/TOOLS.md",
+      "sourceAuditVerdict": "pass",
+      "status": "hardened_and_regression_tested",
+      "sha256": "faac5f5898df13a9dcb5d7bb2e224bd0de4583983d24c87e887dde54f1d43ad6"
+    },
+    {
+      "path": "templates/roles/game-designer/SOUL.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "40658ef22c212d0f6aad6a6a10d4f35e2e9681d609b970405678a1e6d4e1ad51"
+    },
+    {
+      "path": "templates/roles/game-designer/TOOLS.md",
+      "sourceAuditVerdict": "pass",
+      "status": "hardened_and_regression_tested",
+      "sha256": "faac5f5898df13a9dcb5d7bb2e224bd0de4583983d24c87e887dde54f1d43ad6"
+    },
+    {
+      "path": "templates/roles/level-designer/SOUL.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "6e9e79998905a66860baa51f903aa3f0949fbf3c39ecdc51e6a7c3fffc7911c5"
+    },
+    {
+      "path": "templates/roles/level-designer/TOOLS.md",
+      "sourceAuditVerdict": "pass",
+      "status": "hardened_and_regression_tested",
+      "sha256": "faac5f5898df13a9dcb5d7bb2e224bd0de4583983d24c87e887dde54f1d43ad6"
+    },
+    {
+      "path": "templates/roles/product-owner/DONE.md",
+      "sourceAuditVerdict": "fix_needed",
+      "status": "fixed_and_regression_tested",
+      "sha256": "e97641431d8b32c82a102d872c3f09b1e6c494396e54a0da97c02ecb4992f6a3"
+    },
+    {
+      "path": "templates/roles/product-owner/LENSES.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "727ad513e35becce14b409c4fd16de816de02775f5320260445e826c38d91483"
+    },
+    {
+      "path": "templates/roles/product-owner/SOUL.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "c809379a3db021986f615c4b355cb4b40d146edb5546989963c12e58d59a870b"
+    },
+    {
+      "path": "templates/roles/product-owner/TOOLS.md",
+      "sourceAuditVerdict": "pass",
+      "status": "hardened_and_regression_tested",
+      "sha256": "faac5f5898df13a9dcb5d7bb2e224bd0de4583983d24c87e887dde54f1d43ad6"
+    },
+    {
+      "path": "templates/roles/qa/DONE.md",
+      "sourceAuditVerdict": "fix_needed",
+      "status": "fixed_and_regression_tested",
+      "sha256": "e97641431d8b32c82a102d872c3f09b1e6c494396e54a0da97c02ecb4992f6a3"
+    },
+    {
+      "path": "templates/roles/qa/SOUL.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "2d1b360e1f252b793f85f68d17780e05423f41ea6e656cf6c00eb30d42c4d400"
+    },
+    {
+      "path": "templates/roles/qa/TOOLS.md",
+      "sourceAuditVerdict": "pass",
+      "status": "hardened_and_regression_tested",
+      "sha256": "faac5f5898df13a9dcb5d7bb2e224bd0de4583983d24c87e887dde54f1d43ad6"
+    },
+    {
+      "path": "templates/roles/security-engineer/DONE.md",
+      "sourceAuditVerdict": "fix_needed",
+      "status": "fixed_and_regression_tested",
+      "sha256": "e97641431d8b32c82a102d872c3f09b1e6c494396e54a0da97c02ecb4992f6a3"
+    },
+    {
+      "path": "templates/roles/security-engineer/LENSES.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "45176004925b2c5837b72ab1725020292787a7313ee6c422a50e770ad7934763"
+    },
+    {
+      "path": "templates/roles/security-engineer/SOUL.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "4d6c41b15d4c001b1f253554b4bf8c441ca50621089ab744a4f63c038b163be3"
+    },
+    {
+      "path": "templates/roles/security-engineer/TOOLS.md",
+      "sourceAuditVerdict": "pass",
+      "status": "hardened_and_regression_tested",
+      "sha256": "faac5f5898df13a9dcb5d7bb2e224bd0de4583983d24c87e887dde54f1d43ad6"
+    },
+    {
+      "path": "templates/roles/technical-writer/SOUL.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "304bca16912030b7f88995fe0dbcc7fa176b14072642da8a0bfa49476dc78ff1"
+    },
+    {
+      "path": "templates/roles/technical-writer/TOOLS.md",
+      "sourceAuditVerdict": "pass",
+      "status": "hardened_and_regression_tested",
+      "sha256": "faac5f5898df13a9dcb5d7bb2e224bd0de4583983d24c87e887dde54f1d43ad6"
+    },
+    {
+      "path": "templates/roles/ui-designer/DONE.md",
+      "sourceAuditVerdict": "fix_needed",
+      "status": "fixed_and_regression_tested",
+      "sha256": "e97641431d8b32c82a102d872c3f09b1e6c494396e54a0da97c02ecb4992f6a3"
+    },
+    {
+      "path": "templates/roles/ui-designer/LENSES.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "63f9c319460bb267632b9600a5f7ae16a5b8c4ddaeacc861e7ae29bd94c0b958"
+    },
+    {
+      "path": "templates/roles/ui-designer/SOUL.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "cb4c19bc8ff03055293e201772a2b78f1beed60b67a21a57acafde1ba73cb07d"
+    },
+    {
+      "path": "templates/roles/ui-designer/TOOLS.md",
+      "sourceAuditVerdict": "pass",
+      "status": "hardened_and_regression_tested",
+      "sha256": "faac5f5898df13a9dcb5d7bb2e224bd0de4583983d24c87e887dde54f1d43ad6"
+    },
+    {
+      "path": "templates/roles/ux-researcher/DONE.md",
+      "sourceAuditVerdict": "fix_needed",
+      "status": "fixed_and_regression_tested",
+      "sha256": "e97641431d8b32c82a102d872c3f09b1e6c494396e54a0da97c02ecb4992f6a3"
+    },
+    {
+      "path": "templates/roles/ux-researcher/LENSES.md",
+      "sourceAuditVerdict": "pass",
+      "status": "reviewed_unchanged",
+      "sha256": "8b26f57564d3786b4d7a0946f4bd66e56990e42c15b3968583399bb5bdfa1e01"
+    },
+    {
+      "path": "templates/roles/ux-researcher/SOUL.md",
+      "sourceAuditVerdict": "fix_needed",
+      "status": "blocked_permission",
+      "sha256": "e022448716f3e352fca34fbae7431589b5bf9b0e05d792e46d67de5255eb3b1b"
+    },
+    {
+      "path": "templates/roles/ux-researcher/TOOLS.md",
+      "sourceAuditVerdict": "pass",
+      "status": "hardened_and_regression_tested",
+      "sha256": "faac5f5898df13a9dcb5d7bb2e224bd0de4583983d24c87e887dde54f1d43ad6"
+    }
+  ]
+}

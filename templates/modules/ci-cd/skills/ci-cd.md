@@ -1,6 +1,6 @@
 # Skill: CI/CD Pipeline
 
-You manage continuous integration and deployment pipelines. Follow the conventions in `docs/CI-CD.md` (paths in this skill are relative to your working directory, the company workspace).
+You manage continuous integration and deployment pipelines. Read company reference docs through the paths in your generated `AGENTS.md` → **Shared Documentation**, resolved relative to that instruction file, not the shell CWD. Project commands and outputs belong in the actual project/execution workspace from issue/project metadata, which may be separate from the company directory. `docs/CI-CD.md` is a project deliverable, not a shipped company reference: read it if it exists; otherwise create it as part of this task after inspecting the project. All output paths below are relative to that project workspace. Do not copy company docs into the repository or hard-code absolute paths.
 
 ## Setup Steps
 
@@ -30,7 +30,7 @@ When assigned a "CI pipeline health check" routine-run issue:
 ## Rules
 
 - Fail fast — put the quickest checks (lint, typecheck) first.
-- Keep pipelines under 5 minutes. If they exceed this, add caching or split stages.
+- Aim for under 5 minutes as an optimization target, not a universal completion blocker. For larger or slower suites, document a justified measured baseline and agreed runtime budget, with caching or split stages as measurable optimization follow-ups.
 - Use dependency caching (e.g., `actions/cache`, `setup-node` cache) to speed up installs.
 - Pin action versions to full SHAs, not tags, for security.
 - Never store secrets in workflow files — use GitHub Secrets or equivalent.

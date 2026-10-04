@@ -9,7 +9,8 @@
       "skill": "monitoring",
       "owners": [
         "devops",
-        "engineer"
+        "engineer",
+        "ceo"
       ],
       "fallbackSkill": "monitoring.fallback"
     }

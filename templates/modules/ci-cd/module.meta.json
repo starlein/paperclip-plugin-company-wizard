@@ -9,7 +9,8 @@
       "skill": "ci-cd",
       "owners": [
         "devops",
-        "engineer"
+        "engineer",
+        "ceo"
       ],
       "fallbackSkill": "ci-cd.fallback"
     }
