@@ -25,6 +25,8 @@
 
 Requires Node **24.11+**, matching the current Paperclip SDK/shared runtime requirement.
 
+**Discovery keywords:** `paperclip`, `paperclip-plugin`, `paperclipai`, `plugin`, `workspace`, `company-wizard`, `ai-agents`, `multi-agent`, `agent-orchestration`, `agent-company`, `agent-workflows`, `workflow-automation`, `agent-templates`, `agent-skills`, `bootstrapping`.
+
 **Update Company:** select an existing company to refresh its agent instructions, documents, skills, routines, and live project execution policies. Preview shows policy changes; existing workspace paths, explicit operator policies, and goal links are preserved. Partial failures never delete an existing company.
 
 **Agent setup:** choose an adapter and optionally enter a supported model identifier in setup or configuration review (manual, AI and existing-company paths). Leave the model blank for the host adapter default; bundled templates no longer pin a model or reasoning level. Existing agents keep their adapter/model/runtime settings unless **Apply wizard settings to existing agents** is checked. This opt-in applies the selected adapter/model and wizard runtime settings; a blank model then means the adapter default—not the agent's previous model. A blank runtime cwd preserves an existing cwd. Verified new skill keys are added without removing manual selections or version pins. Review any completion warnings before starting bootstrap, and avoid concurrent agent-settings edits during provisioning. The AI wizard's own generation model is separate and unchanged.
