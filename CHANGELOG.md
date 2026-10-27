@@ -4,6 +4,14 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.2] - 2026-10-27
+
+### Fixed
+
+- Recover AI Wizard configurations wrapped in recommendation prose or Markdown fences, and safely tolerate comments, trailing commas, and raw line breaks without corrupting URLs such as `https://github.com/...`.
+- Ask the configured AI provider for one JSON-only repair response when its first final answer remains malformed, instead of returning the user to the interview loop.
+- Cap interview progress at `3/3` and avoid logging the full generated company configuration when parsing fails.
+
 ## [0.8.1] - 2026-10-04
 
 ### Fixed
@@ -164,7 +172,7 @@ Consolidates the useful changes from PRs #44, #46 and #47 on a fresh branch from
 
 **Pending hires can be approved from the wizard's final step.**
 
-Governed `/agent-hires` requests leave the agent created but *not invokable* until the board decides. Until now the wizard only logged the approval ids and told the operator to go find them in the board UI — so a freshly provisioned company sat unable to run its bootstrap heartbeat, and the bootstrap watchdog attach failed for the same reason. The Done step now lists the pending hires and offers an "Approve all hires" action.
+Governed `/agent-hires` requests leave the agent created but _not invokable_ until the board decides. Until now the wizard only logged the approval ids and told the operator to go find them in the board UI — so a freshly provisioned company sat unable to run its bootstrap heartbeat, and the bootstrap watchdog attach failed for the same reason. The Done step now lists the pending hires and offers an "Approve all hires" action.
 
 This does not weaken governance: provisioning still **never** auto-approves, the company's approval policy keeps its meaning, and approving is an explicit click by the operator — who is the board member holding that authority anyway. The `approve-pending-hires` action re-reads the pending set server-side and intersects it with any requested ids, so it can only ever approve `hire_agent` approvals; a caller cannot use it to resolve a budget or strategy approval.
 
@@ -176,7 +184,7 @@ New API-client methods `listApprovals(companyId, { status })` and `approveApprov
 
 **Shared project workspaces are now provisioned with a concurrency guard.**
 
-Projects are provisioned with an explicit `executionWorkspacePolicy` carrying `sharedWorkspaceConcurrency: "serialize"`. Previously the wizard emitted no policy at all whenever isolated worktrees were not in play and let the server fall back to `shared_workspace` with `auto` concurrency — and `auto` only serializes runs on non-local environments. On a local driver that meant every agent run entered the *same* working tree at once and collided on git index and branch state. With `serialize`, a run defers while another holds the workspace; the deferral is bounded by holder liveness (60–120 s backoff), not by an attempt counter, so a deferred run resumes rather than starving.
+Projects are provisioned with an explicit `executionWorkspacePolicy` carrying `sharedWorkspaceConcurrency: "serialize"`. Previously the wizard emitted no policy at all whenever isolated worktrees were not in play and let the server fall back to `shared_workspace` with `auto` concurrency — and `auto` only serializes runs on non-local environments. On a local driver that meant every agent run entered the _same_ working tree at once and collided on git index and branch state. With `serialize`, a run defers while another holds the workspace; the deferral is bounded by holder liveness (60–120 s backoff), not by an attempt counter, so a deferred run resumes rather than starving.
 
 The guard is applied on every resolution path (shared, isolated, and the deferred-isolation path for fresh local repos) and is carried into the project-creation step the CEO follows in BOOTSTRAP.md, so CEO-created projects do not silently fall back to `auto`. A project that pins its own `sharedWorkspaceConcurrency` keeps it.
 
@@ -356,7 +364,7 @@ Worker agents default to `DEFAULT_WORKER_THINKING_LEVEL = 'auto'` ("let the mode
 
 Agents were provisioned with a **managed** instructions bundle (materialized by the host under `companies/<companyId>/agents/<agentId>/instructions/`), and the assembled instruction files hard-coded **absolute** `$AGENT_HOME/...` paths that pointed at the human-readable `companies/<CompanyName>/agents/<role>/` dir — a mismatch that made references fragile and unportable.
 
-- **External instructions bundle (all agents, incl. CEO):** provisioning now points each agent at its assembled on-disk dir via `updateInstructionsBundle({ mode: 'external', rootPath: '…/companies/<Company>/agents/<role>', entryFile: 'AGENTS.md' })`. That call also sets `adapterConfig.instructionsFilePath`, which every local adapter (codex/claude/acpx) loads — instructing the model to *"resolve relative file references from the instructions directory"*. Existing managed agents are migrated to external on the next update.
+- **External instructions bundle (all agents, incl. CEO):** provisioning now points each agent at its assembled on-disk dir via `updateInstructionsBundle({ mode: 'external', rootPath: '…/companies/<Company>/agents/<role>', entryFile: 'AGENTS.md' })`. That call also sets `adapterConfig.instructionsFilePath`, which every local adapter (codex/claude/acpx) loads — instructing the model to _"resolve relative file references from the instructions directory"_. Existing managed agents are migrated to external on the next update.
 - **Relative references** in assembled files: `$AGENT_HOME/HEARTBEAT.md` → `HEARTBEAT.md`, `$AGENT_HOME/skills/<x>.md` → `skills/<x>.md`. Bare `$AGENT_HOME` prose (the runtime home env var) is left intact. The old absolute-path rewrite is removed; no managed-bundle file upload happens anymore.
 - **Company doc references unified to `../../docs/<y>.md`** across every agent-facing file (AGENTS.md, HEARTBEAT, skills, the shipped docs themselves like `git-workflow.md`/`pr-conventions.md`, heartbeat-sections, bootstrap-instructions, and module/preset issue descriptions) — 170+ refs. This path is **cwd-independent**: both the instructions dir (`agents/<role>/`) and the execution cwd (the project workspace `projects/<name>/`) sit at depth 2 under the company dir, so `../../docs/` resolves to `companies/<Company>/docs/` from either. A bare `docs/<y>.md` would have broken once the agent runs in a project workspace.
 - **Project workspaces** are realized under `companies/<Company>/projects/<Project>` for external (`git_repo`) projects too — the repo is cloned into that dir via `workspace.cwd` instead of a separate host-managed clone path (local projects already used this path).
@@ -375,11 +383,11 @@ Agents were provisioned with a **managed** instructions bundle (materialized by 
 
 **CI/CD is a merge gate only when the company owns it (`ci-cd` module)**
 
-The merge gate enforced "CI must be green" whenever the repo had any CI checks — so a pre-existing/external CI on an imported repo (broken or flaky, never configured by the company) deadlocked the merge queue. Now the **authoritative gate is the merge-gate agent's executed local lint/test/build** (run it, paste the output); a green CI is required *in addition* only when the `ci-cd` module is active (the company runs its own pipeline). Without a CI/CD module, pre-existing repo checks are advisory — never block a merge solely on a check the company never set up. Reworded across `pr-conventions.md`, `code-review.md`, `qa-review.md`, the Code-Reviewer `AGENTS.md`, and the engineer `git-workflow.md`.
+The merge gate enforced "CI must be green" whenever the repo had any CI checks — so a pre-existing/external CI on an imported repo (broken or flaky, never configured by the company) deadlocked the merge queue. Now the **authoritative gate is the merge-gate agent's executed local lint/test/build** (run it, paste the output); a green CI is required _in addition_ only when the `ci-cd` module is active (the company runs its own pipeline). Without a CI/CD module, pre-existing repo checks are advisory — never block a merge solely on a check the company never set up. Reworded across `pr-conventions.md`, `code-review.md`, `qa-review.md`, the Code-Reviewer `AGENTS.md`, and the engineer `git-workflow.md`.
 
 **Without the pr-review module, the engineer works direct-to-base instead of opening a PR**
 
-The no-pr-review fallback was a "PR Self-Merge Flow" that still opened a PR per change — the source of the orphan/draft/conflict PR pile-up. With no reviewer, that PR adds no value, so the engineer now commits and pushes **directly to the base ref** after local verification, and opens a PR *only* as a fallback when branch protection rejects the direct push. Rewrote `github-repo` `git-workflow.md` (skill + `docs/git-workflow.md`) to the Direct-to-Base Flow, updated Branch-Protection guidance (do not require PRs for an unreviewed company), and scoped the engineer `HEARTBEAT.md` review-path rule to "pr-review active". The PR workflow remains gated to the `pr-review` module only.
+The no-pr-review fallback was a "PR Self-Merge Flow" that still opened a PR per change — the source of the orphan/draft/conflict PR pile-up. With no reviewer, that PR adds no value, so the engineer now commits and pushes **directly to the base ref** after local verification, and opens a PR _only_ as a fallback when branch protection rejects the direct push. Rewrote `github-repo` `git-workflow.md` (skill + `docs/git-workflow.md`) to the Direct-to-Base Flow, updated Branch-Protection guidance (do not require PRs for an unreviewed company), and scoped the engineer `HEARTBEAT.md` review-path rule to "pr-review active". The PR workflow remains gated to the `pr-review` module only.
 
 ## [0.4.14] - 2026-06-25
 
@@ -433,7 +441,7 @@ Each worker action built its own `PaperclipClient` and performed a fresh Better 
 
 **Author-only first executionPolicy stage — a stall the v0.4.10 misrouted-`in_review` detection missed**
 
-v0.4.10 caught `in_review` with `executionPolicy: null` (or no non-author stage at all). It did **not** catch `in_review` whose policy *has* non-author stages later, but whose **first/current stage lists only the assignee (author) as a participant**. Paperclip excludes the executor from every stage, so that first stage has no eligible participant and the issue stalls at stage 1 (`422 Only the active reviewer or approver can advance the current execution stage`) — even though later stages look fine. Observed on LeadConversionOptimizer (LEAA-79/76): engineering tasks were misassigned to QA, QA authored the work, moved to `in_review`, and the first review stage was set to QA itself (self-review) → permanent stall the old scan skipped as "pending review".
+v0.4.10 caught `in_review` with `executionPolicy: null` (or no non-author stage at all). It did **not** catch `in_review` whose policy _has_ non-author stages later, but whose **first/current stage lists only the assignee (author) as a participant**. Paperclip excludes the executor from every stage, so that first stage has no eligible participant and the issue stalls at stage 1 (`422 Only the active reviewer or approver can advance the current execution stage`) — even though later stages look fine. Observed on LeadConversionOptimizer (LEAA-79/76): engineering tasks were misassigned to QA, QA authored the work, moved to `in_review`, and the first review stage was set to QA itself (self-review) → permanent stall the old scan skipped as "pending review".
 
 Four template files close the gap:
 
@@ -451,7 +459,8 @@ Four template files close the gap:
 Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `origin/main` CI was red, every PR inherited the red baseline and failed CI in 1-3 seconds at setup, and "never merge without green CI" deadlocked the entire queue. Three independent root causes fixed:
 
 **A — Base-branch-red deadlock (7 files)**
-- `docs/git-workflow.md`: new `## Base-branch-red deadlock` section — agents now detect whether a PR's CI failure is *inherited* (same check failing on the base commit itself) or *introduced* by the PR's diff, using `gh api repos/{owner}/{repo}/commits/<base-sha>/check-runs` for comparison. If the base is red, the situation is classified `BASE-BRANCH-RED` and the baseline-emergency protocol triggers instead.
+
+- `docs/git-workflow.md`: new `## Base-branch-red deadlock` section — agents now detect whether a PR's CI failure is _inherited_ (same check failing on the base commit itself) or _introduced_ by the PR's diff, using `gh api repos/{owner}/{repo}/commits/<base-sha>/check-runs` for comparison. If the base is red, the situation is classified `BASE-BRANCH-RED` and the baseline-emergency protocol triggers instead.
 - `docs/git-workflow.md`: new `## Baseline-emergency protocol` — pause new feature PRs, claim the restore with a comment so concurrent detectors do not open duplicate restore PRs, create a single `fix(ci): restore base CI` PR, fast-track it through merge under the narrow exception, re-verify the base commit's checks, then rebase and drain the feature-PR queue. If the failing check cannot be reproduced locally (missing secrets / runner-only state), escalate to the board/human rather than stalling.
 - `docs/git-workflow.md`: new `## Narrow exception: merging the baseline-restore PR on a red base` — the baseline-restore PR (and only that PR) may merge with red CI when: diff is scoped to the base failure fix; the exact failing checks pass locally (paste real output); remaining failing checks exactly match the inherited baseline set (not introduced by the diff). Replaces CI-green with local-executed-verification + diff-scope proof; never waives the verification gate; never applies to feature PRs.
 - `git-workflow.md` skill (engineer): step 11 adds a pre-merge CI check (`gh pr checks <N>`) and triggers base-red detection before merging; step 12 adds the Self-Merge baseline-restore exception for the engineer; step 15 routes post-merge base-red to the protocol; new rule in `## Rules` prohibits opening new feature PRs on a red base.
@@ -460,11 +469,13 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - `pr-conventions.md` (shared doc): the `## Merge Rules` "With CI: must be green, cannot be skipped" bullet is **modified** to add the baseline-restore exception caveat — without this the doc injected into the Code Reviewer contradicted the new exception and would re-deadlock.
 
 **B — Misrouted `in_review` with `executionPolicy: null` (3 files)**
+
 - `engineer/HEARTBEAT.md` step 5: replaced "move to `in_review`" with an explicit guard — verify a review path exists (Code Reviewer present → set `executionPolicy` stages before moving; no Code Reviewer → self-merge path, never `in_review`); recover already-stuck null-policy issues by moving back to `in_progress` and then choosing the right path.
 - `pr-workflow.md` skill: new `## Misrouted in_review (null executionPolicy)` recovery section — move to `in_progress`, set `executionPolicy` stages (Code Reviewer present) or self-merge the PR (no Code Reviewer); leave a comment naming the misroute.
 - `stall-detection.md` step 4: updated to no longer skip `in_review` + `executionPolicy: null` as "pending review" — this is now explicitly identified as a misrouted stall, not a pending approval.
 
 **C — PR-queue hygiene: no monitoring (1 file)**
+
 - `stall-detection.md`: new `## Misrouted in_review` section — detects `in_review` + null policy during the regular scan (before the summary step), flags as `MISROUTED-REVIEW`, assigns back to the engineer with the recovery action.
 - `stall-detection.md`: new `## PR-queue hygiene` section — every stall-detection routine run (when the `github-repo` module is active) scans the repository's open PR queue via `gh pr list`. Escalates a triage issue when 3+ PRs are UNSTABLE/DIRTY or 8+ PRs are open total. Runs base-branch-red detection first: if the base is red, the triage issue names `BASE-BRANCH-RED` and instructs the baseline-emergency protocol; if the base is green, lists each UNSTABLE/DIRTY PR with its owner and next action (rebase / fix the introduced failure). First detector claims the restore PR by comment to prevent duplicate opens.
 
@@ -475,6 +486,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 ### Fixed
 
 **Roles — structural gaps in secondary and C-suite roles**
+
 - `devops`, `cto`, `cmo`, `ux-researcher` AGENTS.md: added Working Rules, Collaboration and Handoffs, and Done Bar sections (previously used a thin "Core Principles"-only pattern with no actionable workflow guidance).
 - `code-reviewer` HEARTBEAT.md step 5: replaced generic "move to in_review" with the correct role-specific flow — merge the PR, archive worktree, record `approved`; or on rejection set `in_progress` and reassign to engineer.
 - `qa` HEARTBEAT.md step 5: replaced generic step with pass → mark done / fail → reassign to engineer with reproduction steps.
@@ -485,6 +497,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - HEARTBEAT.md title casing fixed: CEO, CTO, CMO, QA Engineer, UI Designer, UX Researcher, DevOps.
 
 **Operational modules — heartbeat-scan anti-pattern, bar/skill mismatches, missing fallbacks**
+
 - `dependency-management` and `release-management`: converted heartbeat-scan "Ongoing" sections to routine-triggered procedures; added `routines[]` to both `module.meta.json` files.
 - `release-management`: added CEO fallback skill scoped to documentation only — explicitly forbids `git push --tags`, `gh release create`, and version bumps.
 - `ci-cd` shared skill: added SHA pinning rule, rollback documentation step, and `## Ongoing Health Checks` section for recurring routine runs.
@@ -495,6 +508,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - `codebase-onboarding` CEO fallback: added "Health Check Refresh" section for follow-up runs.
 
 **Product/design modules — critical missing files, duplicate issues, bar gaps**
+
 - `architecture-plan`: added missing shared `skills/design-system.md` — without it, an engineer acting as primary was silently installed with no design-system skill.
 - `architecture-plan`: added CEO-specific `agents/ceo/skills/architecture-plan.bar.md` with reduced done bar (the shared bar set engineer-level requirements the CEO fallback cannot meet).
 - `architecture-plan` ui-designer contribution skill: added guard clause — wait for `docs/ARCHITECTURE.md` before contributing the UI layer.
@@ -512,7 +526,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 
 ### Fixed
 
-- **Merge conflicts no longer leave PRs dangling forever.** When `gh pr merge` fails due to a merge conflict, or `gh pr view` reports `mergeable: CONFLICTING` / `mergeStateStatus: DIRTY`, agents previously had no concrete instructions and left the PR in `in_review` indefinitely. All three relevant skills now include an explicit *Resolving merge conflicts* section: `git fetch && git rebase origin/<base-ref>`, resolve conflict markers, `git push --force-with-lease`, verify `mergeable: MERGEABLE`, retry `gh pr merge`. (`git-workflow.md` skill, `pr-workflow.md` skill, `docs/git-workflow.md`.)
+- **Merge conflicts no longer leave PRs dangling forever.** When `gh pr merge` fails due to a merge conflict, or `gh pr view` reports `mergeable: CONFLICTING` / `mergeStateStatus: DIRTY`, agents previously had no concrete instructions and left the PR in `in_review` indefinitely. All three relevant skills now include an explicit _Resolving merge conflicts_ section: `git fetch && git rebase origin/<base-ref>`, resolve conflict markers, `git push --force-with-lease`, verify `mergeable: MERGEABLE`, retry `gh pr merge`. (`git-workflow.md` skill, `pr-workflow.md` skill, `docs/git-workflow.md`.)
 - **Code Reviewer checks for conflicts before attempting to merge.** The merge gate now runs `gh pr view <number> --json mergeable,mergeStateStatus` before calling `gh pr merge`. If the PR is conflicting or dirty, it immediately records `changes_requested` with a comment routing the issue back to the engineer to rebase — instead of attempting the merge and silently leaving the issue stranded. (`code-review.md`.)
 - **PR Self-Merge flow also guards against dirty merges.** The engineer's self-merge path now checks mergeability before `gh pr merge` and follows the same rebase procedure when conflicting. (`pr-workflow.md`, `git-workflow.md` skill.)
 - **Never leave a conflicting PR without an explicit action.** All skills now state: either resolve the conflict and retry, or leave an issue comment with the exact blocker and (for complex conflicts) escalate to the CEO — do not silently abandon the branch.
@@ -532,7 +546,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - **Product Owner stage is consistently tied to presence.** The PO approval stage was marked as "always" in four files (skill, conventions, module meta, BOOTSTRAP guardrail) while QA/Security were already conditional. With `pr-review + code-reviewer` but no PO, this produced a stage with no eligible participant → 422. The PO stage now reads "when present" / "when one is on the team" everywhere. (`pr-workflow.md`, `pr-conventions.md`, `module.meta.json`, `assemble.js` guardrail.)
 - **Domain reviewers (UI/UX/DevOps) are consistently advisory.** Previously the skills ("Record your verdict … approved/changes_requested" = blocking stage) contradicted `pr-conventions.md` ("advisory, never gate"). Domain reviewers now post advisory PR comments only and escalate blockers to QA/Security/merge gate — they are never a stage themselves. `infra-review` routes security blockers to the Security Engineer stage instead of blocking directly. (`design-review.md`, `ux-review.md`, `infra-review.md`, `pr-workflow.md`, `pr-conventions.md`.)
 - **`code-reviewer` AGENTS.md is self-consistent.** "Post your review as advisory" + "Your review does not gate the merge" contradicted the merge-gate principle (Principles + `code-review.md`). Line 18 now separates the GitHub comment (advisory — no GitHub-native approval because all agents share one account) from the `executionPolicy` stage (the real gate). Step 8 branches: in pr-review mode the Code Reviewer merges via `gh pr merge` and records `approved`; otherwise it leaves an advisory comment only. (`templates/roles/code-reviewer/AGENTS.md`.)
-- **Product Owner review skill is role-correct.** "Final approver / last gate before merge" was wrong — the PO is the product sign-off *before* the Code Reviewer merge gate, not the final stage. The PO is also not a merge owner (in self-merge mode the engineer merges). (`product-review.md`.)
+- **Product Owner review skill is role-correct.** "Final approver / last gate before merge" was wrong — the PO is the product sign-off _before_ the Code Reviewer merge gate, not the final stage. The PO is also not a merge owner (in self-merge mode the engineer merges). (`product-review.md`.)
 - **`docs/git-workflow.md` uses PR self-merge instead of `git merge`+push.** The "Direct-to-Base-Ref Workflow" used `git checkout base → git merge → git push`, which the skill forbids and branch protection (same module) would reject. Replaced with a "PR Self-Merge Flow" using `gh pr create` + `gh pr merge <N> --merge`. (`templates/modules/github-repo/docs/git-workflow.md`.)
 - **Branch protection with `enforce_admins: true`.** Previously `enforce_admins: false` let the shared admin account bypass the PR requirement with a direct push to the base ref — exactly what the protection is meant to prevent. With `required_approving_review_count: 0` the admin can still open a PR and merge it with zero approvals (self-merge stays functional); only the direct-push bypass is closed. Added the "distinct non-author GitHub reviewer credentials" qualifier and a note on `restrictions: null`. (`preset.meta.json`, `git-workflow.md` skill.)
 - **Work-product POST includes the `Authorization` header.** `pr-workflow.md` documented the POST without `Authorization: Bearer $PAPERCLIP_API_KEY`; in authenticated deployments this yielded 401. Header added, matching the `git-workflow.md` skill. (`pr-workflow.md`.)
@@ -585,6 +599,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - **The plugin-update notice is compact and scoped to the onboarding page.** It was a large amber banner shown on every wizard step; it is now a small one-line notice (`current → latest`, npm link) rendered only on the onboarding (plugin entry) page next to the template update action, explicitly labeled "Company Wizard plugin". (`WizardShell.tsx`, `StepOnboarding.tsx`.)
 
 ---
+
 ## [0.4.4] - 2026-06-16
 
 ### Fixed
@@ -596,11 +611,13 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - **The Code Reviewer is now the binding merge gate** (previously advisory/non-blocking). It satisfies the hard verification gate (green CI, or runs the tests/build and pastes the output), merges the PR into the correct base, cleans up any isolated worktree, and only then records the final approval that closes the issue. The engineer no longer adds themselves as a merge-gate stage.
 - **Default-branch resolution is name-agnostic.** When no base ref is configured for an existing repository, the worktree base ref is the repository's actual default branch — whatever `origin/HEAD` points at (`main`/`master`/`trunk`/…) — falling back to `main` then `master` only when the remote advertises no default HEAD. The detected branch is recorded on the project workspace so isolated worktrees branch from the correct base. (`github-repo` foundation issue, `docs/git-workflow.md`, engineer git/PR skills.)
 - **Terminology: "default branch" / "base ref" instead of hardcoded "main".** Reworded agent-facing instructions across the ci-cd skills, `github-repo`/`pr-review` docs and READMEs, `launch-mvp`, the `fast`/`repo-maintenance` presets, and the engineer SOUL so they no longer treat `main` as the universal default-branch name. Protective guards ("never rewrite the configured ref to `main`/`master`/`origin/*`") and the fresh-repo `git init -b main` default are unchanged.
+
 ### Removed
 
 - `scripts/patch-active-company.mjs` — the v0.4.3 one-off maintenance script is no longer tracked.
 
 ---
+
 ## [0.4.3] - 2026-06-16
 
 ### Fixed
@@ -617,6 +634,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - `scripts/patch-active-company.mjs` — idempotent maintenance script that patches an already-provisioned company in place to the current defaults: sets worker agents to `medium` thinking and assigns the Board Operations / Hiring Plan issues to the CEO. Supports `--dry-run` and `--thinking=<level>`.
 
 ---
+
 ## [0.4.2] - 2026-06-15
 
 ### Fixed
@@ -624,6 +642,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - **Existing-company provisioning no longer fails while creating governance records.** Board Operations and Hiring Plan are now created as unassigned `todo` issues because Paperclip rejects unassigned `in_progress` issues.
 
 ---
+
 ## [0.4.1] - 2026-06-15
 
 ### Changed
@@ -648,6 +667,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - Regression coverage for governed `/agent-hires`, issue documents, current heartbeat templates, hiring-review guardrails, executionPolicy PR review bootstrap output, persona enrichment defaults, and configured base-ref preservation.
 
 ---
+
 ## [0.3.24] - 2026-06-15
 
 ### Changed
@@ -743,6 +763,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - **Review-step repository editing now stays in sync.** The summary/review repository editor now handles legacy `workspaceSourceType` values consistently, so editing fresh-vs-existing repository settings in the Review step keeps the rendered preview aligned and always uses the selected mode during provisioning.
 
 ---
+
 ## [0.3.12] - 2026-06-08
 
 ### Changed
@@ -750,17 +771,19 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - **Workspace isolation is now read from Paperclip instance settings** — the plugin no longer exposes an `enableIsolatedWorktrees` plugin option. `executionWorkspacePolicy` for `git_repo` projects now follows `enableIsolatedWorkspaces` from Paperclip instance experimental settings (`/api/instance/settings/experimental`). Fresh local repos continue to skip isolated worktrees during bootstrap.
 
 ---
+
 ## [0.3.11] - 2026-06-08
 
 ### Fixed
 
-- **CEO bootstrap no longer reverse-engineers the Paperclip API from server source.** During bootstrap the CEO was reading/grepping `server/src/routes/*` and `packages/shared/src/validators/*` to recover exact create-payload schemas, because BOOTSTRAP.md listed *what* to create but not the create endpoints or valid enum values for goals and projects. The first create pass then failed on a project status enum (`active` is a goal status, not a project status). `templates/bootstrap-instructions.md` now documents the `POST /api/companies/{companyId}/goals` and `…/projects` endpoints, the valid `level`/`status` enums for goals and projects (explicitly noting `active` is goal-only), and instructs the agent not to inspect server source to recover schemas. Also reiterates that fresh local repos must not attach an `executionWorkspacePolicy`.
+- **CEO bootstrap no longer reverse-engineers the Paperclip API from server source.** During bootstrap the CEO was reading/grepping `server/src/routes/*` and `packages/shared/src/validators/*` to recover exact create-payload schemas, because BOOTSTRAP.md listed _what_ to create but not the create endpoints or valid enum values for goals and projects. The first create pass then failed on a project status enum (`active` is a goal status, not a project status). `templates/bootstrap-instructions.md` now documents the `POST /api/companies/{companyId}/goals` and `…/projects` endpoints, the valid `level`/`status` enums for goals and projects (explicitly noting `active` is goal-only), and instructs the agent not to inspect server source to recover schemas. Also reiterates that fresh local repos must not attach an `executionWorkspacePolicy`.
 
 ### Changed
 
 - **Repository setting on the review/summary step is now an obvious clickable control.** Previously the only way to edit it was a hover-only pencil icon shared by every row, which was hard to discover. The repository value is now a button with a visible "Change" / "Change — use an existing repository" affordance that opens the inline new-vs-existing editor (both manual and AI paths).
 
 ---
+
 ## [0.3.10] - 2026-06-08
 
 ### Fixed
@@ -777,6 +800,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - **Repository setup logic extracted to `src/ui/lib/repository.ts`** (`repositoryProjectFields`, `getRepositoryMode`, `getRepositoryRef`, `getRepositoryUrl`, `normalizeNewRepoBranch`) and shared by `StepRepository` and the new inline editor, so the new-vs-external workspace + execution-policy rules stay consistent across both entry points.
 
 ---
+
 ## [0.3.9] - 2026-06-08
 
 ### Changed
@@ -788,6 +812,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - **`reviewGate` field on declared module/preset issues** (`{ reviewers: [...], approver: "..." }`). Assembly resolves the roles present in the team (dropping absent ones) and renders an ordered executionPolicy sketch into BOOTSTRAP.md; the CEO resolves roles → agentIds when creating the issue. `client.createIssue` already forwards `executionPolicy`, so no client change was needed. The `pr-review` setup issue ships a `reviewGate` as the first real example.
 
 ---
+
 ## [0.3.8] - 2026-06-08
 
 ### Changed
@@ -795,6 +820,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - **`anthropicApiKey` and `paperclipPassword` plugin settings are now plain string fields** instead of `secret-ref`. The Paperclip host rejects saving any `secret-ref` field until company-scoped plugin config ships (error: "Plugin secret references are disabled until company-scoped plugin config lands"), which blocked saving the plugin settings entirely. `resolveAnthropicApiKey` now uses a directly entered key (`sk-ant-...`) as-is and only falls back to host secret resolution for legacy installs that still store a secret reference. Trade-off: the Anthropic key is now stored in plain plugin config until the host secret store is available.
 
 ---
+
 ## [0.3.7] - 2026-06-08
 
 ### Fixed
@@ -802,6 +828,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - **Agent filter bug in the `auto-assign` module.** Corrected the agent-matching filter used in the CEO/Product Owner heartbeat sections and the primary + fallback `auto-assign` skills.
 
 ---
+
 ## [0.3.6] - 2026-06-07
 
 ### Fixed
@@ -810,6 +837,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - **PR review workflow tightened.** Review skills across all reviewing roles (code reviewer, devops, engineer, product owner, QA, UI designer, UX researcher) and the `pr-conventions` doc were updated for consistent, role-appropriate review scope; `github-repo` and `pr-review` module metadata adjusted.
 
 ---
+
 ## [0.3.5] - 2026-06-07
 
 ### Changed
@@ -817,6 +845,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - **Worker agents no longer run always-on heartbeats.** Since the plugin now provisions the whole team (0.3.2) plus all routines (0.3.4), enabling a heartbeat on every agent produced a burst of concurrent and queued runs that overloaded the dev server (frequent crashes/restarts, cascading `process_lost` failures). Paperclip wakes an agent when work is assigned to it, and routines drive scheduled work, so only the CEO (coordinator) keeps an always-on heartbeat; all other agents are now created with the heartbeat disabled and woken on assignment. This sharply reduces baseline concurrency.
 
 ---
+
 ## [0.3.4] - 2026-06-07
 
 ### Fixed
@@ -824,6 +853,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - **Bootstrap no longer blocks on routine creation.** Paperclip only lets an agent create routines assigned to itself, so the CEO following the bootstrap could not create routines owned by other agents (backlog grooming and auto-assign belong to the Product Owner) — it had to delegate them to a separate issue and block the bootstrap. The plugin now creates all routines directly during provisioning (with board authority, each assigned to its owning agent, with cron triggers), the same way it already creates the agents. BOOTSTRAP.md tells the CEO the routines already exist. New companies only; existing-company runs leave routines untouched.
 
 ---
+
 ## [0.3.3] - 2026-06-07
 
 ### Changed
@@ -832,6 +862,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - **Doc references use relative paths.** They were absolute paths that baked in the (possibly collision-suffixed) company directory name; they are now `docs/<file>` relative to the agent home, which stays valid if the company directory is renamed.
 
 ---
+
 ## [0.3.2] - 2026-06-07
 
 ### Fixed
@@ -840,6 +871,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - **Isolated workspaces no longer fail on first run.** Fresh local projects used `setupCommand: "git init -b main"`, which leaves an unborn `main` (no commits); the `isolated_workspace` / `git_worktree` policy then failed `git worktree add … main` until an agent happened to make the first commit, so the earliest issues started as "failed" with a workspace error. The default now seeds an initial empty commit (`git init -b main && git … commit --allow-empty …`) so `main` is a valid base ref immediately. A real custom `setupCommand` is left untouched; a missing one is seeded.
 
 ---
+
 ## [0.3.1] - 2026-06-07
 
 ### Added
@@ -856,6 +888,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - AI wizard config generation no longer fails with `RPC call "performAction" timed out after 30000ms`. All Anthropic calls run as background jobs in the worker (start + poll), so no single `performAction` RPC blocks past the host's hard 30s timeout — even for long Opus generations.
 
 ---
+
 ## [0.3.0] - 2026-06-06
 
 ### Fixed
@@ -863,6 +896,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - Secret reference handling for plugin settings now works with the current Paperclip host secret flow.
 
 ---
+
 ## [0.2.7] — 2026-06-06
 
 ### Added
@@ -893,6 +927,7 @@ Investigates the LeadConversionOptimizer pile-up (LEAA-89, 18 open PRs) where `o
 - `cfo` role — it was orphaned (in no preset, owned no capability, never activated). Documentation and role counts updated. The `cfo` value remains a valid Paperclip `paperclipRole` enum entry.
 
 ---
+
 ## [0.2.6] — 2026-05-06
 
 ### Added
