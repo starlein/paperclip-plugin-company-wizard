@@ -11,6 +11,7 @@ import {
 import { Button } from '../ui/button';
 import { ConfigReview } from '../ConfigReview';
 import { cn, getPluginSettingsUrl } from '../../lib/utils';
+import { AI_CONFIG_REPAIR_PROMPT, extractAiConfig } from '../../lib/ai-config';
 import { normalizeExecutionWorkspacePolicy } from '../../../logic/project-workspace-policy.js';
 import {
   Sparkles,
@@ -137,7 +138,7 @@ function PhaseIndicator({
               )}
               <span className="hidden sm:inline">{p.label}</span>
               {p.key === 'interview' && isActive && questionCount > 0 && (
-                <span className="text-[10px] opacity-70">{questionCount}/3</span>
+                <span className="text-[10px] opacity-70">{Math.min(questionCount, 3)}/3</span>
               )}
             </div>
           </div>
@@ -320,80 +321,28 @@ export function StepAiWizard() {
     throw new Error('AI generation timed out. Please try again.');
   };
 
-  const tryExtractConfig = (text: string) => {
-    // Extract top-level JSON objects by tracking brace depth, skipping string contents.
-    const candidates: string[] = [];
-    let depth = 0;
-    let start = -1;
-    let inString = false;
-    let escape = false;
-    for (let i = 0; i < text.length; i++) {
-      const ch = text[i];
-      if (escape) {
-        escape = false;
-        continue;
-      }
-      if (ch === '\\' && inString) {
-        escape = true;
-        continue;
-      }
-      if (ch === '"') {
-        inString = !inString;
-        continue;
-      }
-      if (inString) continue;
-      if (ch === '{') {
-        if (depth === 0) start = i;
-        depth++;
-      } else if (ch === '}') {
-        depth--;
-        if (depth === 0 && start !== -1) {
-          candidates.push(text.slice(start, i + 1));
-          start = -1;
-        }
-      }
-    }
-    const isValidConfig = (obj: any) => obj && typeof obj === 'object' && obj.name && obj.preset;
-    const tryParse = (raw: string) => {
-      // 1. Try strict JSON
-      try {
-        return JSON.parse(raw);
-      } catch {
-        /* continue to cleanup */
-      }
-      // 2. Clean common AI artifacts and retry
-      try {
-        const cleaned = raw
-          .replace(/,\s*([\]}])/g, '$1') // trailing commas
-          .replace(/\/\/[^\n]*/g, '') // line comments
-          .replace(/\n/g, '\\n') // unescaped newlines inside strings
-          .replace(/\t/g, '\\t'); // unescaped tabs
-        return JSON.parse(cleaned);
-      } catch {
-        /* continue to last resort */
-      }
-      // 3. Last resort: try to fix unescaped newlines only inside JSON string values
-      try {
-        // Replace actual newlines between quotes with \n escape
-        const fixed = raw.replace(/"([^"\\]|\\.)*"/g, (match) =>
-          match.replace(/\n/g, '\\n').replace(/\t/g, '\\t'),
-        );
-        return JSON.parse(fixed.replace(/,\s*([\]}])/g, '$1'));
-      } catch {
-        return null;
-      }
-    };
-    for (const candidate of candidates) {
-      const config = tryParse(candidate);
-      if (isValidConfig(config)) return config;
-    }
-    // Fallback: try extracting from markdown code fence
-    const fenceMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
-    if (fenceMatch) {
-      const config = tryParse(fenceMatch[1].trim());
-      if (isValidConfig(config)) return config;
-    }
-    return null;
+  const repairConfigResponse = async (
+    apiMessages: Message[],
+    malformedReply: string,
+    system?: string,
+  ) => {
+    console.warn('[AI Wizard] Retrying malformed configuration response.', {
+      responseLength: malformedReply.length,
+    });
+    const repairedReply = await callApi(
+      [
+        ...apiMessages,
+        { role: 'assistant', content: malformedReply },
+        { role: 'user', content: AI_CONFIG_REPAIR_PROMPT },
+      ],
+      system,
+    );
+    return extractAiConfig(repairedReply);
+  };
+
+  const requestParsedConfig = async (apiMessages: Message[], system?: string) => {
+    const reply = await callApi(apiMessages, system);
+    return extractAiConfig(reply) ?? repairConfigResponse(apiMessages, reply, system);
   };
 
   const startInterview = async (description?: string) => {
@@ -439,16 +388,15 @@ export function StepAiWizard() {
     setPhase('configuring');
 
     try {
-      const reply = await callApi(
+      const config = await requestParsedConfig(
         [{ role: 'user', content: promptMessages.singleShot.replace('{{DESCRIPTION}}', desc) }],
         singleShotPrompt,
       );
-      const config = tryExtractConfig(reply);
       if (config) {
         pendingConfigRef.current = config;
         setConfigReady(true);
       } else {
-        console.error('[AI Wizard] Failed to parse config from single-shot response:', reply);
+        console.error('[AI Wizard] Failed to parse config after automatic repair.');
         throw new Error('Could not parse configuration from AI response');
       }
     } catch (err) {
@@ -473,9 +421,12 @@ export function StepAiWizard() {
       const reply = await callApi(newMessages);
       const allMessages = [...newMessages, { role: 'assistant' as const, content: reply }];
       setMessages(allMessages);
-      setQuestionCount((c) => c + 1);
+      setQuestionCount((c) => Math.min(3, c + 1));
 
-      const config = tryExtractConfig(reply);
+      let config = extractAiConfig(reply);
+      if (!config && questionCount >= 3 && reply.includes('{')) {
+        config = await repairConfigResponse(newMessages, reply);
+      }
       if (config) {
         pendingConfigRef.current = config;
         setConfigReady(true);
@@ -502,13 +453,12 @@ export function StepAiWizard() {
     ];
 
     try {
-      const reply = await callApi(apiMessages);
-      const config = tryExtractConfig(reply);
+      const config = await requestParsedConfig(apiMessages);
       if (config) {
         pendingConfigRef.current = config;
         setConfigReady(true);
       } else {
-        console.error('[AI Wizard] Failed to parse config from interview response:', reply);
+        console.error('[AI Wizard] Failed to parse config after automatic repair.');
         throw new Error('Could not parse configuration from AI response');
       }
     } catch (err) {
