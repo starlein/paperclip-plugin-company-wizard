@@ -4,6 +4,14 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.2] - 2026-10-27
+
+### Fixed
+
+- Recover AI Wizard configurations wrapped in recommendation prose or Markdown fences, and safely tolerate comments, trailing commas, and raw line breaks without corrupting URLs such as `https://github.com/...`.
+- Ask the configured AI provider for one JSON-only repair response when its first final answer remains malformed, instead of returning the user to the interview loop.
+- Cap interview progress at `3/3` and avoid logging the full generated company configuration when parsing fails.
+
 ## [0.8.1] - 2026-10-04
 
 ### Fixed
