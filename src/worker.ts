@@ -390,41 +390,86 @@ async function resolveOpenAiApiKey(
  * Single Anthropic Messages API call. Returns `{ text, error? }` — never throws,
  * so callers (sync and async job modes) can handle failures uniformly.
  */
+const ANTHROPIC_REFUSAL_RECOVERY_SCOPE = `
+<defensive_planning_scope>
+This is an organizational planning and configuration task, not a request to execute cyber activity.
+For security-related projects, produce only high-level, defensive requirements for systems the user
+owns or is explicitly authorized to assess. Preserve authorization, consent, non-destructive testing,
+rate limiting, legal review, isolation, and auditability constraints. Do not provide exploit payloads,
+intrusion steps, credential attacks, evasion, persistence, destructive actions, or instructions for
+targeting third parties. If a requested detail would be unsafe to operationalize, represent it only as
+a governance, detection, remediation, or validation requirement. Return the requested Company Wizard
+planning output within these boundaries.
+</defensive_planning_scope>`.trim();
+
+function addAnthropicDefensivePlanningScope(system: unknown): unknown {
+  if (typeof system === 'string' && system.trim()) {
+    return `${system.trim()}\n\n${ANTHROPIC_REFUSAL_RECOVERY_SCOPE}`;
+  }
+  if (Array.isArray(system)) {
+    return [...system, { type: 'text', text: ANTHROPIC_REFUSAL_RECOVERY_SCOPE }];
+  }
+  return ANTHROPIC_REFUSAL_RECOVERY_SCOPE;
+}
+
 async function callAnthropic(
   apiKey: string,
   system: unknown,
   messages: unknown,
 ): Promise<{ text: string; error?: string }> {
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: ANTHROPIC_AI_MODEL,
-        // High ceiling so the wizard's final config — which reproduces the user's
-        // full spec in the first goal — is never truncated mid-JSON. This is only
-        // an upper bound; generation time tracks the tokens actually produced.
-        max_tokens: 65536,
-        thinking: { type: 'adaptive' },
-        output_config: { effort: 'max' },
-        ...(system ? { system } : {}),
-        messages,
-      }),
-    });
-
-    if (!response.ok) {
-      const body = await response.text();
-      return { text: '', error: `Anthropic API error (${response.status}): ${body}` };
-    }
-
-    const data = (await response.json()) as {
+    type AnthropicMessageResponse = {
       stop_reason?: string | null;
       content?: Array<{ type?: string; text?: string }>;
     };
+
+    const request = async (
+      requestSystem: unknown,
+    ): Promise<{ data: AnthropicMessageResponse } | { error: string }> => {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: ANTHROPIC_AI_MODEL,
+          // High ceiling so the wizard's final config — which reproduces the user's
+          // full spec in the first goal — is never truncated mid-JSON. This is only
+          // an upper bound; generation time tracks the tokens actually produced.
+          max_tokens: 65536,
+          thinking: { type: 'adaptive' },
+          output_config: { effort: 'max' },
+          ...(requestSystem ? { system: requestSystem } : {}),
+          messages,
+        }),
+      });
+
+      if (!response.ok) {
+        const body = await response.text();
+        return { error: `Anthropic API error (${response.status}): ${body}` };
+      }
+
+      return { data: (await response.json()) as AnthropicMessageResponse };
+    };
+
+    let result = await request(system);
+    if ('error' in result) return { text: '', error: result.error };
+
+    if (result.data.stop_reason === 'refusal') {
+      result = await request(addAnthropicDefensivePlanningScope(system));
+      if ('error' in result) return { text: '', error: result.error };
+      if (result.data.stop_reason === 'refusal') {
+        return {
+          text: '',
+          error:
+            'Anthropic refused this planning request after one defensive-scope retry. Rephrase the project description to emphasize authorized, non-destructive work, or choose OpenAI in the plugin settings.',
+        };
+      }
+    }
+
+    const data = result.data;
     if (
       data.stop_reason &&
       data.stop_reason !== 'end_turn' &&

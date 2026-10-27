@@ -4,6 +4,13 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.3] - 2026-10-27
+
+### Fixed
+
+- Recover once from Anthropic `stop_reason: refusal` by retrying the same Company Wizard request with an explicit authorized, defensive, non-destructive planning scope.
+- Keep the retry bounded: a second refusal returns actionable guidance instead of looping or weakening the safety boundary.
+
 ## [0.8.2] - 2026-10-27
 
 ### Fixed

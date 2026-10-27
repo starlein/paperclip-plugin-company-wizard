@@ -197,6 +197,90 @@ describe('company-wizard', () => {
     });
   });
 
+  it('retries one Anthropic refusal with a defensive planning scope', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ stop_reason: 'refusal', content: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            stop_reason: 'end_turn',
+            content: [{ type: 'text', text: 'safe-planning-config' }],
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const harness = createTestHarness({
+      manifest,
+      capabilities: manifest.capabilities,
+      config: { anthropicApiKey: 'sk-ant-test' },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    const start = (await harness.performAction('ai-chat', {
+      mode: 'start',
+      system: 'Build the company configuration.',
+      messages: [{ role: 'user', content: 'Plan an authorized security product.' }],
+    })) as { jobId?: string; status?: string };
+    expect(start.status).toBe('pending');
+
+    let result: { status?: string; text?: string; error?: string } = {};
+    for (let i = 0; i < 20; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      result = (await harness.performAction('ai-chat', {
+        mode: 'poll',
+        jobId: start.jobId,
+      })) as { status?: string; text?: string; error?: string };
+      if (result.status !== 'pending') break;
+    }
+    expect(result).toEqual({ status: 'done', text: 'safe-planning-config' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const firstBody = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body));
+    const retryBody = JSON.parse(String((fetchMock.mock.calls[1]?.[1] as RequestInit).body));
+    expect(firstBody.system).toBe('Build the company configuration.');
+    expect(retryBody.system).toContain('Build the company configuration.');
+    expect(retryBody.system).toContain('organizational planning and configuration task');
+    expect(retryBody.system).toContain('authorized to assess');
+    expect(retryBody.messages).toEqual(firstBody.messages);
+  });
+
+  it('stops after one defensive-scope retry when Anthropic refuses again', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ stop_reason: 'refusal', content: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const harness = createTestHarness({
+      manifest,
+      capabilities: manifest.capabilities,
+      config: { anthropicApiKey: 'sk-ant-test' },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    await expect(
+      harness.performAction('ai-chat', {
+        messages: [{ role: 'user', content: 'generate' }],
+      }),
+    ).resolves.toEqual({
+      text: '',
+      error:
+        'Anthropic refused this planning request after one defensive-scope retry. Rephrase the project description to emphasize authorized, non-destructive work, or choose OpenAI in the plugin settings.',
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('uses a governed OpenAI key with GPT-6-Astra at high reasoning effort', async () => {
     const companyId = '11111111-1111-4111-8111-111111111111';
     const secretRef = {
