@@ -823,6 +823,8 @@ describe('company-wizard', () => {
       }
       if (url.endsWith('/api/companies/co-1/issues') && method === 'POST') {
         const body = JSON.parse(String(init?.body || '{}'));
+        if (body.assigneeAgentId)
+          return json({ error: 'Cannot assign work to pending approval agents' }, 409);
         return json(
           {
             id: body.title.startsWith('Bootstrap ')
@@ -845,6 +847,11 @@ describe('company-wizard', () => {
           201,
         );
       }
+      if (url.endsWith('/instructions-bundle') && method === 'PATCH')
+        return json(
+          { error: 'Pending approval agent configuration cannot be changed before board approval' },
+          409,
+        );
       // Generic success for anything else the flow touches (bundle files, routines, etc.)
       return json({ ok: true, id: 'x', key: 'x', slug: 'x' });
     });
@@ -868,6 +875,18 @@ describe('company-wizard', () => {
       expect(result.pendingApprovalIds).toEqual(['approval-1', 'approval-2']);
       expect(result.bootstrapIssueId).toBe('issue-bootstrap');
       expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/approve'))).toBe(false);
+      expect(
+        fetchMock.mock.calls.some(
+          ([url, init]) => String(url).endsWith('/instructions-bundle') && init?.method === 'PATCH',
+        ),
+      ).toBe(false);
+      for (const hire of hireBodies) {
+        expect(hire.adapterConfig.instructionsBundleMode).toBe('external');
+        expect(hire.adapterConfig.instructionsEntryFile).toBe('AGENTS.md');
+        expect(hire.adapterConfig.instructionsFilePath).toBe(
+          join(hire.adapterConfig.instructionsRootPath, 'AGENTS.md'),
+        );
+      }
 
       // A Company Skill was created for the module capability.
       expect(skillCreateBodies.map((b) => b.slug)).toContain('ci-cd');

@@ -4,6 +4,23 @@ All notable changes to the Company Wizard plugin are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.4] - 2026-11-11
+
+### Fixed
+
+- Include complete external instruction-bundle configuration in CEO and team hire requests. Paperclip v2026.1106.0 freezes pending hires, so a follow-up bundle PATCH fails even for instance administrators. Keep the intended instructions in the board approval snapshot instead of bypassing approval or silently losing them.
+- Create an unassigned bootstrap while its CEO awaits approval. Persist the intended company/CEO/issue binding in an issue document; the explicit Start bootstrap action verifies that binding and CEO eligibility before assignment. Never take another agent's or user's task.
+- Preserve instruction revision/hash tokens and send instruction-file DELETE paths plus reviewed hashes as URL query parameters, as required by the current host. Conflicting deletes remain rejected.
+- Stop on protected instruction-bundle failures rather than reporting a successful setup with stale instructions. Earlier mutations of an existing company may remain; review it before retrying.
+- Separate `targetCompanyId` from the host-injected page `companyId` for hire decisions and bootstrap start. Preserve host invocation scoping; the board REST API still authorizes access to the target company.
+- Persist cross-company wizard history in an authorized Board Operations issue document when scoped SDK state cannot address the target. Read the newest valid history without changing plugin configuration or bypassing the SDK scope gate.
+- Correct credential-setting guidance: this host does not turn pasted strings into governed secrets and can expose raw plugin config to company viewers. Use saved secret bindings and browser authorization; removing/rotating old plaintext settings and securing the host config API are separate operator/host changes.
+
+### Verification
+
+- Typecheck against both shipped SDK declarations and exact v2026.1106.0 host source declarations. Probe the source worker built with the actual target SDK separately from the shipped, SDK-inlined production bundle.
+- Exercise real company, skill, governed-hire, instruction, issue-document and routine API routes in a disposable network-isolated container using the prepared release image. Verify a built wizard's pending CEO/team hires and deferred bootstrap without changing production or invoking a provider. Approval-dependent routine creation still reports host rejections until its owners are approved.
+
 ## [0.8.3] - 2026-10-27
 
 ### Fixed

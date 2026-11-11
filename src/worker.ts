@@ -1148,12 +1148,7 @@ function wizardManifestKey(companyId: string) {
   };
 }
 
-/** The SDK namespaces state by this plugin; no plugin lookup or settings PUT is needed. */
-export async function readWizardManifest(
-  state: PluginStateClient,
-  companyId: string,
-): Promise<WizardManifest | null> {
-  const value = await state.get(wizardManifestKey(companyId));
+function parseWizardManifest(value: unknown): WizardManifest | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
   const stringList = (entry: unknown): entry is string[] =>
@@ -1174,12 +1169,63 @@ export async function readWizardManifest(
   return record as unknown as WizardManifest;
 }
 
+/** SDK state stays company-scoped. Cross-company history uses authorized REST
+ * issue documents instead of weakening the invocation scope or changing config. */
+export async function readWizardManifest(
+  state: PluginStateClient,
+  companyId: string,
+  client?: any,
+): Promise<WizardManifest | null> {
+  let current: WizardManifest | null = null;
+  try {
+    current = parseWizardManifest(await state.get(wizardManifestKey(companyId)));
+  } catch (error) {
+    if (!client) throw error;
+  }
+  if (!client) return current;
+  try {
+    const issues = await client.listIssues(companyId, { q: 'Board Operations', limit: 100 });
+    for (const issue of Array.isArray(issues) ? issues : []) {
+      if (issue.companyId !== companyId || issue.title !== 'Board Operations') continue;
+      let document;
+      try {
+        document = await client.getIssueDocument(issue.id, 'company-wizard-manifest');
+      } catch (error) {
+        if ((error as any)?.status === 404) continue;
+        throw error;
+      }
+      if (document?.companyId !== companyId || document?.issueId !== issue.id) continue;
+      const saved = parseWizardManifest(JSON.parse(document.body));
+      if (saved && (!current || saved.updatedAt > current.updatedAt)) current = saved;
+    }
+  } catch (error) {
+    // Never turn target REST authorization failure into a state-based fallback.
+    if ((error as any)?.status === 401 || (error as any)?.status === 403) throw error;
+    if (!current) throw error;
+  }
+  return current;
+}
+
 export async function saveWizardManifest(
   state: PluginStateClient,
   companyId: string,
   wizardManifest: WizardManifest,
+  rest?: { client: any; issueId: string },
 ): Promise<void> {
-  await state.set(wizardManifestKey(companyId), wizardManifest);
+  wizardManifestKey(companyId);
+  if (rest) {
+    await rest.client.putIssueDocument(rest.issueId, 'company-wizard-manifest', {
+      title: 'Company Wizard manifest',
+      format: 'markdown',
+      body: JSON.stringify(wizardManifest),
+      baseRevisionId: null,
+    });
+  }
+  try {
+    await state.set(wizardManifestKey(companyId), wizardManifest);
+  } catch (error) {
+    if (!rest) throw error;
+  }
 }
 
 function buildWizardManifest(params: {
@@ -1867,7 +1913,7 @@ const plugin = definePlugin({
         // Read the wizard manifest (best-effort) for better retired-role detection
         let existingManifest: WizardManifest | null = null;
         try {
-          existingManifest = await readWizardManifest(ctx.state, existingCompanyId);
+          existingManifest = await readWizardManifest(ctx.state, existingCompanyId, client);
         } catch {
           // Manifest read failure is non-fatal — preview still works without it
         }
@@ -2080,8 +2126,8 @@ const plugin = definePlugin({
     // unrelated hires already pending in an existing company.
     registerAction('list-pending-hires', async (params) => {
       try {
-        const companyId =
-          typeof (params as any)?.companyId === 'string' ? (params as any).companyId : '';
+        const target = params.targetCompanyId ?? params.companyId;
+        const companyId = typeof target === 'string' ? target : '';
         if (!companyId) return { error: 'companyId is required' };
         const approvalIds = (params as any)?.approvalIds;
         if (
@@ -2128,8 +2174,8 @@ const plugin = definePlugin({
     // operator a trip to the board UI for the hires this run just requested.
     registerAction('approve-pending-hires', async (params) => {
       try {
-        const companyId =
-          typeof (params as any)?.companyId === 'string' ? (params as any).companyId : '';
+        const target = params.targetCompanyId ?? params.companyId;
+        const companyId = typeof target === 'string' ? target : '';
         if (!companyId) return { error: 'companyId is required' };
         const approvalIds = (params as any)?.approvalIds;
         if (
@@ -2180,7 +2226,8 @@ const plugin = definePlugin({
     // Starting work remains a separate operator decision after hiring approvals.
     registerAction('start-bootstrap', async (params) => {
       try {
-        const companyId = typeof params.companyId === 'string' ? params.companyId : '';
+        const target = params.targetCompanyId ?? params.companyId;
+        const companyId = typeof target === 'string' ? target : '';
         const agentId = typeof params.agentId === 'string' ? params.agentId : '';
         const issueId = typeof params.issueId === 'string' ? params.issueId : '';
         if (!companyId || !agentId || !issueId) {
@@ -2195,14 +2242,25 @@ const plugin = definePlugin({
         if (agent?.id !== agentId || agent?.companyId !== companyId || agent?.role !== 'ceo') {
           return { error: "The selected agent is not this company's CEO." };
         }
-        if (
-          issue?.id !== issueId ||
-          issue?.companyId !== companyId ||
-          issue?.assigneeAgentId !== agentId
-        ) {
+        if (issue?.id !== issueId || issue?.companyId !== companyId) {
           return {
             error: 'The bootstrap issue must belong to this company and be assigned to its CEO.',
           };
+        }
+        const needsAssignment = !issue.assigneeAgentId && !issue.assigneeUserId;
+        if (needsAssignment) {
+          // Only claim a deferred task created for this exact company/CEO by
+          // the wizard. Never take another agent's or operator's assignment.
+          const document = await client.getIssueDocument(issueId, 'company-wizard-bootstrap');
+          const binding = JSON.parse(document.body);
+          if (
+            binding.companyId !== companyId ||
+            binding.agentId !== agentId ||
+            binding.issueId !== issueId
+          )
+            return { error: 'The deferred bootstrap does not match this company and CEO.' };
+        } else if (issue.assigneeAgentId !== agentId || issue.assigneeUserId) {
+          return { error: 'The bootstrap issue must be assigned to its CEO.' };
         }
         if (issue.status === 'done' || issue.status === 'cancelled') {
           return { error: 'The bootstrap issue is already closed.' };
@@ -2227,6 +2285,7 @@ const plugin = definePlugin({
           };
         }
 
+        if (needsAssignment) await client.updateIssue(issueId, { assigneeAgentId: agentId });
         const warnings: string[] = [];
         try {
           // A governed CEO could not accept its watchdog during provisioning.
@@ -2645,7 +2704,7 @@ const plugin = definePlugin({
           // Read the wizard manifest (best-effort) for retired-role detection
           if (existingCompanyId) {
             try {
-              existingManifest = await readWizardManifest(ctx.state, companyId);
+              existingManifest = await readWizardManifest(ctx.state, companyId, client);
             } catch {
               // Manifest read failure is non-fatal — provisioning still proceeds
             }
@@ -2732,11 +2791,18 @@ const plugin = definePlugin({
             companyDir,
             roleAdapterOverrides: assembleResult.roleAdapterOverrides?.get('ceo') ?? {},
           });
-          // The CEO uses an EXTERNAL instructions bundle pointing at the assembled
-          // on-disk dir (set after create/update), so no managed bundle is uploaded.
+          // Include external instructions in the governed hire snapshot. Pending
+          // agents are configuration-frozen and cannot be patched after hiring.
           adapterConfig.instructionsFilePath = ceoEntryPath;
+          adapterConfig.instructionsBundleMode = 'external';
+          adapterConfig.instructionsRootPath = ceoInstructionsDir;
+          adapterConfig.instructionsEntryFile = ceoEntryFile;
+          let reusedCeo = false;
+          let ceoPendingApproval = false;
 
           const logPendingApproval = (agent: any) => {
+            ceoPendingApproval =
+              agent?.status === 'pending_approval' || !!agent?._pendingApprovalId;
             if (!agent?._pendingApprovalId) return;
             pendingApprovalIds.add(agent._pendingApprovalId);
             log(
@@ -2752,6 +2818,8 @@ const plugin = definePlugin({
               : null;
 
             if (existingCeo?.id) {
+              reusedCeo = true;
+              ceoPendingApproval = existingCeo.status === 'pending_approval';
               ceoAgentId = existingCeo.id;
               log(`✓ Reusing existing CEO agent (${ceoAgentId})`);
 
@@ -2843,13 +2911,15 @@ const plugin = definePlugin({
             logPendingApproval(ceoAgent);
           }
 
-          await setExternalInstructionsBundle({
-            client,
-            agentId: ceoAgentId,
-            sourceDir: ceoInstructionsDir,
-            entryFile: ceoEntryFile,
-            log,
-          });
+          if (reusedCeo) {
+            await setExternalInstructionsBundle({
+              client,
+              agentId: ceoAgentId,
+              sourceDir: ceoInstructionsDir,
+              entryFile: ceoEntryFile,
+              log,
+            });
+          }
 
           // The Board Operations (#1) and Hiring Plan (#2) governance issues are created
           // before the CEO exists (so they can't be assigned at creation time). Now that
@@ -2861,6 +2931,7 @@ const plugin = definePlugin({
             { issue: hiringPlanIssue, label: 'Hiring Plan' },
           ]) {
             if (!govIssue.issue?.id) continue;
+            if (ceoPendingApproval) continue;
             try {
               await client.updateIssue(govIssue.issue.id, { assigneeAgentId: ceoAgentId });
               log(`✓ Assigned ${govIssue.label} issue to CEO`);
@@ -2871,15 +2942,9 @@ const plugin = definePlugin({
             }
           }
 
-          // Step 6b: Create (or reuse) the rest of the team, each with its FULL
-          // instructions bundle. The wizard assembles a complete per-role workspace
-          // (AGENTS.md + HEARTBEAT/SOUL/TOOLS + skills), and passing it as
-          // `instructionsBundle` makes the host materialize a self-contained managed
-          // bundle in a single createAgent call — because buildCeoAdapterConfig sets no
-          // instructionsFilePath, the host materializes the passed files instead of
-          // skipping them. Previously these agents were created by the CEO during
-          // bootstrap with only an instructionsFilePath, leaving each non-CEO agent with
-          // a bare AGENTS.md that referenced external, fragile absolute paths.
+          // Step 6b: Create (or reuse) the rest of the team with external role
+          // bundles. New hires must include the complete bundle configuration
+          // before approval; existing agents use the protected bundle endpoint.
           const teamRoles = [...(assembleResult.allRoles ?? [])].filter(
             (r: string) => r && r !== 'ceo',
           );
@@ -2926,9 +2991,11 @@ const plugin = definePlugin({
               roleAdapterOverrides: assembleResult.roleAdapterOverrides?.get(roleName) ?? {},
             });
             const roleInstructionsDir = path.join(companyDir, 'agents', roleName);
-            // External instructions bundle pointing at the assembled on-disk dir
-            // (set after create/update); no managed bundle is uploaded.
+            // Submit the complete external bundle in the hire approval snapshot.
             roleAdapterConfig.instructionsFilePath = path.join(roleInstructionsDir, 'AGENTS.md');
+            roleAdapterConfig.instructionsBundleMode = 'external';
+            roleAdapterConfig.instructionsRootPath = roleInstructionsDir;
+            roleAdapterConfig.instructionsEntryFile = 'AGENTS.md';
 
             const existingAgent = existingByTemplateRole.get(roleName);
             if (existingAgent?.id) {
@@ -2991,13 +3058,6 @@ const plugin = definePlugin({
               ...(hiringPlanIssue?.id ? { sourceIssueId: hiringPlanIssue.id } : {}),
             });
             teamAgentIds[roleName] = roleAgent.id;
-            await setExternalInstructionsBundle({
-              client,
-              agentId: roleAgent.id,
-              sourceDir: roleInstructionsDir,
-              entryFile: 'AGENTS.md',
-              log,
-            });
             log(`✓ ${roleTitle} created (${roleAgent.id})`);
             if (roleAgent?._pendingApprovalId) {
               pendingApprovalIds.add(roleAgent._pendingApprovalId);
@@ -3111,11 +3171,22 @@ const plugin = definePlugin({
           const issue = await client.createIssue(companyId, {
             title: `Bootstrap ${company.name || companyName}`,
             description: bootstrapDescription,
-            assigneeAgentId: ceoAgentId,
+            ...(ceoPendingApproval ? {} : { assigneeAgentId: ceoAgentId }),
             status: 'todo',
           });
           bootstrapIssue = issue as { id: string; identifier?: string };
           log(`✓ Bootstrap task created: ${bootstrapIssue.identifier || bootstrapIssue.id}`);
+          if (ceoPendingApproval) {
+            await client.putIssueDocument(bootstrapIssue.id, 'company-wizard-bootstrap', {
+              title: 'Deferred bootstrap assignment',
+              format: 'markdown',
+              body: JSON.stringify({ companyId, agentId: ceoAgentId, issueId: bootstrapIssue.id }),
+              baseRevisionId: null,
+            });
+            log(
+              'CEO hire awaits approval. Bootstrap remains unassigned until an explicit Start bootstrap action.',
+            );
+          }
 
           // Attach a task watchdog so the initial company setup self-recovers if it
           // stalls. The CEO watches its own bootstrap subtree; if runs go terminal
@@ -3181,7 +3252,10 @@ const plugin = definePlugin({
             assembleResult,
             initialRoutines: routines,
           });
-          await saveWizardManifest(ctx.state, companyId, wizardManifest);
+          await saveWizardManifest(ctx.state, companyId, wizardManifest, {
+            client,
+            issueId: boardOperationsIssue!.id,
+          });
           log('✓ Wizard manifest saved');
         } catch (manifestErr) {
           log(

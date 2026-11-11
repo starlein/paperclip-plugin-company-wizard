@@ -23,6 +23,8 @@
 
 **Upgrading from 0.6.x/0.7.x:** update the installed plugin package and reload it; refreshing templates alone does not update the worker/UI. Existing login settings keep the legacy behavior. To switch, clear both `paperclipEmail` and `paperclipPassword`, save, reload the wizard, and choose **Use current login**. Existing companies, template directories, approval rules, and instance settings are not changed just by installing the release.
 
+**Version 0.8.4 / Paperclip v2026.1106.0:** fixes pending-hire instruction configuration and bootstrap assignment restrictions. New hires include their external instructions in the approval request; bootstrap waits unassigned until approval and an explicit start. Instruction-file updates/deletes preserve the current host's concurrency tokens. Update and reload the plugin package, not just its templates. See [compatibility evidence and remaining approval prerequisites](docs/PAPERCLIP-COMPATIBILITY.md).
+
 Requires Node **24.11+**, matching the current Paperclip SDK/shared runtime requirement.
 
 **Discovery keywords:** `paperclip`, `paperclip-plugin`, `paperclipai`, `plugin`, `workspace`, `company-wizard`, `ai-agents`, `multi-agent`, `agent-orchestration`, `agent-company`, `agent-workflows`, `workflow-automation`, `agent-templates`, `agent-skills`, `bootstrapping`.

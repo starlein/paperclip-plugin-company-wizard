@@ -63,7 +63,7 @@ export function PendingHires({
     setLoadError(null);
     try {
       const res = (await listAction.current({
-        companyId,
+        targetCompanyId: companyId,
         approvalIds: JSON.parse(scopeKey),
       })) as HireActionResult;
       if (!mounted.current || sequence !== loadSequence.current) return;
@@ -99,7 +99,10 @@ export function PendingHires({
     setActionError(null);
     setMessage(null);
     try {
-      const res = (await approvePendingHires({ companyId, approvalIds })) as HireActionResult;
+      const res = (await approvePendingHires({
+        targetCompanyId: companyId,
+        approvalIds,
+      })) as HireActionResult;
       if (!mounted.current) return;
       if (res?.error) throw new Error(String(res.error));
       if (Array.isArray(res?.failed) && res.failed.length > 0) {
@@ -236,7 +239,11 @@ export function BootstrapStart({
     setMessage(null);
     setWarnings([]);
     try {
-      const res = (await startBootstrap({ companyId, agentId, issueId })) as BootstrapActionResult;
+      const res = (await startBootstrap({
+        targetCompanyId: companyId,
+        agentId,
+        issueId,
+      })) as BootstrapActionResult;
       setWarnings(Array.isArray(res?.warnings) ? (res.warnings as string[]) : []);
       if (res?.error) throw new Error(String(res.error));
       setStarted(res?.started === true);

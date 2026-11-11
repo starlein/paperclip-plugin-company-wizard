@@ -21,6 +21,32 @@ const previous: WizardManifest = {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('company-scoped wizard manifest persistence', () => {
+  it('round trips through target-authorized issue documents when SDK scope belongs to another company', async () => {
+    const harness = createTestHarness({ manifest });
+    vi.spyOn(harness.ctx.state, 'get').mockRejectedValue(new Error('InvocationScopeDeniedError'));
+    vi.spyOn(harness.ctx.state, 'set').mockRejectedValue(new Error('InvocationScopeDeniedError'));
+    let document: any = null;
+    const client = {
+      listIssues: vi.fn(async () => [
+        { id: 'board-b', companyId: 'company-b', title: 'Board Operations' },
+      ]),
+      getIssueDocument: vi.fn(async () => document),
+      putIssueDocument: vi.fn(async (_id: string, _key: string, value: any) => {
+        document = { ...value, companyId: 'company-b', issueId: 'board-b' };
+      }),
+    };
+    await saveWizardManifest(harness.ctx.state, 'company-b', previous, {
+      client,
+      issueId: 'board-b',
+    });
+    expect(await readWizardManifest(harness.ctx.state, 'company-b', client)).toEqual(previous);
+    expect(client.listIssues).toHaveBeenCalledWith('company-b', expect.anything());
+    expect(client.putIssueDocument).toHaveBeenCalledWith(
+      'board-b',
+      'company-wizard-manifest',
+      expect.objectContaining({ baseRevisionId: null }),
+    );
+  });
   it('round trips per company without replacing unrelated plugin state or settings', async () => {
     const config = { templatesPath: '/custom/templates', paperclipUrl: 'http://paperclip.test' };
     const harness = createTestHarness({ manifest, config });

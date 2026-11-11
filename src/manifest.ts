@@ -3,7 +3,7 @@ import type { PaperclipPluginManifestV1 } from '@paperclipai/plugin-sdk';
 const manifest: PaperclipPluginManifestV1 = {
   id: 'starlein.paperclip-plugin-company-wizard',
   apiVersion: 1,
-  version: '0.8.3',
+  version: '0.8.4',
   displayName: 'Company Wizard',
   description: 'AI-powered wizard to bootstrap agent companies from composable templates',
   author: 'Sascha Pietrowski <sp@speednetwork.de>',
@@ -64,13 +64,13 @@ const manifest: PaperclipPluginManifestV1 = {
         type: ['string', 'object'],
         format: 'secret-ref',
         description:
-          'Anthropic API key for the AI wizard. Paste a key or select a saved Paperclip company secret; Paperclip stores pasted values as governed secret references.',
+          'Select a saved Paperclip company secret for the AI wizard. Legacy direct strings remain supported, but this host can persist and expose them as raw plugin config; do not paste a plaintext API key.',
       },
       openaiApiKey: {
         type: ['string', 'object'],
         format: 'secret-ref',
         description:
-          'OpenAI API key for GPT/Codex company generation. Paste a key or select a saved Paperclip company secret; required when AI Provider is openai.',
+          'Select a saved Paperclip company secret for GPT/Codex generation. Required when AI Provider is openai. Avoid plaintext strings: this host does not automatically convert them into governed secrets.',
       },
       paperclipUrl: {
         type: 'string',
@@ -85,7 +85,7 @@ const manifest: PaperclipPluginManifestV1 = {
       paperclipPassword: {
         type: 'string',
         description:
-          'Optional legacy board login password. Not needed with browser authorization. Existing values remain supported; clear both login fields to switch modes.',
+          'Legacy board password, stored as raw plugin config and potentially readable by company viewers. Prefer current-browser authorization; clear both login fields to switch. Existing legacy values remain supported.',
       },
     },
   },

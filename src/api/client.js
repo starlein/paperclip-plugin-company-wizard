@@ -365,10 +365,11 @@ export class PaperclipClient {
     });
   }
 
-  async deleteInstructionsBundleFile(agentId, { path }) {
-    return this._fetch(`/api/agents/${agentId}/instructions-bundle/file`, {
+  async deleteInstructionsBundleFile(agentId, { path, baseHash }) {
+    const query = new URLSearchParams({ path });
+    if (baseHash !== undefined) query.set('baseHash', baseHash);
+    return this._fetch(`/api/agents/${agentId}/instructions-bundle/file?${query}`, {
       method: 'DELETE',
-      body: JSON.stringify({ path }),
     });
   }
 
@@ -538,6 +539,16 @@ export class PaperclipClient {
     });
   }
 
+  async listIssues(companyId, { q, limit = 100 } = {}) {
+    const query = new URLSearchParams({
+      limit: String(limit),
+      sortField: 'updated',
+      sortDir: 'desc',
+    });
+    if (q) query.set('q', q);
+    return this._fetch(`/api/companies/${companyId}/issues?${query}`, { method: 'GET' });
+  }
+
   async getIssue(issueId) {
     return this._fetch(`/api/issues/${issueId}`, { method: 'GET' });
   }
@@ -563,6 +574,12 @@ export class PaperclipClient {
 
   async deleteIssueWatchdog(issueId) {
     return this._fetch(`/api/issues/${issueId}/watchdog`, { method: 'DELETE' });
+  }
+
+  async getIssueDocument(issueId, key) {
+    return this._fetch(`/api/issues/${issueId}/documents/${encodeURIComponent(key)}`, {
+      method: 'GET',
+    });
   }
 
   async putIssueDocument(issueId, key, { title, format, body, baseRevisionId }) {

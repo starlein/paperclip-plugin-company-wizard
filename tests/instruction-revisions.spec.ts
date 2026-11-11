@@ -17,3 +17,17 @@ it.each([
   });
   expect(result).toMatchObject(base);
 });
+
+it('sends the instruction delete path and reviewed hash as query parameters', async () => {
+  const client = new PaperclipClient('http://fixture.invalid');
+  client._fetch = vi.fn(async () => ({}));
+  const path = 'references/a file & notes.md';
+  const baseHash = 'a'.repeat(64);
+  await client.deleteInstructionsBundleFile('agent', { path, baseHash });
+  const [url, options] = client._fetch.mock.calls[0] as unknown as [string, RequestInit];
+  const target = new URL(url, 'http://fixture.invalid');
+  expect(target.searchParams.get('path')).toBe(path);
+  expect(target.searchParams.get('baseHash')).toBe(baseHash);
+  expect(options.method).toBe('DELETE');
+  expect(options.body).toBeUndefined();
+});

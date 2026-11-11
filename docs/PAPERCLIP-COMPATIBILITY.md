@@ -1,6 +1,21 @@
 # Paperclip compatibility — Company Wizard
 
-## Paperclip v2026.1106.0 source/runtime audit
+## Paperclip v2026.1106.0 compatibility (0.8.4)
+
+The prepared fork image at commit `c3127f07e8508d1046db5253d894033c7c3c15a1` was also exercised through real REST routes in a disposable `--network none` container. This does not modify the live deployment or prove provider/browser acceptance.
+
+- Pending-hire configuration is frozen. New CEO/team hire payloads now include `instructionsBundleMode`, `instructionsRootPath`, `instructionsEntryFile` and `instructionsFilePath` together. The saved agent and its board approval snapshot both retain the external bundle. The wizard no longer attempts a forbidden post-hire PATCH.
+- Pending agents cannot receive issue assignments either. Bootstrap is created unassigned, with a `company-wizard-bootstrap` document binding its issue/company/intended CEO. Explicit start checks that binding, ownership and live eligibility before assigning it; pending/paused/foreign agents or already-assigned tasks remain rejected.
+- Instruction DELETE reads `path` and `baseHash` from the query, not a JSON body. The helper now forwards both. A real managed-file test confirms stale hashes return 409 without deletion and a correct hash removes the file.
+- Full provisioning with the built worker reaches two pending hires and an unassigned bootstrap; attempting to start the pending CEO remains blocked. Approval-dependent routine assignments can still be deferred by the host: approve their owners and rerun the existing-company template sync. This audit does not auto-approve or bypass those restrictions.
+- Exact-source TypeScript checking includes SDK subpaths such as `/testing` and `/ui`; do not mix the old harness types with current host types. Runtime probes separately start the shipped bundle and source compiled with the actual target SDK. Rebasing an already SDK-inlined production bundle through an alias does not replace its SDK and is not target-SDK proof.
+- The bridge reserves `companyId` for the page scope. Done-screen REST actions now send `targetCompanyId`; the SDK/secret invocation company remains unchanged. Manifest history falls back to target-authorized issue documents on Board Operations tasks, not instance-global state or configuration. Reads scan up to the 100 most recently updated matching tasks and compare manifest timestamps.
+
+### Separate host credential risk
+
+The target host's config GET returns stored `configJson` to authorized company readers, and config POST persists raw strings unchanged. Therefore the legacy `paperclipPassword` and directly pasted provider strings are not safe secret storage. Manifest descriptions now warn instead of promising automatic normalization. Prefer existing governed company-secret bindings and explicit browser authorization. This plugin-only patch does not modify the host config API, erase existing settings, or rotate any credentials; those require a separate host/operator change. No real credentials were read for this audit.
+
+## Initial Paperclip v2026.1106.0 source/runtime audit
 
 Target: exact tag commit `d69631b01b9c658f80bf8bed389863dce82643e1`, inspected in a detached worktree. No host deployment, company mutation, publication or live credentials were used.
 

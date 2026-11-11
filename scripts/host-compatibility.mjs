@@ -72,69 +72,81 @@ try {
     shim,
     `export { definePlugin } from ${JSON.stringify(join(host, 'packages/plugins/sdk/src/define-plugin.ts'))};\nexport { runWorker } from ${JSON.stringify(join(host, 'packages/plugins/sdk/src/worker-rpc-host.ts'))};\n`,
   );
-  const worker = join(dir, 'worker.mjs');
-  await build({
-    entryPoints: [resolve('dist/worker.js')],
-    outfile: worker,
+  const sourceWorker = join(dir, 'worker.mjs');
+  // Production bundles inline the shipped SDK. Aliasing that already-built
+  // bundle cannot substitute the target SDK, so compile the source separately.
+  const built = await build({
+    entryPoints: [resolve('src/worker.ts')],
+    outfile: sourceWorker,
     bundle: true,
     platform: 'node',
     format: 'esm',
     alias: { ...aliases, '@paperclipai/plugin-sdk': shim },
+    metafile: true,
   });
-  const child = spawn(process.execPath, [worker], { stdio: ['pipe', 'pipe', 'pipe'] });
-  let buffer = '',
-    stderr = '';
-  const pending = new Map();
-  child.stderr.on('data', (data) => {
-    stderr += data;
-  });
-  child.stdout.on('data', (data) => {
-    buffer += data;
-    while (buffer.includes('\n')) {
-      const end = buffer.indexOf('\n');
-      const line = buffer.slice(0, end);
-      buffer = buffer.slice(end + 1);
-      if (!line.trim()) continue;
-      const msg = JSON.parse(line);
-      const waiter = pending.get(msg.id);
-      if (waiter && !msg.method) {
-        pending.delete(msg.id);
-        msg.error
-          ? waiter.reject(new Error(JSON.stringify(msg.error)))
-          : waiter.resolve(msg.result);
-      } else if (msg.method && msg.id !== undefined) {
-        child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: msg.id, result: {} }) + '\n');
-      }
-    }
-  });
-  let seq = 0;
-  async function rpc(method, params) {
-    const id = ++seq;
-    return Promise.race([
-      new Promise((resolve, reject) => {
-        pending.set(id, { resolve, reject });
-        child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n');
-      }),
-      new Promise((_, reject) => {
-        const t = setTimeout(() => reject(new Error(`RPC timeout: ${method}; ${stderr}`)), 10000);
-        t.unref();
-      }),
-    ]);
-  }
-  try {
-    const initialized = await rpc('initialize', {
-      manifest,
-      config: {},
-      hostVersion: '2026.1106.0',
+  assert(
+    Object.keys(built.metafile.inputs).some(
+      (input) => resolve(input) === join(host, 'packages/plugins/sdk/src/worker-rpc-host.ts'),
+    ),
+    'Exact-host probe must actually bundle the target SDK implementation',
+  );
+  for (const [label, worker] of [
+    ['Source worker with exact-host SDK', sourceWorker],
+    ['Shipped production worker bundle', resolve('dist/worker.js')],
+  ]) {
+    const child = spawn(process.execPath, [worker], { stdio: ['pipe', 'pipe', 'pipe'] });
+    let buffer = '',
+      stderr = '';
+    const pending = new Map();
+    child.stderr.on('data', (data) => {
+      stderr += data;
     });
-    assert(initialized);
-    const result = await rpc('performAction', { key: 'start-provision', params: {} });
-    assert.equal(result.error, 'companyName is required');
-    console.log(
-      'Built worker loads with exact-host SDK, initializes over stdio JSON-RPC, and executes action validation',
-    );
-  } finally {
-    child.kill();
+    child.stdout.on('data', (data) => {
+      buffer += data;
+      while (buffer.includes('\n')) {
+        const end = buffer.indexOf('\n');
+        const line = buffer.slice(0, end);
+        buffer = buffer.slice(end + 1);
+        if (!line.trim()) continue;
+        const msg = JSON.parse(line);
+        const waiter = pending.get(msg.id);
+        if (waiter && !msg.method) {
+          pending.delete(msg.id);
+          msg.error
+            ? waiter.reject(new Error(JSON.stringify(msg.error)))
+            : waiter.resolve(msg.result);
+        } else if (msg.method && msg.id !== undefined) {
+          child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: msg.id, result: {} }) + '\n');
+        }
+      }
+    });
+    let seq = 0;
+    async function rpc(method, params) {
+      const id = ++seq;
+      return Promise.race([
+        new Promise((resolve, reject) => {
+          pending.set(id, { resolve, reject });
+          child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n');
+        }),
+        new Promise((_, reject) => {
+          const t = setTimeout(() => reject(new Error(`RPC timeout: ${method}; ${stderr}`)), 10000);
+          t.unref();
+        }),
+      ]);
+    }
+    try {
+      const initialized = await rpc('initialize', {
+        manifest,
+        config: {},
+        hostVersion: '2026.1106.0',
+      });
+      assert(initialized);
+      const result = await rpc('performAction', { key: 'start-provision', params: {} });
+      assert.equal(result.error, 'companyName is required');
+      console.log(`${label} initializes over stdio JSON-RPC and executes action validation`);
+    } finally {
+      child.kill();
+    }
   }
 } finally {
   await rm(dir, { recursive: true, force: true });

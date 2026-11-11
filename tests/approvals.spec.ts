@@ -32,6 +32,24 @@ const hire = (id: string, overrides = {}) => ({
 });
 
 describe('explicit hire decisions', () => {
+  it('keeps the target company separate from the host-injected page scope', async () => {
+    const list = vi
+      .spyOn(PaperclipClient.prototype, 'listApprovals')
+      .mockResolvedValue([hire('selected')]);
+    const approve = vi.spyOn(PaperclipClient.prototype, 'approveApproval').mockResolvedValue({});
+    const harness = await createHarness();
+    const scoped = {
+      companyId: 'page-company',
+      targetCompanyId: 'company-a',
+      approvalIds: ['selected'],
+    };
+    const listed: any = await harness.performAction('list-pending-hires', scoped);
+    expect(listed.approvals.map((a: any) => a.id)).toEqual(['selected']);
+    const approved: any = await harness.performAction('approve-pending-hires', scoped);
+    expect(approved.approved).toEqual(['selected']);
+    expect(list).toHaveBeenCalledWith('company-a', { status: 'pending' });
+    expect(approve).toHaveBeenCalledOnce();
+  });
   it.each([undefined, null, [], [''], ['hire-a', 42]])(
     'rejects implicit or malformed approval selection %j without contacting Paperclip',
     async (approvalIds) => {
@@ -156,6 +174,19 @@ describe('explicit bootstrap start', () => {
     return { watchdog, attach, wake };
   }
 
+  it('starts the target company CEO even when the host injects another page company', async () => {
+    const { wake } = mockBootstrap();
+    const harness = await createHarness();
+    expect(
+      await harness.performAction('start-bootstrap', {
+        ...params,
+        companyId: 'page-company',
+        targetCompanyId: 'company-a',
+      }),
+    ).toMatchObject({ started: true });
+    expect(wake).toHaveBeenCalledOnce();
+  });
+
   it('starts the correct CEO and bootstrap issue and restores an absent watchdog after approval', async () => {
     const { attach, wake } = mockBootstrap();
     const harness = await createHarness();
@@ -201,6 +232,40 @@ describe('explicit bootstrap start', () => {
     });
     expect(wake).not.toHaveBeenCalled();
   });
+
+  it.each([
+    { binding: {}, agent: {}, issue: {}, allowed: true },
+    { binding: { agentId: 'other' }, agent: {}, issue: {}, allowed: false },
+    { binding: { companyId: 'other' }, agent: {}, issue: {}, allowed: false },
+    { binding: { issueId: 'other' }, agent: {}, issue: {}, allowed: false },
+    { binding: {}, agent: { status: 'pending_approval' }, issue: {}, allowed: false },
+    { binding: {}, agent: {}, issue: { assigneeUserId: 'operator' }, allowed: false },
+  ])(
+    'assigns only a verified deferred bootstrap after CEO approval: %j',
+    async ({ binding, agent, issue, allowed }) => {
+      const { wake } = mockBootstrap(agent, { assigneeAgentId: null, ...issue });
+      vi.spyOn(PaperclipClient.prototype, '_fetch').mockResolvedValue({
+        body: JSON.stringify({
+          companyId: 'company-a',
+          agentId: 'ceo-a',
+          issueId: 'bootstrap-a',
+          ...binding,
+        }),
+      });
+      const assign = vi.spyOn(PaperclipClient.prototype, 'updateIssue').mockResolvedValue({});
+      const harness = await createHarness();
+      const result: any = await harness.performAction('start-bootstrap', params);
+      if (allowed) {
+        expect(result.started).toBe(true);
+        expect(assign).toHaveBeenCalledExactlyOnceWith('bootstrap-a', { assigneeAgentId: 'ceo-a' });
+        expect(wake).toHaveBeenCalledOnce();
+      } else {
+        expect(result.error).toBeTruthy();
+        expect(assign).not.toHaveBeenCalled();
+        expect(wake).not.toHaveBeenCalled();
+      }
+    },
+  );
 
   it('preserves a watchdog configured by the operator', async () => {
     const { watchdog, attach } = mockBootstrap();
