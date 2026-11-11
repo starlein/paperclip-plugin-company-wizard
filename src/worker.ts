@@ -946,8 +946,11 @@ async function setExternalInstructionsBundle({
     });
     log(`✓ Pointed instructions at external dir ${sourceDir} (entry ${entryFile})`);
   } catch (err) {
-    log(
-      `⚠ Could not set external instructions bundle: ${err instanceof Error ? err.message : String(err)}`,
+    // Current hosts restrict external paths to instance administrators. Do not
+    // claim success or launch bootstrap with stale/missing role instructions.
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Could not set external instructions bundle. Provision with an instance administrator authorized to manage external instruction paths. No bootstrap was started. ${detail}`,
     );
   }
 }

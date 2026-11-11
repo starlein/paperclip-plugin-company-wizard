@@ -341,13 +341,17 @@ export class PaperclipClient {
 
   async upsertInstructionsBundleFile(
     agentId,
-    { path: filePath, content, clearLegacyPromptTemplate },
+    { path: filePath, content, clearLegacyPromptTemplate, baseRevisionId, baseHash },
   ) {
     return this._fetch(`/api/agents/${agentId}/instructions-bundle/file`, {
       method: 'PUT',
       body: JSON.stringify({
         path: filePath,
         content,
+        // Preserve explicit null for a new file; never invent a revision or
+        // retry a conflicting write against a newer operator-owned revision.
+        ...(baseRevisionId !== undefined ? { baseRevisionId } : {}),
+        ...(baseHash !== undefined ? { baseHash } : {}),
         ...(clearLegacyPromptTemplate !== undefined
           ? { clearLegacyPromptTemplate: !!clearLegacyPromptTemplate }
           : {}),

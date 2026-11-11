@@ -1,4 +1,22 @@
-# Paperclip compatibility — Company Wizard 0.8.1
+# Paperclip compatibility — Company Wizard
+
+## Paperclip v2026.1106.0 source/runtime audit
+
+Target: exact tag commit `d69631b01b9c658f80bf8bed389863dce82643e1`, inspected in a detached worktree. No host deployment, company mutation, publication or live credentials were used.
+
+### Concrete changes
+
+- The current `server/src/routes/agents.ts` instructions-bundle PATCH requires instance-admin authority for external mode. Wizard provisioning uses external role directories, but previously swallowed this failure and reported successful provisioning with a bootstrap issue despite stale/missing instructions. It now stops before creating bootstrap and reports the required authority. This does **not** bypass the host restriction or make non-admin provisioning supported. Earlier provisioning steps may already have persisted changes; inspect/reuse the existing company instead of blindly starting another one.
+- The instruction-file PUT now requires an optimistic-concurrency base: `baseRevisionId` (or `baseHash`) for the entry and `baseHash` for managed supporting files. The REST helper discarded caller-supplied tokens; it now forwards them, including explicit null for new files. This helper is not called by the current external-directory provisioning path. Callers must read the current file before updating; conflicts are not retried or overwritten automatically.
+
+### Reproducible verification
+
+`pnpm build:prod && node scripts/host-compatibility.mjs /path/to/exact/host` validates the production manifest against the exact source schema, checks nine real-client request payloads without stripped top-level fields, and bundles the built worker against the exact host SDK source. It then starts a real child process, initializes via stdio JSON-RPC and executes the provisioning action's no-network validation path. Install the target host's shared/SDK dependencies first. This checks worker loading/protocol execution, not a live database installation or UI browser session.
+
+Regression tests cover denied external-bundle setup stopping bootstrap, plus revision/hash and explicit-null preservation. The complete plugin/logic suites, shipped-SDK TypeScript check and production build were run. No SDK peer-floor bump is needed for these fixes.
+
+The manifest API/capabilities and loader entrypoint conventions remain accepted. New resource/agent lifecycle and workspace-provider hooks are opt-in; the wizard declares none. The new idle-drain hook is intentionally absent: its background generation/provisioning work must not falsely claim quiescence. Board-key identity/revocation routes remain present. Existing skill reconciliation and explicit add-mode assignment remain in place. Native runner/provider entitlement and filesystem sharing between host and worker still require operator acceptance; this audit does not establish those live prerequisites.
+
 
 ## Existing-company follow-up (0.8.1)
 

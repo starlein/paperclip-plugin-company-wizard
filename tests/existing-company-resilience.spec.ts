@@ -20,6 +20,7 @@ describe('existing-company provisioning resilience and operator settings', () =>
     { failure: 'create-conflict', apply: true },
     { failure: 'none', apply: true },
     { failure: 'assignment-denied', apply: false },
+    { failure: 'external-instructions-denied', apply: false },
   ])(
     'completes provisioning after $failure, applies agent settings only with opt-in ($apply)',
     async ({ failure, apply }) => {
@@ -122,7 +123,12 @@ describe('existing-company provisioning resilience and operator settings', () =>
             Object.assign(agent, parsed);
             return json(agent);
           }
-          if (url.endsWith('/instructions-bundle')) bundles.push(url);
+          if (url.endsWith('/instructions-bundle')) {
+            bundles.push(url);
+            // v2026.1106.0 requires instance-admin authority for external mode.
+            if (failure === 'external-instructions-denied')
+              return json({ error: 'Instance admin required' }, 403);
+          }
           if (url.endsWith('/issues') && method === 'POST') {
             issues.push(body);
             return json({ id: `issue-${issues.length}` });
@@ -149,6 +155,12 @@ describe('existing-company provisioning resilience and operator settings', () =>
             ...(apply ? { updateExistingAgents: true } : {}),
           },
         });
+        if (failure === 'external-instructions-denied') {
+          expect(result.error).toContain('instance administrator');
+          expect(result.bootstrapIssueId).toBeUndefined();
+          expect(issues.some((issue) => issue.title.startsWith('Bootstrap '))).toBe(false);
+          return;
+        }
         expect(result.error).toBeUndefined();
         if (failure === 'none') expect(result.warnings).toEqual([]);
         else expect(result.warnings?.length).toBeGreaterThan(0);
