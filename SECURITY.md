@@ -19,7 +19,7 @@ Please submit vulnerability reports directly via GitHub's built-in **Private Vul
 2. Click **Report a vulnerability** to open a private security advisory draft.
 
 ### Alternative Contact
-If you are unable to use GitHub Security Advisories, you can send your report via email to **[DEINE-PRIVATE-EMAIL]**.
+If you are unable to use GitHub Security Advisories, you can send your report via email to starlein19@gmail.com.
 
 ### What to Include in Your Report
 To help triage and reproduce the issue quickly, please include:
